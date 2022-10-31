@@ -1,8 +1,16 @@
 #include "pch.h"
-#include "common/common.h"
+#include "core/core.h"
 
-int main()
+int wmain()
 {
 	// run application
-	common::run();
+  try {
+    core::run();
+  } catch (const std::exception& e) {
+    std::cerr << e.what() << "\n.";
+    _getch();
+    return EXIT_FAILURE;
+  };
+
+  EXIT_SUCCESS;
 }
