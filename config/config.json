@@ -1,0 +1,9 @@
+{
+  "core" : {
+    "resolution" : [ 1600, 900 ],
+    "fullscreen" : false,
+    "vsync" : false,
+    "firstMap" : "default",
+    "devMode" : false
+  }
+}

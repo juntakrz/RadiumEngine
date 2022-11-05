@@ -15,6 +15,8 @@ void core::run() {
   RE_LOG(Log, "-------------\n");
   RE_LOG(Log, "Initializing engine core...");
 
+  loadCoreConfig();
+
   // create and register managers
   RE_LOG(Log, "Registering managers.");
   mgrWnd = &MWindow::get();
@@ -52,4 +54,31 @@ void core::stop(TResult cause) {
   }
   
   exit(cause);
+}
+
+void core::loadCoreConfig(const wchar_t* path) {
+  json data;
+  uint32_t resolution[2] = { config::renderWidth, config::renderHeight };
+
+  if (jsonLoad(path, &data) != RE_OK) {
+    RE_LOG(Error,
+           "Failed to load core configuration file. Default settings will be "
+           "used.");
+    return;
+  };
+
+  if (data.contains("core")) {
+    const auto& coreData = data.at("core");
+    if (coreData.contains("resolution")) {
+      coreData.at("resolution").get_to(resolution);
+      config::renderWidth = resolution[0];
+      config::renderHeight = resolution[1];
+    }
+
+    RE_LOG(Log, "Successfully loaded core config at '%s'.",
+           wstrToStr(path).c_str());
+    return;
+  }
+
+  RE_LOG(Error, "Core configuration file seems to be corrupted.");
 }

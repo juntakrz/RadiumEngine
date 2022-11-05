@@ -9,9 +9,9 @@ MGraphics::MGraphics() { RE_LOG(Log, "Creating graphics manager."); };
 TResult MGraphics::createInstance() {
   VkApplicationInfo appInfo{};
   appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-  appInfo.pApplicationName = settings.appTitle;
+  appInfo.pApplicationName = config::appTitle;
   appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-  appInfo.pEngineName = settings.engineTitle;
+  appInfo.pEngineName = config::engineTitle;
   appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
   appInfo.apiVersion = VK_API_VERSION_1_3;
 

@@ -51,6 +51,9 @@
     <ClCompile Include="src\core\managers\mgraphics_rendering.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\config.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\pch.h">
@@ -74,7 +77,7 @@
     <ClInclude Include="include\core\managers\mgraphics.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\settings.h">
+    <ClInclude Include="include\config.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\core\managers\mdebug.h">
@@ -100,5 +103,6 @@
     <None Include="compileShaders_Win_x64.bat">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="config\config.json" />
   </ItemGroup>
 </Project>

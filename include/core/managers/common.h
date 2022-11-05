@@ -1,7 +1,7 @@
 #pragma once
 
 #include "util/util.h"
-#include "settings.h"
+#include "config.h"
 
 // forward declarations
 struct GLFWwindow;

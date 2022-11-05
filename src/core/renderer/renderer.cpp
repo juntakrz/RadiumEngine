@@ -13,9 +13,8 @@ TResult core::renderer::create() {
   glfwInit();
 
   // window manager setup 
-  chkResult =
-      mgrWnd->createWindow(settings.renderWidth, settings.renderHeight,
-                                  settings.appTitle, nullptr, nullptr);
+  chkResult = mgrWnd->createWindow(config::renderWidth, config::renderHeight,
+                                   config::appTitle, nullptr, nullptr);
   RE_CHECK(chkResult);
 
   // graphics manager setup (responsible for Vulkan instance and GPU management)

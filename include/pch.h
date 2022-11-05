@@ -28,6 +28,9 @@
 #include <GLM/vec4.hpp>
 #include <GLM/mat4x4.hpp>
 
+// external engine modules
+#include <json/json.hpp>
+
 /* comments:
 * 
 * relies on Visual C++ 17 2022 redistributable package
