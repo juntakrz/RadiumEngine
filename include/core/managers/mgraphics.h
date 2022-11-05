@@ -1,7 +1,10 @@
 #pragma once
 
+#include "vk_mem_alloc.h"
 #include "core/objects.h"
 #include "common.h"
+
+class WMesh;
 
 class MGraphics {
  private:
@@ -20,24 +23,27 @@ class MGraphics {
     VkPipelineLayout pipelineLayout;
     VkPipeline pipeline;
     VkCommandPool commandPool;
-    std::vector<VkCommandBuffer> cmdBuffers;
     uint32_t idFrame = 0;                       // in flight frame index
-    struct {
-      std::vector<VkSemaphore> sImgAvailable;
-      std::vector<VkSemaphore> sRndrFinished;
-      std::vector<VkFence> fInFlight;
-    } sync;
+    std::vector<VkCommandBuffer> cmdBuffers;
+    std::vector<WMesh*> meshes;                 // meshes rendered during the current frame
   } dataRender;
 
-MGraphics();
+  struct {
+    std::vector<VkSemaphore> sImgAvailable;
+    std::vector<VkSemaphore> sRndrFinished;
+    std::vector<VkFence> fInFlight;
+  } dataSync;
+
+  MGraphics();
 
 public:
   VkInstance APIInstance = VK_NULL_HANDLE;
   VkSwapchainKHR swapChain = VK_NULL_HANDLE;
   VkSurfaceKHR surface = VK_NULL_HANDLE;
-  std::vector<CVkPhysicalDevice> availablePhysicalDevices;
-  CVkPhysicalDevice physicalDevice;
-  CVkLogicalDevice logicalDevice;
+  std::vector<RVkPhysicalDevice> availablePhysicalDevices;
+  RVkPhysicalDevice physicalDevice;
+  RVkLogicalDevice logicalDevice;
+  VmaAllocator memAlloc;
   uint32_t framesRendered = 0;
   bool bFramebufferResized = false;
 
@@ -56,60 +62,77 @@ public:
   TResult initialize();
   void deinitialize();
 
+  // initialize Vulkan memory allocator
+  TResult createMemAlloc();
+  void destroyMemAlloc();
+
   // wait until all queues and device are idle
   void waitForSystemIdle();
+
+  // create Vulkan surface in the main window
+  TResult createSurface();
+  void destroySurface();
+
+  // binds mesh to graphics pipeline
+  uint32_t bindMesh(WMesh* pMesh);
 
   //
   // mgraphics_physicaldevice
   //
 
-  // generic initialization method that uses physical device methods to set
-  // default physical device
-  TResult initDefaultPhysicalDevice();
+  // find all available physical devices and store them in graphics manager
+  TResult enumPhysicalDevices();
 
-  // store all physical devices available in the graphics manager
-  TResult detectPhysicalDevices();
+  // automatically use the first valid physical device
+  TResult initPhysicalDevice();
 
   // try to use this physical device if valid
-  TResult usePhysicalDevice(const CVkPhysicalDevice& physicalDeviceData);
+  TResult initPhysicalDevice(const RVkPhysicalDevice& physicalDeviceData);
 
-  // use the first valid physical device
-  TResult useFirstValidPhysicalDevice();
-
-  // fill in physical device information structure, also performs device
-  // validity checks
+  // setup physical device database, validate all devices as per usage requirements
   TResult setPhysicalDeviceData(VkPhysicalDevice device,
-                                CVkPhysicalDevice& outDeviceData);
+                                RVkPhysicalDevice& outDeviceData);
 
   // access currently detected devices
-  std::vector<CVkPhysicalDevice>& physicalDevices();
-  CVkPhysicalDevice* physicalDevices(uint32_t id = 0);
+  std::vector<RVkPhysicalDevice>& physicalDevices();
+  RVkPhysicalDevice* physicalDevices(uint32_t id = 0);
 
   // provides surface and presentation data for Vulkan swapchain
-  TResult queryPhysicalDeviceSwapChainInfo(const CVkPhysicalDevice& deviceData,
-                                           CVkSwapChainInfo& swapChainInfo);
+  TResult queryPhysicalDeviceSwapChainInfo(const RVkPhysicalDevice& deviceData,
+                                           RVkSwapChainInfo& swapChainInfo);
+
+  // find suitable memory type for the required operation on an active physical device
+  uint32_t findPhysicalDeviceMemoryType(uint32_t typeFilter,
+                                        VkMemoryPropertyFlags properties);
 
  private:
   TResult checkPhysicalDeviceExtensionSupport(
-      const CVkPhysicalDevice& deviceData);
+      const RVkPhysicalDevice& deviceData);
 
   std::vector<VkExtensionProperties> getPhysicalDeviceExtensions(
-      const CVkPhysicalDevice& deviceData);
+      const RVkPhysicalDevice& deviceData);
 
   // retrieve queue capabilities for the device, use only first valid indices
-  TResult setPhysicalDeviceQueueFamilies(CVkPhysicalDevice& deviceData);
+  TResult setPhysicalDeviceQueueFamilies(RVkPhysicalDevice& deviceData);
 
   // -----
 
+  //
+  // mgraphics_logicaldevice
+  //
+
  public:
+  // creates logical device from the currently active physical one
+  TResult initLogicalDevice();
+
   // create a logical device to communicate with a physical device
-  TResult createLogicalDevice(const CVkPhysicalDevice& deviceData);
+  TResult initLogicalDevice(const RVkPhysicalDevice& deviceData);
   void destroyLogicalDevice(VkDevice device = nullptr,
                             const VkAllocationCallbacks* pAllocator = nullptr);
 
-  // create Vulkan surface in the main window
-  TResult createSurface();
-  void destroySurface();
+  TResult copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer, VkBufferCopy* copyRegion);
+
+  // -----
 
   //
   // mgraphics_swapchain
@@ -119,18 +142,18 @@ public:
   // device
   TResult initSwapChain(VkFormat format, VkColorSpaceKHR colorSpace,
                         VkPresentModeKHR presentMode,
-                        CVkPhysicalDevice* device = nullptr);
+                        RVkPhysicalDevice* device = nullptr);
 
-  TResult setSwapChainFormat(const CVkPhysicalDevice& deviceData,
+  TResult setSwapChainFormat(const RVkPhysicalDevice& deviceData,
                              const VkFormat& format,
                              const VkColorSpaceKHR& colorSpace);
 
-  TResult setSwapChainPresentMode(const CVkPhysicalDevice& deviceData,
+  TResult setSwapChainPresentMode(const RVkPhysicalDevice& deviceData,
                                   VkPresentModeKHR presentMode);
 
-  TResult setSwapChainExtent(const CVkPhysicalDevice& deviceData);
+  TResult setSwapChainExtent(const RVkPhysicalDevice& deviceData);
 
-  TResult setSwapChainImageCount(const CVkPhysicalDevice& deviceData);
+  TResult setSwapChainImageCount(const RVkPhysicalDevice& deviceData);
 
   // requires valid variables provided by swap chain data gathering methods /
   // initSwapChain

@@ -6,12 +6,13 @@
 #define RE_ERRORLIMIT           RE_ERROR        // terminate program if some error exceeds this level
 #define MAX_FRAMES_IN_FLIGHT    2u
 
-struct {
-  const char* appTitle = "Radium Engine";
-  const char* engineTitle = "Radium Engine";
-  uint32_t renderWidth = 1280;
-  uint32_t renderHeight = 720;
-} settings;
+namespace config {
+extern const char* appTitle;
+extern const char* engineTitle;
+extern uint32_t renderWidth;
+extern uint32_t renderHeight;
+extern bool bDevMode;
+};  // namespace config
 
 namespace core {
 namespace renderer {

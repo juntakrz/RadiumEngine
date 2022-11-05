@@ -1,13 +1,13 @@
 #include "pch.h"
 #include "util/util.h"
-#include "settings.h"
+#include "config.h"
 #include "core/core.h"
 
-std::vector<char> readFile(const std::wstring& filename) {
+std::vector<char> readFile(const wchar_t* filename) {
   std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
   if (!file.is_open()) {
-    RE_LOG(RE_WARNING, "failed to open '%s'.", filename.c_str());
+    RE_LOG(RE_WARNING, "failed to open '%s'.", filename);
 
     return std::vector<char>{};
   }
@@ -20,7 +20,7 @@ std::vector<char> readFile(const std::wstring& filename) {
   file.close();
 
   char path[256];
-  wcstombs(path, filename.c_str(), 255);
+  wcstombs(path, filename, 255);
   RE_LOG(Log, "Successfully loaded '%s'.", path);
 
   return buffer;
@@ -61,4 +61,41 @@ void validate(TResult result) {
     RE_LOG(Critical, "Terminating program");
     core::stop(result);
   }
+}
+
+std::string wstrToStr(const wchar_t* string) {
+  char newString[255];
+  size_t newLength = wcslen(string) + 1;
+
+  if (newLength > 255) newLength = 255;
+
+  memset(newString, 0, newLength);
+  wcstombs(newString, string, newLength - 1);
+  
+  return newString;
+}
+
+TResult jsonLoad(const wchar_t* path, json* out_j) noexcept {
+  if (!path) {
+    RE_LOG(Error, "jsonLoad received empty path.");
+    return RE_ERROR;
+  }
+
+  std::ifstream fStream(path);
+  out_j->clear();
+
+  if (!fStream.good()) {
+    RE_LOG(Error, "Failed to read JSON file at '%s'.", path);
+    return RE_ERROR;
+  }
+
+  fStream >> *out_j;
+  return RE_OK;
+}
+
+float random(float min, float max) {
+  std::random_device rd;
+  std::mt19937 mt(rd());
+  std::uniform_real_distribution<float> dist(min, max);
+  return dist(mt);
 }

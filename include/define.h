@@ -1,15 +1,16 @@
 #pragma once
 
 // global library definitions
-#define _CRT_SECURE_NO_WARNINGS
 #define GLFW_INCLUDE_VULKAN
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 
 // global macros
 #define TEXT(x) L ## x
-#define RE_LOG(l, x, ...) processMessage(l, x, __VA_ARGS__);
-#define RE_CHECK(x) validate(x);
+#define RE_LOG(l, x, ...) processMessage(l, x, __VA_ARGS__)
+#define RE_CHECK(x) validate(x)
+#define ASSERT(x) \
+  if (!(x)) __debugbreak();
 
 // debug build settings
 #ifdef NDEBUG
@@ -18,8 +19,8 @@ constexpr bool bRequireValidationLayers = false;
 constexpr bool bRequireValidationLayers = true;
 #endif
 
-// generic type definitions
-typedef unsigned int TResult;				// error result
+// global constants
+#define RE_PATH_CONFIG      TEXT("config/config.json")
 
 // error levels
 #define RE_OK					      0x00		   // success
@@ -37,5 +38,6 @@ constexpr char Critical =   RE_CRITICAL;
 /*
 *	TXXX		- type definition
 *	MXXX		- manager class, is a singleton and must be called using get() method
-*	CXXX		- core object, e.g. data struct or a class definition for instancing elsewhere in the code
+*	RXXX		- renderer related class object (e.g. Vulkan API-based data structures)
+* WXXX    - world related class object (e.g. meshes and primitives)
 */

@@ -149,6 +149,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\config.cpp" />
     <ClCompile Include="src\core\core.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
@@ -158,6 +159,10 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\core\managers\mgraphics.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\core\managers\mgraphics_logicaldevice.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
@@ -173,11 +178,28 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\core\managers\minput.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\core\managers\mmodel.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="src\core\managers\mwindow.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\core\objects.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\core\renderer\vk_mem_alloc.cpp" />
+    <ClCompile Include="src\core\world\mesh\mesh.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\core\world\mesh\mesh_plane.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
@@ -199,13 +221,25 @@
     <ClInclude Include="include\core\managers\common.h" />
     <ClInclude Include="include\core\managers\mdebug.h" />
     <ClInclude Include="include\core\managers\mgraphics.h" />
+    <ClInclude Include="include\core\managers\minput.h" />
+    <ClInclude Include="include\core\managers\mmodel.h" />
     <ClInclude Include="include\core\managers\mwindow.h" />
+    <ClInclude Include="include\core\world\mesh\mesh_include.h" />
     <ClInclude Include="include\core\objects.h" />
     <ClInclude Include="include\core\renderer\renderer.h" />
+    <ClInclude Include="include\core\world\mesh\mesh_plane.h" />
+    <ClInclude Include="include\core\world\mesh\mesh.h" />
+    <ClInclude Include="include\core\world\primitives\cube.h" />
+    <ClInclude Include="include\core\world\primitives\plane.h" />
+    <ClInclude Include="include\core\world\primitives\primitives_include.h" />
+    <ClInclude Include="include\core\world\primitives\sphere.h" />
+    <ClInclude Include="include\core\world\primitives\triangleindex.h" />
     <ClInclude Include="include\define.h" />
     <ClInclude Include="include\pch.h" />
-    <ClInclude Include="include\settings.h" />
+    <ClInclude Include="include\config.h" />
+    <ClInclude Include="include\define_t.h" />
     <ClInclude Include="include\util\util.h" />
+    <ClInclude Include="lib\include\vk_mem_alloc.h" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="lib\glfw3.lib" />
@@ -214,8 +248,12 @@
     <None Include=".gitattributes" />
     <None Include=".gitignore" />
     <None Include="compileShaders_Win_x64.bat" />
+    <None Include="config\config.json" />
     <None Include="content\shaders\default.frag" />
     <None Include="content\shaders\default.vert" />
+    <None Include="content\shaders\fs_default.spv" />
+    <None Include="content\shaders\shaders" />
+    <None Include="content\shaders\vs_default.spv" />
     <None Include="content_src\shaders\fs_default.frag" />
     <None Include="content_src\shaders\vs_default.vert" />
   </ItemGroup>
