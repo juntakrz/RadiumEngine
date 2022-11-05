@@ -1,22 +1,32 @@
 #pragma once
 
 // global definitions
-#define GLFW_INCLUDE_VULKAN
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include "define.h"
 
-#define RE_DEFAULTWINDOWWIDTH 1280
-#define RE_DEFAULTWINDOWHEIGHT 720
+// linked libraries
+#pragma comment(lib, "glfw3.lib")
+#pragma comment(lib, "vulkan-1.lib")
 
 // standard library headers
+#include <algorithm>
+#include <conio.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <fstream>
 #include <iostream>
+#include <limits>
+#include <memory>
+#include <optional>
+#include <set>
+#include <stdarg.h>
+#include <string>
+#include <vector>
 
-// common headers
+// Vulkan API related headers
 #include <GLFW/glfw3.h>
 #include <GLM/vec4.hpp>
 #include <GLM/mat4x4.hpp>
-
-// engine headers
 
 /* comments:
 * 
