@@ -4,8 +4,6 @@
 
 class OFuncPtr_Base {
 public:
-  OFuncPtr_Base(){};
-
   virtual void exec(){};
   virtual void operator()(){};
 };
@@ -16,15 +14,17 @@ class OFuncPtr : public OFuncPtr_Base {
   void (C::*func)() = nullptr;
 
 public:
-  OFuncPtr(){};
+  //OFuncPtr(){};
   OFuncPtr(C* pOwner, void(C::*pFunc)()) : owner(pOwner), func(pFunc){};
 
-  virtual void exec() override { (*this->owner.*this->func)(); }
+  virtual void exec() override {
+    (*this->owner.*this->func)();
+  }
   virtual void operator()() override { return (*this->owner.*this->func)(); }
-  void brah(){};
 };
 
-typedef std::unique_ptr<OFuncPtr_Base> funcPtrObject;
+//typedef std::unique_ptr<OFuncPtr_Base> funcPtrObject;
+typedef OFuncPtr_Base* funcPtrObject;
 typedef std::unordered_map<int, std::unordered_map<int, funcPtrObject>> TInputBinds;
 
 class MInput {
@@ -46,7 +46,8 @@ public:
   template <typename C>
   void bindFunction(int key, int action, C* owner, void (C::*function)()) {
     auto& keyBind = inputBinds[key];
-    keyBind[action] = std::unique_ptr<OFuncPtr<C>>();
+    //keyBind[action] = std::unique_ptr<OFuncPtr<C>>(owner, function);
+    keyBind[action] = new OFuncPtr<C>(owner, function);
   }
 
   static TInputBinds& binds();
