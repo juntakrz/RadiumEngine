@@ -24,6 +24,7 @@
 
 // global definitions
 #include "define.h"
+#include "templates_typedefs.h"
 
 // Vulkan API related headers
 #include <GLFW/glfw3.h>

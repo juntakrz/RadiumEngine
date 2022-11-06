@@ -95,6 +95,9 @@
     <ClInclude Include="include\core\managers\minput.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\templates_typedefs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Library Include="lib\glfw3.lib" />

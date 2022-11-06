@@ -17,9 +17,6 @@ constexpr bool bRequireValidationLayers = false;
 constexpr bool bRequireValidationLayers = true;
 #endif
 
-// generic type definitions
-typedef unsigned int TResult;				// error result
-
 // global constants
 #define RE_PATH_CONFIG TEXT("config/config.json")
 

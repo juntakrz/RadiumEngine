@@ -211,6 +211,7 @@
     <ClInclude Include="include\define.h" />
     <ClInclude Include="include\pch.h" />
     <ClInclude Include="include\config.h" />
+    <ClInclude Include="include\templates_typedefs.h" />
     <ClInclude Include="include\util\util.h" />
   </ItemGroup>
   <ItemGroup>
