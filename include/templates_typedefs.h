@@ -18,10 +18,11 @@ class OFuncPtr : public OFuncPtr_Base {
 };
 
 typedef std::unique_ptr<OFuncPtr_Base> funcPtrObject;
+typedef std::unordered_map<int, std::unordered_map<int, funcPtrObject>>
+    TFunctionPtrs;
 
 // used by the input manager class (MInput)
-typedef std::unordered_map<int, std::unordered_map<int, funcPtrObject>>
-    TInputBinds;
+typedef TFunctionPtrs TInputBinds;
 
 // generic type definitions
 typedef unsigned int TResult;  // error result
