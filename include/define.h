@@ -7,8 +7,9 @@
 
 // global macros
 #define TEXT(x) L ## x
-#define RE_LOG(l, x, ...) processMessage(l, x, __VA_ARGS__);
-#define RE_CHECK(x) validate(x);
+#define RE_LOG(l, x, ...) processMessage(l, x, __VA_ARGS__)
+#define RE_CHECK(x) validate(x)
+#define ASSERT(x) if (!x) __debugbreak;
 
 // debug build settings
 #ifdef NDEBUG
@@ -18,7 +19,11 @@ constexpr bool bRequireValidationLayers = true;
 #endif
 
 // global constants
-#define RE_PATH_CONFIG TEXT("config/config.json")
+#define RE_PATH_CONFIG      TEXT("config/config.json")
+constexpr double RE_PI64 =  3.14159265358979323846264338327950288;
+constexpr float RE_PI =     (float)RE_PI64;
+constexpr float RE_PIDIV2 = RE_PI / 2.0f;
+constexpr float RE_2PI =    RE_PI * 2.0f;
 
 // error levels
 #define RE_OK					      0x00		   // success
@@ -36,5 +41,6 @@ constexpr char Critical =   RE_CRITICAL;
 /*
 *	TXXX		- type definition
 *	MXXX		- manager class, is a singleton and must be called using get() method
-*	CXXX		- core object, e.g. data struct or a class definition for instancing elsewhere in the code
+*	RXXX		- renderer related class object (e.g. Vulkan API-based data structures)
+* WXXX    - world related class object (e.g. meshes and primitives)
 */

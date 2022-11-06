@@ -22,12 +22,15 @@
 #include <string>
 #include <vector>
 
-// global definitions
+// internal global definitions
 #include "define.h"
-#include "templates_typedefs.h"
+#include "define_t.h"
 
 // Vulkan API related headers
 #include <GLFW/glfw3.h>
+#include <GLM/ext/scalar_constants.hpp>
+#include <GLM/vec2.hpp>
+#include <GLM/vec3.hpp>
 #include <GLM/vec4.hpp>
 #include <GLM/mat4x4.hpp>
 

@@ -178,6 +178,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\core\managers\mmodel.cpp" />
     <ClCompile Include="src\core\managers\mwindow.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
@@ -205,13 +206,20 @@
     <ClInclude Include="include\core\managers\mdebug.h" />
     <ClInclude Include="include\core\managers\mgraphics.h" />
     <ClInclude Include="include\core\managers\minput.h" />
+    <ClInclude Include="include\core\managers\mmodel.h" />
     <ClInclude Include="include\core\managers\mwindow.h" />
     <ClInclude Include="include\core\objects.h" />
     <ClInclude Include="include\core\renderer\renderer.h" />
+    <ClInclude Include="include\core\world\mesh\mesh.h" />
+    <ClInclude Include="include\core\world\primitives\cube.h" />
+    <ClInclude Include="include\core\world\primitives\plane.h" />
+    <ClInclude Include="include\core\world\primitives\primitives.h" />
+    <ClInclude Include="include\core\world\primitives\sphere.h" />
+    <ClInclude Include="include\core\world\primitives\triangleindex.h" />
     <ClInclude Include="include\define.h" />
     <ClInclude Include="include\pch.h" />
     <ClInclude Include="include\config.h" />
-    <ClInclude Include="include\templates_typedefs.h" />
+    <ClInclude Include="include\define_t.h" />
     <ClInclude Include="include\util\util.h" />
   </ItemGroup>
   <ItemGroup>

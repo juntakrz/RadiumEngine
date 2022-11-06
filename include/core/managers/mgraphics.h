@@ -35,9 +35,9 @@ public:
   VkInstance APIInstance = VK_NULL_HANDLE;
   VkSwapchainKHR swapChain = VK_NULL_HANDLE;
   VkSurfaceKHR surface = VK_NULL_HANDLE;
-  std::vector<CVkPhysicalDevice> availablePhysicalDevices;
-  CVkPhysicalDevice physicalDevice;
-  CVkLogicalDevice logicalDevice;
+  std::vector<RVkPhysicalDevice> availablePhysicalDevices;
+  RVkPhysicalDevice physicalDevice;
+  RVkLogicalDevice logicalDevice;
   uint32_t framesRendered = 0;
   bool bFramebufferResized = false;
 
@@ -71,7 +71,7 @@ public:
   TResult detectPhysicalDevices();
 
   // try to use this physical device if valid
-  TResult usePhysicalDevice(const CVkPhysicalDevice& physicalDeviceData);
+  TResult usePhysicalDevice(const RVkPhysicalDevice& physicalDeviceData);
 
   // use the first valid physical device
   TResult useFirstValidPhysicalDevice();
@@ -79,31 +79,31 @@ public:
   // fill in physical device information structure, also performs device
   // validity checks
   TResult setPhysicalDeviceData(VkPhysicalDevice device,
-                                CVkPhysicalDevice& outDeviceData);
+                                RVkPhysicalDevice& outDeviceData);
 
   // access currently detected devices
-  std::vector<CVkPhysicalDevice>& physicalDevices();
-  CVkPhysicalDevice* physicalDevices(uint32_t id = 0);
+  std::vector<RVkPhysicalDevice>& physicalDevices();
+  RVkPhysicalDevice* physicalDevices(uint32_t id = 0);
 
   // provides surface and presentation data for Vulkan swapchain
-  TResult queryPhysicalDeviceSwapChainInfo(const CVkPhysicalDevice& deviceData,
-                                           CVkSwapChainInfo& swapChainInfo);
+  TResult queryPhysicalDeviceSwapChainInfo(const RVkPhysicalDevice& deviceData,
+                                           RVkSwapChainInfo& swapChainInfo);
 
  private:
   TResult checkPhysicalDeviceExtensionSupport(
-      const CVkPhysicalDevice& deviceData);
+      const RVkPhysicalDevice& deviceData);
 
   std::vector<VkExtensionProperties> getPhysicalDeviceExtensions(
-      const CVkPhysicalDevice& deviceData);
+      const RVkPhysicalDevice& deviceData);
 
   // retrieve queue capabilities for the device, use only first valid indices
-  TResult setPhysicalDeviceQueueFamilies(CVkPhysicalDevice& deviceData);
+  TResult setPhysicalDeviceQueueFamilies(RVkPhysicalDevice& deviceData);
 
   // -----
 
  public:
   // create a logical device to communicate with a physical device
-  TResult createLogicalDevice(const CVkPhysicalDevice& deviceData);
+  TResult createLogicalDevice(const RVkPhysicalDevice& deviceData);
   void destroyLogicalDevice(VkDevice device = nullptr,
                             const VkAllocationCallbacks* pAllocator = nullptr);
 
@@ -119,18 +119,18 @@ public:
   // device
   TResult initSwapChain(VkFormat format, VkColorSpaceKHR colorSpace,
                         VkPresentModeKHR presentMode,
-                        CVkPhysicalDevice* device = nullptr);
+                        RVkPhysicalDevice* device = nullptr);
 
-  TResult setSwapChainFormat(const CVkPhysicalDevice& deviceData,
+  TResult setSwapChainFormat(const RVkPhysicalDevice& deviceData,
                              const VkFormat& format,
                              const VkColorSpaceKHR& colorSpace);
 
-  TResult setSwapChainPresentMode(const CVkPhysicalDevice& deviceData,
+  TResult setSwapChainPresentMode(const RVkPhysicalDevice& deviceData,
                                   VkPresentModeKHR presentMode);
 
-  TResult setSwapChainExtent(const CVkPhysicalDevice& deviceData);
+  TResult setSwapChainExtent(const RVkPhysicalDevice& deviceData);
 
-  TResult setSwapChainImageCount(const CVkPhysicalDevice& deviceData);
+  TResult setSwapChainImageCount(const RVkPhysicalDevice& deviceData);
 
   // requires valid variables provided by swap chain data gathering methods /
   // initSwapChain

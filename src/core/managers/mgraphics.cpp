@@ -109,7 +109,7 @@ void MGraphics::waitForSystemIdle() {
 }
 
 TResult MGraphics::createLogicalDevice(
-  const CVkPhysicalDevice& physicalDeviceData) {
+  const RVkPhysicalDevice& physicalDeviceData) {
   if (physicalDeviceData.queueFamilyIndices.graphics.empty())
     return RE_ERROR;
 

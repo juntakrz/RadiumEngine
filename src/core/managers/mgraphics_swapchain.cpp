@@ -4,7 +4,7 @@
 
 TResult MGraphics::initSwapChain(VkFormat format, VkColorSpaceKHR colorSpace,
                                  VkPresentModeKHR presentMode,
-                                 CVkPhysicalDevice* device) {
+                                 RVkPhysicalDevice* device) {
   RE_LOG(Log, "Creating the swap chain for presentation.");
 
   TResult chkResult;
@@ -35,7 +35,7 @@ TResult MGraphics::initSwapChain(VkFormat format, VkColorSpaceKHR colorSpace,
   return chkResult;
 }
 
-TResult MGraphics::setSwapChainFormat(const CVkPhysicalDevice& deviceData,
+TResult MGraphics::setSwapChainFormat(const RVkPhysicalDevice& deviceData,
                                       const VkFormat& format,
                                       const VkColorSpaceKHR& colorSpace) {
   RE_LOG(Log, "Setting up swap chain format.");
@@ -61,7 +61,7 @@ TResult MGraphics::setSwapChainFormat(const CVkPhysicalDevice& deviceData,
   return RE_WARNING;
 }
 
-TResult MGraphics::setSwapChainPresentMode(const CVkPhysicalDevice& deviceData,
+TResult MGraphics::setSwapChainPresentMode(const RVkPhysicalDevice& deviceData,
                                            VkPresentModeKHR presentMode) {
   RE_LOG(Log, "Setting up swap chain present mode.");
 
@@ -82,7 +82,7 @@ TResult MGraphics::setSwapChainPresentMode(const CVkPhysicalDevice& deviceData,
   return RE_WARNING;
 }
 
-TResult MGraphics::setSwapChainExtent(const CVkPhysicalDevice& deviceData) {
+TResult MGraphics::setSwapChainExtent(const RVkPhysicalDevice& deviceData) {
   // check if current extent is within limits and set it as active if so
   const VkSurfaceCapabilitiesKHR& capabilities =
       deviceData.swapChainInfo.capabilities;
@@ -111,7 +111,7 @@ TResult MGraphics::setSwapChainExtent(const CVkPhysicalDevice& deviceData) {
   return RE_OK;
 }
 
-TResult MGraphics::setSwapChainImageCount(const CVkPhysicalDevice& deviceData) {
+TResult MGraphics::setSwapChainImageCount(const RVkPhysicalDevice& deviceData) {
   const VkSurfaceCapabilitiesKHR& capabilities =
       deviceData.swapChainInfo.capabilities;
   uint32_t imageCount = capabilities.minImageCount + 1;

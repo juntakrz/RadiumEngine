@@ -35,7 +35,7 @@ TResult MGraphics::detectPhysicalDevices() {
   return RE_OK;
 }
 
-TResult MGraphics::usePhysicalDevice(const CVkPhysicalDevice& device) {
+TResult MGraphics::usePhysicalDevice(const RVkPhysicalDevice& device) {
   if (!device.bIsValid) return RE_ERROR;
 
   physicalDevice = device;
@@ -58,7 +58,7 @@ TResult MGraphics::useFirstValidPhysicalDevice() {
 }
 
 TResult MGraphics::setPhysicalDeviceData(VkPhysicalDevice device,
-                                         CVkPhysicalDevice& outDeviceData) {
+                                         RVkPhysicalDevice& outDeviceData) {
   if (!device) return RE_ERROR;
 
   TResult chkResult = RE_OK, finalResult = RE_OK;
@@ -94,18 +94,18 @@ TResult MGraphics::setPhysicalDeviceData(VkPhysicalDevice device,
   return finalResult;
 }
 
-std::vector<CVkPhysicalDevice>& MGraphics::physicalDevices() {
+std::vector<RVkPhysicalDevice>& MGraphics::physicalDevices() {
   return availablePhysicalDevices;
 }
 
-CVkPhysicalDevice* MGraphics::physicalDevices(uint32_t id) {
+RVkPhysicalDevice* MGraphics::physicalDevices(uint32_t id) {
   return (id > availablePhysicalDevices.size())
              ? nullptr
              : &availablePhysicalDevices.at(id);
 }
 
 TResult MGraphics::queryPhysicalDeviceSwapChainInfo(
-    const CVkPhysicalDevice& deviceData, CVkSwapChainInfo& outSwapChainInfo) {
+    const RVkPhysicalDevice& deviceData, RVkSwapChainInfo& outSwapChainInfo) {
   uint32_t formatCount = 0, presentModeCount = 0;
   TResult chkResult = RE_OK;
 
@@ -133,7 +133,7 @@ TResult MGraphics::queryPhysicalDeviceSwapChainInfo(
 // private
 
 TResult MGraphics::checkPhysicalDeviceExtensionSupport(
-    const CVkPhysicalDevice& deviceData) {
+    const RVkPhysicalDevice& deviceData) {
   bool bExtSupported = false;
   std::vector<VkExtensionProperties> extProperties =
       getPhysicalDeviceExtensions(deviceData);
@@ -163,7 +163,7 @@ TResult MGraphics::checkPhysicalDeviceExtensionSupport(
 }
 
 std::vector<VkExtensionProperties> MGraphics::getPhysicalDeviceExtensions(
-    const CVkPhysicalDevice& deviceData) {
+    const RVkPhysicalDevice& deviceData) {
   uint32_t extensionCount = 0;
   std::vector<VkExtensionProperties> extProperties;
 
@@ -177,11 +177,11 @@ std::vector<VkExtensionProperties> MGraphics::getPhysicalDeviceExtensions(
 }
 
 TResult MGraphics::setPhysicalDeviceQueueFamilies(
-    CVkPhysicalDevice& deviceData) {
+    RVkPhysicalDevice& deviceData) {
   uint32_t queueFamilyPropertyCount = 0, index = 0;
   VkBool32 presentSupport = false;
   std::vector<VkQueueFamilyProperties> queueFamilyProperties;
-  CVkQueueFamilyIndices queueFamilyIndices;
+  RVkQueueFamilyIndices queueFamilyIndices;
 
   vkGetPhysicalDeviceQueueFamilyProperties(deviceData.device,
                                            &queueFamilyPropertyCount, nullptr);

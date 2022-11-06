@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "core/objects.h"
 
-std::set<int32_t> CVkQueueFamilyIndices::getAsSet() const {
+std::set<int32_t> RVkQueueFamilyIndices::getAsSet() const {
   if (graphics.empty() || compute.empty() ||
       present.empty()) {
     return { -1 };
