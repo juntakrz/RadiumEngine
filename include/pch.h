@@ -1,7 +1,6 @@
 #pragma once
 
-// global definitions
-#include "define.h"
+#define _CRT_SECURE_NO_WARNINGS
 
 // linked libraries
 #pragma comment(lib, "glfw3.lib")
@@ -16,12 +15,15 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <map>
 #include <memory>
-#include <optional>
 #include <set>
 #include <stdarg.h>
 #include <string>
 #include <vector>
+
+// global definitions
+#include "define.h"
 
 // Vulkan API related headers
 #include <GLFW/glfw3.h>

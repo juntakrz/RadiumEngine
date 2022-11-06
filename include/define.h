@@ -1,7 +1,6 @@
 #pragma once
 
 // global library definitions
-#define _CRT_SECURE_NO_WARNINGS
 #define GLFW_INCLUDE_VULKAN
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -20,6 +19,8 @@ constexpr bool bRequireValidationLayers = true;
 
 // generic type definitions
 typedef unsigned int TResult;				// error result
+typedef std::map<uint32_t, std::map<uint32_t, void*>> TInputBinds;
+typedef void (*TFunc)();
 
 // global constants
 #define RE_PATH_CONFIG TEXT("config/config.json")

@@ -11,6 +11,7 @@ extern const char* appTitle;
 extern const char* engineTitle;
 extern uint32_t renderWidth;
 extern uint32_t renderHeight;
+extern bool bDevMode;
 };  // namespace config
 
 namespace core {

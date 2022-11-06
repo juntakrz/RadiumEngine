@@ -4,6 +4,7 @@
 extern class MGraphics* mgrGfx;
 extern class MWindow* mgrWnd;
 extern class MDebug* mgrDbg;
+extern class MInput* mgrInput;
 
 namespace core {
 void run();

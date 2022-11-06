@@ -1,13 +1,15 @@
 #include "pch.h"
 #include "core/core.h"
 #include "core/renderer/renderer.h"
-#include "core/managers/MWindow.h"
-#include "core/managers/MGraphics.h"
-#include "core/managers/MDebug.h"
+#include "core/managers/mwindow.h"
+#include "core/managers/mgraphics.h"
+#include "core/managers/mdebug.h"
+#include "core/managers/minput.h"
 
 class MGraphics* mgrGfx = nullptr;
 class MWindow* mgrWnd = nullptr;
 class MDebug* mgrDbg = nullptr;
+class MInput* mgrInput = nullptr;
 
 void core::run() {
   // initialize engine
@@ -22,8 +24,10 @@ void core::run() {
   mgrWnd = &MWindow::get();
   mgrGfx = &MGraphics::get();
   mgrDbg = &MDebug::get();
+  mgrInput = &MInput::get();
 
   RE_CHECK(core::renderer::create());
+  mgrInput->initialize(mgrWnd->window());
 
   RE_LOG(Log, "Successfully initialized engine core.");
   RE_LOG(Log, "Launching main event loop.");
@@ -59,6 +63,7 @@ void core::stop(TResult cause) {
 void core::loadCoreConfig(const wchar_t* path) {
   json data;
   uint32_t resolution[2] = { config::renderWidth, config::renderHeight };
+  uint8_t requirements = 3;
 
   if (jsonLoad(path, &data) != RE_OK) {
     RE_LOG(Error,
@@ -73,8 +78,18 @@ void core::loadCoreConfig(const wchar_t* path) {
       coreData.at("resolution").get_to(resolution);
       config::renderWidth = resolution[0];
       config::renderHeight = resolution[1];
+      --requirements;
     }
 
+    if (coreData.contains("devMode")) {
+      coreData.at("devMode").get_to(config::bDevMode);
+      --requirements;
+    }
+
+    --requirements;
+  }
+
+  if (!requirements) {
     RE_LOG(Log, "Successfully loaded core config at '%s'.",
            wstrToStr(path).c_str());
     return;
