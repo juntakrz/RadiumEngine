@@ -19,8 +19,6 @@ constexpr bool bRequireValidationLayers = true;
 
 // generic type definitions
 typedef unsigned int TResult;				// error result
-typedef std::unordered_map<uint32_t, std::unordered_map<uint32_t, void*>> TInputBinds;
-typedef void (*TFunc)();
 
 // global constants
 #define RE_PATH_CONFIG TEXT("config/config.json")

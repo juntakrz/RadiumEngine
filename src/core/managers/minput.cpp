@@ -9,34 +9,10 @@ TResult MInput::initialize(GLFWwindow* window) {
 
   glfwSetKeyCallback(window, keyEventCallback);
 
-  bindFunction(GLFW_KEY_E, GLFW_PRESS, &actPressTest);
-  bindFunction(GLFW_KEY_E, GLFW_RELEASE, &actReleaseTest);
+  bindFunction(GLFW_KEY_E, GLFW_PRESS, this, &MInput::actPressTest);
+  bindFunction(GLFW_KEY_E, GLFW_RELEASE, this, &MInput::actReleaseTest);
 
   return chkResult;
-}
-
-TResult MInput::bindFunction(int key, int action, TFunc function) {
-  if (!function) {
-    RE_LOG(Error,
-           "Failed to bind function to a key '%d' with action '%d': no "
-           "function ptr provided.");
-
-    return RE_ERROR;
-  }
-
-  auto& keyBind = inputBinds[key];
-  keyBind[action] = function;
-
-  return RE_OK;
-}
-
-TResult MInput::testFunction(int key, int action, void* function) {
-  TFunc pFunc = (TFunc)function;
-
-  auto& keyBind = inputBinds[key];
-  keyBind[action] = pFunc;
-
-  return RE_OK;
 }
 
 TInputBinds& MInput::binds() { return get().inputBinds; }
@@ -48,7 +24,7 @@ void MInput::keyEventCallback(GLFWwindow* window, int key, int scancode,
   if (binds().find(key) != binds().end()) {
     auto& keyBind = binds()[key];
     if (keyBind.find(action) != keyBind.end()) {
-      ((func)keyBind[action])();
+      keyBind[action]->exec();
     }
   }
 }
