@@ -18,6 +18,7 @@
 #include <limits>
 #include <unordered_map>
 #include <memory>
+#include <random>
 #include <set>
 #include <stdarg.h>
 #include <string>

@@ -492,3 +492,12 @@ TResult MGraphics::drawFrame() {
 
   return chkResult;
 }
+
+void MGraphics::createVertexBuffer(const std::vector<RVertex>& vertices) {
+  VkBufferCreateInfo bufferInfo{};
+  bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+  bufferInfo.size = sizeof(RVertex) * vertices.size();
+  bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  bufferInfo.flags = NULL;
+}

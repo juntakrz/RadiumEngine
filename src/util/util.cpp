@@ -92,3 +92,10 @@ TResult jsonLoad(const wchar_t* path, json* out_j) noexcept {
   fStream >> *out_j;
   return RE_OK;
 }
+
+float random(float min, float max) {
+  std::random_device rd;
+  std::mt19937 mt(rd());
+  std::uniform_real_distribution<float> dist(min, max);
+  return dist(mt);
+}

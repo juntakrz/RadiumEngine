@@ -167,6 +167,8 @@ public:
 
   TResult drawFrame();
 
+  void createVertexBuffer(const std::vector<RVertex>& vertices);
+
  private:
   TResult checkInstanceValidationLayers();
   std::vector<const char*> getRequiredInstanceExtensions();

@@ -9,7 +9,8 @@
 #define TEXT(x) L ## x
 #define RE_LOG(l, x, ...) processMessage(l, x, __VA_ARGS__)
 #define RE_CHECK(x) validate(x)
-#define ASSERT(x) if (!x) __debugbreak;
+#define ASSERT(x) \
+  if (!(x)) __debugbreak();
 
 // debug build settings
 #ifdef NDEBUG

@@ -3,6 +3,7 @@
 #include "core/managers/mdebug.h"
 #include "core/managers/mwindow.h"
 #include "core/renderer/renderer.h"
+#include "core/world/mesh/mesh_include.h"
 
 MGraphics::MGraphics() { RE_LOG(Log, "Creating graphics manager."); };
 
@@ -82,6 +83,9 @@ TResult MGraphics::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createGraphicsPipeline();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createFramebuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCommandPool();
+  WMesh_Plane meshPlane;
+  meshPlane.create();
+  createVertexBuffer(meshPlane.vertices);
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCommandBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();
 
