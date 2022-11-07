@@ -20,10 +20,6 @@ constexpr bool bRequireValidationLayers = true;
 
 // global constants
 #define RE_PATH_CONFIG      TEXT("config/config.json")
-constexpr double RE_PI64 =  3.14159265358979323846264338327950288;
-constexpr float RE_PI =     (float)RE_PI64;
-constexpr float RE_PIDIV2 = RE_PI / 2.0f;
-constexpr float RE_2PI =    RE_PI * 2.0f;
 
 // error levels
 #define RE_OK					      0x00		   // success

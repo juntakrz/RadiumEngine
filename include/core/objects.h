@@ -38,6 +38,9 @@ struct RVkLogicalDevice {
 struct RVertex {
   glm::vec3 pos;
   glm::vec3 color;
+
+  static VkVertexInputBindingDescription getBindingDesc();
+  static std::vector<VkVertexInputAttributeDescription> getAttributeDescs();
 };
 
 struct NextVertex {

@@ -210,6 +210,7 @@
     <ClInclude Include="include\core\managers\mwindow.h" />
     <ClInclude Include="include\core\objects.h" />
     <ClInclude Include="include\core\renderer\renderer.h" />
+    <ClInclude Include="include\core\world\mesh\meshplane.h" />
     <ClInclude Include="include\core\world\mesh\mesh.h" />
     <ClInclude Include="include\core\world\primitives\cube.h" />
     <ClInclude Include="include\core\world\primitives\plane.h" />

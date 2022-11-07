@@ -2,10 +2,10 @@
 
 #include "triangleindex.h"
 
-class WPlaneGen {
+class WPlane {
  public:
   template <class V>
-  static WTriangleIndex<V> Create(const uint16_t divX, const uint16_t divY) {
+  static WTriangleIndex<V> create(const uint16_t divX, const uint16_t divY) {
     ASSERT(divX > 0);
     ASSERT(divY > 0);
 
@@ -46,12 +46,12 @@ class WPlaneGen {
   }
 
   template <class V>
-  static WTriangleIndex<V> Create(uint16_t divisions) {
+  static WTriangleIndex<V> create(uint16_t divisions) {
     return Create<V>(divisions, divisions);
   }
 
   template <class V>
-  static WTriangleIndex<V> Create() {
+  static WTriangleIndex<V> create() {
     return Create<V>(1);
   }
 };

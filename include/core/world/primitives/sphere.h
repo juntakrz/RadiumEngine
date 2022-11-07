@@ -2,10 +2,10 @@
 
 #include "triangleindex.h"
 
-class WSphereGen {
+class WSphere {
  public:
   template <class V>
-  static WTriangleIndex<V> Create(uint16_t divisions, bool invertFaces) {
+  static WTriangleIndex<V> create(uint16_t divisions, bool invertFaces) {
     constexpr float radius = 1.0f;
 
     (divisions > 2) ? 0 : divisions = 3;
@@ -23,19 +23,15 @@ class WSphereGen {
       v = 1 - (float)i / (float)latSegments;
 
       latAngle =
-          (float(i) * RE_PI / float(latSegments)) - RE_PIDIV2;
-      DirectX::XMScalarSinCos(&dY, &dXZ, latAngle);
+          (float(i) * M_PI / float(latSegments)) - M_PI_2;
+      dY = sinf(latAngle);
+      dXZ = cosf(latAngle);
 
       for (uint16_t j = 0; j <= longSegments; j++) {
-        dX = 0;
-        dZ = 0;
+        longAngle = (float)j * (M_PI * 2) / (float)longSegments;
         u = (float)j / (float)longSegments;
-
-        longAngle = (float)j * RE_2PI / (float)longSegments;
-        DirectX::XMScalarSinCos(&dX, &dZ, longAngle);
-
-        dX *= dXZ;
-        dZ *= dXZ;
+        dX = sinf(longAngle) * dXZ;
+        dZ = cosf(longAngle) * dXZ;
 
         vertices.emplace_back();
         vertices.back().pos = {dX, dY, dZ};
@@ -77,12 +73,12 @@ class WSphereGen {
   }
 
   template <class V>
-  static WTriangleIndex<V> Create(const uint16_t divisions) {
+  static WTriangleIndex<V> create(const uint16_t divisions) {
     return Create<V>(divisions, false);
   }
 
   template <class V>
-  static WTriangleIndex<V> Create() {
+  static WTriangleIndex<V> create() {
     return Create<V>(32, false);
   }
 };

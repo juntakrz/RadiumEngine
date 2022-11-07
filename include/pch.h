@@ -1,6 +1,7 @@
 #pragma once
 
 #define _CRT_SECURE_NO_WARNINGS
+#define _USE_MATH_DEFINES
 
 // linked libraries
 #pragma comment(lib, "glfw3.lib")
@@ -28,11 +29,7 @@
 
 // Vulkan API related headers
 #include <GLFW/glfw3.h>
-#include <GLM/ext/scalar_constants.hpp>
-#include <GLM/vec2.hpp>
-#include <GLM/vec3.hpp>
-#include <GLM/vec4.hpp>
-#include <GLM/mat4x4.hpp>
+#include <GLM/glm.hpp>
 
 // external engine modules
 #include <json/json.hpp>
