@@ -85,7 +85,7 @@ TResult MGraphics::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCommandPool();
   WMesh_Plane meshPlane;
   meshPlane.create();
-  createVertexBuffer(meshPlane.vertices);
+
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCommandBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();
 

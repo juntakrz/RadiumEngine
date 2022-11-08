@@ -89,6 +89,10 @@ public:
   TResult queryPhysicalDeviceSwapChainInfo(const RVkPhysicalDevice& deviceData,
                                            RVkSwapChainInfo& swapChainInfo);
 
+  // find suitable memory type for the required operation on an active physical device
+  uint32_t findPhysicalDeviceMemoryType(uint32_t typeFilter,
+                                        VkMemoryPropertyFlags properties);
+
  private:
   TResult checkPhysicalDeviceExtensionSupport(
       const RVkPhysicalDevice& deviceData);
@@ -166,8 +170,6 @@ public:
   void destroySyncObjects();
 
   TResult drawFrame();
-
-  void createVertexBuffer(const std::vector<RVertex>& vertices);
 
  private:
   TResult checkInstanceValidationLayers();

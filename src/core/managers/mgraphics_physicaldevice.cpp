@@ -66,6 +66,7 @@ TResult MGraphics::setPhysicalDeviceData(VkPhysicalDevice device,
   outDeviceData.device = device;
   vkGetPhysicalDeviceProperties(device, &outDeviceData.properties);
   vkGetPhysicalDeviceFeatures(device, &outDeviceData.features);
+  vkGetPhysicalDeviceMemoryProperties(device, &outDeviceData.memProperties);
 
   // detect if device supports required queue families
   chkResult = setPhysicalDeviceQueueFamilies(outDeviceData);
@@ -128,6 +129,17 @@ TResult MGraphics::queryPhysicalDeviceSwapChainInfo(
                                             outSwapChainInfo.modes.data());
 
   return chkResult;
+}
+
+uint32_t MGraphics::findPhysicalDeviceMemoryType(uint32_t typeFilter,
+                                   VkMemoryPropertyFlags properties) {
+  for (uint32_t i = 0; i < physicalDevice.memProperties.memoryTypeCount; ++i) {
+    if ((typeFilter & (1 << i)) && (physicalDevice.memProperties.memoryTypes[i].propertyFlags &
+                                  properties) == properties)
+      return i;
+  }
+
+  RE_LOG(Critical, "Failed to find suitable memory type on an active physical device.");
 }
 
 // private

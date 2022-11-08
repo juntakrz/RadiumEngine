@@ -21,6 +21,7 @@ struct RVkPhysicalDevice {
   VkPhysicalDevice device = VK_NULL_HANDLE;
   VkPhysicalDeviceFeatures features;
   VkPhysicalDeviceProperties properties;
+  VkPhysicalDeviceMemoryProperties memProperties;
   RVkQueueFamilyIndices queueFamilyIndices;
   RVkSwapChainInfo swapChainInfo;
   bool bIsValid = false;
