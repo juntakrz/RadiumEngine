@@ -75,7 +75,7 @@ void MGraphics::destroyLogicalDevice(VkDevice device,
 }
 
 TResult MGraphics::allocateLogicalDeviceMemory(VkMemoryAllocateInfo* allocInfo,
-                                               VkBuffer* buffer) {
+                                               RBuffer* inBuffer) {
   if (!allocInfo) {
     RE_LOG(Error,
            "%s: no allocation info was provided.", __func__);
@@ -89,7 +89,7 @@ TResult MGraphics::allocateLogicalDeviceMemory(VkMemoryAllocateInfo* allocInfo,
     return RE_ERROR;
   }
 
-  if (!buffer) {
+  if (!inBuffer) {
     RE_LOG(Warning,
            "%s: no buffer was provided for memory allocation. Memory was "
            "allocated but no buffer will be bound.",
@@ -97,12 +97,18 @@ TResult MGraphics::allocateLogicalDeviceMemory(VkMemoryAllocateInfo* allocInfo,
     return RE_WARNING;
   }
 
-  if (vkBindBufferMemory(logicalDevice.device, *buffer,
+  if (vkBindBufferMemory(logicalDevice.device, inBuffer->buffer,
                          logicalDevice.vertexBufferMemory,
                          NULL) != VK_SUCCESS) {
     RE_LOG(Error, "%s: failed to bind buffer memory.", __func__);
     return RE_ERROR;
   }
+
+  void* pData;
+  vkMapMemory(logicalDevice.device, logicalDevice.vertexBufferMemory, 0,
+              inBuffer->bufferInfo.size, NULL, &pData);
+  memcpy(pData, inBuffer->pData, (size_t)inBuffer->bufferInfo.size);
+  vkUnmapMemory(logicalDevice.device, logicalDevice.vertexBufferMemory);
 
   return RE_OK;
 }

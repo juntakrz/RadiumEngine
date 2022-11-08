@@ -152,5 +152,8 @@
       <Filter>Source Files</Filter>
     </None>
     <None Include="config\config.json" />
+    <None Include="content\shaders\fs_default.spv" />
+    <None Include="content\shaders\shaders" />
+    <None Include="content\shaders\vs_default.spv" />
   </ItemGroup>
 </Project>

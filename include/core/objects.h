@@ -38,6 +38,13 @@ struct RVkLogicalDevice {
   } queues;
 };
 
+struct RBuffer {
+  VkBuffer buffer;
+  VkBufferCreateInfo bufferInfo;
+  VkMemoryRequirements memRequirements;
+  void *pData;
+};
+
 struct RVertex {
   glm::vec3 pos;
   glm::vec3 color;

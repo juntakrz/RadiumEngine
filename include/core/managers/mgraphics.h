@@ -119,7 +119,7 @@ public:
                             const VkAllocationCallbacks* pAllocator = nullptr);
 
   TResult allocateLogicalDeviceMemory(VkMemoryAllocateInfo* allocInfo,
-                                      VkBuffer* buffer = nullptr);
+                                      RBuffer* inBuffer = nullptr);
 
   // -----
 

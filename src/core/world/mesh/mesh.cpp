@@ -2,14 +2,15 @@
 #include "core/world/mesh/mesh.h"
 
 void WMesh::setMemory () {
-  vkGetBufferMemoryRequirements (mgrGfx->logicalDevice.device, vertexBuffer,
-                                 &memRequirements);
+  vkGetBufferMemoryRequirements(mgrGfx->logicalDevice.device,
+                                vertexBuffer.buffer,
+                                &vertexBuffer.memRequirements);
 
   VkMemoryAllocateInfo allocInfo{};
   allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-  allocInfo.allocationSize = memRequirements.size;
+  allocInfo.allocationSize = vertexBuffer.memRequirements.size;
   allocInfo.memoryTypeIndex = mgrGfx->findPhysicalDeviceMemoryType (
-    memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+    vertexBuffer.memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
     VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
   if (mgrGfx->allocateLogicalDeviceMemory(&allocInfo, &vertexBuffer) != RE_OK) {
@@ -19,5 +20,5 @@ void WMesh::setMemory () {
 }
 
 void WMesh::destroy() {
-  vkDestroyBuffer(mgrGfx->logicalDevice.device, vertexBuffer, nullptr);
+  vkDestroyBuffer(mgrGfx->logicalDevice.device, vertexBuffer.buffer, nullptr);
 }

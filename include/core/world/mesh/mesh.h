@@ -10,9 +10,7 @@ class WMesh {
   void setMemory();
 
  public:
-  VkBuffer vertexBuffer;
-  VkBufferCreateInfo vertexBufferInfo;
-  VkMemoryRequirements memRequirements;
+  RBuffer vertexBuffer;
 
   std::vector<RVertex> vertices;
   std::vector<uint32_t> indices;
