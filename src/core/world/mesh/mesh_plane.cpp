@@ -7,16 +7,16 @@ void WMesh_Plane::create(int arg1, int arg2) {
   vertices = model.vertices;
   indices = model.indices;
 
-  VkBufferCreateInfo bufferInfo{};
-  bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-  bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-  bufferInfo.size = sizeof(RVertex) * vertices.size();
-  bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-  bufferInfo.flags = NULL;
+  vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  vertexBufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+  vertexBufferInfo.size = sizeof(RVertex) * vertices.size();
+  vertexBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  vertexBufferInfo.flags = NULL;
 
-  if(vkCreateBuffer(mgrGfx->logicalDevice.device, &bufferInfo, nullptr,
+  if(vkCreateBuffer(mgrGfx->logicalDevice.device, &vertexBufferInfo, nullptr,
                      &vertexBuffer) != VK_SUCCESS) {
     RE_LOG(Error, "Failed to create vertex buffer for plane mesh.");
+    return;
   };
 
   setMemory();

@@ -11,7 +11,9 @@ class WMesh {
 
  public:
   VkBuffer vertexBuffer;
+  VkBufferCreateInfo vertexBufferInfo;
   VkMemoryRequirements memRequirements;
+
   std::vector<RVertex> vertices;
   std::vector<uint32_t> indices;
 
