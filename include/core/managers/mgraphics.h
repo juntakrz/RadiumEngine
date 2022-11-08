@@ -106,14 +106,22 @@ public:
   // -----
 
  public:
+
+  // create Vulkan surface in the main window
+  TResult createSurface();
+  void destroySurface();
+
+  // mgraphics_logicaldevice
+
   // create a logical device to communicate with a physical device
   TResult createLogicalDevice(const RVkPhysicalDevice& deviceData);
   void destroyLogicalDevice(VkDevice device = nullptr,
                             const VkAllocationCallbacks* pAllocator = nullptr);
 
-  // create Vulkan surface in the main window
-  TResult createSurface();
-  void destroySurface();
+  TResult allocateLogicalDeviceMemory(VkMemoryAllocateInfo* allocInfo,
+                                      VkBuffer* buffer = nullptr);
+
+  // -----
 
   //
   // mgraphics_swapchain

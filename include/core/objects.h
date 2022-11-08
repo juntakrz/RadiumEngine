@@ -29,6 +29,8 @@ struct RVkPhysicalDevice {
 
 struct RVkLogicalDevice {
   VkDevice device;
+  VkDeviceMemory vertexBufferMemory;
+
   struct {
     VkQueue graphics = VK_NULL_HANDLE;
     VkQueue compute = VK_NULL_HANDLE;

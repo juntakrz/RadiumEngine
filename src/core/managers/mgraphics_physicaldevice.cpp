@@ -140,6 +140,7 @@ uint32_t MGraphics::findPhysicalDeviceMemoryType(uint32_t typeFilter,
   }
 
   RE_LOG(Critical, "Failed to find suitable memory type on an active physical device.");
+  return -1;
 }
 
 // private
