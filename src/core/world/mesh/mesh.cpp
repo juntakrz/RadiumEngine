@@ -1,4 +1,6 @@
 #include "pch.h"
+#include "core/core.h"
+#include "core/managers/mgraphics.h"
 #include "core/world/mesh/mesh.h"
 
 void WMesh::setMemory () {

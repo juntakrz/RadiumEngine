@@ -3,6 +3,8 @@
 #include "core/objects.h"
 #include "common.h"
 
+class WMesh;
+
 class MGraphics {
  private:
   struct {
@@ -21,7 +23,10 @@ class MGraphics {
     VkPipeline pipeline;
     VkCommandPool commandPool;
     std::vector<VkCommandBuffer> cmdBuffers;
+    std::vector<VkBuffer> vertexBuffers;
+    std::vector<WMesh*> meshes;
     uint32_t idFrame = 0;                       // in flight frame index
+
     struct {
       std::vector<VkSemaphore> sImgAvailable;
       std::vector<VkSemaphore> sRndrFinished;
@@ -29,7 +34,7 @@ class MGraphics {
     } sync;
   } dataRender;
 
-MGraphics();
+  MGraphics();
 
 public:
   VkInstance APIInstance = VK_NULL_HANDLE;
@@ -58,6 +63,13 @@ public:
 
   // wait until all queues and device are idle
   void waitForSystemIdle();
+
+  // create Vulkan surface in the main window
+  TResult createSurface();
+  void destroySurface();
+
+  // binds mesh to graphics pipeline
+  uint32_t bindMesh(WMesh* pMesh);
 
   //
   // mgraphics_physicaldevice
@@ -105,14 +117,11 @@ public:
 
   // -----
 
- public:
-
-  // create Vulkan surface in the main window
-  TResult createSurface();
-  void destroySurface();
-
+  //
   // mgraphics_logicaldevice
+  //
 
+ public:
   // create a logical device to communicate with a physical device
   TResult createLogicalDevice(const RVkPhysicalDevice& deviceData);
   void destroyLogicalDevice(VkDevice device = nullptr,

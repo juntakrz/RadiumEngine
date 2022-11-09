@@ -1,12 +1,12 @@
 #pragma once
 
-#include "pch.h"
-#include "core/core.h"
 #include "core/objects.h"
-#include "core/managers/mgraphics.h"
 
 class WMesh {
  protected:
+  WMesh(){};
+  virtual ~WMesh(){};
+
   void setMemory();
 
  public:

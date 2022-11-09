@@ -5,11 +5,13 @@
 #include "core/managers/mgraphics.h"
 #include "core/managers/mdebug.h"
 #include "core/managers/minput.h"
+#include "core/managers/mmodel.h"
 
 class MGraphics* mgrGfx = nullptr;
 class MWindow* mgrWnd = nullptr;
 class MDebug* mgrDbg = nullptr;
 class MInput* mgrInput = nullptr;
+class MModel* mgrModel = nullptr;
 
 void core::run() {
   // initialize engine
@@ -25,6 +27,7 @@ void core::run() {
   mgrGfx = &MGraphics::get();
   mgrDbg = &MDebug::get();
   mgrInput = &MInput::get();
+  mgrModel = &MModel::get();
 
   RE_CHECK(core::renderer::create());
   mgrInput->initialize(mgrWnd->window());

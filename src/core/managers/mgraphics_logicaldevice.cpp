@@ -104,10 +104,10 @@ TResult MGraphics::allocateLogicalDeviceMemory(VkMemoryAllocateInfo* allocInfo,
     return RE_ERROR;
   }
 
-  void* pData;
+  void* pMappedMemory;
   vkMapMemory(logicalDevice.device, logicalDevice.vertexBufferMemory, 0,
-              inBuffer->bufferInfo.size, NULL, &pData);
-  memcpy(pData, inBuffer->pData, (size_t)inBuffer->bufferInfo.size);
+              inBuffer->bufferInfo.size, NULL, &pMappedMemory);
+  memcpy(pMappedMemory, inBuffer->pData, (size_t)inBuffer->bufferInfo.size);
   vkUnmapMemory(logicalDevice.device, logicalDevice.vertexBufferMemory);
 
   return RE_OK;

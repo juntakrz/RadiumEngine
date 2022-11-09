@@ -13,4 +13,6 @@ class MModel {
 
   MModel(const MModel&) = delete;
   MModel& operator=(const MModel&) = delete;
+
+  //WMesh_Plane testPlane;
 };

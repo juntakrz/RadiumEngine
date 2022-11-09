@@ -3,7 +3,6 @@
 #include "core/managers/mdebug.h"
 #include "core/managers/mwindow.h"
 #include "core/renderer/renderer.h"
-#include "core/world/mesh/mesh_include.h"
 
 MGraphics::MGraphics() { RE_LOG(Log, "Creating graphics manager."); };
 
@@ -83,8 +82,9 @@ TResult MGraphics::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createGraphicsPipeline();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createFramebuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCommandPool();
-  WMesh_Plane meshPlane;
-  meshPlane.create();
+
+  //mgrModel->testPlane.create();
+  //bindMesh(&mgrModel->testPlane);
 
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCommandBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();
@@ -128,6 +128,16 @@ TResult MGraphics::createSurface() {
 void MGraphics::destroySurface() {
   RE_LOG(Log, "Destroying drawing surface.");
   vkDestroySurfaceKHR(APIInstance, surface, nullptr);
+}
+
+uint32_t MGraphics::bindMesh(WMesh* pMesh) {
+  if (!pMesh) {
+    RE_LOG(Error, "no mesh provided.");
+    return -1;
+  }
+
+  dataRender.meshes.emplace_back(pMesh);
+  return (uint32_t)dataRender.meshes.size() - 1;
 }
 
 VkShaderModule MGraphics::createShaderModule(std::vector<char>& shaderCode) {
