@@ -74,11 +74,11 @@ void MGraphics::destroyLogicalDevice(VkDevice device,
   vkDestroyDevice(device, pAllocator);
 }
 
-TResult MGraphics::createLogicalDeviceBuffer(VkDeviceSize size,
+TResult MGraphics::createBuffer(VkDeviceSize size,
                                              VkBufferUsageFlags usage,
                                              RBuffer* outBuffer) {
   if (!outBuffer) {
-    RE_LOG(Error, "No receiving buffer object was provided.");
+    RE_LOG(Error, "No outgoing buffer was provided.");
     return RE_ERROR;
   }
 
@@ -102,7 +102,53 @@ TResult MGraphics::createLogicalDeviceBuffer(VkDeviceSize size,
   return RE_OK;
 }
 
-TResult MGraphics::allocateLogicalDeviceMemory(RBuffer* inBuffer,
+TResult MGraphics::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
+                                VkMemoryPropertyFlags properties,
+                                RBuffer* outBuffer, VkDeviceMemory& outMemory) {
+  if (!outBuffer) {
+    RE_LOG(Error, "No outgoing buffer was provided.");
+    return RE_ERROR;
+  }
+
+  VkBufferCreateInfo bufferCreateInfo{};
+  bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  bufferCreateInfo.usage = usage;
+  bufferCreateInfo.size = size;
+
+  if (vkCreateBuffer(mgrGfx->logicalDevice.device, &bufferCreateInfo, nullptr,
+                     &outBuffer->buffer) != VK_SUCCESS) {
+    RE_LOG(Error, "Failed to create buffer.");
+    return RE_ERROR;
+  };
+
+  vkGetBufferMemoryRequirements(logicalDevice.device, outBuffer->buffer,
+                                &outBuffer->memRequirements);
+
+  outBuffer->size = size;
+
+  VkMemoryAllocateInfo allocInfo{};
+  allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+  allocInfo.allocationSize = outBuffer->memRequirements.size;
+  allocInfo.memoryTypeIndex = mgrGfx->findPhysicalDeviceMemoryType(
+      outBuffer->memRequirements.memoryTypeBits, properties);
+
+  if (vkAllocateMemory(logicalDevice.device, &allocInfo, nullptr, &outMemory) !=
+      VK_SUCCESS) {
+    RE_LOG(Error, "Failed to allocate video memory for the buffer.");
+    return RE_ERROR;
+  }
+
+  if (vkBindBufferMemory(logicalDevice.device, outBuffer->buffer, outMemory,
+                         NULL) != VK_SUCCESS) {
+    RE_LOG(Error, "Failed to bind buffer memory.");
+    return RE_ERROR;
+  }
+
+  return RE_OK;
+}
+
+TResult MGraphics::allocateBufferMemory(RBuffer* inBuffer,
                                                VkMemoryPropertyFlags properties,
                                                VkDeviceMemory& outMemory) {
   if (!inBuffer) {
@@ -128,11 +174,58 @@ TResult MGraphics::allocateLogicalDeviceMemory(RBuffer* inBuffer,
     return RE_ERROR;
   }
 
+  return RE_OK;
+}
+
+TResult MGraphics::copyToCPUAccessMemory(RBuffer* inBuffer,
+                                         VkDeviceMemory& outMemory) {
   void* pMappedMemory;
-  vkMapMemory(logicalDevice.device, outMemory, 0, inBuffer->size, NULL,
-              &pMappedMemory);
+  if (vkMapMemory(logicalDevice.device, outMemory, 0, inBuffer->size, NULL,
+                  &pMappedMemory) != VK_SUCCESS) {
+    return RE_ERROR;
+  };
   memcpy(pMappedMemory, inBuffer->pData, (size_t)inBuffer->size);
   vkUnmapMemory(logicalDevice.device, outMemory);
+
+  return RE_OK;
+}
+
+TResult MGraphics::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer) {
+  VkCommandBufferAllocateInfo cmdBufferInfo{};
+  cmdBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+  cmdBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+  cmdBufferInfo.commandBufferCount = 1;
+  cmdBufferInfo.commandPool = dataRender.commandPool;
+
+  VkCommandBuffer cmdBuffer;
+  vkAllocateCommandBuffers(logicalDevice.device, &cmdBufferInfo, &cmdBuffer);
+
+  VkCommandBufferBeginInfo cmdBufferBeginInfo{};
+  cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+  vkBeginCommandBuffer(cmdBuffer, &cmdBufferBeginInfo);
+
+  VkBufferCopy copyRegion{};
+  copyRegion.srcOffset = 0;
+  copyRegion.dstOffset = 0;
+  copyRegion.size = srcBuffer->size;
+
+  vkCmdCopyBuffer(cmdBuffer, srcBuffer->buffer, dstBuffer->buffer, 1,
+                  &copyRegion);
+
+  vkEndCommandBuffer(cmdBuffer);
+
+  VkSubmitInfo submitInfo{};
+  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  submitInfo.commandBufferCount = 1;
+  submitInfo.pCommandBuffers = &cmdBuffer;
+
+  vkQueueSubmit(logicalDevice.queues.graphics, 1, &submitInfo, VK_NULL_HANDLE);
+  vkQueueWaitIdle(logicalDevice.queues.graphics);
+
+  vkFreeCommandBuffers(logicalDevice.device, dataRender.commandPool, 1,
+                       &cmdBuffer);
 
   return RE_OK;
 }

@@ -127,12 +127,22 @@ public:
   void destroyLogicalDevice(VkDevice device = nullptr,
                             const VkAllocationCallbacks* pAllocator = nullptr);
 
-  TResult createLogicalDeviceBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
+  TResult createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
                        RBuffer* outBuffer);
 
-  TResult allocateLogicalDeviceMemory(RBuffer* inBuffer,
+  // create buffer and allocate memory
+  TResult createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
+                       VkMemoryPropertyFlags properties, RBuffer* outBuffer,
+                       VkDeviceMemory& outMemory);
+
+  TResult allocateBufferMemory(RBuffer* inBuffer,
                                       VkMemoryPropertyFlags properties,
                                       VkDeviceMemory& outMemory);
+
+  // copy buffer to a valid memory that can be accessed by the CPU
+  TResult copyToCPUAccessMemory(RBuffer* inBuffer, VkDeviceMemory& outMemory);
+
+  TResult copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer);
 
   // -----
 
