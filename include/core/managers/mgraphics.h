@@ -127,8 +127,12 @@ public:
   void destroyLogicalDevice(VkDevice device = nullptr,
                             const VkAllocationCallbacks* pAllocator = nullptr);
 
-  TResult allocateLogicalDeviceMemory(VkMemoryAllocateInfo* allocInfo,
-                                      RBuffer* inBuffer = nullptr);
+  TResult createLogicalDeviceBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
+                       RBuffer* outBuffer);
+
+  TResult allocateLogicalDeviceMemory(RBuffer* inBuffer,
+                                      VkMemoryPropertyFlags properties,
+                                      VkDeviceMemory& outMemory);
 
   // -----
 

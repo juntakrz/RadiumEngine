@@ -102,6 +102,7 @@ void MGraphics::deinitialize() {
   destroyGraphicsPipeline();
   destroyRenderPass();
   destroySurface();
+  mgrModel->destroyAllMeshes();
   if(bRequireValidationLayers) mgrDbg->destroy(APIInstance);
   destroyLogicalDevice();
   destroyInstance();

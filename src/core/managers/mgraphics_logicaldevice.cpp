@@ -74,41 +74,65 @@ void MGraphics::destroyLogicalDevice(VkDevice device,
   vkDestroyDevice(device, pAllocator);
 }
 
-TResult MGraphics::allocateLogicalDeviceMemory(VkMemoryAllocateInfo* allocInfo,
-                                               RBuffer* inBuffer) {
-  if (!allocInfo) {
-    RE_LOG(Error,
-           "%s: no allocation info was provided.", __func__);
+TResult MGraphics::createLogicalDeviceBuffer(VkDeviceSize size,
+                                             VkBufferUsageFlags usage,
+                                             RBuffer* outBuffer) {
+  if (!outBuffer) {
+    RE_LOG(Error, "No receiving buffer object was provided.");
     return RE_ERROR;
   }
 
-  if (vkAllocateMemory(mgrGfx->logicalDevice.device, allocInfo, nullptr,
-                       &mgrGfx->logicalDevice.vertexBufferMemory) !=
-      VK_SUCCESS) {
-    RE_LOG(Error, "%s: failed to allocate video memory.", __func__);
-    return RE_ERROR;
-  }
+  VkBufferCreateInfo bufferCreateInfo{};
+  bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  bufferCreateInfo.usage = usage;
+  bufferCreateInfo.size = size;
 
+  if (vkCreateBuffer(mgrGfx->logicalDevice.device, &bufferCreateInfo, nullptr,
+                     &outBuffer->buffer) != VK_SUCCESS) {
+    RE_LOG(Error, "Failed to create buffer.");
+    return RE_ERROR;
+  };
+
+  vkGetBufferMemoryRequirements(logicalDevice.device, outBuffer->buffer,
+                                &outBuffer->memRequirements);
+
+  outBuffer->size = size;
+
+  return RE_OK;
+}
+
+TResult MGraphics::allocateLogicalDeviceMemory(RBuffer* inBuffer,
+                                               VkMemoryPropertyFlags properties,
+                                               VkDeviceMemory& outMemory) {
   if (!inBuffer) {
-    RE_LOG(Warning,
-           "%s: no buffer was provided for memory allocation. Memory was "
-           "allocated but no buffer will be bound.",
-           __func__);
-    return RE_WARNING;
+    RE_LOG(Error, "No source buffer was provided.");
+    return RE_ERROR;
   }
 
-  if (vkBindBufferMemory(logicalDevice.device, inBuffer->buffer,
-                         logicalDevice.vertexBufferMemory,
+  VkMemoryAllocateInfo allocInfo{};
+  allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+  allocInfo.allocationSize = inBuffer->memRequirements.size;
+  allocInfo.memoryTypeIndex = mgrGfx->findPhysicalDeviceMemoryType(
+      inBuffer->memRequirements.memoryTypeBits, properties);
+
+  if (vkAllocateMemory(logicalDevice.device, &allocInfo, nullptr, &outMemory) !=
+      VK_SUCCESS) {
+    RE_LOG(Error, "Failed to allocate video memory.");
+    return RE_ERROR;
+  }
+
+  if (vkBindBufferMemory(logicalDevice.device, inBuffer->buffer, outMemory,
                          NULL) != VK_SUCCESS) {
-    RE_LOG(Error, "%s: failed to bind buffer memory.", __func__);
+    RE_LOG(Error, "Failed to bind buffer memory.");
     return RE_ERROR;
   }
 
   void* pMappedMemory;
-  vkMapMemory(logicalDevice.device, logicalDevice.vertexBufferMemory, 0,
-              inBuffer->bufferInfo.size, NULL, &pMappedMemory);
-  memcpy(pMappedMemory, inBuffer->pData, (size_t)inBuffer->bufferInfo.size);
-  vkUnmapMemory(logicalDevice.device, logicalDevice.vertexBufferMemory);
+  vkMapMemory(logicalDevice.device, outMemory, 0, inBuffer->size, NULL,
+              &pMappedMemory);
+  memcpy(pMappedMemory, inBuffer->pData, (size_t)inBuffer->size);
+  vkUnmapMemory(logicalDevice.device, outMemory);
 
   return RE_OK;
 }

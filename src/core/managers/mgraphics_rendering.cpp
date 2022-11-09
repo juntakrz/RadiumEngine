@@ -325,7 +325,7 @@ TResult MGraphics::recordCommandBuffer(VkCommandBuffer commandBuffer,
 
   VkBuffer buffers[] = {dataRender.meshes[0]->vertexBuffer.buffer};
   VkDeviceSize offsets[] = {0};
-  uint32_t numVertices = static_cast<uint32_t>(dataRender.meshes[0]->vertexBuffer.bufferInfo.size / sizeof(RVertex));
+  uint32_t numVertices = static_cast<uint32_t>(dataRender.meshes[0]->vertexBuffer.size / sizeof(RVertex));
 
   vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
 

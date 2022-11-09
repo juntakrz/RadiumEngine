@@ -40,7 +40,7 @@ struct RVkLogicalDevice {
 
 struct RBuffer {
   VkBuffer buffer;
-  VkBufferCreateInfo bufferInfo;
+  VkDeviceSize size;
   VkMemoryRequirements memRequirements;
   void *pData;
 };

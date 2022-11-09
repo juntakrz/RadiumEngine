@@ -16,6 +16,8 @@ class MModel {
   MModel& operator=(const MModel&) = delete;
 
   TResult createMesh();
+  TResult destroyMesh(uint32_t index);
+  void destroyAllMeshes();
 
   std::vector<std::unique_ptr<WMesh>> meshes;
 };
