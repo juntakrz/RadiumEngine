@@ -4,10 +4,11 @@
 
 class WMesh {
  protected:
+  void setMemory();
+
+ public:
   WMesh(){};
   virtual ~WMesh(){};
-
-  void setMemory();
 
  public:
   RBuffer vertexBuffer;
@@ -15,6 +16,6 @@ class WMesh {
   std::vector<RVertex> vertices;
   std::vector<uint32_t> indices;
 
-  virtual void create(int arg1, int arg2) = 0;
+  virtual void create(int arg1 = 1, int arg2 = 1) = 0;
   virtual void destroy();
 };

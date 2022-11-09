@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include "core/world/mesh/mesh.h"
 
 class MModel {
   MModel();
@@ -14,5 +15,7 @@ class MModel {
   MModel(const MModel&) = delete;
   MModel& operator=(const MModel&) = delete;
 
-  //WMesh_Plane testPlane;
+  TResult createMesh();
+
+  std::vector<std::unique_ptr<WMesh>> meshes;
 };

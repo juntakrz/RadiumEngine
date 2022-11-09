@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "core/managers/mgraphics.h"
-//#include "core/world/mesh/mesh_include.h"
+#include "core/world/mesh/mesh.h"
 
 TResult MGraphics::createRenderPass() {
   RE_LOG(Log, "Creating render pass");
@@ -323,14 +323,13 @@ TResult MGraphics::recordCommandBuffer(VkCommandBuffer commandBuffer,
   
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-  //VkBuffer buffers[] = {dataRender.meshes[0]->vertexBuffer.buffer};
-  //VkDeviceSize offsets[] = {0};
-  //uint32_t numVertices = static_cast<uint32_t>(dataRender.meshes[0]->vertexBuffer.bufferInfo.size / sizeof(RVertex));
+  VkBuffer buffers[] = {dataRender.meshes[0]->vertexBuffer.buffer};
+  VkDeviceSize offsets[] = {0};
+  uint32_t numVertices = static_cast<uint32_t>(dataRender.meshes[0]->vertexBuffer.bufferInfo.size / sizeof(RVertex));
 
-  //vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
+  vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
 
-  //vkCmdDraw(commandBuffer, numVertices, 1, 0, 0);
-  vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+  vkCmdDraw(commandBuffer, numVertices, 1, 0, 0);
 
   vkCmdEndRenderPass(commandBuffer);
 

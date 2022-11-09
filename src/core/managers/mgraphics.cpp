@@ -2,6 +2,7 @@
 #include "core/managers/mgraphics.h"
 #include "core/managers/mdebug.h"
 #include "core/managers/mwindow.h"
+#include "core/managers/mmodel.h"
 #include "core/renderer/renderer.h"
 
 MGraphics::MGraphics() { RE_LOG(Log, "Creating graphics manager."); };
@@ -83,8 +84,8 @@ TResult MGraphics::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createFramebuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCommandPool();
 
-  //mgrModel->testPlane.create();
-  //bindMesh(&mgrModel->testPlane);
+  mgrModel->createMesh();
+  bindMesh(mgrModel->meshes.back().get());
 
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCommandBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();
