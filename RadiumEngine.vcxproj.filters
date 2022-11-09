@@ -137,6 +137,9 @@
     <ClInclude Include="include\core\world\mesh\mesh_include.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="lib\include\vk_mem_alloc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Library Include="lib\glfw3.lib" />

@@ -238,6 +238,7 @@
     <ClInclude Include="include\config.h" />
     <ClInclude Include="include\define_t.h" />
     <ClInclude Include="include\util\util.h" />
+    <ClInclude Include="lib\include\vk_mem_alloc.h" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="lib\glfw3.lib" />
