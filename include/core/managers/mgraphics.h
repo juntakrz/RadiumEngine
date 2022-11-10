@@ -16,7 +16,7 @@ class MGraphics {
     std::vector<VkImage> images;
     std::vector<VkImageView> imageViews;
     std::vector<VkFramebuffer> framebuffers;
-  } dataSwapChain;
+  } gSwapchain;
 
   struct {
     VkRenderPass renderPass;
@@ -27,13 +27,13 @@ class MGraphics {
     std::vector<VkCommandBuffer> cmdBuffers;
     VkCommandBuffer auxBuffer;                  // single time buffer
     std::vector<WMesh*> meshes;                 // meshes rendered during the current frame
-  } dataSystem;
+  } gSystem;
 
   struct {
     std::vector<VkSemaphore> sImgAvailable;
     std::vector<VkSemaphore> sRndrFinished;
     std::vector<VkFence> fInFlight;
-  } dataSync;
+  } gSync;
 
   MGraphics();
 

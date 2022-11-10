@@ -168,8 +168,8 @@ uint32_t MGraphics::bindMesh(WMesh* pMesh) {
     return -1;
   }
 
-  dataSystem.meshes.emplace_back(pMesh);
-  return (uint32_t)dataSystem.meshes.size() - 1;
+  gSystem.meshes.emplace_back(pMesh);
+  return (uint32_t)gSystem.meshes.size() - 1;
 }
 
 TResult MGraphics::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
@@ -178,17 +178,17 @@ TResult MGraphics::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
   cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-  vkBeginCommandBuffer(dataSystem.auxBuffer, &cmdBufferBeginInfo);
+  vkBeginCommandBuffer(gSystem.auxBuffer, &cmdBufferBeginInfo);
 
-  vkCmdCopyBuffer(dataSystem.auxBuffer, srcBuffer->buffer, dstBuffer->buffer, 1,
+  vkCmdCopyBuffer(gSystem.auxBuffer, srcBuffer->buffer, dstBuffer->buffer, 1,
                   copyRegion);
 
-  vkEndCommandBuffer(dataSystem.auxBuffer);
+  vkEndCommandBuffer(gSystem.auxBuffer);
 
   VkSubmitInfo submitInfo{};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
   submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &dataSystem.auxBuffer;
+  submitInfo.pCommandBuffers = &gSystem.auxBuffer;
 
   vkQueueSubmit(logicalDevice.queues.graphics, 1, &submitInfo, VK_NULL_HANDLE);
   vkQueueWaitIdle(logicalDevice.queues.graphics);

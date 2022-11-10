@@ -6,7 +6,7 @@ TResult MGraphics::createRenderPass() {
   RE_LOG(Log, "Creating render pass");
 
   VkAttachmentDescription colorAttachment{};
-  colorAttachment.format = dataSwapChain.formatData.format;
+  colorAttachment.format = gSwapchain.formatData.format;
   colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
   colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;                 // clearing contents on new frame
   colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;               // storing contents in memory while rendering
@@ -41,7 +41,7 @@ TResult MGraphics::createRenderPass() {
   renderPassInfo.pDependencies = &dependency;
 
   if (vkCreateRenderPass(logicalDevice.device, &renderPassInfo, nullptr,
-                         &dataSystem.renderPass) != VK_SUCCESS) {
+                         &gSystem.renderPass) != VK_SUCCESS) {
     RE_LOG(Critical, "render pass creation failed.");
 
     return RE_CRITICAL;
@@ -52,7 +52,7 @@ TResult MGraphics::createRenderPass() {
 
 void MGraphics::destroyRenderPass() {
   RE_LOG(Log, "Destroying render pass.");
-  vkDestroyRenderPass(logicalDevice.device, dataSystem.renderPass, nullptr);
+  vkDestroyRenderPass(logicalDevice.device, gSystem.renderPass, nullptr);
 }
 
 TResult MGraphics::createGraphicsPipeline() {
@@ -98,14 +98,14 @@ TResult MGraphics::createGraphicsPipeline() {
   VkViewport viewport{};
   viewport.x = 0.0f;
   viewport.y = 0.0f;
-  viewport.width = (float)dataSwapChain.imageExtent.width;
-  viewport.height = (float)dataSwapChain.imageExtent.height;
+  viewport.width = (float)gSwapchain.imageExtent.width;
+  viewport.height = (float)gSwapchain.imageExtent.height;
   viewport.minDepth = 0.0f;
   viewport.maxDepth = 1.0f;
 
   VkRect2D scissor{};
   scissor.offset = {0, 0};
-  scissor.extent = dataSwapChain.imageExtent;
+  scissor.extent = gSwapchain.imageExtent;
 
   VkPipelineViewportStateCreateInfo viewportInfo{};
   viewportInfo.sType =
@@ -187,7 +187,7 @@ TResult MGraphics::createGraphicsPipeline() {
   layoutInfo.pPushConstantRanges = nullptr;
 
   if (vkCreatePipelineLayout(logicalDevice.device, &layoutInfo, nullptr,
-                             &dataSystem.pipelineLayout) != VK_SUCCESS) {
+                             &gSystem.pipelineLayout) != VK_SUCCESS) {
     RE_LOG(Critical, "failed to create graphics pipeline layout.");
 
     return RE_CRITICAL;
@@ -206,15 +206,15 @@ TResult MGraphics::createGraphicsPipeline() {
   graphicsPipelineInfo.stageCount = 2;
   graphicsPipelineInfo.pStages = shaderStages;
   graphicsPipelineInfo.pVertexInputState = &vertexInputInfo;
-  graphicsPipelineInfo.layout = dataSystem.pipelineLayout;
-  graphicsPipelineInfo.renderPass = dataSystem.renderPass;
+  graphicsPipelineInfo.layout = gSystem.pipelineLayout;
+  graphicsPipelineInfo.renderPass = gSystem.renderPass;
   graphicsPipelineInfo.subpass = 0;                           // subpass index for render pass
   graphicsPipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
   graphicsPipelineInfo.basePipelineIndex = -1;
 
   if (vkCreateGraphicsPipelines(logicalDevice.device, VK_NULL_HANDLE, 1,
                                 &graphicsPipelineInfo, nullptr,
-                                &dataSystem.pipeline) != VK_SUCCESS) {
+                                &gSystem.pipeline) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create graphics pipeline.");
 
     return RE_CRITICAL;
@@ -228,8 +228,8 @@ TResult MGraphics::createGraphicsPipeline() {
 
 void MGraphics::destroyGraphicsPipeline() {
   RE_LOG(Log, "Shutting down graphics pipeline.");
-  vkDestroyPipeline(logicalDevice.device, dataSystem.pipeline, nullptr);
-  vkDestroyPipelineLayout(logicalDevice.device, dataSystem.pipelineLayout, nullptr);
+  vkDestroyPipeline(logicalDevice.device, gSystem.pipeline, nullptr);
+  vkDestroyPipelineLayout(logicalDevice.device, gSystem.pipelineLayout, nullptr);
 }
 
 TResult MGraphics::createCommandPool() {
@@ -242,7 +242,7 @@ TResult MGraphics::createCommandPool() {
       physicalDevice.queueFamilyIndices.graphics[0];
 
   if (vkCreateCommandPool(logicalDevice.device, &commandPoolInfo, nullptr,
-                          &dataSystem.commandPool) != VK_SUCCESS) {
+                          &gSystem.commandPool) != VK_SUCCESS) {
     RE_LOG(Critical,
            "failed to create command pool for graphics queue family.");
 
@@ -254,24 +254,24 @@ TResult MGraphics::createCommandPool() {
 
 void MGraphics::destroyCommandPool() {
   RE_LOG(Log, "Destroying command pool.");
-  vkDestroyCommandPool(logicalDevice.device, dataSystem.commandPool, nullptr);
+  vkDestroyCommandPool(logicalDevice.device, gSystem.commandPool, nullptr);
 }
 
 TResult MGraphics::createCommandBuffers() {
   RE_LOG(Log, "Creating rendering command buffers for %d frames.",
          MAX_FRAMES_IN_FLIGHT);
 
-  dataSystem.cmdBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+  gSystem.cmdBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
   VkCommandBufferAllocateInfo cmdBufferInfo{};
   cmdBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
   cmdBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  cmdBufferInfo.commandPool = dataSystem.commandPool;
+  cmdBufferInfo.commandPool = gSystem.commandPool;
   cmdBufferInfo.commandBufferCount =
-      (uint32_t)dataSystem.cmdBuffers.size();
+      (uint32_t)gSystem.cmdBuffers.size();
 
   if (vkAllocateCommandBuffers(logicalDevice.device, &cmdBufferInfo,
-                               dataSystem.cmdBuffers.data()) != VK_SUCCESS) {
+                               gSystem.cmdBuffers.data()) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to allocate rendering command buffers.");
     return RE_CRITICAL;
   }
@@ -281,7 +281,7 @@ TResult MGraphics::createCommandBuffers() {
   cmdBufferInfo.commandBufferCount = 1;
 
   if (vkAllocateCommandBuffers(logicalDevice.device, &cmdBufferInfo,
-                               &dataSystem.auxBuffer) != VK_SUCCESS) {
+                               &gSystem.auxBuffer) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to allocate aux command buffer.");
     return RE_CRITICAL;
   }
@@ -291,14 +291,14 @@ TResult MGraphics::createCommandBuffers() {
 
 void MGraphics::destroyCommandBuffers() {
   RE_LOG(Log, "Freeing %d rendering command buffers.",
-         dataSystem.cmdBuffers.size());
-  vkFreeCommandBuffers(logicalDevice.device, dataSystem.commandPool,
-                       static_cast<uint32_t>(dataSystem.cmdBuffers.size()),
-                       dataSystem.cmdBuffers.data());
+         gSystem.cmdBuffers.size());
+  vkFreeCommandBuffers(logicalDevice.device, gSystem.commandPool,
+                       static_cast<uint32_t>(gSystem.cmdBuffers.size()),
+                       gSystem.cmdBuffers.data());
 
   RE_LOG(Log, "Freeing aux command buffer.");
-  vkFreeCommandBuffers(logicalDevice.device, dataSystem.commandPool, 1,
-                       &dataSystem.auxBuffer);
+  vkFreeCommandBuffers(logicalDevice.device, gSystem.commandPool, 1,
+                       &gSystem.auxBuffer);
 }
 
 TResult MGraphics::recordCommandBuffer(VkCommandBuffer commandBuffer,
@@ -318,23 +318,23 @@ TResult MGraphics::recordCommandBuffer(VkCommandBuffer commandBuffer,
 
   VkRenderPassBeginInfo renderPassInfo{};
   renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-  renderPassInfo.renderPass = dataSystem.renderPass;
-  renderPassInfo.framebuffer = dataSwapChain.framebuffers[imageIndex];
+  renderPassInfo.renderPass = gSystem.renderPass;
+  renderPassInfo.framebuffer = gSwapchain.framebuffers[imageIndex];
   renderPassInfo.renderArea.offset = {0, 0};
-  renderPassInfo.renderArea.extent = dataSwapChain.imageExtent;
+  renderPassInfo.renderArea.extent = gSwapchain.imageExtent;
   renderPassInfo.pClearValues = &clearColor;
   renderPassInfo.clearValueCount = 1;
 
   vkCmdBeginRenderPass(commandBuffer, &renderPassInfo,
                        VK_SUBPASS_CONTENTS_INLINE);
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    dataSystem.pipeline);
+                    gSystem.pipeline);
 
   VkViewport viewport{};
   viewport.x = 0.0f;
   viewport.y = 0.0f;
-  viewport.width = static_cast<float>(dataSwapChain.imageExtent.width);
-  viewport.height = static_cast<float>(dataSwapChain.imageExtent.height);
+  viewport.width = static_cast<float>(gSwapchain.imageExtent.width);
+  viewport.height = static_cast<float>(gSwapchain.imageExtent.height);
   viewport.minDepth = 0.0f;
   viewport.maxDepth = 1.0f;
 
@@ -342,14 +342,14 @@ TResult MGraphics::recordCommandBuffer(VkCommandBuffer commandBuffer,
 
   VkRect2D scissor{};
   scissor.offset = {0, 0};
-  scissor.extent = dataSwapChain.imageExtent;
+  scissor.extent = gSwapchain.imageExtent;
   
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-  VkBuffer buffers[] = {dataSystem.meshes[0]->vertexBuffer.buffer};
+  VkBuffer buffers[] = {gSystem.meshes[0]->vertexBuffer.buffer};
   VkDeviceSize offsets[] = {0};
   uint32_t numVertices = static_cast<uint32_t>(
-      dataSystem.meshes[0]->vertexBuffer.allocInfo.size / sizeof(RVertex));
+      gSystem.meshes[0]->vertexBuffer.allocInfo.size / sizeof(RVertex));
 
   vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
 
@@ -370,9 +370,9 @@ TResult MGraphics::createSyncObjects() {
   RE_LOG(Log, "Creating sychronization objects for %d frames.",
          MAX_FRAMES_IN_FLIGHT);
 
-  dataSync.sImgAvailable.resize(MAX_FRAMES_IN_FLIGHT);
-  dataSync.sRndrFinished.resize(MAX_FRAMES_IN_FLIGHT);
-  dataSync.fInFlight.resize(MAX_FRAMES_IN_FLIGHT);
+  gSync.sImgAvailable.resize(MAX_FRAMES_IN_FLIGHT);
+  gSync.sRndrFinished.resize(MAX_FRAMES_IN_FLIGHT);
+  gSync.fInFlight.resize(MAX_FRAMES_IN_FLIGHT);
 
   VkSemaphoreCreateInfo semInfo{};
   semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -384,21 +384,21 @@ TResult MGraphics::createSyncObjects() {
 
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
     if (vkCreateSemaphore(logicalDevice.device, &semInfo, nullptr,
-                          &dataSync.sImgAvailable[i]) != VK_SUCCESS) {
+                          &gSync.sImgAvailable[i]) != VK_SUCCESS) {
       RE_LOG(Critical, "failed to create 'image available' semaphore.");
 
       return RE_CRITICAL;
     }
 
     if (vkCreateSemaphore(logicalDevice.device, &semInfo, nullptr,
-                          &dataSync.sRndrFinished[i]) != VK_SUCCESS) {
+                          &gSync.sRndrFinished[i]) != VK_SUCCESS) {
       RE_LOG(Critical, "failed to create 'render finished' semaphore.");
 
       return RE_CRITICAL;
     }
 
     if (vkCreateFence(logicalDevice.device, &fenInfo, nullptr,
-                      &dataSync.fInFlight[i])) {
+                      &gSync.fInFlight[i])) {
       RE_LOG(Critical, "failed to create 'in flight' fence.");
 
       return RE_CRITICAL;
@@ -412,12 +412,12 @@ void MGraphics::destroySyncObjects() {
   RE_LOG(Log, "Destroying synchronization objects.");
 
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-    vkDestroySemaphore(logicalDevice.device, dataSync.sImgAvailable[i],
+    vkDestroySemaphore(logicalDevice.device, gSync.sImgAvailable[i],
                        nullptr);
-    vkDestroySemaphore(logicalDevice.device, dataSync.sRndrFinished[i],
+    vkDestroySemaphore(logicalDevice.device, gSync.sRndrFinished[i],
                        nullptr);
 
-    vkDestroyFence(logicalDevice.device, dataSync.fInFlight[i],
+    vkDestroyFence(logicalDevice.device, gSync.fInFlight[i],
                    nullptr);
   }
 }
@@ -427,12 +427,12 @@ TResult MGraphics::drawFrame() {
   TResult chkResult = RE_OK;
 
   vkWaitForFences(logicalDevice.device, 1,
-                  &dataSync.fInFlight[dataSystem.idIFFrame], VK_TRUE,
+                  &gSync.fInFlight[gSystem.idIFFrame], VK_TRUE,
                   UINT64_MAX);
 
   VkResult APIResult =
       vkAcquireNextImageKHR(logicalDevice.device, swapChain, UINT64_MAX,
-                            dataSync.sImgAvailable[dataSystem.idIFFrame],
+                            gSync.sImgAvailable[gSystem.idIFFrame],
                             VK_NULL_HANDLE, &imageIndex);
 
   if (APIResult == VK_ERROR_OUT_OF_DATE_KHR) {
@@ -451,16 +451,16 @@ TResult MGraphics::drawFrame() {
   // reset fences if we will do any work this frame e.g. no swap chain
   // recreation
   vkResetFences(logicalDevice.device, 1,
-                &dataSync.fInFlight[dataSystem.idIFFrame]);
+                &gSync.fInFlight[gSystem.idIFFrame]);
 
-  vkResetCommandBuffer(dataSystem.cmdBuffers[dataSystem.idIFFrame], NULL);
+  vkResetCommandBuffer(gSystem.cmdBuffers[gSystem.idIFFrame], NULL);
 
-  recordCommandBuffer(dataSystem.cmdBuffers[dataSystem.idIFFrame], imageIndex);
+  recordCommandBuffer(gSystem.cmdBuffers[gSystem.idIFFrame], imageIndex);
 
   // wait until image to write color data to is acquired
-  VkSemaphore waitSems[] = {dataSync.sImgAvailable[dataSystem.idIFFrame]};
+  VkSemaphore waitSems[] = {gSync.sImgAvailable[gSystem.idIFFrame]};
   VkSemaphore signalSems[] = {
-      dataSync.sRndrFinished[dataSystem.idIFFrame]};
+      gSync.sRndrFinished[gSystem.idIFFrame]};
   VkPipelineStageFlags waitStages[] = {
       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
@@ -472,7 +472,7 @@ TResult MGraphics::drawFrame() {
       waitStages;  // each stage index corresponds to provided semaphore index
   submitInfo.commandBufferCount = 1;
   submitInfo.pCommandBuffers =
-      &dataSystem.cmdBuffers[dataSystem.idIFFrame];  // submit command buffer
+      &gSystem.cmdBuffers[gSystem.idIFFrame];  // submit command buffer
                                                    // recorded previously
   submitInfo.signalSemaphoreCount = 1;
   submitInfo.pSignalSemaphores =
@@ -481,7 +481,7 @@ TResult MGraphics::drawFrame() {
   // submit an array featuring command buffers to graphics queue and signal
   // fence for CPU to wait for execution
   if (vkQueueSubmit(logicalDevice.queues.graphics, 1, &submitInfo,
-                    dataSync.fInFlight[dataSystem.idIFFrame]) !=
+                    gSync.fInFlight[gSystem.idIFFrame]) !=
       VK_SUCCESS) {
     RE_LOG(Error, "Failed to submit data to graphics queue.");
 
@@ -519,7 +519,7 @@ TResult MGraphics::drawFrame() {
     return RE_ERROR;
   }
 
-  dataSystem.idIFFrame = ++dataSystem.idIFFrame % MAX_FRAMES_IN_FLIGHT;
+  gSystem.idIFFrame = ++gSystem.idIFFrame % MAX_FRAMES_IN_FLIGHT;
 
   return chkResult;
 }

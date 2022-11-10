@@ -2,12 +2,14 @@
 #include "core/objects.h"
 
 std::set<int32_t> RVkQueueFamilyIndices::getAsSet() const {
-  if (graphics.empty() || compute.empty() ||
-      present.empty()) {
-    return { -1 };
+  if (graphics.empty() || compute.empty() || present.empty()) {
+    return {-1};
   }
 
-  return {graphics[0], compute[0], present[0]};
+  // use 'graphics' queue for transfers if 'transfer' queue is undefined
+  int32_t idTransfer = (transfer.empty()) ? graphics[0] : 0;
+
+  return {graphics[0], compute[0], present[0], idTransfer};
 }
 
 VkVertexInputBindingDescription RVertex::getBindingDesc() {
