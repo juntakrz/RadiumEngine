@@ -49,14 +49,12 @@ void WMesh::allocateMemory() {
   copyInfo.dstOffset = 0;
   copyInfo.size = vertexBufferSize;
 
-  vkCmdCopyBuffer(*mgrGfx->getCmdBuffer(0), stagingBuffer.buffer,
-                  vertexBuffer.buffer, 1, &copyInfo);
+  mgrGfx->copyBuffer(&stagingVertexBuffer, &vertexBuffer, &copyInfo);
 };
 
 void WMesh::destroy() {
-  vmaDestroyBuffer(mgrGfx->memAlloc, stagingBuffer.buffer,
-                   stagingBuffer.allocation);
-  //vmaDestroyBuffer(mgrGfx->memAlloc, vertexBuffer.buffer,
-    //               vertexBuffer.allocation);
-  //vmaFreeMemory(mgrGfx->memAlloc, vertexBuffer.allocation);     // error here
+  vmaDestroyBuffer(mgrGfx->memAlloc, stagingVertexBuffer.buffer,
+                   stagingVertexBuffer.allocation);
+  vmaDestroyBuffer(mgrGfx->memAlloc, vertexBuffer.buffer,
+                   vertexBuffer.allocation);
 }
