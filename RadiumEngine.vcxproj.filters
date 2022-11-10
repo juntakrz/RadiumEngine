@@ -51,6 +51,27 @@
     <ClCompile Include="src\core\managers\mgraphics_rendering.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\config.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\managers\minput.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\managers\mmodel.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\world\mesh\mesh_plane.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\world\mesh\mesh.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\managers\mgraphics_logicaldevice.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\renderer\vk_mem_alloc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\pch.h">
@@ -74,7 +95,7 @@
     <ClInclude Include="include\core\managers\mgraphics.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\settings.h">
+    <ClInclude Include="include\config.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\core\managers\mdebug.h">
@@ -84,6 +105,42 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\util\util.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\managers\minput.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\define_t.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\world\primitives\triangleindex.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\world\primitives\sphere.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\world\primitives\primitives_include.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\world\primitives\plane.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\world\primitives\cube.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\managers\mmodel.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\world\mesh\mesh.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\world\mesh\mesh_plane.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\world\mesh\mesh_include.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\include\vk_mem_alloc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -100,5 +157,9 @@
     <None Include="compileShaders_Win_x64.bat">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="config\config.json" />
+    <None Include="content\shaders\fs_default.spv" />
+    <None Include="content\shaders\shaders" />
+    <None Include="content\shaders\vs_default.spv" />
   </ItemGroup>
 </Project>

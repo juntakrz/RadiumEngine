@@ -1,7 +1,7 @@
 #pragma once
 
-// global definitions
-#include "define.h"
+#define _CRT_SECURE_NO_WARNINGS
+#define _USE_MATH_DEFINES
 
 // linked libraries
 #pragma comment(lib, "glfw3.lib")
@@ -16,17 +16,24 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <unordered_map>
 #include <memory>
-#include <optional>
+#include <random>
 #include <set>
 #include <stdarg.h>
 #include <string>
 #include <vector>
 
+// internal global definitions
+#include "define.h"
+#include "define_t.h"
+
 // Vulkan API related headers
 #include <GLFW/glfw3.h>
-#include <GLM/vec4.hpp>
-#include <GLM/mat4x4.hpp>
+#include <GLM/glm.hpp>
+
+// external engine modules
+#include <json/json.hpp>
 
 /* comments:
 * 
