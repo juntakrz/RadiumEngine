@@ -35,7 +35,8 @@ void WMesh::allocateMemory() {
       (uint32_t)mgrGfx->physicalDevice.queueFamilyIndices.graphics.at(0),
       (uint32_t)mgrGfx->physicalDevice.queueFamilyIndices.transfer.at(0)};
   vbInfo.pQueueFamilyIndices = queueFamilyIndices.data();
-  vbInfo.queueFamilyIndexCount = queueFamilyIndices.size();
+  vbInfo.queueFamilyIndexCount =
+      static_cast<uint32_t>(queueFamilyIndices.size());
 
   VmaAllocationCreateInfo vbAllocInfo{};
   vbAllocInfo.usage = VMA_MEMORY_USAGE_AUTO;

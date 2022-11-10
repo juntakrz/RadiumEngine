@@ -178,17 +178,17 @@ TResult MGraphics::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
   cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-  vkBeginCommandBuffer(gSystem.auxBuffer, &cmdBufferBeginInfo);
+  vkBeginCommandBuffer(gSystem.transferBuffer, &cmdBufferBeginInfo);
 
-  vkCmdCopyBuffer(gSystem.auxBuffer, srcBuffer->buffer, dstBuffer->buffer, 1,
+  vkCmdCopyBuffer(gSystem.transferBuffer, srcBuffer->buffer, dstBuffer->buffer, 1,
                   copyRegion);
 
-  vkEndCommandBuffer(gSystem.auxBuffer);
+  vkEndCommandBuffer(gSystem.transferBuffer);
 
   VkSubmitInfo submitInfo{};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
   submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &gSystem.auxBuffer;
+  submitInfo.pCommandBuffers = &gSystem.transferBuffer;
 
   vkQueueSubmit(logicalDevice.queues.transfer, 1, &submitInfo, VK_NULL_HANDLE);
   vkQueueWaitIdle(logicalDevice.queues.transfer);

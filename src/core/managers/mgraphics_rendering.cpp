@@ -281,7 +281,7 @@ TResult MGraphics::createCommandBuffers() {
   cmdBufferInfo.commandBufferCount = 1;
 
   if (vkAllocateCommandBuffers(logicalDevice.device, &cmdBufferInfo,
-                               &gSystem.auxBuffer) != VK_SUCCESS) {
+                               &gSystem.transferBuffer) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to allocate aux command buffer.");
     return RE_CRITICAL;
   }
@@ -298,7 +298,7 @@ void MGraphics::destroyCommandBuffers() {
 
   RE_LOG(Log, "Freeing aux command buffer.");
   vkFreeCommandBuffers(logicalDevice.device, gSystem.commandPool, 1,
-                       &gSystem.auxBuffer);
+                       &gSystem.transferBuffer);
 }
 
 TResult MGraphics::recordCommandBuffer(VkCommandBuffer commandBuffer,

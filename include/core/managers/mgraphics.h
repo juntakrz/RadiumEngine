@@ -23,9 +23,10 @@ class MGraphics {
     VkPipelineLayout pipelineLayout;
     VkPipeline pipeline;
     VkCommandPool commandPool;
+    VkCommandPool transferPool;
     uint32_t idIFFrame = 0;                     // in flight frame index
     std::vector<VkCommandBuffer> cmdBuffers;
-    VkCommandBuffer auxBuffer;                  // single time buffer
+    VkCommandBuffer transferBuffer;             // transfer buffer
     std::vector<WMesh*> meshes;                 // meshes rendered during the current frame
   } gSystem;
 
