@@ -171,15 +171,6 @@ uint32_t MGraphics::bindMesh(WMesh* pMesh) {
   return (uint32_t)dataRender.meshes.size() - 1;
 }
 
-VkCommandBuffer* MGraphics::getCmdBuffer(uint32_t index) {
-  if (index > dataRender.cmdBuffers.size() - 1) {
-    RE_LOG(Error, "Command buffer request is out of bounds at %d.", index);
-    return nullptr;
-  }
-
-  return &dataRender.cmdBuffers.at(index);
-}
-
 VkShaderModule MGraphics::createShaderModule(std::vector<char>& shaderCode) {
   VkShaderModuleCreateInfo smInfo{};
   smInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;

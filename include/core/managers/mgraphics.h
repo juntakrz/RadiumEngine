@@ -76,8 +76,6 @@ public:
   // binds mesh to graphics pipeline
   uint32_t bindMesh(WMesh* pMesh);
 
-  VkCommandBuffer* getCmdBuffer(uint32_t index);
-
   //
   // mgraphics_physicaldevice
   //
@@ -132,22 +130,7 @@ public:
   void destroyLogicalDevice(VkDevice device = nullptr,
                             const VkAllocationCallbacks* pAllocator = nullptr);
 
-  TResult createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
-                       RBuffer* outBuffer);
-
-  // create buffer and allocate memory
-  TResult createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
-                       VkMemoryPropertyFlags properties, RBuffer* outBuffer,
-                       VkDeviceMemory& outMemory);
-
-  TResult allocateBufferMemory(RBuffer* inBuffer,
-                                      VkMemoryPropertyFlags properties,
-                                      VkDeviceMemory& outMemory);
-
-  // copy buffer to a valid memory that can be accessed by the CPU
-  TResult copyToCPUAccessMemory(RBuffer* inBuffer, VkDeviceMemory& outMemory);
-
-  TResult copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer);
+  TResult copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer, VkBufferCopy* copyRegion);
 
   // -----
 
