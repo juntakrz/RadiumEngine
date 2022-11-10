@@ -76,6 +76,8 @@ public:
   // binds mesh to graphics pipeline
   uint32_t bindMesh(WMesh* pMesh);
 
+  VkCommandBuffer* getCmdBuffer(uint32_t index);
+
   //
   // mgraphics_physicaldevice
   //

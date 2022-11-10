@@ -5,49 +5,52 @@
 #include "core/world/mesh/mesh.h"
 
 void WMesh::allocateMemory() {
+  VmaAllocator memAlloc = mgrGfx->memAlloc;
 
   // 1. Vertex buffer
-
-  // staging buffer before writing to VRAM
   const VkDeviceSize vertexBufferSize = vertices.size() * sizeof(RVertex);
 
-  VkBufferCreateInfo stagingBufferInfo{};
-  stagingBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-  stagingBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-  stagingBufferInfo.size = vertexBufferSize;
+  // staging vertex buffer
+  VkBufferCreateInfo svbInfo{};
+  svbInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  svbInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+  svbInfo.size = vertexBufferSize;
+  svbInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-  VmaAllocationCreateInfo stagingAllocCreateInfo{};
-  stagingAllocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-  stagingAllocCreateInfo.flags =
+  VmaAllocationCreateInfo svbAllocInfo{};
+  svbAllocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+  svbAllocInfo.flags =
       VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
       VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
-  vmaCreateBuffer(mgrGfx->memAlloc, &stagingBufferInfo, &stagingAllocCreateInfo,
-                  &stagingBuffer.buffer, &stagingBuffer.allocation,
-                  &stagingBuffer.allocInfo);
+  vmaCreateBuffer(memAlloc, &svbInfo, &svbAllocInfo,
+                  &stagingVertexBuffer.buffer, &stagingVertexBuffer.allocation,
+                  &stagingVertexBuffer.allocInfo);
 
   // not using Map/Unmap functions due to VMA_ALLOCATION_CREATE_MAPPED_BIT flag
-  memcpy(stagingBuffer.allocInfo.pMappedData, vertices.data(), vertexBufferSize);
+  memcpy(stagingVertexBuffer.allocInfo.pMappedData, vertices.data(), vertexBufferSize);
 
-  /*
-  VkBufferCreateInfo stagingBufferInfo{};
-  stagingBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-  stagingBufferInfo.usage = 
-                            VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-                            VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-  stagingBufferInfo.size = vertexBufferSize;
+  // destination vertex buffer
+  VkBufferCreateInfo vertexBufferInfo{};
+  vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  vertexBufferInfo.usage =
+      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+  vertexBufferInfo.size = vertexBufferSize;
 
-  VmaAllocationCreateInfo stagingAllocCreateInfo{};
-  stagingAllocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-  stagingAllocCreateInfo.flags =
-      VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
-      VMA_ALLOCATION_CREATE_MAPPED_BIT;
+  VmaAllocationCreateInfo vertexAllocCreateInfo{};
+  vertexAllocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+  vertexAllocCreateInfo.flags = NULL;
 
-  vmaCreateBuffer(mgrGfx->memAlloc, &stagingBufferInfo, &stagingAllocCreateInfo,
+  vmaCreateBuffer(mgrGfx->memAlloc, &vertexBufferInfo, &vertexAllocCreateInfo,
                   &vertexBuffer.buffer, &vertexBuffer.allocation, &vertexBuffer.allocInfo);
 
-  // not using Map/Unmap functions due to VMA_ALLOCATION_CREATE_MAPPED_BIT flag
-  memcpy(vertexBuffer.allocInfo.pMappedData, vertices.data(), vertexBufferSize);*/
+  VkBufferCopy copyInfo{};
+  copyInfo.srcOffset = 0;
+  copyInfo.dstOffset = 0;
+  copyInfo.size = vertexBufferSize;
+
+  vkCmdCopyBuffer(*mgrGfx->getCmdBuffer(0), stagingBuffer.buffer,
+                  vertexBuffer.buffer, 1, &copyInfo);
 };
 
 void WMesh::destroy() {

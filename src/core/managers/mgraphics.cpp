@@ -90,12 +90,11 @@ TResult MGraphics::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createGraphicsPipeline();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createFramebuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCommandPool();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createCommandBuffers();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();
 
   mgrModel->createMesh();
   bindMesh(mgrModel->meshes.back().get());
-
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createCommandBuffers();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();
 
   return chkResult;
 }
@@ -170,6 +169,15 @@ uint32_t MGraphics::bindMesh(WMesh* pMesh) {
 
   dataRender.meshes.emplace_back(pMesh);
   return (uint32_t)dataRender.meshes.size() - 1;
+}
+
+VkCommandBuffer* MGraphics::getCmdBuffer(uint32_t index) {
+  if (index > dataRender.cmdBuffers.size() - 1) {
+    RE_LOG(Error, "Command buffer request is out of bounds at %d.", index);
+    return nullptr;
+  }
+
+  return &dataRender.cmdBuffers.at(index);
 }
 
 VkShaderModule MGraphics::createShaderModule(std::vector<char>& shaderCode) {
