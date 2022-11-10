@@ -4,6 +4,20 @@
 #include "core/managers/mgraphics.h"
 #include "core/world/mesh/mesh.h"
 
+WMesh::WMesh() {
+  stagingVertexBuffer.buffer = VK_NULL_HANDLE;
+  stagingVertexBuffer.allocation = VK_NULL_HANDLE;
+
+  vertexBuffer.buffer = VK_NULL_HANDLE;
+  vertexBuffer.allocation = VK_NULL_HANDLE;
+
+  stagingIndexBuffer.buffer = VK_NULL_HANDLE;
+  stagingIndexBuffer.allocation = VK_NULL_HANDLE;
+
+  indexBuffer.buffer = VK_NULL_HANDLE;
+  indexBuffer.allocation = VK_NULL_HANDLE;
+};
+
 void WMesh::allocateMemory() {
   VmaAllocator memAlloc = mgrGfx->memAlloc;
 
@@ -11,19 +25,19 @@ void WMesh::allocateMemory() {
   const VkDeviceSize vertexBufferSize = vertices.size() * sizeof(RVertex);
 
   // staging vertex buffer
-  VkBufferCreateInfo svbInfo{};
-  svbInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-  svbInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-  svbInfo.size = vertexBufferSize;
-  svbInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  VkBufferCreateInfo vbInfo{};
+  vbInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  vbInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+  vbInfo.size = vertexBufferSize;
+  vbInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-  VmaAllocationCreateInfo svbAllocInfo{};
-  svbAllocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-  svbAllocInfo.flags =
+  VmaAllocationCreateInfo vbAllocInfo{};
+  vbAllocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+  vbAllocInfo.flags =
       VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
       VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
-  vmaCreateBuffer(memAlloc, &svbInfo, &svbAllocInfo,
+  vmaCreateBuffer(memAlloc, &vbInfo, &vbAllocInfo,
                   &stagingVertexBuffer.buffer, &stagingVertexBuffer.allocation,
                   &stagingVertexBuffer.allocInfo);
 
@@ -31,17 +45,13 @@ void WMesh::allocateMemory() {
   memcpy(stagingVertexBuffer.allocInfo.pMappedData, vertices.data(), vertexBufferSize);
 
   // destination vertex buffer
-  VkBufferCreateInfo vertexBufferInfo{};
-  vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-  vertexBufferInfo.usage =
+  vbInfo.usage =
       VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-  vertexBufferInfo.size = vertexBufferSize;
 
-  VmaAllocationCreateInfo vertexAllocCreateInfo{};
-  vertexAllocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-  vertexAllocCreateInfo.flags = NULL;
+  vbAllocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+  vbAllocInfo.flags = NULL;
 
-  vmaCreateBuffer(mgrGfx->memAlloc, &vertexBufferInfo, &vertexAllocCreateInfo,
+  vmaCreateBuffer(memAlloc, &vbInfo, &vbAllocInfo,
                   &vertexBuffer.buffer, &vertexBuffer.allocation, &vertexBuffer.allocInfo);
 
   VkBufferCopy copyInfo{};
@@ -50,7 +60,7 @@ void WMesh::allocateMemory() {
   copyInfo.size = vertexBufferSize;
 
   mgrGfx->copyBuffer(&stagingVertexBuffer, &vertexBuffer, &copyInfo);
-};
+}
 
 void WMesh::destroy() {
   vmaDestroyBuffer(mgrGfx->memAlloc, stagingVertexBuffer.buffer,

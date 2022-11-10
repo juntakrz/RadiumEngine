@@ -8,7 +8,7 @@ class WMesh {
   virtual void allocateMemory();
 
  public:
-  WMesh(){};
+  WMesh();
   virtual ~WMesh(){};
 
   virtual void create(int arg1 = 1, int arg2 = 1) = 0;
@@ -18,8 +18,8 @@ class WMesh {
   RBuffer vertexBuffer;
   RBuffer stagingVertexBuffer;
 
-  //RBuffer indexBuffer;
-  //RBuffer stagingIndexBuffer;
+  RBuffer indexBuffer;
+  RBuffer stagingIndexBuffer;
 
   std::vector<RVertex> vertices;
   std::vector<uint32_t> indices;
