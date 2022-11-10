@@ -2,17 +2,7 @@
 #include "core/managers/mgraphics.h"
 #include "core/renderer/renderer.h"
 
-TResult MGraphics::initDefaultPhysicalDevice() {
-  RE_LOG(Log, "Setting up the default physical device.");
-
-  TResult chkResult;
-  if (chkResult = detectPhysicalDevices() != RE_OK) return chkResult;
-  if (chkResult = useFirstValidPhysicalDevice() != RE_OK) return chkResult;
-
-  return RE_OK;
-}
-
-TResult MGraphics::detectPhysicalDevices() {
+TResult MGraphics::enumPhysicalDevices() {
   uint32_t numDevices = 0, index = 0;
   std::vector<VkPhysicalDevice> physicalDevices;
 
@@ -35,7 +25,16 @@ TResult MGraphics::detectPhysicalDevices() {
   return RE_OK;
 }
 
-TResult MGraphics::usePhysicalDevice(const RVkPhysicalDevice& device) {
+TResult MGraphics::initPhysicalDevice() {
+  for (const auto& deviceInfo : availablePhysicalDevices)
+    if (initPhysicalDevice(deviceInfo) == RE_OK) return RE_OK;
+
+  RE_LOG(Critical, "No valid physical devices found.");
+
+  return RE_CRITICAL;
+}
+
+TResult MGraphics::initPhysicalDevice(const RVkPhysicalDevice& device) {
   if (!device.bIsValid) return RE_ERROR;
 
   physicalDevice = device;
@@ -45,16 +44,6 @@ TResult MGraphics::usePhysicalDevice(const RVkPhysicalDevice& device) {
          physicalDevice.properties.deviceName);
 
   return RE_OK;
-}
-
-TResult MGraphics::useFirstValidPhysicalDevice() {
-  for (const auto& deviceInfo : availablePhysicalDevices)
-    if (usePhysicalDevice(deviceInfo) == RE_OK)
-      return createLogicalDevice(deviceInfo);
-
-  RE_LOG(Critical, "No valid physical devices found.");
-
-  return RE_CRITICAL;
 }
 
 TResult MGraphics::setPhysicalDeviceData(VkPhysicalDevice device,

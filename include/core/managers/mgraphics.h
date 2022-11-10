@@ -61,6 +61,9 @@ public:
   TResult initialize();
   void deinitialize();
 
+  // initialize Vulkan memory allocator
+  TResult initMemAlloc();
+
   // wait until all queues and device are idle
   void waitForSystemIdle();
 
@@ -75,21 +78,16 @@ public:
   // mgraphics_physicaldevice
   //
 
-  // generic initialization method that uses physical device methods to set
-  // default physical device
-  TResult initDefaultPhysicalDevice();
+  // find all available physical devices and store them in graphics manager
+  TResult enumPhysicalDevices();
 
-  // store all physical devices available in the graphics manager
-  TResult detectPhysicalDevices();
+  // automatically use the first valid physical device
+  TResult initPhysicalDevice();
 
   // try to use this physical device if valid
-  TResult usePhysicalDevice(const RVkPhysicalDevice& physicalDeviceData);
+  TResult initPhysicalDevice(const RVkPhysicalDevice& physicalDeviceData);
 
-  // use the first valid physical device
-  TResult useFirstValidPhysicalDevice();
-
-  // fill in physical device information structure, also performs device
-  // validity checks
+  // setup physical device database, validate all devices as per usage requirements
   TResult setPhysicalDeviceData(VkPhysicalDevice device,
                                 RVkPhysicalDevice& outDeviceData);
 
@@ -122,8 +120,11 @@ public:
   //
 
  public:
+  // creates logical device from the currently active physical one
+  TResult initLogicalDevice();
+
   // create a logical device to communicate with a physical device
-  TResult createLogicalDevice(const RVkPhysicalDevice& deviceData);
+  TResult initLogicalDevice(const RVkPhysicalDevice& deviceData);
   void destroyLogicalDevice(VkDevice device = nullptr,
                             const VkAllocationCallbacks* pAllocator = nullptr);
 

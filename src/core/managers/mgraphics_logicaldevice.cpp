@@ -2,7 +2,9 @@
 #include "core/managers/mgraphics.h"
 #include "core/renderer/renderer.h"
 
-TResult MGraphics::createLogicalDevice(
+TResult MGraphics::initLogicalDevice() { return initLogicalDevice(physicalDevice); }
+
+TResult MGraphics::initLogicalDevice(
     const RVkPhysicalDevice& physicalDeviceData) {
   if (physicalDeviceData.queueFamilyIndices.graphics.empty()) return RE_ERROR;
 

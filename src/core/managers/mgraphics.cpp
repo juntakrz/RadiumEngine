@@ -74,7 +74,13 @@ TResult MGraphics::initialize() {
     chkResult = mgrDbg->create(mgrGfx->APIInstance);
 
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSurface();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = initDefaultPhysicalDevice();
+
+  if (chkResult <= RE_ERRORLIMIT) chkResult = enumPhysicalDevices();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = initPhysicalDevice();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = initLogicalDevice();
+
+  if (chkResult <= RE_ERRORLIMIT) chkResult = initMemAlloc();
+
   if (chkResult <= RE_ERRORLIMIT)
     chkResult =
         initSwapChain(core::renderer::format, core::renderer::colorSpace,
@@ -107,6 +113,8 @@ void MGraphics::deinitialize() {
   destroyLogicalDevice();
   destroyInstance();
 }
+
+TResult MGraphics::initMemAlloc() { return RE_OK; }
 
 void MGraphics::waitForSystemIdle() {
   vkQueueWaitIdle(logicalDevice.queues.graphics);
