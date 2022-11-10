@@ -190,8 +190,8 @@ TResult MGraphics::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
   submitInfo.commandBufferCount = 1;
   submitInfo.pCommandBuffers = &gSystem.auxBuffer;
 
-  vkQueueSubmit(logicalDevice.queues.graphics, 1, &submitInfo, VK_NULL_HANDLE);
-  vkQueueWaitIdle(logicalDevice.queues.graphics);
+  vkQueueSubmit(logicalDevice.queues.transfer, 1, &submitInfo, VK_NULL_HANDLE);
+  vkQueueWaitIdle(logicalDevice.queues.transfer);
 
   return RE_OK;
 }

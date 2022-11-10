@@ -29,7 +29,13 @@ void WMesh::allocateMemory() {
   vbInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
   vbInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
   vbInfo.size = vertexBufferSize;
-  vbInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  vbInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+
+  std::vector<uint32_t> queueFamilyIndices = {
+      (uint32_t)mgrGfx->physicalDevice.queueFamilyIndices.graphics.at(0),
+      (uint32_t)mgrGfx->physicalDevice.queueFamilyIndices.transfer.at(0)};
+  vbInfo.pQueueFamilyIndices = queueFamilyIndices.data();
+  vbInfo.queueFamilyIndexCount = queueFamilyIndices.size();
 
   VmaAllocationCreateInfo vbAllocInfo{};
   vbAllocInfo.usage = VMA_MEMORY_USAGE_AUTO;
