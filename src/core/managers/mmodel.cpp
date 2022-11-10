@@ -25,6 +25,8 @@ TResult MModel::destroyMesh(uint32_t index) {
 }
 
 void MModel::destroyAllMeshes() {
+  RE_LOG(Log, "Clearing all mesh buffers and allocations.");
+
   for (auto& it : meshes) {
     it->destroy();
     it.reset();

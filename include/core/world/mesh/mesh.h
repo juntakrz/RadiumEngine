@@ -16,6 +16,7 @@ class WMesh {
 
  public:
   RBuffer vertexBuffer;
+  RBuffer stagingBuffer;
 
   std::vector<RVertex> vertices;
   std::vector<uint32_t> indices;
