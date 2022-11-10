@@ -257,25 +257,48 @@ void MGraphics::destroyCommandPool() {
   vkDestroyCommandPool(logicalDevice.device, dataRender.commandPool, nullptr);
 }
 
-TResult MGraphics::createCommandBuffers () {
-  RE_LOG(Log, "Creating command buffers for %d frames.", MAX_FRAMES_IN_FLIGHT);
+TResult MGraphics::createCommandBuffers() {
+  RE_LOG(Log, "Creating rendering command buffers for %d frames.",
+         MAX_FRAMES_IN_FLIGHT);
 
   dataRender.cmdBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
-  VkCommandBufferAllocateInfo cmdBufferAllocInfo{};
-  cmdBufferAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-  cmdBufferAllocInfo.commandPool = dataRender.commandPool;
-  cmdBufferAllocInfo.commandBufferCount = (uint32_t)dataRender.cmdBuffers.size();
-  cmdBufferAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+  VkCommandBufferAllocateInfo cmdBufferInfo{};
+  cmdBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+  cmdBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+  cmdBufferInfo.commandPool = dataRender.commandPool;
+  cmdBufferInfo.commandBufferCount =
+      (uint32_t)dataRender.cmdBuffers.size();
 
-  if (vkAllocateCommandBuffers(logicalDevice.device, &cmdBufferAllocInfo,
-                                   dataRender.cmdBuffers.data()) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to allocate command buffers.");
+  if (vkAllocateCommandBuffers(logicalDevice.device, &cmdBufferInfo,
+                               dataRender.cmdBuffers.data()) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to allocate rendering command buffers.");
+    return RE_CRITICAL;
+  }
 
+  RE_LOG(Log, "Creating aux command buffer.");
+
+  cmdBufferInfo.commandBufferCount = 1;
+
+  if (vkAllocateCommandBuffers(logicalDevice.device, &cmdBufferInfo,
+                               &dataRender.auxBuffer) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to allocate aux command buffer.");
     return RE_CRITICAL;
   }
 
   return RE_OK;
+}
+
+void MGraphics::destroyCommandBuffers() {
+  RE_LOG(Log, "Freeing %d rendering command buffers.",
+         dataRender.cmdBuffers.size());
+  vkFreeCommandBuffers(logicalDevice.device, dataRender.commandPool,
+                       static_cast<uint32_t>(dataRender.cmdBuffers.size()),
+                       dataRender.cmdBuffers.data());
+
+  RE_LOG(Log, "Freeing aux command buffer.");
+  vkFreeCommandBuffers(logicalDevice.device, dataRender.commandPool, 1,
+                       &dataRender.auxBuffer);
 }
 
 TResult MGraphics::recordCommandBuffer(VkCommandBuffer commandBuffer,

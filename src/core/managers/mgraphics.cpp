@@ -104,6 +104,7 @@ void MGraphics::deinitialize() {
 
   destroySwapChain();
   destroySyncObjects();
+  destroyCommandBuffers();
   destroyCommandPool();
   destroyGraphicsPipeline();
   destroyRenderPass();
@@ -169,6 +170,30 @@ uint32_t MGraphics::bindMesh(WMesh* pMesh) {
 
   dataRender.meshes.emplace_back(pMesh);
   return (uint32_t)dataRender.meshes.size() - 1;
+}
+
+TResult MGraphics::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
+                              VkBufferCopy* copyRegion) {
+  VkCommandBufferBeginInfo cmdBufferBeginInfo{};
+  cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+  vkBeginCommandBuffer(dataRender.auxBuffer, &cmdBufferBeginInfo);
+
+  vkCmdCopyBuffer(dataRender.auxBuffer, srcBuffer->buffer, dstBuffer->buffer, 1,
+                  copyRegion);
+
+  vkEndCommandBuffer(dataRender.auxBuffer);
+
+  VkSubmitInfo submitInfo{};
+  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  submitInfo.commandBufferCount = 1;
+  submitInfo.pCommandBuffers = &dataRender.auxBuffer;
+
+  vkQueueSubmit(logicalDevice.queues.graphics, 1, &submitInfo, VK_NULL_HANDLE);
+  vkQueueWaitIdle(logicalDevice.queues.graphics);
+
+  return RE_OK;
 }
 
 VkShaderModule MGraphics::createShaderModule(std::vector<char>& shaderCode) {

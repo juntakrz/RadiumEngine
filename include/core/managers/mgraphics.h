@@ -25,6 +25,7 @@ class MGraphics {
     VkCommandPool commandPool;
     uint32_t idFrame = 0;                       // in flight frame index
     std::vector<VkCommandBuffer> cmdBuffers;
+    VkCommandBuffer auxBuffer;                  // single time buffer
     std::vector<WMesh*> meshes;                 // meshes rendered during the current frame
   } dataRender;
 
@@ -75,6 +76,9 @@ public:
 
   // binds mesh to graphics pipeline
   uint32_t bindMesh(WMesh* pMesh);
+
+  TResult copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
+                     VkBufferCopy* copyRegion);
 
   //
   // mgraphics_physicaldevice
@@ -130,8 +134,6 @@ public:
   void destroyLogicalDevice(VkDevice device = nullptr,
                             const VkAllocationCallbacks* pAllocator = nullptr);
 
-  TResult copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer, VkBufferCopy* copyRegion);
-
   // -----
 
   //
@@ -183,6 +185,7 @@ public:
   void destroyCommandPool();
 
   TResult createCommandBuffers();
+  void destroyCommandBuffers();
   TResult recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
   TResult createSyncObjects();
