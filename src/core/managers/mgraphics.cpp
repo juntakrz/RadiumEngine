@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "vk_mem_alloc.h"
 #include "core/managers/mgraphics.h"
 #include "core/managers/mdebug.h"
 #include "core/managers/mwindow.h"
@@ -79,7 +80,7 @@ TResult MGraphics::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = initPhysicalDevice();
   if (chkResult <= RE_ERRORLIMIT) chkResult = initLogicalDevice();
 
-  if (chkResult <= RE_ERRORLIMIT) chkResult = initMemAlloc();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createMemAlloc();
 
   if (chkResult <= RE_ERRORLIMIT)
     chkResult =
@@ -111,10 +112,31 @@ void MGraphics::deinitialize() {
   mgrModel->destroyAllMeshes();
   if(bRequireValidationLayers) mgrDbg->destroy(APIInstance);
   destroyLogicalDevice();
+  destroyMemAlloc();
   destroyInstance();
 }
 
-TResult MGraphics::initMemAlloc() { return RE_OK; }
+TResult MGraphics::createMemAlloc() {
+  RE_LOG(Log, "initializing Vulkan memory allocator.");
+
+  VmaAllocatorCreateInfo createInfo{};
+  createInfo.instance = APIInstance;
+  createInfo.physicalDevice = physicalDevice.device;
+  createInfo.device = logicalDevice.device;
+  createInfo.vulkanApiVersion = VK_API_VERSION_1_3;
+  
+  if (vmaCreateAllocator(&createInfo, &memAlloc) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to create Vulkan memory allocator.");
+    return RE_CRITICAL;
+  };
+
+  return RE_OK;
+}
+
+void MGraphics::destroyMemAlloc() {
+  RE_LOG(Log, "Destroying Vulkan memory allocator.");
+  vmaDestroyAllocator(memAlloc);
+}
 
 void MGraphics::waitForSystemIdle() {
   vkQueueWaitIdle(logicalDevice.queues.graphics);

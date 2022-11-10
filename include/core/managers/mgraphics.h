@@ -1,5 +1,6 @@
 #pragma once
 
+#include "vk_mem_alloc.h"
 #include "core/objects.h"
 #include "common.h"
 
@@ -34,6 +35,8 @@ class MGraphics {
     } sync;
   } dataRender;
 
+  VmaAllocator memAlloc;
+
   MGraphics();
 
 public:
@@ -62,7 +65,8 @@ public:
   void deinitialize();
 
   // initialize Vulkan memory allocator
-  TResult initMemAlloc();
+  TResult createMemAlloc();
+  void destroyMemAlloc();
 
   // wait until all queues and device are idle
   void waitForSystemIdle();
