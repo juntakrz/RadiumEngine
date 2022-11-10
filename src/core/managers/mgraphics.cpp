@@ -119,13 +119,13 @@ void MGraphics::deinitialize() {
 TResult MGraphics::createMemAlloc() {
   RE_LOG(Log, "initializing Vulkan memory allocator.");
 
-  VmaAllocatorCreateInfo createInfo{};
-  createInfo.instance = APIInstance;
-  createInfo.physicalDevice = physicalDevice.device;
-  createInfo.device = logicalDevice.device;
-  createInfo.vulkanApiVersion = VK_API_VERSION_1_3;
-  
-  if (vmaCreateAllocator(&createInfo, &memAlloc) != VK_SUCCESS) {
+  VmaAllocatorCreateInfo allocCreateInfo{};
+  allocCreateInfo.instance = APIInstance;
+  allocCreateInfo.physicalDevice = physicalDevice.device;
+  allocCreateInfo.device = logicalDevice.device;
+  allocCreateInfo.vulkanApiVersion = VK_API_VERSION_1_3;
+
+  if (vmaCreateAllocator(&allocCreateInfo, &memAlloc) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create Vulkan memory allocator.");
     return RE_CRITICAL;
   };

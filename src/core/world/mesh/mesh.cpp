@@ -1,38 +1,26 @@
 #include "pch.h"
+#include "vk_mem_alloc.h"
 #include "core/core.h"
 #include "core/managers/mgraphics.h"
 #include "core/world/mesh/mesh.h"
 
-void WMesh::setMemory() {
-  VkDeviceSize bufferSize = vertices.size() * sizeof(RVertex);
-  RBuffer stagingBuffer;
-  VkDeviceMemory stagingBufferMemory;
+void WMesh::allocateMemory() {
+  VkBufferCreateInfo vertexBufferInfo{};
+  vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  vertexBufferInfo.usage =
+      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
-  // assign ptr to vertex data
-  stagingBuffer.pData = vertices.data();
+  VmaAllocationCreateInfo allocCreateInfo{};
+  allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 
-  // create staging buffer and allocate CPU-accessible memory for it
-  mgrGfx->createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-                       &stagingBuffer, stagingBufferMemory);
-
-  // copy staging buffer to CPU accessible memory
-  mgrGfx->copyToCPUAccessMemory(&stagingBuffer, stagingBufferMemory);
-
-  // create GPU local vertex buffer
-  mgrGfx->createBuffer(
-      bufferSize,
-      VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vertexBuffer, vertexBufferMemory);
-
-  mgrGfx->copyBuffer(&stagingBuffer, &vertexBuffer);
-
-  vkDestroyBuffer(mgrGfx->logicalDevice.device, stagingBuffer.buffer, nullptr);
-  vkFreeMemory(mgrGfx->logicalDevice.device, stagingBufferMemory, nullptr);
+  vmaCreateBuffer(mgrGfx->memAlloc, &vertexBufferInfo, &allocCreateInfo,
+                  &vertexBuffer.buffer, &vertexBuffer.allocation,
+                  &vertexBuffer.allocInfo);
 };
 
 void WMesh::destroy() {
-  vkDestroyBuffer(mgrGfx->logicalDevice.device, vertexBuffer.buffer, nullptr);
-  vkFreeMemory(mgrGfx->logicalDevice.device, vertexBufferMemory, nullptr);
+  //vkDestroyBuffer(mgrGfx->logicalDevice.device, vertexBuffer.buffer, nullptr);
+  //vkFreeMemory(mgrGfx->logicalDevice.device, vertexBufferMemory, nullptr);
+  vmaDestroyBuffer(mgrGfx->memAlloc, vertexBuffer.buffer,
+                   vertexBuffer.allocation);
 }

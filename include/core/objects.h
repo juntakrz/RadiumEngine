@@ -1,5 +1,7 @@
 #pragma once
 
+#include "vk_mem_alloc.h"
+
 class WMesh;
 
 struct RVkQueueFamilyIndices {
@@ -38,11 +40,17 @@ struct RVkLogicalDevice {
   } queues;
 };
 
-struct RBuffer {
+/* struct RBuffer {
   VkBuffer buffer;
   VkDeviceSize size;
   VkMemoryRequirements memRequirements;
   void *pData;
+};*/
+
+struct RBuffer {
+  VkBuffer buffer;
+  VmaAllocation allocation;
+  VmaAllocationInfo allocInfo;
 };
 
 struct RVertex {

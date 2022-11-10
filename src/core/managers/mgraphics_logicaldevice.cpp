@@ -79,7 +79,7 @@ void MGraphics::destroyLogicalDevice(VkDevice device,
 TResult MGraphics::createBuffer(VkDeviceSize size,
                                              VkBufferUsageFlags usage,
                                              RBuffer* outBuffer) {
-  if (!outBuffer) {
+  /* if (!outBuffer) {
     RE_LOG(Error, "No outgoing buffer was provided.");
     return RE_ERROR;
   }
@@ -99,7 +99,7 @@ TResult MGraphics::createBuffer(VkDeviceSize size,
   vkGetBufferMemoryRequirements(logicalDevice.device, outBuffer->buffer,
                                 &outBuffer->memRequirements);
 
-  outBuffer->size = size;
+  outBuffer->size = size;*/
 
   return RE_OK;
 }
@@ -107,7 +107,7 @@ TResult MGraphics::createBuffer(VkDeviceSize size,
 TResult MGraphics::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
                                 VkMemoryPropertyFlags properties,
                                 RBuffer* outBuffer, VkDeviceMemory& outMemory) {
-  if (!outBuffer) {
+  /* if (!outBuffer) {
     RE_LOG(Error, "No outgoing buffer was provided.");
     return RE_ERROR;
   }
@@ -145,7 +145,7 @@ TResult MGraphics::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
                          NULL) != VK_SUCCESS) {
     RE_LOG(Error, "Failed to bind buffer memory.");
     return RE_ERROR;
-  }
+  }*/
 
   return RE_OK;
 }
@@ -153,7 +153,7 @@ TResult MGraphics::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
 TResult MGraphics::allocateBufferMemory(RBuffer* inBuffer,
                                                VkMemoryPropertyFlags properties,
                                                VkDeviceMemory& outMemory) {
-  if (!inBuffer) {
+  /*if (!inBuffer) {
     RE_LOG(Error, "No source buffer was provided.");
     return RE_ERROR;
   }
@@ -188,12 +188,12 @@ TResult MGraphics::copyToCPUAccessMemory(RBuffer* inBuffer,
   };
   memcpy(pMappedMemory, inBuffer->pData, (size_t)inBuffer->size);
   vkUnmapMemory(logicalDevice.device, outMemory);
-
+  */
   return RE_OK;
 }
 
 TResult MGraphics::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer) {
-  VkCommandBufferAllocateInfo cmdBufferInfo{};
+  /*VkCommandBufferAllocateInfo cmdBufferInfo{};
   cmdBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
   cmdBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
   cmdBufferInfo.commandBufferCount = 1;
@@ -228,6 +228,6 @@ TResult MGraphics::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer) {
 
   vkFreeCommandBuffers(logicalDevice.device, dataRender.commandPool, 1,
                        &cmdBuffer);
-
+*/
   return RE_OK;
 }

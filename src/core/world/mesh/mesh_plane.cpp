@@ -10,7 +10,7 @@ void WMesh_Plane::create(int arg1, int arg2) {
   vertices = model.vertices;
   indices = model.indices;
 
-  vertexBuffer.pData = vertices.data();
+  //vertexBuffer.pData = vertices.data();
 
-  setMemory();
+  allocateMemory();
 }

@@ -4,7 +4,8 @@
 
 class WMesh {
  protected:
-  void setMemory();
+  // allocate memory for vertex and index buffers
+  virtual void allocateMemory();
 
  public:
   WMesh(){};
@@ -15,7 +16,6 @@ class WMesh {
 
  public:
   RBuffer vertexBuffer;
-  VkDeviceMemory vertexBufferMemory;
 
   std::vector<RVertex> vertices;
   std::vector<uint32_t> indices;

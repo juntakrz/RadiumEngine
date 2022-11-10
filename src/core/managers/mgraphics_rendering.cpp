@@ -325,7 +325,8 @@ TResult MGraphics::recordCommandBuffer(VkCommandBuffer commandBuffer,
 
   VkBuffer buffers[] = {dataRender.meshes[0]->vertexBuffer.buffer};
   VkDeviceSize offsets[] = {0};
-  uint32_t numVertices = static_cast<uint32_t>(dataRender.meshes[0]->vertexBuffer.size / sizeof(RVertex));
+  uint32_t numVertices = static_cast<uint32_t>(
+      dataRender.meshes[0]->vertexBuffer.allocInfo.size / sizeof(RVertex));
 
   vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
 
@@ -346,9 +347,9 @@ TResult MGraphics::createSyncObjects() {
   RE_LOG(Log, "Creating sychronization objects for %d frames.",
          MAX_FRAMES_IN_FLIGHT);
 
-  dataRender.sync.sImgAvailable.resize(MAX_FRAMES_IN_FLIGHT);
-  dataRender.sync.sRndrFinished.resize(MAX_FRAMES_IN_FLIGHT);
-  dataRender.sync.fInFlight.resize(MAX_FRAMES_IN_FLIGHT);
+  dataSync.sImgAvailable.resize(MAX_FRAMES_IN_FLIGHT);
+  dataSync.sRndrFinished.resize(MAX_FRAMES_IN_FLIGHT);
+  dataSync.fInFlight.resize(MAX_FRAMES_IN_FLIGHT);
 
   VkSemaphoreCreateInfo semInfo{};
   semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -360,21 +361,21 @@ TResult MGraphics::createSyncObjects() {
 
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
     if (vkCreateSemaphore(logicalDevice.device, &semInfo, nullptr,
-                          &dataRender.sync.sImgAvailable[i]) != VK_SUCCESS) {
+                          &dataSync.sImgAvailable[i]) != VK_SUCCESS) {
       RE_LOG(Critical, "failed to create 'image available' semaphore.");
 
       return RE_CRITICAL;
     }
 
     if (vkCreateSemaphore(logicalDevice.device, &semInfo, nullptr,
-                          &dataRender.sync.sRndrFinished[i]) != VK_SUCCESS) {
+                          &dataSync.sRndrFinished[i]) != VK_SUCCESS) {
       RE_LOG(Critical, "failed to create 'render finished' semaphore.");
 
       return RE_CRITICAL;
     }
 
     if (vkCreateFence(logicalDevice.device, &fenInfo, nullptr,
-                      &dataRender.sync.fInFlight[i])) {
+                      &dataSync.fInFlight[i])) {
       RE_LOG(Critical, "failed to create 'in flight' fence.");
 
       return RE_CRITICAL;
@@ -388,12 +389,12 @@ void MGraphics::destroySyncObjects() {
   RE_LOG(Log, "Destroying synchronization objects.");
 
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-    vkDestroySemaphore(logicalDevice.device, dataRender.sync.sImgAvailable[i],
+    vkDestroySemaphore(logicalDevice.device, dataSync.sImgAvailable[i],
                        nullptr);
-    vkDestroySemaphore(logicalDevice.device, dataRender.sync.sRndrFinished[i],
+    vkDestroySemaphore(logicalDevice.device, dataSync.sRndrFinished[i],
                        nullptr);
 
-    vkDestroyFence(logicalDevice.device, dataRender.sync.fInFlight[i],
+    vkDestroyFence(logicalDevice.device, dataSync.fInFlight[i],
                    nullptr);
   }
 }
@@ -403,12 +404,12 @@ TResult MGraphics::drawFrame() {
   TResult chkResult = RE_OK;
 
   vkWaitForFences(logicalDevice.device, 1,
-                  &dataRender.sync.fInFlight[dataRender.idFrame], VK_TRUE,
+                  &dataSync.fInFlight[dataRender.idFrame], VK_TRUE,
                   UINT64_MAX);
 
   VkResult APIResult =
       vkAcquireNextImageKHR(logicalDevice.device, swapChain, UINT64_MAX,
-                            dataRender.sync.sImgAvailable[dataRender.idFrame],
+                            dataSync.sImgAvailable[dataRender.idFrame],
                             VK_NULL_HANDLE, &imageIndex);
 
   if (APIResult == VK_ERROR_OUT_OF_DATE_KHR) {
@@ -427,16 +428,16 @@ TResult MGraphics::drawFrame() {
   // reset fences if we will do any work this frame e.g. no swap chain
   // recreation
   vkResetFences(logicalDevice.device, 1,
-                &dataRender.sync.fInFlight[dataRender.idFrame]);
+                &dataSync.fInFlight[dataRender.idFrame]);
 
   vkResetCommandBuffer(dataRender.cmdBuffers[dataRender.idFrame], NULL);
 
   recordCommandBuffer(dataRender.cmdBuffers[dataRender.idFrame], imageIndex);
 
   // wait until image to write color data to is acquired
-  VkSemaphore waitSems[] = {dataRender.sync.sImgAvailable[dataRender.idFrame]};
+  VkSemaphore waitSems[] = {dataSync.sImgAvailable[dataRender.idFrame]};
   VkSemaphore signalSems[] = {
-      dataRender.sync.sRndrFinished[dataRender.idFrame]};
+      dataSync.sRndrFinished[dataRender.idFrame]};
   VkPipelineStageFlags waitStages[] = {
       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
@@ -457,7 +458,7 @@ TResult MGraphics::drawFrame() {
   // submit an array featuring command buffers to graphics queue and signal
   // fence for CPU to wait for execution
   if (vkQueueSubmit(logicalDevice.queues.graphics, 1, &submitInfo,
-                    dataRender.sync.fInFlight[dataRender.idFrame]) !=
+                    dataSync.fInFlight[dataRender.idFrame]) !=
       VK_SUCCESS) {
     RE_LOG(Error, "Failed to submit data to graphics queue.");
 

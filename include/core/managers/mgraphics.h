@@ -23,19 +23,16 @@ class MGraphics {
     VkPipelineLayout pipelineLayout;
     VkPipeline pipeline;
     VkCommandPool commandPool;
-    std::vector<VkCommandBuffer> cmdBuffers;
-    std::vector<VkBuffer> vertexBuffers;
-    std::vector<WMesh*> meshes;
     uint32_t idFrame = 0;                       // in flight frame index
-
-    struct {
-      std::vector<VkSemaphore> sImgAvailable;
-      std::vector<VkSemaphore> sRndrFinished;
-      std::vector<VkFence> fInFlight;
-    } sync;
+    std::vector<VkCommandBuffer> cmdBuffers;
+    std::vector<WMesh*> meshes;                 // meshes rendered during the current frame
   } dataRender;
 
-  VmaAllocator memAlloc;
+  struct {
+    std::vector<VkSemaphore> sImgAvailable;
+    std::vector<VkSemaphore> sRndrFinished;
+    std::vector<VkFence> fInFlight;
+  } dataSync;
 
   MGraphics();
 
@@ -46,6 +43,7 @@ public:
   std::vector<RVkPhysicalDevice> availablePhysicalDevices;
   RVkPhysicalDevice physicalDevice;
   RVkLogicalDevice logicalDevice;
+  VmaAllocator memAlloc;
   uint32_t framesRendered = 0;
   bool bFramebufferResized = false;
 
