@@ -8,6 +8,7 @@ struct RVkQueueFamilyIndices {
   std::vector<int32_t> graphics;
   std::vector<int32_t> compute;
   std::vector<int32_t> present;
+  std::vector<int32_t> transfer;
 
   // retrieve first entries for queue family indices
   std::set<int32_t> getAsSet() const;
@@ -34,18 +35,12 @@ struct RVkLogicalDevice {
   VkDeviceMemory vertexBufferMemory;
 
   struct {
-    VkQueue graphics = VK_NULL_HANDLE;
-    VkQueue compute = VK_NULL_HANDLE;
-    VkQueue present = VK_NULL_HANDLE;
+    VkQueue graphics  = VK_NULL_HANDLE;
+    VkQueue compute   = VK_NULL_HANDLE;
+    VkQueue present   = VK_NULL_HANDLE;
+    VkQueue transfer  = VK_NULL_HANDLE;
   } queues;
 };
-
-/* struct RBuffer {
-  VkBuffer buffer;
-  VkDeviceSize size;
-  VkMemoryRequirements memRequirements;
-  void *pData;
-};*/
 
 struct RBuffer {
   VkBuffer buffer;

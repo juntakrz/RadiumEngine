@@ -16,23 +16,25 @@ class MGraphics {
     std::vector<VkImage> images;
     std::vector<VkImageView> imageViews;
     std::vector<VkFramebuffer> framebuffers;
-  } dataSwapChain;
+  } gSwapchain;
 
   struct {
     VkRenderPass renderPass;
     VkPipelineLayout pipelineLayout;
     VkPipeline pipeline;
-    VkCommandPool commandPool;
-    uint32_t idFrame = 0;                       // in flight frame index
-    std::vector<VkCommandBuffer> cmdBuffers;
+    VkCommandPool cmdPoolRender;
+    VkCommandPool cmdPoolTransfer;
+    std::vector<VkCommandBuffer> cmdBuffersRender;
+    std::vector<VkCommandBuffer> cmdBuffersTransfer;
+    uint32_t idIFFrame = 0;                     // in flight frame index
     std::vector<WMesh*> meshes;                 // meshes rendered during the current frame
-  } dataRender;
+  } gSystem;
 
   struct {
     std::vector<VkSemaphore> sImgAvailable;
     std::vector<VkSemaphore> sRndrFinished;
     std::vector<VkFence> fInFlight;
-  } dataSync;
+  } gSync;
 
   MGraphics();
 
@@ -75,6 +77,10 @@ public:
 
   // binds mesh to graphics pipeline
   uint32_t bindMesh(WMesh* pMesh);
+
+  // copy buffer with SRC and DST bits
+  TResult copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
+                     VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
 
   //
   // mgraphics_physicaldevice
@@ -130,8 +136,6 @@ public:
   void destroyLogicalDevice(VkDevice device = nullptr,
                             const VkAllocationCallbacks* pAllocator = nullptr);
 
-  TResult copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer, VkBufferCopy* copyRegion);
-
   // -----
 
   //
@@ -179,10 +183,11 @@ public:
   TResult createGraphicsPipeline();
   void destroyGraphicsPipeline();
 
-  TResult createCommandPool();
-  void destroyCommandPool();
+  TResult createCommandPools();
+  void destroyCommandPools();
 
   TResult createCommandBuffers();
+  void destroyCommandBuffers();
   TResult recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
   TResult createSyncObjects();
