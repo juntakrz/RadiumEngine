@@ -57,10 +57,20 @@ TResult MGraphics::initLogicalDevice(
                    physicalDevice.queueFamilyIndices.graphics[0], 0,
                    &logicalDevice.queues.graphics);
 
+  // create compute queue for a logical device
+  vkGetDeviceQueue(logicalDevice.device,
+                   physicalDevice.queueFamilyIndices.compute[0], 0,
+                   &logicalDevice.queues.compute);
+
   // create present queue for a logical device
   vkGetDeviceQueue(logicalDevice.device,
                    physicalDevice.queueFamilyIndices.present[0], 0,
                    &logicalDevice.queues.present);
+
+  // create transfer queue for a logical device
+  vkGetDeviceQueue(logicalDevice.device,
+                   physicalDevice.queueFamilyIndices.transfer[0], 0,
+                   &logicalDevice.queues.transfer);
 
   RE_LOG(Log,
          "Successfully created logical device for '%s', handle: 0x%016llX.",

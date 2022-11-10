@@ -7,7 +7,7 @@ std::set<int32_t> RVkQueueFamilyIndices::getAsSet() const {
     return {-1};
   }
 
-  return {graphics[0], compute[0], present[0], transfer[0]};
+  return {graphics.at(0), compute.at(0), present.at(0), transfer.at(0)};
 }
 
 VkVertexInputBindingDescription RVertex::getBindingDesc() {
