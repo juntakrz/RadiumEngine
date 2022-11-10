@@ -23,11 +23,11 @@ class MGraphics {
     VkPipelineLayout pipelineLayout;
     VkPipeline pipeline;
     VkCommandPool commandPool;
-    uint32_t idFrame = 0;                       // in flight frame index
+    uint32_t idIFFrame = 0;                     // in flight frame index
     std::vector<VkCommandBuffer> cmdBuffers;
     VkCommandBuffer auxBuffer;                  // single time buffer
     std::vector<WMesh*> meshes;                 // meshes rendered during the current frame
-  } dataRender;
+  } dataSystem;
 
   struct {
     std::vector<VkSemaphore> sImgAvailable;

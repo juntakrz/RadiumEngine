@@ -262,7 +262,7 @@ TResult MGraphics::createFramebuffers() {
   for (size_t i = 0; i < dataSwapChain.framebuffers.size(); ++i) {
     VkFramebufferCreateInfo framebufferInfo{};
     framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    framebufferInfo.renderPass = dataRender.renderPass;
+    framebufferInfo.renderPass = dataSystem.renderPass;
     framebufferInfo.attachmentCount = 1;
     framebufferInfo.pAttachments = &dataSwapChain.imageViews[i];
     framebufferInfo.width = dataSwapChain.imageExtent.width;
