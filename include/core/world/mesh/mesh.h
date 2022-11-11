@@ -3,9 +3,12 @@
 #include "core/objects.h"
 
 class WMesh {
+ private:
+  void createVertexBuffer();
+  void createIndexBuffer();
+
  protected:
-  // allocate memory for vertex and index buffers
-  virtual void allocateMemory();
+  virtual void allocateMemory();        // allocate memory for vertex and index buffers
 
  public:
   WMesh();

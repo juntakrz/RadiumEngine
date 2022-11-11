@@ -173,23 +173,28 @@ uint32_t MGraphics::bindMesh(WMesh* pMesh) {
 }
 
 TResult MGraphics::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
-                              VkBufferCopy* copyRegion) {
+                              VkBufferCopy* copyRegion, uint32_t cmdBufferId) {
+  if (cmdBufferId > MAX_TRANSFER_BUFFERS) {
+    RE_LOG(Warning, "Invalid index of transfer buffer, using default.");
+    cmdBufferId = 0;
+  }
+
   VkCommandBufferBeginInfo cmdBufferBeginInfo{};
   cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-  vkBeginCommandBuffer(gSystem.cmdBuffersTransfer[0], &cmdBufferBeginInfo);
+  vkBeginCommandBuffer(gSystem.cmdBuffersTransfer[cmdBufferId],
+                       &cmdBufferBeginInfo);
 
-  vkCmdCopyBuffer(gSystem.cmdBuffersTransfer[0], srcBuffer->buffer,
-                  dstBuffer->buffer, 1,
-                  copyRegion);
+  vkCmdCopyBuffer(gSystem.cmdBuffersTransfer[cmdBufferId], srcBuffer->buffer,
+                  dstBuffer->buffer, 1, copyRegion);
 
-  vkEndCommandBuffer(gSystem.cmdBuffersTransfer[0]);
+  vkEndCommandBuffer(gSystem.cmdBuffersTransfer[cmdBufferId]);
 
   VkSubmitInfo submitInfo{};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
   submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &gSystem.cmdBuffersTransfer[0];
+  submitInfo.pCommandBuffers = &gSystem.cmdBuffersTransfer[cmdBufferId];
 
   vkQueueSubmit(logicalDevice.queues.transfer, 1, &submitInfo, VK_NULL_HANDLE);
   vkQueueWaitIdle(logicalDevice.queues.transfer);

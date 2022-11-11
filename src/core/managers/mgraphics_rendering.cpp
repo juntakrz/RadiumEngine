@@ -350,9 +350,12 @@ TResult MGraphics::recordCommandBuffer(VkCommandBuffer commandBuffer,
 
   VkViewport viewport{};
   viewport.x = 0.0f;
-  viewport.y = 0.0f;
+  viewport.y =
+      (core::renderer::bFlipViewPortY) ? gSwapchain.imageExtent.height : 0;
   viewport.width = static_cast<float>(gSwapchain.imageExtent.width);
-  viewport.height = static_cast<float>(gSwapchain.imageExtent.height);
+  viewport.height = (core::renderer::bFlipViewPortY)
+                        ? -static_cast<float>(gSwapchain.imageExtent.height)
+                        : static_cast<float>(gSwapchain.imageExtent.height);
   viewport.minDepth = 0.0f;
   viewport.maxDepth = 1.0f;
 
@@ -364,14 +367,19 @@ TResult MGraphics::recordCommandBuffer(VkCommandBuffer commandBuffer,
   
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-  VkBuffer buffers[] = {gSystem.meshes[0]->vertexBuffer.buffer};
+  VkBuffer vertexBuffers[] = {gSystem.meshes[0]->vertexBuffer.buffer};
   VkDeviceSize offsets[] = {0};
-  uint32_t numVertices = static_cast<uint32_t>(
-      gSystem.meshes[0]->vertexBuffer.allocInfo.size / sizeof(RVertex));
+  uint32_t numVertices =
+      static_cast<uint32_t>(gSystem.meshes[0]->vertices.size());
+  uint32_t numIndices =
+      static_cast<uint32_t>(gSystem.meshes[0]->indices.size());
 
-  vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
+  vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-  vkCmdDraw(commandBuffer, numVertices, 1, 0, 0);
+  vkCmdBindIndexBuffer(commandBuffer, gSystem.meshes[0]->indexBuffer.buffer, 0,
+                       VK_INDEX_TYPE_UINT32);
+
+  vkCmdDrawIndexed(commandBuffer, numIndices, 1, 0, 0, 0);
 
   vkCmdEndRenderPass(commandBuffer);
 

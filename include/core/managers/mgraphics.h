@@ -78,8 +78,9 @@ public:
   // binds mesh to graphics pipeline
   uint32_t bindMesh(WMesh* pMesh);
 
+  // copy buffer with SRC and DST bits
   TResult copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
-                     VkBufferCopy* copyRegion);
+                     VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
 
   //
   // mgraphics_physicaldevice
