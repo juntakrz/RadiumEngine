@@ -57,10 +57,20 @@ TResult MGraphics::initLogicalDevice(
                    physicalDevice.queueFamilyIndices.graphics[0], 0,
                    &logicalDevice.queues.graphics);
 
+  // create compute queue for a logical device
+  vkGetDeviceQueue(logicalDevice.device,
+                   physicalDevice.queueFamilyIndices.compute[0], 0,
+                   &logicalDevice.queues.compute);
+
   // create present queue for a logical device
   vkGetDeviceQueue(logicalDevice.device,
                    physicalDevice.queueFamilyIndices.present[0], 0,
                    &logicalDevice.queues.present);
+
+  // create transfer queue for a logical device
+  vkGetDeviceQueue(logicalDevice.device,
+                   physicalDevice.queueFamilyIndices.transfer[0], 0,
+                   &logicalDevice.queues.transfer);
 
   RE_LOG(Log,
          "Successfully created logical device for '%s', handle: 0x%016llX.",
@@ -74,38 +84,4 @@ void MGraphics::destroyLogicalDevice(VkDevice device,
   RE_LOG(Log, "Destroying logical device, handle: 0x%016llX.", device);
   vkFreeMemory(logicalDevice.device, logicalDevice.vertexBufferMemory, nullptr);
   vkDestroyDevice(device, pAllocator);
-}
-
-TResult MGraphics::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer, VkBufferCopy* copyRegion) {
-  VkCommandBufferAllocateInfo cmdBufferInfo{};
-  cmdBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-  cmdBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  cmdBufferInfo.commandBufferCount = 1;
-  cmdBufferInfo.commandPool = dataRender.commandPool;
-
-  VkCommandBuffer cmdBuffer;
-  vkAllocateCommandBuffers(logicalDevice.device, &cmdBufferInfo, &cmdBuffer);
-
-  VkCommandBufferBeginInfo cmdBufferBeginInfo{};
-  cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-  vkBeginCommandBuffer(cmdBuffer, &cmdBufferBeginInfo);
-
-  vkCmdCopyBuffer(cmdBuffer, srcBuffer->buffer, dstBuffer->buffer, 1,
-                  copyRegion);
-
-  vkEndCommandBuffer(cmdBuffer);
-
-  VkSubmitInfo submitInfo{};
-  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &cmdBuffer;
-
-  vkQueueSubmit(logicalDevice.queues.graphics, 1, &submitInfo, VK_NULL_HANDLE);
-  vkQueueWaitIdle(logicalDevice.queues.graphics);
-
-  vkFreeCommandBuffers(logicalDevice.device, dataRender.commandPool, 1,
-                       &cmdBuffer);
-  return RE_OK;
 }

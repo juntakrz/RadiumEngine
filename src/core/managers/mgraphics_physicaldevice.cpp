@@ -192,6 +192,7 @@ TResult MGraphics::setPhysicalDeviceQueueFamilies(
                                            &queueFamilyPropertyCount,
                                            queueFamilyProperties.data());
 
+  // fill queue family indices data structure
   for (const VkQueueFamilyProperties& queueFamilyProperty :
        queueFamilyProperties) {
     if (queueFamilyProperty.queueFlags & VK_QUEUE_COMPUTE_BIT)
@@ -204,8 +205,23 @@ TResult MGraphics::setPhysicalDeviceQueueFamilies(
                                          &presentSupport);
     if (presentSupport) queueFamilyIndices.present.emplace_back(index);
 
+    if ((queueFamilyProperty.queueFlags & VK_QUEUE_TRANSFER_BIT) &&
+        queueFamilyIndices.graphics.back() != index &&
+        queueFamilyIndices.compute.back() != index &&
+        queueFamilyIndices.present.back() != index) {
+      queueFamilyIndices.transfer.emplace_back(index);
+    }
+
     presentSupport = false;
     ++index;
+  }
+
+  // if transfer queue family isn't found - use a free or first compute family
+  if (queueFamilyIndices.transfer.empty()) {
+    queueFamilyIndices.transfer.emplace_back(
+        (queueFamilyIndices.compute.size() > 1)
+            ? queueFamilyIndices.compute.at(1)
+            : queueFamilyIndices.compute.at(0));
   }
 
   deviceData.queueFamilyIndices = queueFamilyIndices;

@@ -6,7 +6,7 @@ TResult MGraphics::createRenderPass() {
   RE_LOG(Log, "Creating render pass");
 
   VkAttachmentDescription colorAttachment{};
-  colorAttachment.format = dataSwapChain.formatData.format;
+  colorAttachment.format = gSwapchain.formatData.format;
   colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
   colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;                 // clearing contents on new frame
   colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;               // storing contents in memory while rendering
@@ -41,7 +41,7 @@ TResult MGraphics::createRenderPass() {
   renderPassInfo.pDependencies = &dependency;
 
   if (vkCreateRenderPass(logicalDevice.device, &renderPassInfo, nullptr,
-                         &dataRender.renderPass) != VK_SUCCESS) {
+                         &gSystem.renderPass) != VK_SUCCESS) {
     RE_LOG(Critical, "render pass creation failed.");
 
     return RE_CRITICAL;
@@ -52,7 +52,7 @@ TResult MGraphics::createRenderPass() {
 
 void MGraphics::destroyRenderPass() {
   RE_LOG(Log, "Destroying render pass.");
-  vkDestroyRenderPass(logicalDevice.device, dataRender.renderPass, nullptr);
+  vkDestroyRenderPass(logicalDevice.device, gSystem.renderPass, nullptr);
 }
 
 TResult MGraphics::createGraphicsPipeline() {
@@ -98,14 +98,14 @@ TResult MGraphics::createGraphicsPipeline() {
   VkViewport viewport{};
   viewport.x = 0.0f;
   viewport.y = 0.0f;
-  viewport.width = (float)dataSwapChain.imageExtent.width;
-  viewport.height = (float)dataSwapChain.imageExtent.height;
+  viewport.width = (float)gSwapchain.imageExtent.width;
+  viewport.height = (float)gSwapchain.imageExtent.height;
   viewport.minDepth = 0.0f;
   viewport.maxDepth = 1.0f;
 
   VkRect2D scissor{};
   scissor.offset = {0, 0};
-  scissor.extent = dataSwapChain.imageExtent;
+  scissor.extent = gSwapchain.imageExtent;
 
   VkPipelineViewportStateCreateInfo viewportInfo{};
   viewportInfo.sType =
@@ -187,7 +187,7 @@ TResult MGraphics::createGraphicsPipeline() {
   layoutInfo.pPushConstantRanges = nullptr;
 
   if (vkCreatePipelineLayout(logicalDevice.device, &layoutInfo, nullptr,
-                             &dataRender.pipelineLayout) != VK_SUCCESS) {
+                             &gSystem.pipelineLayout) != VK_SUCCESS) {
     RE_LOG(Critical, "failed to create graphics pipeline layout.");
 
     return RE_CRITICAL;
@@ -206,15 +206,15 @@ TResult MGraphics::createGraphicsPipeline() {
   graphicsPipelineInfo.stageCount = 2;
   graphicsPipelineInfo.pStages = shaderStages;
   graphicsPipelineInfo.pVertexInputState = &vertexInputInfo;
-  graphicsPipelineInfo.layout = dataRender.pipelineLayout;
-  graphicsPipelineInfo.renderPass = dataRender.renderPass;
+  graphicsPipelineInfo.layout = gSystem.pipelineLayout;
+  graphicsPipelineInfo.renderPass = gSystem.renderPass;
   graphicsPipelineInfo.subpass = 0;                           // subpass index for render pass
   graphicsPipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
   graphicsPipelineInfo.basePipelineIndex = -1;
 
   if (vkCreateGraphicsPipelines(logicalDevice.device, VK_NULL_HANDLE, 1,
                                 &graphicsPipelineInfo, nullptr,
-                                &dataRender.pipeline) != VK_SUCCESS) {
+                                &gSystem.pipeline) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create graphics pipeline.");
 
     return RE_CRITICAL;
@@ -228,21 +228,32 @@ TResult MGraphics::createGraphicsPipeline() {
 
 void MGraphics::destroyGraphicsPipeline() {
   RE_LOG(Log, "Shutting down graphics pipeline.");
-  vkDestroyPipeline(logicalDevice.device, dataRender.pipeline, nullptr);
-  vkDestroyPipelineLayout(logicalDevice.device, dataRender.pipelineLayout, nullptr);
+  vkDestroyPipeline(logicalDevice.device, gSystem.pipeline, nullptr);
+  vkDestroyPipelineLayout(logicalDevice.device, gSystem.pipelineLayout, nullptr);
 }
 
-TResult MGraphics::createCommandPool() {
+TResult MGraphics::createCommandPools() {
   RE_LOG(Log, "Creating command pool.");
 
-  VkCommandPoolCreateInfo commandPoolInfo{};
-  commandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-  commandPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-  commandPoolInfo.queueFamilyIndex =
+  VkCommandPoolCreateInfo cmdPoolRenderInfo{};
+  cmdPoolRenderInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+  cmdPoolRenderInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+  cmdPoolRenderInfo.queueFamilyIndex =
       physicalDevice.queueFamilyIndices.graphics[0];
 
-  if (vkCreateCommandPool(logicalDevice.device, &commandPoolInfo, nullptr,
-                          &dataRender.commandPool) != VK_SUCCESS) {
+  if (vkCreateCommandPool(logicalDevice.device, &cmdPoolRenderInfo, nullptr,
+                          &gSystem.cmdPoolRender) != VK_SUCCESS) {
+    RE_LOG(Critical,
+           "failed to create command pool for graphics queue family.");
+
+    return RE_CRITICAL;
+  }
+
+  cmdPoolRenderInfo.queueFamilyIndex =
+      physicalDevice.queueFamilyIndices.transfer[0];
+
+  if (vkCreateCommandPool(logicalDevice.device, &cmdPoolRenderInfo, nullptr,
+                          &gSystem.cmdPoolTransfer) != VK_SUCCESS) {
     RE_LOG(Critical,
            "failed to create command pool for graphics queue family.");
 
@@ -252,30 +263,60 @@ TResult MGraphics::createCommandPool() {
   return RE_OK;
 }
 
-void MGraphics::destroyCommandPool() {
-  RE_LOG(Log, "Destroying command pool.");
-  vkDestroyCommandPool(logicalDevice.device, dataRender.commandPool, nullptr);
+void MGraphics::destroyCommandPools() {
+  RE_LOG(Log, "Destroying command pools.");
+  vkDestroyCommandPool(logicalDevice.device, gSystem.cmdPoolRender, nullptr);
+  vkDestroyCommandPool(logicalDevice.device, gSystem.cmdPoolTransfer, nullptr);
 }
 
-TResult MGraphics::createCommandBuffers () {
-  RE_LOG(Log, "Creating command buffers for %d frames.", MAX_FRAMES_IN_FLIGHT);
+TResult MGraphics::createCommandBuffers() {
+  RE_LOG(Log, "Creating rendering command buffers for %d frames.",
+         MAX_FRAMES_IN_FLIGHT);
 
-  dataRender.cmdBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+  gSystem.cmdBuffersRender.resize(MAX_FRAMES_IN_FLIGHT);
 
-  VkCommandBufferAllocateInfo cmdBufferAllocInfo{};
-  cmdBufferAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-  cmdBufferAllocInfo.commandPool = dataRender.commandPool;
-  cmdBufferAllocInfo.commandBufferCount = (uint32_t)dataRender.cmdBuffers.size();
-  cmdBufferAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+  VkCommandBufferAllocateInfo cmdBufferInfo{};
+  cmdBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+  cmdBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+  cmdBufferInfo.commandPool = gSystem.cmdPoolRender;
+  cmdBufferInfo.commandBufferCount =
+      (uint32_t)gSystem.cmdBuffersRender.size();
 
-  if (vkAllocateCommandBuffers(logicalDevice.device, &cmdBufferAllocInfo,
-                                   dataRender.cmdBuffers.data()) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to allocate command buffers.");
+  if (vkAllocateCommandBuffers(logicalDevice.device, &cmdBufferInfo,
+                               gSystem.cmdBuffersRender.data()) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to allocate rendering command buffers.");
+    return RE_CRITICAL;
+  }
 
+  RE_LOG(Log, "Creating %d transfer command buffers.", MAX_TRANSFER_BUFFERS);
+
+  gSystem.cmdBuffersTransfer.resize(MAX_TRANSFER_BUFFERS);
+
+  cmdBufferInfo.commandPool = gSystem.cmdPoolTransfer;
+  cmdBufferInfo.commandBufferCount =
+      (uint32_t)gSystem.cmdBuffersTransfer.size();
+
+  if (vkAllocateCommandBuffers(logicalDevice.device, &cmdBufferInfo,
+                               gSystem.cmdBuffersTransfer.data()) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to allocate transfer command buffers.");
     return RE_CRITICAL;
   }
 
   return RE_OK;
+}
+
+void MGraphics::destroyCommandBuffers() {
+  RE_LOG(Log, "Freeing %d rendering command buffers.",
+         gSystem.cmdBuffersRender.size());
+  vkFreeCommandBuffers(logicalDevice.device, gSystem.cmdPoolRender,
+                       static_cast<uint32_t>(gSystem.cmdBuffersRender.size()),
+                       gSystem.cmdBuffersRender.data());
+
+  RE_LOG(Log, "Freeing %d transfer command buffer.",
+         gSystem.cmdBuffersTransfer.size());
+  vkFreeCommandBuffers(logicalDevice.device, gSystem.cmdPoolTransfer,
+                       static_cast<uint32_t>(gSystem.cmdBuffersTransfer.size()),
+                       gSystem.cmdBuffersTransfer.data());
 }
 
 TResult MGraphics::recordCommandBuffer(VkCommandBuffer commandBuffer,
@@ -295,23 +336,26 @@ TResult MGraphics::recordCommandBuffer(VkCommandBuffer commandBuffer,
 
   VkRenderPassBeginInfo renderPassInfo{};
   renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-  renderPassInfo.renderPass = dataRender.renderPass;
-  renderPassInfo.framebuffer = dataSwapChain.framebuffers[imageIndex];
+  renderPassInfo.renderPass = gSystem.renderPass;
+  renderPassInfo.framebuffer = gSwapchain.framebuffers[imageIndex];
   renderPassInfo.renderArea.offset = {0, 0};
-  renderPassInfo.renderArea.extent = dataSwapChain.imageExtent;
+  renderPassInfo.renderArea.extent = gSwapchain.imageExtent;
   renderPassInfo.pClearValues = &clearColor;
   renderPassInfo.clearValueCount = 1;
 
   vkCmdBeginRenderPass(commandBuffer, &renderPassInfo,
                        VK_SUBPASS_CONTENTS_INLINE);
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    dataRender.pipeline);
+                    gSystem.pipeline);
 
   VkViewport viewport{};
   viewport.x = 0.0f;
-  viewport.y = 0.0f;
-  viewport.width = static_cast<float>(dataSwapChain.imageExtent.width);
-  viewport.height = static_cast<float>(dataSwapChain.imageExtent.height);
+  viewport.y =
+      (core::renderer::bFlipViewPortY) ? gSwapchain.imageExtent.height : 0;
+  viewport.width = static_cast<float>(gSwapchain.imageExtent.width);
+  viewport.height = (core::renderer::bFlipViewPortY)
+                        ? -static_cast<float>(gSwapchain.imageExtent.height)
+                        : static_cast<float>(gSwapchain.imageExtent.height);
   viewport.minDepth = 0.0f;
   viewport.maxDepth = 1.0f;
 
@@ -319,18 +363,23 @@ TResult MGraphics::recordCommandBuffer(VkCommandBuffer commandBuffer,
 
   VkRect2D scissor{};
   scissor.offset = {0, 0};
-  scissor.extent = dataSwapChain.imageExtent;
+  scissor.extent = gSwapchain.imageExtent;
   
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-  VkBuffer buffers[] = {dataRender.meshes[0]->vertexBuffer.buffer};
+  VkBuffer vertexBuffers[] = {gSystem.meshes[0]->vertexBuffer.buffer};
   VkDeviceSize offsets[] = {0};
-  uint32_t numVertices = static_cast<uint32_t>(
-      dataRender.meshes[0]->vertexBuffer.allocInfo.size / sizeof(RVertex));
+  uint32_t numVertices =
+      static_cast<uint32_t>(gSystem.meshes[0]->vertices.size());
+  uint32_t numIndices =
+      static_cast<uint32_t>(gSystem.meshes[0]->indices.size());
 
-  vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
+  vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-  vkCmdDraw(commandBuffer, numVertices, 1, 0, 0);
+  vkCmdBindIndexBuffer(commandBuffer, gSystem.meshes[0]->indexBuffer.buffer, 0,
+                       VK_INDEX_TYPE_UINT32);
+
+  vkCmdDrawIndexed(commandBuffer, numIndices, 1, 0, 0, 0);
 
   vkCmdEndRenderPass(commandBuffer);
 
@@ -347,9 +396,9 @@ TResult MGraphics::createSyncObjects() {
   RE_LOG(Log, "Creating sychronization objects for %d frames.",
          MAX_FRAMES_IN_FLIGHT);
 
-  dataSync.sImgAvailable.resize(MAX_FRAMES_IN_FLIGHT);
-  dataSync.sRndrFinished.resize(MAX_FRAMES_IN_FLIGHT);
-  dataSync.fInFlight.resize(MAX_FRAMES_IN_FLIGHT);
+  gSync.sImgAvailable.resize(MAX_FRAMES_IN_FLIGHT);
+  gSync.sRndrFinished.resize(MAX_FRAMES_IN_FLIGHT);
+  gSync.fInFlight.resize(MAX_FRAMES_IN_FLIGHT);
 
   VkSemaphoreCreateInfo semInfo{};
   semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -361,21 +410,21 @@ TResult MGraphics::createSyncObjects() {
 
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
     if (vkCreateSemaphore(logicalDevice.device, &semInfo, nullptr,
-                          &dataSync.sImgAvailable[i]) != VK_SUCCESS) {
+                          &gSync.sImgAvailable[i]) != VK_SUCCESS) {
       RE_LOG(Critical, "failed to create 'image available' semaphore.");
 
       return RE_CRITICAL;
     }
 
     if (vkCreateSemaphore(logicalDevice.device, &semInfo, nullptr,
-                          &dataSync.sRndrFinished[i]) != VK_SUCCESS) {
+                          &gSync.sRndrFinished[i]) != VK_SUCCESS) {
       RE_LOG(Critical, "failed to create 'render finished' semaphore.");
 
       return RE_CRITICAL;
     }
 
     if (vkCreateFence(logicalDevice.device, &fenInfo, nullptr,
-                      &dataSync.fInFlight[i])) {
+                      &gSync.fInFlight[i])) {
       RE_LOG(Critical, "failed to create 'in flight' fence.");
 
       return RE_CRITICAL;
@@ -389,12 +438,12 @@ void MGraphics::destroySyncObjects() {
   RE_LOG(Log, "Destroying synchronization objects.");
 
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-    vkDestroySemaphore(logicalDevice.device, dataSync.sImgAvailable[i],
+    vkDestroySemaphore(logicalDevice.device, gSync.sImgAvailable[i],
                        nullptr);
-    vkDestroySemaphore(logicalDevice.device, dataSync.sRndrFinished[i],
+    vkDestroySemaphore(logicalDevice.device, gSync.sRndrFinished[i],
                        nullptr);
 
-    vkDestroyFence(logicalDevice.device, dataSync.fInFlight[i],
+    vkDestroyFence(logicalDevice.device, gSync.fInFlight[i],
                    nullptr);
   }
 }
@@ -404,12 +453,12 @@ TResult MGraphics::drawFrame() {
   TResult chkResult = RE_OK;
 
   vkWaitForFences(logicalDevice.device, 1,
-                  &dataSync.fInFlight[dataRender.idFrame], VK_TRUE,
+                  &gSync.fInFlight[gSystem.idIFFrame], VK_TRUE,
                   UINT64_MAX);
 
   VkResult APIResult =
       vkAcquireNextImageKHR(logicalDevice.device, swapChain, UINT64_MAX,
-                            dataSync.sImgAvailable[dataRender.idFrame],
+                            gSync.sImgAvailable[gSystem.idIFFrame],
                             VK_NULL_HANDLE, &imageIndex);
 
   if (APIResult == VK_ERROR_OUT_OF_DATE_KHR) {
@@ -428,16 +477,16 @@ TResult MGraphics::drawFrame() {
   // reset fences if we will do any work this frame e.g. no swap chain
   // recreation
   vkResetFences(logicalDevice.device, 1,
-                &dataSync.fInFlight[dataRender.idFrame]);
+                &gSync.fInFlight[gSystem.idIFFrame]);
 
-  vkResetCommandBuffer(dataRender.cmdBuffers[dataRender.idFrame], NULL);
+  vkResetCommandBuffer(gSystem.cmdBuffersRender[gSystem.idIFFrame], NULL);
 
-  recordCommandBuffer(dataRender.cmdBuffers[dataRender.idFrame], imageIndex);
+  recordCommandBuffer(gSystem.cmdBuffersRender[gSystem.idIFFrame], imageIndex);
 
   // wait until image to write color data to is acquired
-  VkSemaphore waitSems[] = {dataSync.sImgAvailable[dataRender.idFrame]};
+  VkSemaphore waitSems[] = {gSync.sImgAvailable[gSystem.idIFFrame]};
   VkSemaphore signalSems[] = {
-      dataSync.sRndrFinished[dataRender.idFrame]};
+      gSync.sRndrFinished[gSystem.idIFFrame]};
   VkPipelineStageFlags waitStages[] = {
       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
@@ -449,7 +498,7 @@ TResult MGraphics::drawFrame() {
       waitStages;  // each stage index corresponds to provided semaphore index
   submitInfo.commandBufferCount = 1;
   submitInfo.pCommandBuffers =
-      &dataRender.cmdBuffers[dataRender.idFrame];  // submit command buffer
+      &gSystem.cmdBuffersRender[gSystem.idIFFrame];  // submit command buffer
                                                    // recorded previously
   submitInfo.signalSemaphoreCount = 1;
   submitInfo.pSignalSemaphores =
@@ -458,7 +507,7 @@ TResult MGraphics::drawFrame() {
   // submit an array featuring command buffers to graphics queue and signal
   // fence for CPU to wait for execution
   if (vkQueueSubmit(logicalDevice.queues.graphics, 1, &submitInfo,
-                    dataSync.fInFlight[dataRender.idFrame]) !=
+                    gSync.fInFlight[gSystem.idIFFrame]) !=
       VK_SUCCESS) {
     RE_LOG(Error, "Failed to submit data to graphics queue.");
 
@@ -496,7 +545,7 @@ TResult MGraphics::drawFrame() {
     return RE_ERROR;
   }
 
-  dataRender.idFrame = ++dataRender.idFrame % MAX_FRAMES_IN_FLIGHT;
+  gSystem.idIFFrame = ++gSystem.idIFFrame % MAX_FRAMES_IN_FLIGHT;
 
   return chkResult;
 }

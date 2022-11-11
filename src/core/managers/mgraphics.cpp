@@ -89,7 +89,7 @@ TResult MGraphics::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createRenderPass();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createGraphicsPipeline();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createFramebuffers();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createCommandPool();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createCommandPools();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCommandBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();
 
@@ -104,7 +104,8 @@ void MGraphics::deinitialize() {
 
   destroySwapChain();
   destroySyncObjects();
-  destroyCommandPool();
+  destroyCommandBuffers();
+  destroyCommandPools();
   destroyGraphicsPipeline();
   destroyRenderPass();
   destroySurface();
@@ -167,8 +168,38 @@ uint32_t MGraphics::bindMesh(WMesh* pMesh) {
     return -1;
   }
 
-  dataRender.meshes.emplace_back(pMesh);
-  return (uint32_t)dataRender.meshes.size() - 1;
+  gSystem.meshes.emplace_back(pMesh);
+  return (uint32_t)gSystem.meshes.size() - 1;
+}
+
+TResult MGraphics::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
+                              VkBufferCopy* copyRegion, uint32_t cmdBufferId) {
+  if (cmdBufferId > MAX_TRANSFER_BUFFERS) {
+    RE_LOG(Warning, "Invalid index of transfer buffer, using default.");
+    cmdBufferId = 0;
+  }
+
+  VkCommandBufferBeginInfo cmdBufferBeginInfo{};
+  cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+  vkBeginCommandBuffer(gSystem.cmdBuffersTransfer[cmdBufferId],
+                       &cmdBufferBeginInfo);
+
+  vkCmdCopyBuffer(gSystem.cmdBuffersTransfer[cmdBufferId], srcBuffer->buffer,
+                  dstBuffer->buffer, 1, copyRegion);
+
+  vkEndCommandBuffer(gSystem.cmdBuffersTransfer[cmdBufferId]);
+
+  VkSubmitInfo submitInfo{};
+  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  submitInfo.commandBufferCount = 1;
+  submitInfo.pCommandBuffers = &gSystem.cmdBuffersTransfer[cmdBufferId];
+
+  vkQueueSubmit(logicalDevice.queues.transfer, 1, &submitInfo, VK_NULL_HANDLE);
+  vkQueueWaitIdle(logicalDevice.queues.transfer);
+
+  return RE_OK;
 }
 
 VkShaderModule MGraphics::createShaderModule(std::vector<char>& shaderCode) {
