@@ -89,7 +89,7 @@ TResult MGraphics::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createRenderPass();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createGraphicsPipeline();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createFramebuffers();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createCommandPool();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createCommandPools();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCommandBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();
 
@@ -105,7 +105,7 @@ void MGraphics::deinitialize() {
   destroySwapChain();
   destroySyncObjects();
   destroyCommandBuffers();
-  destroyCommandPool();
+  destroyCommandPools();
   destroyGraphicsPipeline();
   destroyRenderPass();
   destroySurface();
@@ -178,17 +178,18 @@ TResult MGraphics::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
   cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-  vkBeginCommandBuffer(gSystem.transferBuffer, &cmdBufferBeginInfo);
+  vkBeginCommandBuffer(gSystem.cmdBuffersTransfer[0], &cmdBufferBeginInfo);
 
-  vkCmdCopyBuffer(gSystem.transferBuffer, srcBuffer->buffer, dstBuffer->buffer, 1,
+  vkCmdCopyBuffer(gSystem.cmdBuffersTransfer[0], srcBuffer->buffer,
+                  dstBuffer->buffer, 1,
                   copyRegion);
 
-  vkEndCommandBuffer(gSystem.transferBuffer);
+  vkEndCommandBuffer(gSystem.cmdBuffersTransfer[0]);
 
   VkSubmitInfo submitInfo{};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
   submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &gSystem.transferBuffer;
+  submitInfo.pCommandBuffers = &gSystem.cmdBuffersTransfer[0];
 
   vkQueueSubmit(logicalDevice.queues.transfer, 1, &submitInfo, VK_NULL_HANDLE);
   vkQueueWaitIdle(logicalDevice.queues.transfer);

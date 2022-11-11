@@ -22,11 +22,11 @@ class MGraphics {
     VkRenderPass renderPass;
     VkPipelineLayout pipelineLayout;
     VkPipeline pipeline;
-    VkCommandPool commandPool;
-    VkCommandPool transferPool;
+    VkCommandPool cmdPoolRender;
+    VkCommandPool cmdPoolTransfer;
+    std::vector<VkCommandBuffer> cmdBuffersRender;
+    std::vector<VkCommandBuffer> cmdBuffersTransfer;
     uint32_t idIFFrame = 0;                     // in flight frame index
-    std::vector<VkCommandBuffer> cmdBuffers;
-    VkCommandBuffer transferBuffer;             // transfer buffer
     std::vector<WMesh*> meshes;                 // meshes rendered during the current frame
   } gSystem;
 
@@ -182,8 +182,8 @@ public:
   TResult createGraphicsPipeline();
   void destroyGraphicsPipeline();
 
-  TResult createCommandPool();
-  void destroyCommandPool();
+  TResult createCommandPools();
+  void destroyCommandPools();
 
   TResult createCommandBuffers();
   void destroyCommandBuffers();

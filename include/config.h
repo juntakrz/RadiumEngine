@@ -5,6 +5,7 @@
 
 #define RE_ERRORLIMIT           RE_ERROR        // terminate program if some error exceeds this level
 #define MAX_FRAMES_IN_FLIGHT    2u
+#define MAX_TRANSFER_BUFFERS    2u
 
 namespace config {
 extern const char* appTitle;

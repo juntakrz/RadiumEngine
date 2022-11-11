@@ -232,17 +232,28 @@ void MGraphics::destroyGraphicsPipeline() {
   vkDestroyPipelineLayout(logicalDevice.device, gSystem.pipelineLayout, nullptr);
 }
 
-TResult MGraphics::createCommandPool() {
+TResult MGraphics::createCommandPools() {
   RE_LOG(Log, "Creating command pool.");
 
-  VkCommandPoolCreateInfo commandPoolInfo{};
-  commandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-  commandPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-  commandPoolInfo.queueFamilyIndex =
+  VkCommandPoolCreateInfo cmdPoolRenderInfo{};
+  cmdPoolRenderInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+  cmdPoolRenderInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+  cmdPoolRenderInfo.queueFamilyIndex =
       physicalDevice.queueFamilyIndices.graphics[0];
 
-  if (vkCreateCommandPool(logicalDevice.device, &commandPoolInfo, nullptr,
-                          &gSystem.commandPool) != VK_SUCCESS) {
+  if (vkCreateCommandPool(logicalDevice.device, &cmdPoolRenderInfo, nullptr,
+                          &gSystem.cmdPoolRender) != VK_SUCCESS) {
+    RE_LOG(Critical,
+           "failed to create command pool for graphics queue family.");
+
+    return RE_CRITICAL;
+  }
+
+  cmdPoolRenderInfo.queueFamilyIndex =
+      physicalDevice.queueFamilyIndices.transfer[0];
+
+  if (vkCreateCommandPool(logicalDevice.device, &cmdPoolRenderInfo, nullptr,
+                          &gSystem.cmdPoolTransfer) != VK_SUCCESS) {
     RE_LOG(Critical,
            "failed to create command pool for graphics queue family.");
 
@@ -252,37 +263,42 @@ TResult MGraphics::createCommandPool() {
   return RE_OK;
 }
 
-void MGraphics::destroyCommandPool() {
-  RE_LOG(Log, "Destroying command pool.");
-  vkDestroyCommandPool(logicalDevice.device, gSystem.commandPool, nullptr);
+void MGraphics::destroyCommandPools() {
+  RE_LOG(Log, "Destroying command pools.");
+  vkDestroyCommandPool(logicalDevice.device, gSystem.cmdPoolRender, nullptr);
+  vkDestroyCommandPool(logicalDevice.device, gSystem.cmdPoolTransfer, nullptr);
 }
 
 TResult MGraphics::createCommandBuffers() {
   RE_LOG(Log, "Creating rendering command buffers for %d frames.",
          MAX_FRAMES_IN_FLIGHT);
 
-  gSystem.cmdBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+  gSystem.cmdBuffersRender.resize(MAX_FRAMES_IN_FLIGHT);
 
   VkCommandBufferAllocateInfo cmdBufferInfo{};
   cmdBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
   cmdBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  cmdBufferInfo.commandPool = gSystem.commandPool;
+  cmdBufferInfo.commandPool = gSystem.cmdPoolRender;
   cmdBufferInfo.commandBufferCount =
-      (uint32_t)gSystem.cmdBuffers.size();
+      (uint32_t)gSystem.cmdBuffersRender.size();
 
   if (vkAllocateCommandBuffers(logicalDevice.device, &cmdBufferInfo,
-                               gSystem.cmdBuffers.data()) != VK_SUCCESS) {
+                               gSystem.cmdBuffersRender.data()) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to allocate rendering command buffers.");
     return RE_CRITICAL;
   }
 
-  RE_LOG(Log, "Creating aux command buffer.");
+  RE_LOG(Log, "Creating %d transfer command buffers.", MAX_TRANSFER_BUFFERS);
 
-  cmdBufferInfo.commandBufferCount = 1;
+  gSystem.cmdBuffersTransfer.resize(MAX_TRANSFER_BUFFERS);
+
+  cmdBufferInfo.commandPool = gSystem.cmdPoolTransfer;
+  cmdBufferInfo.commandBufferCount =
+      (uint32_t)gSystem.cmdBuffersTransfer.size();
 
   if (vkAllocateCommandBuffers(logicalDevice.device, &cmdBufferInfo,
-                               &gSystem.transferBuffer) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to allocate aux command buffer.");
+                               gSystem.cmdBuffersTransfer.data()) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to allocate transfer command buffers.");
     return RE_CRITICAL;
   }
 
@@ -291,14 +307,16 @@ TResult MGraphics::createCommandBuffers() {
 
 void MGraphics::destroyCommandBuffers() {
   RE_LOG(Log, "Freeing %d rendering command buffers.",
-         gSystem.cmdBuffers.size());
-  vkFreeCommandBuffers(logicalDevice.device, gSystem.commandPool,
-                       static_cast<uint32_t>(gSystem.cmdBuffers.size()),
-                       gSystem.cmdBuffers.data());
+         gSystem.cmdBuffersRender.size());
+  vkFreeCommandBuffers(logicalDevice.device, gSystem.cmdPoolRender,
+                       static_cast<uint32_t>(gSystem.cmdBuffersRender.size()),
+                       gSystem.cmdBuffersRender.data());
 
-  RE_LOG(Log, "Freeing aux command buffer.");
-  vkFreeCommandBuffers(logicalDevice.device, gSystem.commandPool, 1,
-                       &gSystem.transferBuffer);
+  RE_LOG(Log, "Freeing %d transfer command buffer.",
+         gSystem.cmdBuffersTransfer.size());
+  vkFreeCommandBuffers(logicalDevice.device, gSystem.cmdPoolTransfer,
+                       static_cast<uint32_t>(gSystem.cmdBuffersTransfer.size()),
+                       gSystem.cmdBuffersTransfer.data());
 }
 
 TResult MGraphics::recordCommandBuffer(VkCommandBuffer commandBuffer,
@@ -453,9 +471,9 @@ TResult MGraphics::drawFrame() {
   vkResetFences(logicalDevice.device, 1,
                 &gSync.fInFlight[gSystem.idIFFrame]);
 
-  vkResetCommandBuffer(gSystem.cmdBuffers[gSystem.idIFFrame], NULL);
+  vkResetCommandBuffer(gSystem.cmdBuffersRender[gSystem.idIFFrame], NULL);
 
-  recordCommandBuffer(gSystem.cmdBuffers[gSystem.idIFFrame], imageIndex);
+  recordCommandBuffer(gSystem.cmdBuffersRender[gSystem.idIFFrame], imageIndex);
 
   // wait until image to write color data to is acquired
   VkSemaphore waitSems[] = {gSync.sImgAvailable[gSystem.idIFFrame]};
@@ -472,7 +490,7 @@ TResult MGraphics::drawFrame() {
       waitStages;  // each stage index corresponds to provided semaphore index
   submitInfo.commandBufferCount = 1;
   submitInfo.pCommandBuffers =
-      &gSystem.cmdBuffers[gSystem.idIFFrame];  // submit command buffer
+      &gSystem.cmdBuffersRender[gSystem.idIFFrame];  // submit command buffer
                                                    // recorded previously
   submitInfo.signalSemaphoreCount = 1;
   submitInfo.pSignalSemaphores =
