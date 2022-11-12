@@ -172,36 +172,6 @@ uint32_t MGraphics::bindMesh(WMesh* pMesh) {
   return (uint32_t)gSystem.meshes.size() - 1;
 }
 
-TResult MGraphics::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
-                              VkBufferCopy* copyRegion, uint32_t cmdBufferId) {
-  if (cmdBufferId > MAX_TRANSFER_BUFFERS) {
-    RE_LOG(Warning, "Invalid index of transfer buffer, using default.");
-    cmdBufferId = 0;
-  }
-
-  VkCommandBufferBeginInfo cmdBufferBeginInfo{};
-  cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-  vkBeginCommandBuffer(gCmd.buffersTransfer[cmdBufferId],
-                       &cmdBufferBeginInfo);
-
-  vkCmdCopyBuffer(gCmd.buffersTransfer[cmdBufferId], srcBuffer->buffer,
-                  dstBuffer->buffer, 1, copyRegion);
-
-  vkEndCommandBuffer(gCmd.buffersTransfer[cmdBufferId]);
-
-  VkSubmitInfo submitInfo{};
-  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &gCmd.buffersTransfer[cmdBufferId];
-
-  vkQueueSubmit(logicalDevice.queues.transfer, 1, &submitInfo, VK_NULL_HANDLE);
-  vkQueueWaitIdle(logicalDevice.queues.transfer);
-
-  return RE_OK;
-}
-
 TResult MGraphics::createDescriptorSetLayouts() {
   VkDescriptorSetLayoutBinding uboMVPBind{};
   uboMVPBind.binding = 0;                                         // binding location in a shader
@@ -225,6 +195,26 @@ TResult MGraphics::createDescriptorSetLayouts() {
   }
 
   return RE_OK;
+}
+
+void MGraphics::destroyDescriptorSetLayouts(){
+  for (auto& it : gSystem.descSetLayouts) {
+    vkDestroyDescriptorSetLayout(logicalDevice.device, it, nullptr);
+  }
+}
+
+TResult MGraphics::createUniformBuffers() {
+  // each frame will require a separate buffer, so 2 FIF would need buffers * 2
+  gRender.buffersUniform.resize(MAX_FRAMES_IN_FLIGHT);
+  gRender.allocsUniforms.resize(MAX_FRAMES_IN_FLIGHT);
+
+  VkDeviceSize uboMVPsize = sizeof(UboMVP);
+
+  return RE_OK;
+}
+
+void MGraphics::destroyUniformBuffers() {
+//
 }
 
 VkShaderModule MGraphics::createShaderModule(std::vector<char>& shaderCode) {

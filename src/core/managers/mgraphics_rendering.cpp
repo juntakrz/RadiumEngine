@@ -179,10 +179,13 @@ TResult MGraphics::createGraphicsPipeline() {
   dynStateInfo.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
   dynStateInfo.pDynamicStates = dynamicStates.data();
 
+  // generate base set layouts
+  createDescriptorSetLayouts();
+
   VkPipelineLayoutCreateInfo layoutInfo{};
   layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-  layoutInfo.setLayoutCount = 0;
-  layoutInfo.pSetLayouts = nullptr;
+  layoutInfo.setLayoutCount = static_cast<uint32_t>(gSystem.descSetLayouts.size());
+  layoutInfo.pSetLayouts = gSystem.descSetLayouts.data();
   layoutInfo.pushConstantRangeCount = 0;
   layoutInfo.pPushConstantRanges = nullptr;
 
@@ -228,6 +231,7 @@ TResult MGraphics::createGraphicsPipeline() {
 
 void MGraphics::destroyGraphicsPipeline() {
   RE_LOG(Log, "Shutting down graphics pipeline.");
+  destroyDescriptorSetLayouts();
   vkDestroyPipeline(logicalDevice.device, gSystem.pipeline, nullptr);
   vkDestroyPipelineLayout(logicalDevice.device, gSystem.pipelineLayout, nullptr);
 }
@@ -350,8 +354,9 @@ TResult MGraphics::recordCommandBuffer(VkCommandBuffer commandBuffer,
 
   VkViewport viewport{};
   viewport.x = 0.0f;
-  viewport.y =
-      (core::renderer::bFlipViewPortY) ? gSwapchain.imageExtent.height : 0;
+  viewport.y = (core::renderer::bFlipViewPortY)
+                   ? static_cast<float>(gSwapchain.imageExtent.height)
+                   : 0.0f;
   viewport.width = static_cast<float>(gSwapchain.imageExtent.width);
   viewport.height = (core::renderer::bFlipViewPortY)
                         ? -static_cast<float>(gSwapchain.imageExtent.height)

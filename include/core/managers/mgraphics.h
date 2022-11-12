@@ -48,7 +48,7 @@ class MGraphics {
 
   // objects used in shaders
   struct {
-    RVMVP uboMVP;                               // matrix*view*projection matrices
+    UboMVP uboMVP;                              // matrix*view*projection matrices
     std::vector<VkBuffer> buffersUniform;
     std::vector<VmaAllocation> allocsUniforms;  // uniform buffers and allocations share the same index
   } gRender;
@@ -95,12 +95,30 @@ public:
   // binds mesh to graphics pipeline
   uint32_t bindMesh(WMesh* pMesh);
 
-  // copy buffer with SRC and DST bits
-  TResult copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
-                     VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
-
  private:
   TResult createDescriptorSetLayouts();
+  void destroyDescriptorSetLayouts();
+
+  TResult createUniformBuffers();
+  void destroyUniformBuffers();
+
+  //
+  // mgraphics_util
+  //
+ public:
+  /* create buffer for CPU/iGPU or dedicated GPU use:
+  * defining inData makes the method copy data to an outgoing buffer internally,
+  otherwise empty but allocated VkBuffer is the result e.g. for a later data copy.
+  * outAllocInfo is optional, but can be defined if allocation data is required*/
+  TResult createBuffer(EBCMode mode, VkDeviceSize size, VkBuffer outBuffer,
+                       VmaAllocation outAlloc, void* inData = nullptr,
+                       VmaAllocationInfo* outAllocInfo = nullptr);
+
+  // copy buffer with SRC and DST bits
+  TResult copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer,
+                     VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
+  TResult copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
+                     VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
 
   //
   // mgraphics_physicaldevice

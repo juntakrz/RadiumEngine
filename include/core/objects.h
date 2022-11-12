@@ -65,7 +65,7 @@ struct NextVertex {
 };
 
 // uniform buffer object for vertex shader (model * view * projection)
-struct RVMVP {
+struct UboMVP {
   glm::mat4 model;
   glm::mat4 view;
   glm::mat4 projection;
@@ -77,4 +77,12 @@ struct WMeshData {
   std::string material;
   std::unique_ptr<WMesh> pMesh;       // visible main mesh
   std::unique_ptr<WMesh> pAuxMesh;    // simpler mesh used for occlusion testing/collision etc.
+};
+
+enum class EBCMode {    // VkBuffer creation mode
+  CPU_UNIFORM = 0,      // create uniform buffer for GPU programs
+  CPU_VERTEX,           // create vertex buffer for the iGPU (UNUSED)
+  CPU_INDEX,            // create index buffer for the iGPU (UNUSED)
+  DGPU_VERTEX,          // create dedicated GPU vertex buffer
+  DGPU_INDEX            // create dedicated GPU index buffer
 };
