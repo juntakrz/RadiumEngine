@@ -3,10 +3,16 @@
 // global library definitions
 #define GLFW_INCLUDE_VULKAN
 #define GLM_FORCE_RADIANS
+#define GLM_FORCE_LEFT_HANDED
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_FORCE_SSE42
+#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
 
 // global macros
-#define TEXT(x) L ## x
+#ifdef NDEBUG
+#define TEXT(x) L ## x                // conflicts with WinAPI definitions in debug builds
+#endif
+
 #define RE_LOG(l, x, ...) processMessage(l, x, __VA_ARGS__)
 #define RE_CHECK(x) validate(x)
 #define ASSERT(x) \
@@ -21,6 +27,9 @@ constexpr bool bRequireValidationLayers = true;
 
 // global constants
 #define RE_PATH_CONFIG      TEXT("config/config.json")
+#define RE_PATH_DEVCONFIG   TEXT("development/devconfig.json")
+#define RE_PATH_MAP         TEXT("content/maps/")
+#define RE_PATH_SHDRC       "development\\compileShaders_Win_x64_DEBUG.bat"
 
 // error levels
 #define RE_OK					      0x00		   // success
@@ -36,8 +45,9 @@ constexpr char Critical =   RE_CRITICAL;
 
 // naming conventions
 /*
-*	TXXX		- type definition
-*	MXXX		- manager class, is a singleton and must be called using get() method
-*	RXXX		- renderer related class object (e.g. Vulkan API-based data structures)
-* WXXX    - world related class object (e.g. meshes and primitives)
+*	Txxx		- type definition
+*	Mxxx		- manager class, is a singleton and must be called using get() method
+*	Rxxx		- renderer related class object (e.g. Vulkan API-based data structures)
+* RSxxx   - (renderer) shader related object (e.g. struct for model/view/projection matrices)
+* Wxxx    - world related class object (e.g. meshes and primitives)
 */

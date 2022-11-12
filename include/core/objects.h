@@ -2,7 +2,19 @@
 
 #include "vk_mem_alloc.h"
 
-class WMesh;
+enum class EBCMode {  // VkBuffer creation mode
+  CPU_UNIFORM = 0,    // create uniform buffer for GPU programs
+  CPU_VERTEX,         // create vertex buffer for the iGPU (UNUSED)
+  CPU_INDEX,          // create index buffer for the iGPU (UNUSED)
+  DGPU_VERTEX,        // create dedicated GPU vertex buffer
+  DGPU_INDEX          // create dedicated GPU index buffer
+};
+
+enum class EAType {  // actor type
+  BASE = 0,
+  CAMERA,
+  MODEL
+};
 
 struct RVkQueueFamilyIndices {
   std::vector<int32_t> graphics;
@@ -32,7 +44,6 @@ struct RVkPhysicalDevice {
 
 struct RVkLogicalDevice {
   VkDevice device;
-  VkDeviceMemory vertexBufferMemory;
 
   struct {
     VkQueue graphics  = VK_NULL_HANDLE;
@@ -64,10 +75,31 @@ struct NextVertex {
   glm::vec3 binormal;   // BINORMAL
 };
 
+struct RCameraSettings {
+  float aspectRatio = 16.0f / 9.0f;
+  float FOV = 90.0f;
+  float nearZ = 0.1f;
+  float farZ = 1000.0f;
+};
+
 struct WMeshData {
   uint32_t id;
   std::string name;
   std::string material;
-  std::unique_ptr<WMesh> pMesh;       // visible main mesh
-  std::unique_ptr<WMesh> pAuxMesh;    // simpler mesh used for occlusion testing/collision etc.
+  std::unique_ptr<class WMesh> pMesh;       // visible main mesh
+  std::unique_ptr<class WMesh> pAuxMesh;    // simpler mesh used for occlusion testing/collision etc.
+};
+
+struct WActorPtr {
+  class ABase* ptr = nullptr;
+  EAType type = EAType::BASE;
+};
+
+// uniform buffer objects
+// 
+// view matrix UBO for vertex shader (model * view * projection)
+struct RSModelViewProjection {
+  alignas(16) glm::mat4 model = glm::mat4(1.0f);
+  alignas(16) glm::mat4 view = glm::mat4(1.0f);
+  alignas(16) glm::mat4 projection = glm::mat4(1.0f);
 };

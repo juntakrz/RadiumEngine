@@ -5,41 +5,44 @@
 typedef std::unordered_map<int, std::unordered_map<int, TFuncPtr>>
     TInputBinds;
 
-class MInput {
-  MInput();
+namespace core {
 
-  TInputBinds inputBinds;
+  class MInput {
+    MInput();
 
-public:
-  static MInput& get() {
-    static MInput _sInstance;
-    return _sInstance;
-  }
+    TInputBinds inputBinds;
 
-  MInput(const MInput&) = delete;
-  MInput& operator=(const MInput&) = delete;
+  public:
+    static MInput& get() {
+      static MInput _sInstance;
+      return _sInstance;
+    }
 
-  TResult initialize(GLFWwindow* window);
+    MInput(const MInput&) = delete;
+    MInput& operator=(const MInput&) = delete;
 
-  template <typename C>
-  void bindFunction(int key, int action, C* owner, void (C::*function)()) {
-    auto& keyBind = inputBinds[key];
-    keyBind[action] = std::make_unique<OFuncPtr<C>>(owner, function);
-  }
+    TResult initialize(GLFWwindow* window);
 
-  template <typename C>
-  void bindFunction(const char* actionName, int action, C* owner,
-                    void (C::*function)()) {
-    // looks up a key code from the std::unordered_map<std::string, int>
-    // by 'actionName' and calls key code based bindFunction with it
-    // can be useful for separately configured named key actions
-  }
+    template <typename C>
+    void bindFunction(int key, int action, C* owner, void (C::* function)()) {
+      auto& keyBind = inputBinds[key];
+      keyBind[action] = std::make_unique<OFuncPtr<C>>(owner, function);
+    }
 
-  static TInputBinds& binds();
+    template <typename C>
+    void bindFunction(const char* actionName, int action, C* owner,
+      void (C::* function)()) {
+      // looks up a key code from the std::unordered_map<std::string, int>
+      // by 'actionName' and calls key code based bindFunction with it
+      // can be useful for separately configured named key actions
+    }
 
-  static void keyEventCallback(GLFWwindow* window, int key, int scancode,
-                               int action, int mods);
+    static TInputBinds& binds();
 
-  void actPressTest();
-  void actReleaseTest();
-};
+    static void keyEventCallback(GLFWwindow* window, int key, int scancode,
+      int action, int mods);
+
+    void actPressTest();
+    void actReleaseTest();
+  };
+}

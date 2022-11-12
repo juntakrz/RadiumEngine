@@ -2,9 +2,9 @@
 #include "core/managers/minput.h"
 #include "util/util.h"
 
-MInput::MInput() { RE_LOG(Log, "Creating input manager."); }
+core::MInput::MInput() { RE_LOG(Log, "Creating input manager."); }
 
-TResult MInput::initialize(GLFWwindow* window) {
+TResult core::MInput::initialize(GLFWwindow* window) {
   TResult chkResult = RE_OK;
 
   glfwSetKeyCallback(window, keyEventCallback);
@@ -15,9 +15,9 @@ TResult MInput::initialize(GLFWwindow* window) {
   return chkResult;
 }
 
-TInputBinds& MInput::binds() { return get().inputBinds; }
+TInputBinds& core::MInput::binds() { return get().inputBinds; }
 
-void MInput::keyEventCallback(GLFWwindow* window, int key, int scancode,
+void core::MInput::keyEventCallback(GLFWwindow* window, int key, int scancode,
                               int action, int mods) {
   using func = void (*)();
 
@@ -29,6 +29,6 @@ void MInput::keyEventCallback(GLFWwindow* window, int key, int scancode,
   }
 }
 
-void MInput::actPressTest() { RE_LOG(Log, "Key pressed."); }
+void core::MInput::actPressTest() { RE_LOG(Log, "Key pressed."); }
 
-void MInput::actReleaseTest() { RE_LOG(Log, "Key released."); }
+void core::MInput::actReleaseTest() { RE_LOG(Log, "Key released."); }

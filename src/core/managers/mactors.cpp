@@ -1,17 +1,17 @@
 #include "pch.h"
-#include "core/managers/mmodel.h"
+#include "core/managers/mactors.h"
 #include "core/world/mesh/mesh_plane.h"
 
-MModel::MModel() { RE_LOG(Log, "Creating mesh and model manager."); }
+core::MActors::MActors() { RE_LOG(Log, "Creating mesh and model manager."); }
 
-TResult MModel::createMesh() {
+TResult core::MActors::createMesh() {
   meshes.emplace_back(std::make_unique<WMesh_Plane>());
   meshes.back()->create();
 
   return RE_OK;
 }
 
-TResult MModel::destroyMesh(uint32_t index) {
+TResult core::MActors::destroyMesh(uint32_t index) {
   if (index < meshes.size()) {
     meshes[index]->destroy();
     meshes[index].reset();
@@ -24,7 +24,7 @@ TResult MModel::destroyMesh(uint32_t index) {
   return RE_ERROR;
 }
 
-void MModel::destroyAllMeshes() {
+void core::MActors::destroyAllMeshes() {
   RE_LOG(Log, "Clearing all mesh buffers and allocations.");
 
   for (auto& it : meshes) {

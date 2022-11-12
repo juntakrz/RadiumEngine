@@ -63,11 +63,11 @@ void validate(TResult result) {
   }
 }
 
-std::string wstrToStr(const wchar_t* string) {
-  char newString[255];
+std::string toString(const wchar_t* string) {
+  char newString[_MAX_PATH];
   size_t newLength = wcslen(string) + 1;
 
-  if (newLength > 255) newLength = 255;
+  if (newLength > _MAX_PATH) newLength = _MAX_PATH;
 
   memset(newString, 0, newLength);
   wcstombs(newString, string, newLength - 1);
@@ -75,22 +75,16 @@ std::string wstrToStr(const wchar_t* string) {
   return newString;
 }
 
-TResult jsonLoad(const wchar_t* path, json* out_j) noexcept {
-  if (!path) {
-    RE_LOG(Error, "jsonLoad received empty path.");
-    return RE_ERROR;
-  }
+std::wstring toWString(const char* string) {
+  wchar_t newWStr[_MAX_PATH];
+  size_t newLength = strlen(string) + 1;
 
-  std::ifstream fStream(path);
-  out_j->clear();
+  if (newLength > _MAX_PATH) newLength = _MAX_PATH;
 
-  if (!fStream.good()) {
-    RE_LOG(Error, "Failed to read JSON file at '%s'.", path);
-    return RE_ERROR;
-  }
+  memset(newWStr, 0, newLength);
+  mbstowcs(newWStr, string, newLength);
 
-  fStream >> *out_j;
-  return RE_OK;
+  return newWStr;
 }
 
 float random(float min, float max) {
