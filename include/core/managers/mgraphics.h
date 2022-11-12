@@ -8,33 +8,49 @@ class WMesh;
 
 class MGraphics {
  private:
+
+  // swapchain data
   struct {
     VkSurfaceFormatKHR formatData;
     VkPresentModeKHR presentMode;
     VkExtent2D imageExtent;
+    VkViewport viewport;                      // not used in code, needs to be
     uint32_t imageCount = 0;
     std::vector<VkImage> images;
     std::vector<VkImageView> imageViews;
     std::vector<VkFramebuffer> framebuffers;
   } gSwapchain;
 
+  // command buffers and pools data
+  struct {
+    VkCommandPool poolRender;
+    VkCommandPool poolTransfer;
+    std::vector<VkCommandBuffer> buffersRender;
+    std::vector<VkCommandBuffer> buffersTransfer;
+  } gCmd;
+
+  // render system data - passes, pipelines, mesh data to render
   struct {
     VkRenderPass renderPass;
     VkPipelineLayout pipelineLayout;
     VkPipeline pipeline;
-    VkCommandPool cmdPoolRender;
-    VkCommandPool cmdPoolTransfer;
-    std::vector<VkCommandBuffer> cmdBuffersRender;
-    std::vector<VkCommandBuffer> cmdBuffersTransfer;
     uint32_t idIFFrame = 0;                     // in flight frame index
     std::vector<WMesh*> meshes;                 // meshes rendered during the current frame
   } gSystem;
 
+  // multi-threaded synchronization objects
   struct {
     std::vector<VkSemaphore> sImgAvailable;
     std::vector<VkSemaphore> sRndrFinished;
     std::vector<VkFence> fInFlight;
   } gSync;
+
+  // objects used in shaders
+  struct {
+    RVMVP uboMVP;                               // matrix*view*projection matrices
+    std::vector<VkBuffer> buffersUniform;
+    std::vector<VmaAllocation> allocsUniforms;  // uniform buffers and allocations share the same index
+  } gRender;
 
   MGraphics();
 

@@ -64,6 +64,13 @@ struct NextVertex {
   glm::vec3 binormal;   // BINORMAL
 };
 
+// uniform buffer object for vertex shader (model * view * projection)
+struct RVMVP {
+  glm::mat4 model;
+  glm::mat4 view;
+  glm::mat4 projection;
+};
+
 struct WMeshData {
   uint32_t id;
   std::string name;

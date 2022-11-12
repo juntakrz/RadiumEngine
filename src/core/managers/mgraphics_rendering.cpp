@@ -242,7 +242,7 @@ TResult MGraphics::createCommandPools() {
       physicalDevice.queueFamilyIndices.graphics[0];
 
   if (vkCreateCommandPool(logicalDevice.device, &cmdPoolRenderInfo, nullptr,
-                          &gSystem.cmdPoolRender) != VK_SUCCESS) {
+                          &gCmd.poolRender) != VK_SUCCESS) {
     RE_LOG(Critical,
            "failed to create command pool for graphics queue family.");
 
@@ -253,7 +253,7 @@ TResult MGraphics::createCommandPools() {
       physicalDevice.queueFamilyIndices.transfer[0];
 
   if (vkCreateCommandPool(logicalDevice.device, &cmdPoolRenderInfo, nullptr,
-                          &gSystem.cmdPoolTransfer) != VK_SUCCESS) {
+                          &gCmd.poolTransfer) != VK_SUCCESS) {
     RE_LOG(Critical,
            "failed to create command pool for graphics queue family.");
 
@@ -265,39 +265,39 @@ TResult MGraphics::createCommandPools() {
 
 void MGraphics::destroyCommandPools() {
   RE_LOG(Log, "Destroying command pools.");
-  vkDestroyCommandPool(logicalDevice.device, gSystem.cmdPoolRender, nullptr);
-  vkDestroyCommandPool(logicalDevice.device, gSystem.cmdPoolTransfer, nullptr);
+  vkDestroyCommandPool(logicalDevice.device, gCmd.poolRender, nullptr);
+  vkDestroyCommandPool(logicalDevice.device, gCmd.poolTransfer, nullptr);
 }
 
 TResult MGraphics::createCommandBuffers() {
   RE_LOG(Log, "Creating rendering command buffers for %d frames.",
          MAX_FRAMES_IN_FLIGHT);
 
-  gSystem.cmdBuffersRender.resize(MAX_FRAMES_IN_FLIGHT);
+  gCmd.buffersRender.resize(MAX_FRAMES_IN_FLIGHT);
 
   VkCommandBufferAllocateInfo cmdBufferInfo{};
   cmdBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
   cmdBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  cmdBufferInfo.commandPool = gSystem.cmdPoolRender;
+  cmdBufferInfo.commandPool = gCmd.poolRender;
   cmdBufferInfo.commandBufferCount =
-      (uint32_t)gSystem.cmdBuffersRender.size();
+      (uint32_t)gCmd.buffersRender.size();
 
   if (vkAllocateCommandBuffers(logicalDevice.device, &cmdBufferInfo,
-                               gSystem.cmdBuffersRender.data()) != VK_SUCCESS) {
+                               gCmd.buffersRender.data()) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to allocate rendering command buffers.");
     return RE_CRITICAL;
   }
 
   RE_LOG(Log, "Creating %d transfer command buffers.", MAX_TRANSFER_BUFFERS);
 
-  gSystem.cmdBuffersTransfer.resize(MAX_TRANSFER_BUFFERS);
+  gCmd.buffersTransfer.resize(MAX_TRANSFER_BUFFERS);
 
-  cmdBufferInfo.commandPool = gSystem.cmdPoolTransfer;
+  cmdBufferInfo.commandPool = gCmd.poolTransfer;
   cmdBufferInfo.commandBufferCount =
-      (uint32_t)gSystem.cmdBuffersTransfer.size();
+      (uint32_t)gCmd.buffersTransfer.size();
 
   if (vkAllocateCommandBuffers(logicalDevice.device, &cmdBufferInfo,
-                               gSystem.cmdBuffersTransfer.data()) != VK_SUCCESS) {
+                               gCmd.buffersTransfer.data()) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to allocate transfer command buffers.");
     return RE_CRITICAL;
   }
@@ -307,16 +307,16 @@ TResult MGraphics::createCommandBuffers() {
 
 void MGraphics::destroyCommandBuffers() {
   RE_LOG(Log, "Freeing %d rendering command buffers.",
-         gSystem.cmdBuffersRender.size());
-  vkFreeCommandBuffers(logicalDevice.device, gSystem.cmdPoolRender,
-                       static_cast<uint32_t>(gSystem.cmdBuffersRender.size()),
-                       gSystem.cmdBuffersRender.data());
+         gCmd.buffersRender.size());
+  vkFreeCommandBuffers(logicalDevice.device, gCmd.poolRender,
+                       static_cast<uint32_t>(gCmd.buffersRender.size()),
+                       gCmd.buffersRender.data());
 
   RE_LOG(Log, "Freeing %d transfer command buffer.",
-         gSystem.cmdBuffersTransfer.size());
-  vkFreeCommandBuffers(logicalDevice.device, gSystem.cmdPoolTransfer,
-                       static_cast<uint32_t>(gSystem.cmdBuffersTransfer.size()),
-                       gSystem.cmdBuffersTransfer.data());
+         gCmd.buffersTransfer.size());
+  vkFreeCommandBuffers(logicalDevice.device, gCmd.poolTransfer,
+                       static_cast<uint32_t>(gCmd.buffersTransfer.size()),
+                       gCmd.buffersTransfer.data());
 }
 
 TResult MGraphics::recordCommandBuffer(VkCommandBuffer commandBuffer,
@@ -479,9 +479,9 @@ TResult MGraphics::drawFrame() {
   vkResetFences(logicalDevice.device, 1,
                 &gSync.fInFlight[gSystem.idIFFrame]);
 
-  vkResetCommandBuffer(gSystem.cmdBuffersRender[gSystem.idIFFrame], NULL);
+  vkResetCommandBuffer(gCmd.buffersRender[gSystem.idIFFrame], NULL);
 
-  recordCommandBuffer(gSystem.cmdBuffersRender[gSystem.idIFFrame], imageIndex);
+  recordCommandBuffer(gCmd.buffersRender[gSystem.idIFFrame], imageIndex);
 
   // wait until image to write color data to is acquired
   VkSemaphore waitSems[] = {gSync.sImgAvailable[gSystem.idIFFrame]};
@@ -498,7 +498,7 @@ TResult MGraphics::drawFrame() {
       waitStages;  // each stage index corresponds to provided semaphore index
   submitInfo.commandBufferCount = 1;
   submitInfo.pCommandBuffers =
-      &gSystem.cmdBuffersRender[gSystem.idIFFrame];  // submit command buffer
+      &gCmd.buffersRender[gSystem.idIFFrame];  // submit command buffer
                                                    // recorded previously
   submitInfo.signalSemaphoreCount = 1;
   submitInfo.pSignalSemaphores =
