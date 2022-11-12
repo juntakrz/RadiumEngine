@@ -202,6 +202,31 @@ TResult MGraphics::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
   return RE_OK;
 }
 
+TResult MGraphics::createDescriptorSetLayouts() {
+  VkDescriptorSetLayoutBinding uboMVPBind{};
+  uboMVPBind.binding = 0;                                         // binding location in a shader
+  uboMVPBind.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;  // type of binding
+  uboMVPBind.descriptorCount = 1;                                 // binding can be an array of UBOs, but MVP is a single UBO
+  uboMVPBind.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;             // will be bound to vertex shader
+  uboMVPBind.pImmutableSamplers = nullptr;                        // for texture samplers
+
+  VkDescriptorSetLayoutCreateInfo uboMVPInfo{};
+  uboMVPInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+  uboMVPInfo.bindingCount = 1;
+  uboMVPInfo.pBindings = &uboMVPBind;
+
+  gSystem.descSetLayouts.emplace_back();
+  if (vkCreateDescriptorSetLayout(logicalDevice.device, &uboMVPInfo, nullptr,
+                                  &gSystem.descSetLayouts.back()) !=
+      VK_SUCCESS) {
+    gSystem.descSetLayouts.erase(gSystem.descSetLayouts.end());
+    RE_LOG(Critical, "Failed to create MVP matrix descriptor set layout.");
+    return RE_CRITICAL;
+  }
+
+  return RE_OK;
+}
+
 VkShaderModule MGraphics::createShaderModule(std::vector<char>& shaderCode) {
   VkShaderModuleCreateInfo smInfo{};
   smInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;

@@ -35,6 +35,7 @@ class MGraphics {
     VkPipelineLayout pipelineLayout;
     VkPipeline pipeline;
     uint32_t idIFFrame = 0;                     // in flight frame index
+    std::vector<VkDescriptorSetLayout> descSetLayouts;
     std::vector<WMesh*> meshes;                 // meshes rendered during the current frame
   } gSystem;
 
@@ -98,10 +99,13 @@ public:
   TResult copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
                      VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
 
+ private:
+  TResult createDescriptorSetLayouts();
+
   //
   // mgraphics_physicaldevice
   //
-
+ public:
   // find all available physical devices and store them in graphics manager
   TResult enumPhysicalDevices();
 
