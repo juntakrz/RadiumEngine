@@ -234,17 +234,17 @@ TResult MGraphics::copyBuffer(VkBuffer srcBuffer, VkBuffer& dstBuffer,
   cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-  vkBeginCommandBuffer(gCmd.buffersTransfer[cmdBufferId], &cmdBufferBeginInfo);
+  vkBeginCommandBuffer(sCmd.buffersTransfer[cmdBufferId], &cmdBufferBeginInfo);
 
-  vkCmdCopyBuffer(gCmd.buffersTransfer[cmdBufferId], srcBuffer,
+  vkCmdCopyBuffer(sCmd.buffersTransfer[cmdBufferId], srcBuffer,
                   dstBuffer, 1, copyRegion);
 
-  vkEndCommandBuffer(gCmd.buffersTransfer[cmdBufferId]);
+  vkEndCommandBuffer(sCmd.buffersTransfer[cmdBufferId]);
 
   VkSubmitInfo submitInfo{};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
   submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &gCmd.buffersTransfer[cmdBufferId];
+  submitInfo.pCommandBuffers = &sCmd.buffersTransfer[cmdBufferId];
 
   vkQueueSubmit(logicalDevice.queues.transfer, 1, &submitInfo, VK_NULL_HANDLE);
   vkQueueWaitIdle(logicalDevice.queues.transfer);
@@ -263,20 +263,35 @@ TResult MGraphics::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
   cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-  vkBeginCommandBuffer(gCmd.buffersTransfer[cmdBufferId], &cmdBufferBeginInfo);
+  vkBeginCommandBuffer(sCmd.buffersTransfer[cmdBufferId], &cmdBufferBeginInfo);
 
-  vkCmdCopyBuffer(gCmd.buffersTransfer[cmdBufferId], srcBuffer->buffer,
+  vkCmdCopyBuffer(sCmd.buffersTransfer[cmdBufferId], srcBuffer->buffer,
                   dstBuffer->buffer, 1, copyRegion);
 
-  vkEndCommandBuffer(gCmd.buffersTransfer[cmdBufferId]);
+  vkEndCommandBuffer(sCmd.buffersTransfer[cmdBufferId]);
 
   VkSubmitInfo submitInfo{};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
   submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &gCmd.buffersTransfer[cmdBufferId];
+  submitInfo.pCommandBuffers = &sCmd.buffersTransfer[cmdBufferId];
 
   vkQueueSubmit(logicalDevice.queues.transfer, 1, &submitInfo, VK_NULL_HANDLE);
   vkQueueWaitIdle(logicalDevice.queues.transfer);
 
   return RE_OK;
+}
+
+void MGraphics::updateCameraProjection(bool bUpdateAspectRatio, float FOV,
+                                       float nearZ, float farZ) {
+  if (bUpdateAspectRatio)
+    sRender.sProjection.aspectRatio =
+        (float)sSwapchain.imageExtent.width / sSwapchain.imageExtent.height;
+
+  if (FOV > 0.0f) sRender.sProjection.FOV = FOV;
+  if (nearZ > 0.0f) sRender.sProjection.nearZ = nearZ;
+  if (farZ > 0.0f) sRender.sProjection.farZ = farZ;
+
+  sRender.uboMVP.projection =
+      glm::perspective(sRender.sProjection.FOV, sRender.sProjection.aspectRatio,
+                       sRender.sProjection.nearZ, sRender.sProjection.farZ);
 }

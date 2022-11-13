@@ -19,7 +19,7 @@ class MGraphics {
     std::vector<VkImage> images;
     std::vector<VkImageView> imageViews;
     std::vector<VkFramebuffer> framebuffers;
-  } gSwapchain;
+  } sSwapchain;
 
   // command buffers and pools data
   struct {
@@ -27,7 +27,7 @@ class MGraphics {
     VkCommandPool poolTransfer;
     std::vector<VkCommandBuffer> buffersRender;
     std::vector<VkCommandBuffer> buffersTransfer;
-  } gCmd;
+  } sCmd;
 
   // render system data - passes, pipelines, mesh data to render
   struct {
@@ -37,20 +37,29 @@ class MGraphics {
     uint32_t idIFFrame = 0;                     // in flight frame index
     std::vector<VkDescriptorSetLayout> descSetLayouts;
     std::vector<WMesh*> meshes;                 // meshes rendered during the current frame
-  } gSystem;
+  } sSystem;
 
   // multi-threaded synchronization objects
   struct {
     std::vector<VkSemaphore> sImgAvailable;
     std::vector<VkSemaphore> sRndrFinished;
     std::vector<VkFence> fInFlight;
-  } gSync;
+  } sSync;
 
   // objects used in shaders
   struct {
     UboMVP uboMVP;                              // matrix*view*projection matrices
+
+    struct {
+      float aspectRatio =
+          (float)config::renderWidth / (float)config::renderHeight;
+      float FOV = 90.0f;
+      float nearZ = 0.01f;
+      float farZ = 1000.0f;
+    } sProjection;
+
     std::vector<RBuffer> buffersUniform;
-  } gRender;
+  } sRender;
 
   MGraphics();
 
@@ -118,6 +127,11 @@ public:
                      VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
   TResult copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
                      VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
+
+  // use negative values to leave parameter unchanged, updates aspect ratio when called
+  void updateCameraProjection(bool bUpdateAspectRatio = false,
+                              float FOV = -1.0f, float nearZ = -1.0f,
+                              float farZ = -1.0f);
 
   //
   // mgraphics_physicaldevice

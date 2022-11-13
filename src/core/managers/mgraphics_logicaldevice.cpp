@@ -82,6 +82,5 @@ void MGraphics::destroyLogicalDevice(VkDevice device,
                                      const VkAllocationCallbacks* pAllocator) {
   if (!device) device = logicalDevice.device;
   RE_LOG(Log, "Destroying logical device, handle: 0x%016llX.", device);
-  vkFreeMemory(logicalDevice.device, logicalDevice.vertexBufferMemory, nullptr);
   vkDestroyDevice(device, pAllocator);
 }

@@ -43,16 +43,16 @@ TResult MGraphics::setSwapChainFormat(const RVkPhysicalDevice& deviceData,
   for (const auto& availableFormat : deviceData.swapChainInfo.formats) {
     if (availableFormat.format == format &&
         availableFormat.colorSpace == colorSpace) {
-      gSwapchain.formatData.format = availableFormat.format;
-      gSwapchain.formatData.colorSpace = availableFormat.colorSpace;
+      sSwapchain.formatData.format = availableFormat.format;
+      sSwapchain.formatData.colorSpace = availableFormat.colorSpace;
 
       RE_LOG(Log, "Successfully set the requested format.");
       return RE_OK;
     }
   }
 
-  gSwapchain.formatData.format = deviceData.swapChainInfo.formats[0].format;
-  gSwapchain.formatData.colorSpace =
+  sSwapchain.formatData.format = deviceData.swapChainInfo.formats[0].format;
+  sSwapchain.formatData.colorSpace =
       deviceData.swapChainInfo.formats[0].colorSpace;
 
   RE_LOG(Warning,
@@ -67,14 +67,14 @@ TResult MGraphics::setSwapChainPresentMode(const RVkPhysicalDevice& deviceData,
 
   for (const auto& availableMode : deviceData.swapChainInfo.modes) {
     if (availableMode == presentMode) {
-      gSwapchain.presentMode = availableMode;
+      sSwapchain.presentMode = availableMode;
 
       RE_LOG(Log, "Successfully set the requested present mode.");
       return RE_OK;
     }
   }
 
-  gSwapchain.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+  sSwapchain.presentMode = VK_PRESENT_MODE_FIFO_KHR;
 
   RE_LOG(Warning, 
       "requested present mode was not detected, using "
@@ -89,9 +89,9 @@ TResult MGraphics::setSwapChainExtent(const RVkPhysicalDevice& deviceData) {
 
   if (capabilities.currentExtent.width !=
       std::numeric_limits<uint32_t>::max()) {
-    gSwapchain.imageExtent = capabilities.currentExtent;
-    RE_LOG(Log, "Swap chain extent: %d x %d.", gSwapchain.imageExtent.width,
-           gSwapchain.imageExtent.height);
+    sSwapchain.imageExtent = capabilities.currentExtent;
+    RE_LOG(Log, "Swap chain extent: %d x %d.", sSwapchain.imageExtent.width,
+           sSwapchain.imageExtent.height);
     return RE_OK;
   }
 
@@ -99,13 +99,13 @@ TResult MGraphics::setSwapChainExtent(const RVkPhysicalDevice& deviceData) {
   int width = 0, height = 0;
 
   glfwGetFramebufferSize(MWindow::get().window(), &width, &height);
-  gSwapchain.imageExtent = {static_cast<uint32_t>(width),
+  sSwapchain.imageExtent = {static_cast<uint32_t>(width),
                                static_cast<uint32_t>(height)};
-  gSwapchain.imageExtent.width = std::clamp(
-      gSwapchain.imageExtent.width, capabilities.minImageExtent.width,
+  sSwapchain.imageExtent.width = std::clamp(
+      sSwapchain.imageExtent.width, capabilities.minImageExtent.width,
       capabilities.maxImageExtent.width);
-  gSwapchain.imageExtent.height = std::clamp(
-      gSwapchain.imageExtent.height, capabilities.minImageExtent.height,
+  sSwapchain.imageExtent.height = std::clamp(
+      sSwapchain.imageExtent.height, capabilities.minImageExtent.height,
       capabilities.maxImageExtent.height);
 
   return RE_OK;
@@ -117,13 +117,13 @@ TResult MGraphics::setSwapChainImageCount(const RVkPhysicalDevice& deviceData) {
   uint32_t imageCount = capabilities.minImageCount + 1;
   if (capabilities.maxImageCount > 0 && imageCount > capabilities.maxImageCount)
     imageCount = capabilities.maxImageCount;
-  gSwapchain.imageCount = imageCount;
+  sSwapchain.imageCount = imageCount;
 
   return RE_OK;
 }
 
 TResult MGraphics::createSwapChain() {
-  if (!gSwapchain.imageCount) {
+  if (!sSwapchain.imageCount) {
     RE_LOG(Error,
            "swap chain creation failed. Either no capable physical devices "
            "were found or swap chain variables are not valid.");
@@ -133,11 +133,11 @@ TResult MGraphics::createSwapChain() {
 
   VkSwapchainCreateInfoKHR createInfo{};
   createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-  createInfo.imageFormat = gSwapchain.formatData.format;
-  createInfo.imageColorSpace = gSwapchain.formatData.colorSpace;
-  createInfo.presentMode = gSwapchain.presentMode;
-  createInfo.imageExtent = gSwapchain.imageExtent;
-  createInfo.minImageCount = gSwapchain.imageCount;
+  createInfo.imageFormat = sSwapchain.formatData.format;
+  createInfo.imageColorSpace = sSwapchain.formatData.colorSpace;
+  createInfo.presentMode = sSwapchain.presentMode;
+  createInfo.imageExtent = sSwapchain.imageExtent;
+  createInfo.minImageCount = sSwapchain.imageCount;
   createInfo.imageArrayLayers = 1;
   createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
   createInfo.surface = surface;
@@ -172,9 +172,9 @@ TResult MGraphics::createSwapChain() {
 
   uint32_t swapChainImageCount = 0;
   vkGetSwapchainImagesKHR(logicalDevice.device, swapChain, &swapChainImageCount, nullptr);
-  gSwapchain.images.resize(swapChainImageCount);
+  sSwapchain.images.resize(swapChainImageCount);
   vkGetSwapchainImagesKHR(logicalDevice.device, swapChain, &swapChainImageCount,
-                          gSwapchain.images.data());
+                          sSwapchain.images.data());
 
   // follow up swap chain resource creation methods
   createSwapChainImageViews();
@@ -185,11 +185,11 @@ TResult MGraphics::createSwapChain() {
 void MGraphics::destroySwapChain() {
   RE_LOG(Log, "Cleaning up the swap chain.");
 
-  for (VkFramebuffer framebuffer : gSwapchain.framebuffers) {
+  for (VkFramebuffer framebuffer : sSwapchain.framebuffers) {
     vkDestroyFramebuffer(logicalDevice.device, framebuffer, nullptr);
   }
 
-  for (VkImageView imageView : gSwapchain.imageViews) {
+  for (VkImageView imageView : sSwapchain.imageViews) {
     vkDestroyImageView(logicalDevice.device, imageView, nullptr);
   }
 
@@ -223,14 +223,14 @@ TResult MGraphics::recreateSwapChain() {
 TResult MGraphics::createSwapChainImageViews() {
   RE_LOG(Log, "Creating image views for swap chain.");
 
-  gSwapchain.imageViews.resize(gSwapchain.images.size());
+  sSwapchain.imageViews.resize(sSwapchain.images.size());
 
-  for (size_t i = 0; i < gSwapchain.imageViews.size(); ++i) {
+  for (size_t i = 0; i < sSwapchain.imageViews.size(); ++i) {
     VkImageViewCreateInfo viewInfo{};
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewInfo.image = gSwapchain.images[i];
+    viewInfo.image = sSwapchain.images[i];
     viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format = gSwapchain.formatData.format;
+    viewInfo.format = sSwapchain.formatData.format;
 
     viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
     viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -244,7 +244,7 @@ TResult MGraphics::createSwapChainImageViews() {
     viewInfo.subresourceRange.baseArrayLayer = 0;
 
     if (vkCreateImageView(logicalDevice.device, &viewInfo, nullptr,
-                          &gSwapchain.imageViews[i]) != VK_SUCCESS) {
+                          &sSwapchain.imageViews[i]) != VK_SUCCESS) {
       RE_LOG(Error, "failed to create swapchain image view %d.", i);
 
       return RE_ERROR;
@@ -257,20 +257,20 @@ TResult MGraphics::createSwapChainImageViews() {
 TResult MGraphics::createFramebuffers() {
   RE_LOG(Log, "Creating framebuffers.");
 
-  gSwapchain.framebuffers.resize(gSwapchain.imageViews.size());
+  sSwapchain.framebuffers.resize(sSwapchain.imageViews.size());
 
-  for (size_t i = 0; i < gSwapchain.framebuffers.size(); ++i) {
+  for (size_t i = 0; i < sSwapchain.framebuffers.size(); ++i) {
     VkFramebufferCreateInfo framebufferInfo{};
     framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    framebufferInfo.renderPass = gSystem.renderPass;
+    framebufferInfo.renderPass = sSystem.renderPass;
     framebufferInfo.attachmentCount = 1;
-    framebufferInfo.pAttachments = &gSwapchain.imageViews[i];
-    framebufferInfo.width = gSwapchain.imageExtent.width;
-    framebufferInfo.height = gSwapchain.imageExtent.height;
+    framebufferInfo.pAttachments = &sSwapchain.imageViews[i];
+    framebufferInfo.width = sSwapchain.imageExtent.width;
+    framebufferInfo.height = sSwapchain.imageExtent.height;
     framebufferInfo.layers = 1;
 
     if (vkCreateFramebuffer(logicalDevice.device, &framebufferInfo, nullptr,
-                            &gSwapchain.framebuffers[i]) != VK_SUCCESS) {
+                            &sSwapchain.framebuffers[i]) != VK_SUCCESS) {
       RE_LOG(Critical, "failed to create frame buffer with index %d.", i);
 
       return RE_CRITICAL;

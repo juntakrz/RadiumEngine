@@ -86,6 +86,7 @@ TResult MGraphics::initialize() {
     chkResult =
         initSwapChain(core::renderer::format, core::renderer::colorSpace,
                       core::renderer::presentMode);
+  updateCameraProjection(true);
   if (chkResult <= RE_ERRORLIMIT) chkResult = createRenderPass();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createGraphicsPipeline();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createFramebuffers();
@@ -168,8 +169,8 @@ uint32_t MGraphics::bindMesh(WMesh* pMesh) {
     return -1;
   }
 
-  gSystem.meshes.emplace_back(pMesh);
-  return (uint32_t)gSystem.meshes.size() - 1;
+  sSystem.meshes.emplace_back(pMesh);
+  return (uint32_t)sSystem.meshes.size() - 1;
 }
 
 TResult MGraphics::createDescriptorSetLayouts() {
@@ -185,11 +186,11 @@ TResult MGraphics::createDescriptorSetLayouts() {
   uboMVPInfo.bindingCount = 1;
   uboMVPInfo.pBindings = &uboMVPBind;
 
-  gSystem.descSetLayouts.emplace_back();
+  sSystem.descSetLayouts.emplace_back();
   if (vkCreateDescriptorSetLayout(logicalDevice.device, &uboMVPInfo, nullptr,
-                                  &gSystem.descSetLayouts.back()) !=
+                                  &sSystem.descSetLayouts.back()) !=
       VK_SUCCESS) {
-    gSystem.descSetLayouts.erase(gSystem.descSetLayouts.end());
+    sSystem.descSetLayouts.erase(sSystem.descSetLayouts.end());
     RE_LOG(Critical, "Failed to create MVP matrix descriptor set layout.");
     return RE_CRITICAL;
   }
@@ -198,25 +199,25 @@ TResult MGraphics::createDescriptorSetLayouts() {
 }
 
 void MGraphics::destroyDescriptorSetLayouts(){
-  for (auto& it : gSystem.descSetLayouts) {
+  for (auto& it : sSystem.descSetLayouts) {
     vkDestroyDescriptorSetLayout(logicalDevice.device, it, nullptr);
   }
 }
 
 TResult MGraphics::createUniformBuffers() {
   // each frame will require a separate buffer, so 2 FIF would need buffers * 2
-  gRender.buffersUniform.resize(MAX_FRAMES_IN_FLIGHT);
+  sRender.buffersUniform.resize(MAX_FRAMES_IN_FLIGHT);
 
   VkDeviceSize uboMVPsize = sizeof(UboMVP);
 
-  for (int i = 0; i < gRender.buffersUniform.size();
+  for (int i = 0; i < sRender.buffersUniform.size();
        i += MAX_FRAMES_IN_FLIGHT) {
     createBuffer(EBCMode::CPU_UNIFORM, uboMVPsize,
-                 gRender.buffersUniform[i].buffer,
-                 gRender.buffersUniform[i].allocation, &gRender.uboMVP);
+                 sRender.buffersUniform[i].buffer,
+                 sRender.buffersUniform[i].allocation, &sRender.uboMVP);
     createBuffer(EBCMode::CPU_UNIFORM, uboMVPsize,
-                 gRender.buffersUniform[i + 1].buffer,
-                 gRender.buffersUniform[i + 1].allocation, &gRender.uboMVP);
+                 sRender.buffersUniform[i + 1].buffer,
+                 sRender.buffersUniform[i + 1].allocation, &sRender.uboMVP);
   }
 
   return RE_OK;
