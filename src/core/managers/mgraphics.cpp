@@ -206,9 +206,18 @@ void MGraphics::destroyDescriptorSetLayouts(){
 TResult MGraphics::createUniformBuffers() {
   // each frame will require a separate buffer, so 2 FIF would need buffers * 2
   gRender.buffersUniform.resize(MAX_FRAMES_IN_FLIGHT);
-  gRender.allocsUniforms.resize(MAX_FRAMES_IN_FLIGHT);
 
   VkDeviceSize uboMVPsize = sizeof(UboMVP);
+
+  for (int i = 0; i < gRender.buffersUniform.size();
+       i += MAX_FRAMES_IN_FLIGHT) {
+    createBuffer(EBCMode::CPU_UNIFORM, uboMVPsize,
+                 gRender.buffersUniform[i].buffer,
+                 gRender.buffersUniform[i].allocation, &gRender.uboMVP);
+    createBuffer(EBCMode::CPU_UNIFORM, uboMVPsize,
+                 gRender.buffersUniform[i + 1].buffer,
+                 gRender.buffersUniform[i + 1].allocation, &gRender.uboMVP);
+  }
 
   return RE_OK;
 }

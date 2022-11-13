@@ -49,8 +49,7 @@ class MGraphics {
   // objects used in shaders
   struct {
     UboMVP uboMVP;                              // matrix*view*projection matrices
-    std::vector<VkBuffer> buffersUniform;
-    std::vector<VmaAllocation> allocsUniforms;  // uniform buffers and allocations share the same index
+    std::vector<RBuffer> buffersUniform;
   } gRender;
 
   MGraphics();
