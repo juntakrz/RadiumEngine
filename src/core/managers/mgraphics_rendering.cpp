@@ -556,4 +556,5 @@ TResult MGraphics::drawFrame() {
 }
 
 void MGraphics::updateUniformBuffer(RBuffer* buffer, uint32_t image) {
+
 }
