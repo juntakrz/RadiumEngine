@@ -558,3 +558,17 @@ TResult MGraphics::drawFrame() {
 void MGraphics::updateUniformBuffer(RBuffer* buffer, uint32_t image) {
 
 }
+
+void MGraphics::updateAspectRatio() {
+  sRender.cameraSettings.aspectRatio =
+      (float)sSwapchain.imageExtent.width / sSwapchain.imageExtent.height;
+}
+
+void MGraphics::setFOV(float FOV) { sRender.cameraSettings.FOV = FOV; }
+
+void MGraphics::setViewDistance(float farZ) { sRender.cameraSettings.farZ; }
+
+void MGraphics::setViewDistance(float nearZ, float farZ) {
+  sRender.cameraSettings.nearZ = nearZ;
+  sRender.cameraSettings.farZ = farZ;
+}

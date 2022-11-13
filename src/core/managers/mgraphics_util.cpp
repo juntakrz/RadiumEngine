@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "vk_mem_alloc.h"
 #include "core/managers/mgraphics.h"
+#include "core/world/actors/acamera.h"
 
 TResult MGraphics::createBuffer(EBCMode mode, VkDeviceSize size,
                                 VkBuffer& outBuffer, VmaAllocation& outAlloc,
@@ -281,17 +282,38 @@ TResult MGraphics::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
   return RE_OK;
 }
 
-void MGraphics::updateCameraProjection(bool bUpdateAspectRatio, float FOV,
-                                       float nearZ, float farZ) {
-  if (bUpdateAspectRatio)
-    sRender.sProjection.aspectRatio =
-        (float)sSwapchain.imageExtent.width / sSwapchain.imageExtent.height;
+ACamera* MGraphics::createCamera(std::string name,
+                                 RCameraSettings* cameraSettings) {
+  if (cameras.try_emplace(name).second) {
+    cameras.at(name) = std::make_unique<ACamera>();
+    cameras.at(name)->setPerspective(
+        cameraSettings->FOV, cameraSettings->aspectRatio, cameraSettings->nearZ,
+        cameraSettings->farZ);
 
-  if (FOV > 0.0f) sRender.sProjection.FOV = FOV;
-  if (nearZ > 0.0f) sRender.sProjection.nearZ = nearZ;
-  if (farZ > 0.0f) sRender.sProjection.farZ = farZ;
+    RE_LOG(Log, "Created camera '%s'.", name.c_str());
+    return cameras.at(name).get();
+  }
 
-  sRender.uboMVP.projection =
-      glm::perspective(sRender.sProjection.FOV, sRender.sProjection.aspectRatio,
-                       sRender.sProjection.nearZ, sRender.sProjection.farZ);
+  RE_LOG(Error,
+         "Failed to create camera '%s'. Probably already exists. Attempting to "
+         "find it.", name.c_str());
+  return getCamera(name);
+}
+
+ACamera* MGraphics::getCamera(std::string name) {
+  if (cameras.find(name) != cameras.end()) {
+    return cameras.at(name).get();
+  }
+
+  return nullptr;
+}
+
+TResult MGraphics::destroyCamera(std::string name) {
+  if (cameras.find(name) != cameras.end()) {
+    cameras.erase(name);
+    return RE_OK;
+  }
+
+  RE_LOG(Error, "Failed to delete '%s' camera. Not found.", name.c_str());
+  return RE_ERROR;
 }

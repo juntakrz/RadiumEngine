@@ -3,6 +3,7 @@
 #include "vk_mem_alloc.h"
 #include "core/objects.h"
 #include "common.h"
+#include "core/world/actors/acamera.h"
 
 class WMesh;
 
@@ -48,20 +49,13 @@ class MGraphics {
 
   // objects used in shaders
   struct {
-    UboMVP uboMVP;                              // matrix*view*projection matrices
+    RCameraSettings cameraSettings;
 
-    struct {
-      float aspectRatio =
-          (float)config::renderWidth / (float)config::renderHeight;
-      float FOV = 90.0f;
-      float nearZ = 0.01f;
-      float farZ = 1000.0f;
-    } sProjection;
-
+    ACamera* pActiveCamera = nullptr;
     std::vector<RBuffer> buffersUniform;
   } sRender;
 
-  MGraphics();
+  std::unordered_map<std::string, std::unique_ptr<ACamera>> cameras;
 
 public:
   VkInstance APIInstance = VK_NULL_HANDLE;
@@ -73,6 +67,9 @@ public:
   VmaAllocator memAlloc;
   uint32_t framesRendered = 0;
   bool bFramebufferResized = false;
+
+ private:
+  MGraphics();
 
  public:
   static MGraphics& get() {
@@ -110,6 +107,11 @@ public:
   TResult createUniformBuffers();
   void destroyUniformBuffers();
 
+ private:
+  TResult checkInstanceValidationLayers();
+  std::vector<const char*> getRequiredInstanceExtensions();
+  std::vector<VkExtensionProperties> getInstanceExtensions();
+
   //
   // mgraphics_util
   //
@@ -128,10 +130,9 @@ public:
   TResult copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
                      VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
 
-  // use negative values to leave parameter unchanged, updates aspect ratio when called
-  void updateCameraProjection(bool bUpdateAspectRatio = false,
-                              float FOV = -1.0f, float nearZ = -1.0f,
-                              float farZ = -1.0f);
+  ACamera* createCamera(std::string name, RCameraSettings* cameraSettings);
+  ACamera* getCamera(std::string name);
+  TResult destroyCamera(std::string name);
 
   //
   // mgraphics_physicaldevice
@@ -210,8 +211,7 @@ public:
 
   TResult setSwapChainImageCount(const RVkPhysicalDevice& deviceData);
 
-  // requires valid variables provided by swap chain data gathering methods /
-  // initSwapChain
+  // requires valid variables provided by swap chain data gathering methods / initSwapChain
   TResult createSwapChain();
   void destroySwapChain();
   TResult recreateSwapChain();
@@ -248,8 +248,8 @@ public:
 
   void updateUniformBuffer(RBuffer* buffer, uint32_t image);
 
- private:
-  TResult checkInstanceValidationLayers();
-  std::vector<const char*> getRequiredInstanceExtensions();
-  std::vector<VkExtensionProperties> getInstanceExtensions();
+  void updateAspectRatio();
+  void setFOV(float FOV);
+  void setViewDistance(float farZ);
+  void setViewDistance(float nearZ, float farZ);
 };

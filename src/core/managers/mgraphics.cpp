@@ -5,6 +5,7 @@
 #include "core/managers/mwindow.h"
 #include "core/managers/mmodel.h"
 #include "core/renderer/renderer.h"
+#include "core/world/actors/acamera.h"
 
 MGraphics::MGraphics() { RE_LOG(Log, "Creating graphics manager."); };
 
@@ -15,7 +16,7 @@ TResult MGraphics::createInstance() {
   appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
   appInfo.pEngineName = config::engineTitle;
   appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-  appInfo.apiVersion = VK_API_VERSION_1_3;
+  appInfo.apiVersion = core::renderer::APIversion;
 
   return createInstance(&appInfo);
 }
@@ -86,7 +87,7 @@ TResult MGraphics::initialize() {
     chkResult =
         initSwapChain(core::renderer::format, core::renderer::colorSpace,
                       core::renderer::presentMode);
-  updateCameraProjection(true);
+  updateAspectRatio();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createRenderPass();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createGraphicsPipeline();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createFramebuffers();
@@ -124,7 +125,7 @@ TResult MGraphics::createMemAlloc() {
   allocCreateInfo.instance = APIInstance;
   allocCreateInfo.physicalDevice = physicalDevice.device;
   allocCreateInfo.device = logicalDevice.device;
-  allocCreateInfo.vulkanApiVersion = VK_API_VERSION_1_3;
+  allocCreateInfo.vulkanApiVersion = core::renderer::APIversion;
 
   if (vmaCreateAllocator(&allocCreateInfo, &memAlloc) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create Vulkan memory allocator.");
@@ -208,16 +209,16 @@ TResult MGraphics::createUniformBuffers() {
   // each frame will require a separate buffer, so 2 FIF would need buffers * 2
   sRender.buffersUniform.resize(MAX_FRAMES_IN_FLIGHT);
 
-  VkDeviceSize uboMVPsize = sizeof(UboMVP);
+  VkDeviceSize uboMVPsize = sizeof(RMVPMatrices);
 
   for (int i = 0; i < sRender.buffersUniform.size();
        i += MAX_FRAMES_IN_FLIGHT) {
     createBuffer(EBCMode::CPU_UNIFORM, uboMVPsize,
                  sRender.buffersUniform[i].buffer,
-                 sRender.buffersUniform[i].allocation, &sRender.uboMVP);
+                 sRender.buffersUniform[i].allocation, &sRender.pActiveCamera->getMVP());
     createBuffer(EBCMode::CPU_UNIFORM, uboMVPsize,
                  sRender.buffersUniform[i + 1].buffer,
-                 sRender.buffersUniform[i + 1].allocation, &sRender.uboMVP);
+                 sRender.buffersUniform[i + 1].allocation, &sRender.pActiveCamera->getMVP());
   }
 
   return RE_OK;

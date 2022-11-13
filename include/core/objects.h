@@ -64,10 +64,17 @@ struct NextVertex {
 };
 
 // uniform buffer object for vertex shader (model * view * projection)
-struct UboMVP {
-  glm::mat4 model;
-  glm::mat4 view;
-  glm::mat4 projection;
+struct RMVPMatrices {
+  glm::mat4 matModel      = glm::mat4(1.0f);
+  glm::mat4 matView       = glm::mat4(1.0f);
+  glm::mat4 matProjection = glm::mat4(1.0f);
+};
+
+struct RCameraSettings {
+  float aspectRatio = 16.0f / 9.0f;
+  float FOV = 90.0f;
+  float nearZ = 0.1f;
+  float farZ = 1000.0f;
 };
 
 struct WMeshData {
@@ -84,4 +91,10 @@ enum class EBCMode {    // VkBuffer creation mode
   CPU_INDEX,            // create index buffer for the iGPU (UNUSED)
   DGPU_VERTEX,          // create dedicated GPU vertex buffer
   DGPU_INDEX            // create dedicated GPU index buffer
+};
+
+enum class EAType {     // actor type
+  BASE = 0,
+  CAMERA,
+  MODEL
 };

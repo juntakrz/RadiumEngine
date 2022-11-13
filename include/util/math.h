@@ -51,7 +51,7 @@ constexpr std::vector<T> gaussBlurKernel(uint8_t radius, T sigma) noexcept {
 
   for (int8_t i = radius; i > -1; i--) {
     const T x = T(i - radius);
-    const T g = GMath::GaussDistribution(x, sigma);
+    const T g = math::gaussDistribution(x, sigma);
     (i != radius) ? sum += g : core = g;
 
     // emplace coefficient

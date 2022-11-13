@@ -24,13 +24,17 @@ class ACamera : public ABase {
   ACamera* m_pTargetCam = nullptr;    // if nullptr - won't follow
 
  public:
-  glm::mat4 mxModel;
-  glm::mat4 mxView;
-  glm::mat4 mxProjection;
+  RMVPMatrices m_ModelViewProj;
 
  public:
   ACamera() noexcept {};
   virtual ~ACamera() override {};
+
+  // get reference to model - view - projection matrices
+  RMVPMatrices& getMVP() { return m_ModelViewProj; };
+
+  void setPerspective(float FOV, float aspectRatio, float nearZ,
+                        float farZ) noexcept;
   /*
   void Move(float x = 0.0f, float y = 0.0f, float z = 0.0f) noexcept;
   void Move(const glm::vec3& delta) noexcept;
@@ -38,9 +42,6 @@ class ACamera : public ABase {
   void Rotate(float x = 0.0f, float y = 0.0f, float z = 0.0f) noexcept;
   void Rotate(const glm::vec3& delta) noexcept;
 
-  void SetAsPerspective() noexcept;
-  void SetAsPerspective(float FOV, float aspectRatio, float nearZ,
-                        float farZ) noexcept;
   void SetAsOrthographic() noexcept;
   void SetAsOrthographic(float width, float height, float nearZ,
                          float farZ) noexcept;

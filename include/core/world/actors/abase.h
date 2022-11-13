@@ -8,8 +8,8 @@
 
 class ABase {
  public:
-  std::string name;
-  glm::mat4 mxMain = glm::mat4(1.0f);
+  std::string m_name;
+  glm::mat4 m_matMain = glm::mat4(1.0f);
 
  protected:
   struct TransformData {
@@ -60,5 +60,5 @@ class ABase {
   void Scale(float x = 1.0f, float y = 1.0f, float z = 1.0f) noexcept;
   void Scale(const glm::vec3& delta) noexcept;
 
-  uint8_t TypeId();*/
+  uint8_t TypeId();
 };
