@@ -20,7 +20,7 @@ void WMesh::createVertexBuffer() {
 }
 
 void WMesh::createIndexBuffer() {
-  VkDeviceSize size = indices.size();
+  VkDeviceSize size = indices.size() * sizeof(indices[0]);
   mgrGfx->createBuffer(EBCMode::DGPU_INDEX, size, indexBuffer.buffer,
                        indexBuffer.allocation, indices.data(),
                        &indexBuffer.allocInfo);

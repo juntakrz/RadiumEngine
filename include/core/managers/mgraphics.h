@@ -109,12 +109,12 @@ public:
   * defining inData makes the method copy data to an outgoing buffer internally,
   otherwise empty but allocated VkBuffer is the result e.g. for a later data copy.
   * outAllocInfo is optional, but can be defined if allocation data is required*/
-  TResult createBuffer(EBCMode mode, VkDeviceSize size, VkBuffer outBuffer,
-                       VmaAllocation outAlloc, void* inData = nullptr,
+  TResult createBuffer(EBCMode mode, VkDeviceSize size, VkBuffer& outBuffer,
+                       VmaAllocation& outAlloc, void* inData = nullptr,
                        VmaAllocationInfo* outAllocInfo = nullptr);
 
   // copy buffer with SRC and DST bits
-  TResult copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer,
+  TResult copyBuffer(VkBuffer srcBuffer, VkBuffer& dstBuffer,
                      VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
   TResult copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
                      VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);

@@ -3,7 +3,7 @@
 #include "core/managers/mgraphics.h"
 
 TResult MGraphics::createBuffer(EBCMode mode, VkDeviceSize size,
-                                VkBuffer outBuffer, VmaAllocation outAlloc,
+                                VkBuffer& outBuffer, VmaAllocation& outAlloc,
                                 void* inData, VmaAllocationInfo* outAllocInfo) {
   switch ((uint8_t)mode) {
     case (uint8_t)EBCMode::CPU_UNIFORM: {
@@ -163,7 +163,7 @@ TResult MGraphics::createBuffer(EBCMode mode, VkDeviceSize size,
   return RE_OK;
 }
 
-TResult MGraphics::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer,
+TResult MGraphics::copyBuffer(VkBuffer srcBuffer, VkBuffer& dstBuffer,
                               VkBufferCopy* copyRegion, uint32_t cmdBufferId) {
   if (cmdBufferId > MAX_TRANSFER_BUFFERS) {
     RE_LOG(Warning, "Invalid index of transfer buffer, using default.");
