@@ -6,12 +6,14 @@
 #include "core/managers/mdebug.h"
 #include "core/managers/minput.h"
 #include "core/managers/mmodel.h"
+#include "core/managers/mscript.h"
 
 class MGraphics* mgrGfx = nullptr;
 class MWindow* mgrWnd = nullptr;
 class MDebug* mgrDbg = nullptr;
 class MInput* mgrInput = nullptr;
 class MModel* mgrModel = nullptr;
+class MScript* mgrScript = nullptr;
 
 void core::run() {
   // initialize engine
@@ -19,6 +21,7 @@ void core::run() {
   RE_LOG(Log, "-------------\n");
   RE_LOG(Log, "Initializing engine core...");
 
+  mgrScript = &MScript::get();
   loadCoreConfig();
 
   // create and register managers
@@ -64,19 +67,15 @@ void core::stop(TResult cause) {
 }
 
 void core::loadCoreConfig(const wchar_t* path) {
-  json data;
+  using json = nlohmann::json;
   uint32_t resolution[2] = { config::renderWidth, config::renderHeight };
   uint8_t requirements = 3;
+  const char* cfgName = "cfgCore";
 
-  if (jsonLoad(path, &data) != RE_OK) {
-    RE_LOG(Error,
-           "Failed to load core configuration file. Default settings will be "
-           "used.");
-    return;
-  };
+  json* data = mgrScript->jsonLoad(path, cfgName);
 
-  if (data.contains("core")) {
-    const auto& coreData = data.at("core");
+  if (data->contains("core")) {
+    const auto& coreData = data->at("core");
     if (coreData.contains("resolution")) {
       coreData.at("resolution").get_to(resolution);
       config::renderWidth = resolution[0];

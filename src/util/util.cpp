@@ -75,24 +75,6 @@ std::string wstrToStr(const wchar_t* string) {
   return newString;
 }
 
-TResult jsonLoad(const wchar_t* path, json* out_j) noexcept {
-  if (!path) {
-    RE_LOG(Error, "jsonLoad received empty path.");
-    return RE_ERROR;
-  }
-
-  std::ifstream fStream(path);
-  out_j->clear();
-
-  if (!fStream.good()) {
-    RE_LOG(Error, "Failed to read JSON file at '%s'.", path);
-    return RE_ERROR;
-  }
-
-  fStream >> *out_j;
-  return RE_OK;
-}
-
 float random(float min, float max) {
   std::random_device rd;
   std::mt19937 mt(rd());

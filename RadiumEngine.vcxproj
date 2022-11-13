@@ -190,6 +190,10 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\core\managers\mscript.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="src\core\managers\mtime.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
@@ -243,6 +247,7 @@
     <ClInclude Include="include\core\managers\mgraphics.h" />
     <ClInclude Include="include\core\managers\minput.h" />
     <ClInclude Include="include\core\managers\mmodel.h" />
+    <ClInclude Include="include\core\managers\mscript.h" />
     <ClInclude Include="include\core\managers\mtime.h" />
     <ClInclude Include="include\core\managers\mwindow.h" />
     <ClInclude Include="include\core\world\actors\abase.h" />

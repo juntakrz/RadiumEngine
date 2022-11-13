@@ -6,6 +6,7 @@ extern class MWindow* mgrWnd;
 extern class MDebug* mgrDbg;
 extern class MInput* mgrInput;
 extern class MModel* mgrModel;
+extern class MScript* mgrScript;
 
 namespace core {
 void run();
