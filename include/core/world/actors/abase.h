@@ -33,7 +33,6 @@ class ABase {
 
  public:
  
-  /*
   // returns matrix with all transformations applied
   virtual glm::mat4& GetTransform() noexcept;
 
