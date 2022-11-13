@@ -14,7 +14,7 @@ TResult MGraphics::createBuffer(EBCMode mode, VkDeviceSize size,
       bcInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
       VmaAllocationCreateInfo allocInfo{};
-      allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+      allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
       allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
       if (vmaCreateBuffer(memAlloc, &bcInfo, &allocInfo, &outBuffer, &outAlloc,
@@ -30,6 +30,66 @@ TResult MGraphics::createBuffer(EBCMode mode, VkDeviceSize size,
           return RE_ERROR;
         };
         memcpy(outBuffer, inData, size);
+        vmaUnmapMemory(memAlloc, outAlloc);
+      }
+
+      return RE_OK;
+    }
+
+    case (uint8_t)EBCMode::CPU_VERTEX: {
+      VkBufferCreateInfo bcInfo{};
+      bcInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+      bcInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+      bcInfo.size = size;
+      bcInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+      VmaAllocationCreateInfo allocInfo{};
+      allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+      allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+
+      if (vmaCreateBuffer(memAlloc, &bcInfo, &allocInfo, &outBuffer, &outAlloc,
+                          outAllocInfo) != VK_SUCCESS) {
+        RE_LOG(Error, "Failed to create CPU_VERTEX buffer.");
+        return RE_ERROR;
+      }
+
+      if (inData) {
+        void* pData = nullptr;
+        if (vmaMapMemory(memAlloc, outAlloc, &pData) != VK_SUCCESS) {
+          RE_LOG(Error, "Failed to map memory for CPU_VERTEX buffer data.");
+          return RE_ERROR;
+        };
+        memcpy(pData, inData, size);
+        vmaUnmapMemory(memAlloc, outAlloc);
+      }
+
+      return RE_OK;
+    }
+
+    case (uint8_t)EBCMode::CPU_INDEX: {
+      VkBufferCreateInfo bcInfo{};
+      bcInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+      bcInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+      bcInfo.size = size;
+      bcInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+      VmaAllocationCreateInfo allocInfo{};
+      allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+      allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+
+      if (vmaCreateBuffer(memAlloc, &bcInfo, &allocInfo, &outBuffer, &outAlloc,
+                          outAllocInfo) != VK_SUCCESS) {
+        RE_LOG(Error, "Failed to create CPU_INDEX buffer.");
+        return RE_ERROR;
+      }
+
+      if (inData) {
+        void* pData = nullptr;
+        if (vmaMapMemory(memAlloc, outAlloc, &pData) != VK_SUCCESS) {
+          RE_LOG(Error, "Failed to map memory for CPU_INDEX buffer data.");
+          return RE_ERROR;
+        };
+        memcpy(pData, inData, size);
         vmaUnmapMemory(memAlloc, outAlloc);
       }
 

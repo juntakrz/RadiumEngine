@@ -554,3 +554,6 @@ TResult MGraphics::drawFrame() {
 
   return chkResult;
 }
+
+void MGraphics::updateUniformBuffer(RBuffer* buffer, uint32_t image) {
+}

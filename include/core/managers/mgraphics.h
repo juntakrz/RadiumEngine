@@ -232,6 +232,8 @@ public:
 
   TResult drawFrame();
 
+  void updateUniformBuffer(RBuffer* buffer, uint32_t image);
+
  private:
   TResult checkInstanceValidationLayers();
   std::vector<const char*> getRequiredInstanceExtensions();
