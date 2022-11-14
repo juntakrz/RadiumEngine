@@ -16,6 +16,11 @@
         "view": "orthographic",
         "variables": [ 8.0, 4.5, 0.001, 100.0 ]
       }
-    }
+    },
+	
+	"$ACTIVE": {
+	  "name": "$ACTIVE",
+	  "activate": "camMain"
+	}
   }
 }

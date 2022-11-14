@@ -282,7 +282,7 @@ TResult MGraphics::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
   return RE_OK;
 }
 
-ACamera* MGraphics::createCamera(std::string name,
+ACamera* MGraphics::createCamera(const char* name,
                                  RCameraSettings* cameraSettings) {
   if (cameras.try_emplace(name).second) {
     cameras.at(name) = std::make_unique<ACamera>();
@@ -297,17 +297,17 @@ ACamera* MGraphics::createCamera(std::string name,
           sRender.cameraSettings.nearZ, sRender.cameraSettings.farZ);
     }
 
-    RE_LOG(Log, "Created camera '%s'.", name.c_str());
+    RE_LOG(Log, "Created camera '%s'.", name);
     return cameras.at(name).get();
   }
 
   RE_LOG(Error,
          "Failed to create camera '%s'. Probably already exists. Attempting to "
-         "find it.", name.c_str());
+         "find it.", name);
   return getCamera(name);
 }
 
-ACamera* MGraphics::getCamera(std::string name) {
+ACamera* MGraphics::getCamera(const char* name) {
   if (cameras.find(name) != cameras.end()) {
     return cameras.at(name).get();
   }
@@ -315,12 +315,23 @@ ACamera* MGraphics::getCamera(std::string name) {
   return nullptr;
 }
 
-TResult MGraphics::destroyCamera(std::string name) {
+void MGraphics::setCamera(const char* name) {
+  if (bRequireValidationLayers) {
+    if (cameras.find(name) == cameras.end()) {
+      RE_LOG(Error, "Failed to set camera '%s'. Camera not found.", name);
+      return;
+    }
+  }
+
+  sRender.pActiveCamera = cameras.at(name).get();
+}
+
+TResult MGraphics::destroyCamera(const char* name) {
   if (cameras.find(name) != cameras.end()) {
     cameras.erase(name);
     return RE_OK;
   }
 
-  RE_LOG(Error, "Failed to delete '%s' camera. Not found.", name.c_str());
+  RE_LOG(Error, "Failed to delete '%s' camera. Not found.", name);
   return RE_ERROR;
 }

@@ -130,9 +130,13 @@ public:
   TResult copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
                      VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
 
-  ACamera* createCamera(std::string name, RCameraSettings* cameraSettings);
-  ACamera* getCamera(std::string name);
-  TResult destroyCamera(std::string name);
+  ACamera* createCamera(const char* name, RCameraSettings* cameraSettings);
+  TResult destroyCamera(const char* name);
+  ACamera* getCamera(const char* name);
+
+  // set camera from create cameras by name
+  void setCamera(const char* name);
+  void setCamera(ACamera* pCamera);
 
   //
   // mgraphics_physicaldevice

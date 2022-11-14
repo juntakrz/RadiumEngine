@@ -84,11 +84,20 @@ void MScript::jsonParseCameras(const json* cameraData) noexcept {
     // create camera if it doesn't exist
     if (it.contains("name")) {
       std::string name = it.at("name");
+
+      if (name == "$ACTIVE") {
+        if (it.contains("activate")) {
+          std::string activatedCamera = it.at("activate");
+          mgrGfx->setCamera(activatedCamera.c_str());
+          continue;
+        }
+      }
+
       float pos[3] = {0.0f, 0.0f, 0.0f};
       float rotation[3] = {0.0f, 0.0f, 0.0f};
       float upVector[3] = {0.0f, 0.0f, 0.0f};
 
-      ACamera* newCamera = mgrGfx->createCamera(name, nullptr);
+      ACamera* newCamera = mgrGfx->createCamera(name.c_str(), nullptr);
 
       // set camera position
       if (it.contains("position")) {
