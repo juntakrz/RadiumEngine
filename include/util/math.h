@@ -6,11 +6,20 @@ constexpr double PI64 = 3.1415926535897932384626433832795028841971693993751;
 
 template <typename T>
 inline T wrapAngle(
-    const T theta)  // wrap angle to -180 .. 180 degrees (-PI .. PI)
-{
+    const T theta) {                              // wrap angle to -180 .. 180 degrees (-PI .. PI)
   constexpr T PI2 = (T)2.0 * (T)PI64;
   const T remainder = fmod(theta, PI2);
   return (remainder > (T)PI64) ? remainder - PI2 : remainder;
+}
+
+template <typename T>
+inline void wrapAnglesGLM(T& vector) {            // wrap angles of GLM vector to -180 .. 180 degrees (-PI .. PI)
+  constexpr float fPI2 = 2.0f * (float)PI64;
+  constexpr int max = vector.length();
+  for (int i = 0; i < max; ++i) {
+    const float remainder = fmod(vector[i], fPI2);
+    vector[i] = (remainder > (float)PI64) ? remainder - fPI2 : remainder;
+  }
 }
 
 template <typename T>

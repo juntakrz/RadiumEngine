@@ -39,26 +39,26 @@ class ABase {
   // data set used for transformation calculations
   virtual TransformData& GetTransformData() noexcept;
 
-  void SetPos(float x, float y, float z) noexcept;
-  void SetPos(const glm::vec3& pos) noexcept;
-  glm::vec3& GetPos() noexcept;
+  void setPos(float x, float y, float z) noexcept;
+  void setPos(const glm::vec3& pos) noexcept;
+  glm::vec3& getPos() noexcept;
 
-  void Move(float x = 0.0f, float y = 0.0f, float z = 0.0f) noexcept;
-  void Move(const glm::vec3& delta) noexcept;
+  void addPos(float x = 0.0f, float y = 0.0f, float z = 0.0f) noexcept;
+  void addPos(const glm::vec3& delta) noexcept;
 
-  void SetRotation(float x = 0.0f, float y = 0.0f, float z = 0.0f) noexcept;
-  void SetRotation(const glm::vec3& rotation) noexcept;
-  glm::vec3& GetRotation() noexcept;
+  void setRotation(float x = 0.0f, float y = 0.0f, float z = 0.0f) noexcept;
+  void setRotation(const glm::vec3& rotation) noexcept;
+  glm::vec3& getRotation() noexcept;
 
-  void Rotate(float x = 0.0f, float y = 0.0f, float z = 0.0f) noexcept;
-  void Rotate(const glm::vec3& delta) noexcept;
+  void addRotation(float x = 0.0f, float y = 0.0f, float z = 0.0f) noexcept;
+  void addRotation(const glm::vec3& delta) noexcept;
 
-  void SetScale(float x, float y, float z) noexcept;
-  void SetScale(const glm::vec3& scale) noexcept;
-  glm::vec3& GetScale() noexcept;
+  void setScale(float x, float y, float z) noexcept;
+  void setScale(const glm::vec3& scale) noexcept;
+  glm::vec3& getScale() noexcept;
 
-  void Scale(float x = 1.0f, float y = 1.0f, float z = 1.0f) noexcept;
-  void Scale(const glm::vec3& delta) noexcept;
+  void addScale(float x = 1.0f, float y = 1.0f, float z = 1.0f) noexcept;
+  void addScale(const glm::vec3& delta) noexcept;
 
   uint8_t TypeId();
 };
