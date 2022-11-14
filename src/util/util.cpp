@@ -63,16 +63,28 @@ void validate(TResult result) {
   }
 }
 
-std::string wstrToStr(const wchar_t* string) {
-  char newString[255];
+std::string toString(const wchar_t* string) {
+  char newString[_MAX_PATH];
   size_t newLength = wcslen(string) + 1;
 
-  if (newLength > 255) newLength = 255;
+  if (newLength > _MAX_PATH) newLength = _MAX_PATH;
 
   memset(newString, 0, newLength);
   wcstombs(newString, string, newLength - 1);
   
   return newString;
+}
+
+std::wstring toWString(const char* string) {
+  wchar_t newWStr[_MAX_PATH];
+  size_t newLength = strlen(string) + 1;
+
+  if (newLength > _MAX_PATH) newLength = _MAX_PATH;
+
+  memset(newWStr, 0, newLength);
+  mbstowcs(newWStr, string, newLength - 1);
+
+  return newWStr;
 }
 
 float random(float min, float max) {

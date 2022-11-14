@@ -19,12 +19,18 @@ private:
   MScript(const MScript&) = delete;
   MScript& operator=(const MScript&) = delete;
 
-  json* jsonLoad(const wchar_t* path, const char* name) noexcept;
-  json* jsonGet(const char* name);
+  TResult loadMap(const char* mapName);
 
-  void jsonParseCameras(const json& cameraData) noexcept;
-  void jsonParseMaterials(const json& materialData) noexcept;
-  void jsonParseLights(const json& lightData) noexcept;
-  void jsonParseObjects(const json& objectData) noexcept;
-  void jsonParseCommands(const json& commandData) noexcept;
+  json* jsonLoad(const wchar_t* path, const char* jsonId) noexcept;
+  json* jsonGet(const char* jsonId);
+  TResult jsonRemove(const char* jsonId);
+
+  // clear all loaded JSONs from memory
+  void clearAllScripts();
+
+  void jsonParseCameras(const json* cameraData) noexcept;
+  void jsonParseMaterials(const json* materialData) noexcept;
+  void jsonParseLights(const json* lightData) noexcept;
+  void jsonParseObjects(const json* objectData) noexcept;
+  void jsonParseCommands(const json* commandData) noexcept;
 };

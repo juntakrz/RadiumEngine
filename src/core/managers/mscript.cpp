@@ -1,9 +1,26 @@
 #include "pch.h"
 #include "core/managers/mscript.h"
+#include "util/util.h"
 
 using json = nlohmann::json;
 
 MScript::MScript() { RE_LOG(Log, "Preparing script manager."); }
+
+TResult MScript::loadMap(const char* mapName) {
+  // map structure constants
+  const std::wstring mapPath = L"maps/" + toWString(mapName) + L".map/";
+  const std::wstring initPath = mapPath + L"init.json";
+  const std::wstring camPath = mapPath + L"cameras.json";
+  const std::wstring matPath = mapPath + L"materials.json";
+  const std::wstring lightPath = mapPath + L"lights.json";
+  const std::wstring objPath = mapPath + L"objects.json";
+  const std::wstring commPath = mapPath + L"commands.json";
+
+  // parse cameras
+  jsonParseCameras(jsonLoad(camPath.c_str(), "cameraData"));
+
+  return RE_OK;
+}
 
 json* MScript::jsonLoad(const wchar_t* path, const char* name) noexcept {
   if (!path) {
@@ -40,7 +57,25 @@ json* MScript::jsonGet(const char* name) {
   return nullptr;
 }
 
-void MScript::jsonParseCameras(const json& cameraData) noexcept { /*
+TResult MScript::jsonRemove(const char* jsonId) {
+  if (m_jsons.find(jsonId) != m_jsons.end()) {
+    m_jsons.erase(jsonId);
+    return RE_OK;
+  }
+
+  RE_LOG(Error, "failed to remove jsonId '%s' - does not exist.", jsonId);
+  return RE_ERROR;
+}
+
+void MScript::clearAllScripts() { m_jsons.clear(); }
+
+void MScript::jsonParseCameras(const json* cameraData) noexcept {
+  
+  if (!cameraData) {
+    RE_LOG(Error, "no camera data was provided for map parser.");
+    return;
+  }
+  /*
   for (const auto& it : cameraData.at("cameras")) {
     // create camera if it doesn't exist
     if (it.contains("name")) {
@@ -89,10 +124,10 @@ void MScript::jsonParseCameras(const json& cameraData) noexcept { /*
   }*/
 }
 
-void MScript::jsonParseMaterials(const json& materialData) noexcept {}
+void MScript::jsonParseMaterials(const json* materialData) noexcept {}
 
-void MScript::jsonParseLights(const json& lightData) noexcept {}
+void MScript::jsonParseLights(const json* lightData) noexcept {}
 
-void MScript::jsonParseObjects(const json& objectData) noexcept {}
+void MScript::jsonParseObjects(const json* objectData) noexcept {}
 
-void MScript::jsonParseCommands(const json& commandData) noexcept {}
+void MScript::jsonParseCommands(const json* commandData) noexcept {}

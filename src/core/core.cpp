@@ -93,7 +93,7 @@ void core::loadCoreConfig(const wchar_t* path) {
 
   if (!requirements) {
     RE_LOG(Log, "Successfully loaded core config at '%s'.",
-           wstrToStr(path).c_str());
+           toString(path).c_str());
     return;
   }
 
