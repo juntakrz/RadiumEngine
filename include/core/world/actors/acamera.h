@@ -35,6 +35,9 @@ class ACamera : public ABase {
 
   void setPerspective(float FOV, float aspectRatio, float nearZ,
                         float farZ) noexcept;
+
+  void setUpVector(glm::vec4 upVector);
+  void setUpVector(float x, float y, float z);
   /*
   void Move(float x = 0.0f, float y = 0.0f, float z = 0.0f) noexcept;
   void Move(const glm::vec3& delta) noexcept;

@@ -36,6 +36,9 @@ void core::run() {
   mgrInput->initialize(mgrWnd->window());
 
   RE_LOG(Log, "Successfully initialized engine core.");
+
+  mgrScript->loadMap("default");
+
   RE_LOG(Log, "Launching main event loop.");
 
   mainEventLoop();

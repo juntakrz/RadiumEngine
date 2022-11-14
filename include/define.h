@@ -24,6 +24,7 @@ constexpr bool bRequireValidationLayers = true;
 
 // global constants
 #define RE_PATH_CONFIG      TEXT("config/config.json")
+#define RE_MAP_PATH         TEXT("content/maps/")
 
 // error levels
 #define RE_OK					      0x00		   // success

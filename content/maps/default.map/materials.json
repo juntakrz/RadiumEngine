@@ -1,0 +1,293 @@
+{
+  "materials": {
+
+    "Mat_Sun": {
+      "name": "Mat_Sun",
+      "shaders": {
+        "vs": "VS_Default",
+        "ps": "PS_Default"
+      },
+      "passes": [
+        "blur"
+      ]
+    },
+
+    "Mat_SunFlare": {
+      "name": "Mat_SunFlare",
+      "manageTextures": true,
+      "shaders": {
+        "vs": "VS_QuadFlare",
+        "gs": "GS_QuadFlare",
+        "ps": "PS_QuadFlare"
+      },
+      "textures": {
+        "tex0": "lens/sunFlare.dds",
+        "tex1": "lens/lensDust.dds"
+      },
+      "variables": {
+        "intensity": 1.0,
+        "metalness": 0.0,
+        "roughness": 1.0,
+        "ambient": [ 0.0, 0.0, 0.25 ]
+      },
+      "passes": [
+        "sprite"
+      ]
+    },
+
+    "Mat_Mars": {
+      "name": "Mat_Mars",
+      "manageTextures": true,
+      "shaders": {
+        "vs": "VS_PBS",
+        "ps": "PS_PBS_NoHDR_L"
+      },
+      "textures": {
+        "tex0": "PBR/mars/mars_4k_albedo.dds",
+        "tex1": "PBR/mars/mars_4k_normal.dds",
+        "tex2": "PBR/mars/mars_4k_metallic.dds",
+        "tex3": "PBR/mars/mars_4k_roughness.dds",
+        "tex4": "PBR/mars/mars_4k_ao.dds"
+      },
+      "variables": {
+        "intensity": 2.2,
+        "bumpiness": 1.5,
+        "metalness": 0.08,
+        "roughness": 0.8,
+        "ambient": [ 0.18, 0.1, 0.0 ],
+        "F0": [ 0.25, 0.23, 0.0 ]
+      },
+      "passes": [
+        "background"
+      ]
+    },
+
+    "Mat_SkySphere": {
+      "name": "Mat_SkySphere",
+      "shaders": {
+        "vs": "VS_FlatTexture",
+        "ps": "PS_FlatTexture"
+      },
+      "textures": {
+        "tex0": "stars_6k_color.dds"
+      },
+      "variables": {
+        "intensity": 0.1
+      },
+      "passes": [
+        "background"
+      ]
+    },
+
+    "Mat_Atmo": {
+      "name": "Mat_Atmo",
+      "shaders": {
+        "vs": "VS_Atmosphere",
+        "ps": "PS_Atmosphere"
+      },
+      "variables": {
+        "intensity": 1.0,
+        "metalness": 0.0,
+        "roughness": 1.0,
+        "ambient": [ 0.0, 0.0, 0.25 ]
+      },
+      "passes": [
+        "blur"
+      ]
+    },
+
+    "Mat_TestIron": {
+      "name": "Mat_TestIron",
+      "manageTextures": true,
+      "shaders": {
+        "vs": "VS_PBS_Shadow",
+        "ps": "PS_PBS_Shadow"
+      },
+      "textures": {
+        "tex0": "PBR/iron/albedo.dds",
+        "tex1": "PBR/iron/normal.dds",
+        "tex2": "PBR/iron/metallic.dds",
+        "tex3": "PBR/iron/roughness.dds"
+      },
+      "variables": {
+        "intensity": 1.0,
+        "bumpiness": 2.0,
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "ambient": [ 0.18, 0.1, 0.01 ],
+        "F0": [ 0.0, 0.0, 0.0 ]
+      },
+      "passes": [
+        "standard",
+        "shadow"
+      ]
+    },
+
+    "Mat_TestGold": {
+      "name": "Mat_TestGold",
+      "manageTextures": true,
+      "shaders": {
+        "vs": "VS_PBS_Shadow",
+        "ps": "PS_PBS_Shadow"
+      },
+      "textures": {
+        "tex0": "PBR/gold_ornate/albedo.dds",
+        "tex1": "PBR/gold_ornate/normal.dds",
+        "tex2": "PBR/gold_ornate/metallic.dds",
+        "tex3": "PBR/gold_ornate/roughness.dds",
+        "tex4": "PBR/gold_ornate/ao.dds"
+      },
+      "variables": {
+        "intensity": 1.0,
+        "bumpiness": 2.0,
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "ambient": [ 0.18, 0.1, 0.01 ],
+        "F0": [ 0.25, 0.25, 0.05 ]
+      },
+      "passes": [
+        "standard",
+        "shadow"
+      ]
+    },
+
+    "Mat_TestSteel": {
+      "name": "Mat_TestSteel",
+      "manageTextures": true,
+      "shaders": {
+        "vs": "VS_PBS_Shadow",
+        "ps": "PS_PBS_Shadow"
+      },
+      "textures": {
+        "tex0": "PBR/steel_plate/albedo.dds",
+        "tex1": "PBR/steel_plate/normal.dds",
+        "tex2": "PBR/steel_plate/metallic.dds",
+        "tex3": "PBR/steel_plate/roughness.dds",
+        "tex4": "PBR/steel_plate/ao.dds"
+      },
+      "variables": {
+        "intensity": 1.0,
+        "bumpiness": 2.0,
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "ambient": [ 0.18, 0.1, 0.01 ],
+        "F0": [ 0.15, 0.12, 0.05 ]
+      },
+      "passes": [
+        "blur",
+        "shadow"
+      ]
+    },
+
+    "Mat_TestBricks": {
+      "name": "Mat_TestBricks",
+      "manageTextures": true,
+      "shaders": {
+        "vs": "VS_PBS_Shadow",
+        "ps": "PS_PBS_Shadow"
+      },
+      "textures": {
+        "tex0": "PBR/bricks/albedo.dds",
+        "tex1": "PBR/bricks/normal.dds",
+        "tex3": "PBR/bricks/roughness.dds",
+        "tex4": "PBR/bricks/ao.dds"
+      },
+      "variables": {
+        "intensity": 5.0,
+        "bumpiness": 2.0,
+        "metalness": 2.0,
+        "roughness": 3.0,
+        "ambient": [ 0.18, 0.1, 0.01 ],
+        "F0": [ 0.07, 0.06, 0.05 ]
+      },
+      "passes": [
+        "standard",
+        "shadow"
+      ]
+    },
+
+    "Aft_Section": {
+      "name": "Aft_Section",
+      "manageTextures": true,
+      "shaders": {
+        "vs": "VS_PBS_Shadow",
+        "ps": "PS_PBS_Shadow"
+      },
+      "textures": {
+        "tex0": "PBR/tachi/Tachi_Aft_Base_High.dds",
+        "tex1": "PBR/tachi/Tachi_Aft_Normal_High.dds",
+        "tex2": "PBR/tachi/Tachi_Aft_Metallic_High.dds",
+        "tex3": "PBR/tachi/Tachi_Aft_Roughness_High.dds",
+        "tex4": "PBR/tachi/Tachi_Aft_AO_High.dds"
+      },
+      "variables": {
+        "intensity": 2.0,
+        "bumpiness": 1.5,
+        "metalness": 1.12,
+        "roughness": 0.8,
+        "ambient": [ 0.18, 0.1, 0.01 ],
+        "F0": [ 0.05, 0.05, 0.05 ]
+      },
+      "passes": [
+        "standard",
+        "shadow"
+      ]
+    },
+
+    "Fore_Section": {
+      "name": "Fore_Section",
+      "manageTextures": true,
+      "shaders": {
+        "vs": "VS_PBS_Shadow",
+        "ps": "PS_PBS_Shadow"
+      },
+      "textures": {
+        "tex0": "PBR/tachi/Tachi_Fore_Base_High.dds",
+        "tex1": "PBR/tachi/Tachi_Fore_Normal_High.dds",
+        "tex2": "PBR/tachi/Tachi_Fore_Metallic_High.dds",
+        "tex3": "PBR/tachi/Tachi_Fore_Roughness_High.dds",
+        "tex4": "PBR/tachi/Tachi_Fore_AO_High.dds"
+      },
+      "variables": {
+        "intensity": 2.0,
+        "bumpiness": 1.5,
+        "metalness": 1.12,
+        "roughness": 0.8,
+        "ambient": [ 0.18, 0.1, 0.01 ],
+        "F0": [ 0.05, 0.05, 0.05 ]
+      },
+      "passes": [
+        "standard",
+        "shadow"
+      ]
+    },
+
+    "Nozzle_And_PDCs": {
+      "name": "Nozzle_And_PDCs",
+      "manageTextures": true,
+      "shaders": {
+        "vs": "VS_PBS_Shadow",
+        "ps": "PS_PBS_Shadow"
+      },
+      "textures": {
+        "tex0": "PBR/tachi/Tachi_Nozzle_PDCs_Base_High.dds",
+        "tex1": "PBR/tachi/Tachi_Nozzle_PDCs_Normal_High.dds",
+        "tex2": "PBR/tachi/Tachi_Nozzle_PDCs_Metallic_High.dds",
+        "tex3": "PBR/tachi/Tachi_Nozzle_PDCs_Roughness_High.dds",
+        "tex4": "PBR/tachi/Tachi_Nozzle_PDCs_AO_High.dds"
+      },
+      "variables": {
+        "intensity": 2.0,
+        "bumpiness": 1.5,
+        "metalness": 1.12,
+        "roughness": 0.8,
+        "ambient": [ 0.18, 0.1, 0.01 ],
+        "F0": [ 0.05, 0.05, 0.05 ]
+      },
+      "passes": [
+        "standard",
+        "shadow"
+      ]
+    }
+  }
+}

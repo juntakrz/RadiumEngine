@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "core/managers/mscript.h"
+#include "core/managers/mgraphics.h"
+#include "core/core.h"
 #include "util/util.h"
 
 using json = nlohmann::json;
@@ -8,7 +10,7 @@ MScript::MScript() { RE_LOG(Log, "Preparing script manager."); }
 
 TResult MScript::loadMap(const char* mapName) {
   // map structure constants
-  const std::wstring mapPath = L"maps/" + toWString(mapName) + L".map/";
+  const std::wstring mapPath = RE_MAP_PATH + toWString(mapName) + TEXT(".map/");
   const std::wstring initPath = mapPath + L"init.json";
   const std::wstring camPath = mapPath + L"cameras.json";
   const std::wstring matPath = mapPath + L"materials.json";
@@ -75,53 +77,57 @@ void MScript::jsonParseCameras(const json* cameraData) noexcept {
     RE_LOG(Error, "no camera data was provided for map parser.");
     return;
   }
-  /*
-  for (const auto& it : cameraData.at("cameras")) {
+
+  for (const auto& it : cameraData->at("cameras")) {
     // create camera if it doesn't exist
     if (it.contains("name")) {
       std::string name = it.at("name");
       float pos[3] = {0.0f, 0.0f, 0.0f};
-      float rotation[2] = {0.0f, 0.0f};
+      float rotation[3] = {0.0f, 0.0f, 0.0f};
+      float upVector[3] = {0.0f, 0.0f, 0.0f};
 
-      void* ptr = mgrGfx->addCamera(name);
+      ACamera* newCamera = mgrGfx->createCamera(name, nullptr);
 
       // set camera position
       if (it.contains("position")) {
         it.at("position").get_to(pos);
       }
 
-      // set camera rotation
-      DF.Camera(name)->SetPos({pos[0], pos[1], pos[2]});
-
       if (it.contains("rotation")) {
         it.at("rotation").get_to(rotation);
       }
 
-      DF.Camera(name)->SetRotation(rotation[0], rotation[1]);
+      if (it.contains("upVector")) {
+        it.at("rotation").get_to(upVector);
+      }
+
+      newCamera->setPos({pos[0], pos[1], pos[2], 0.0f});
+      newCamera->setRotation({rotation[0], rotation[1], rotation[2], 0.0f});
+      newCamera->setUpVector({upVector[0], upVector[1], upVector[2], 0.0f});
 
       // set camera mode
       /* vars:
               orthographic: x = width, y = height, z = nearZ, w = farZ
               perspective:  x = FOV, y = aspect ratio, z = nearZ, w = farZ
       */
-                                                                  /*
+
       if (it.contains("mode")) {
         float vars[4];
         it.at("mode").at("variables").get_to(vars);
 
         if (it.at("mode").at("view") == "orthographic") {
-          DF.Camera(name)->SetAsOrthographic(vars[0], vars[1], vars[2],
-                                             vars[3]);
+          //DF.Camera(name)->SetAsOrthographic(vars[0], vars[1], vars[2],
+            //                                 vars[3]);
         }
 
         if (it.at("mode").at("view") == "perspective") {
-          DF.Camera(name)->SetAsPerspective(vars[0], vars[1], vars[2], vars[3]);
+          newCamera->setPerspective(vars[0], vars[1], vars[2], vars[3]);
         }
       }
 
-      DF.RefM->Add(name, ptr, DFRefMgr::Type::Camera);
+      //DF.RefM->Add(name, ptr, DFRefMgr::Type::Camera);
     }
-  }*/
+  }
 }
 
 void MScript::jsonParseMaterials(const json* materialData) noexcept {}
