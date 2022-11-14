@@ -46,7 +46,9 @@ json* MScript::jsonLoad(const wchar_t* path, const char* name) noexcept {
   }
 
   fStream >> *out_j;
-  RE_LOG(Log, "Loaded '%s' from '%s'.", name, path);
+  
+  std::string str = toString(path);
+  RE_LOG(Log, "Loaded '%s' from '%s'.", name, str.c_str());
   return &m_jsons.at(name);
 }
 

@@ -82,7 +82,7 @@ std::wstring toWString(const char* string) {
   if (newLength > _MAX_PATH) newLength = _MAX_PATH;
 
   memset(newWStr, 0, newLength);
-  mbstowcs(newWStr, string, newLength - 1);
+  mbstowcs(newWStr, string, newLength);
 
   return newWStr;
 }
