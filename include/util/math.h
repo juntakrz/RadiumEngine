@@ -15,7 +15,7 @@ inline T wrapAngle(
 template <typename T>
 inline void wrapAnglesGLM(T& vector) {            // wrap angles of GLM vector to -180 .. 180 degrees (-PI .. PI)
   constexpr float fPI2 = 2.0f * (float)PI64;
-  constexpr int max = vector.length();
+  const int max = vector.length();
   for (int i = 0; i < max; ++i) {
     const float remainder = fmod(vector[i], fPI2);
     vector[i] = (remainder > (float)PI64) ? remainder - fPI2 : remainder;

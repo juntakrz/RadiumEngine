@@ -286,9 +286,16 @@ ACamera* MGraphics::createCamera(std::string name,
                                  RCameraSettings* cameraSettings) {
   if (cameras.try_emplace(name).second) {
     cameras.at(name) = std::make_unique<ACamera>();
-    cameras.at(name)->setPerspective(
-        cameraSettings->FOV, cameraSettings->aspectRatio, cameraSettings->nearZ,
-        cameraSettings->farZ);
+
+    if (cameraSettings) {
+      cameras.at(name)->setPerspective(
+          cameraSettings->FOV, cameraSettings->aspectRatio,
+          cameraSettings->nearZ, cameraSettings->farZ);
+    } else {
+      cameras.at(name)->setPerspective(
+          sRender.cameraSettings.FOV, sRender.cameraSettings.aspectRatio,
+          sRender.cameraSettings.nearZ, sRender.cameraSettings.farZ);
+    }
 
     RE_LOG(Log, "Created camera '%s'.", name.c_str());
     return cameras.at(name).get();

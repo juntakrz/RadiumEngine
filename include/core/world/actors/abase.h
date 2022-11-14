@@ -14,15 +14,15 @@ class ABase {
  protected:
   struct TransformData {
     // data used in actual transformation calculations
-    glm::vec3 translation = {0.0f, 0.0f, 0.0f};
-    glm::vec3 rotation = {0.0f, 0.0f, 0.0f};
-    glm::vec3 scaling = {1.0f, 1.0f, 1.0f};
+    glm::vec4 translation = {0.0f, 0.0f, 0.0f, 1.0f};
+    glm::vec4 rotation = {0.0f, 0.0f, 0.0f, 1.0f};
+    glm::vec4 scaling = {1.0f, 1.0f, 1.0f, 1.0f};
 
     struct {
       // initial data defined by Set* methods
-      glm::vec3 translation = {0.0f, 0.0f, 0.0f};
-      glm::vec3 rotation = {0.0f, 0.0f, 0.0f};
-      glm::vec3 scaling = {0.0f, 0.0f, 0.0f};
+      glm::vec4 translation = {0.0f, 0.0f, 0.0f, 1.0f};
+      glm::vec4 rotation = {0.0f, 0.0f, 0.0f, 1.0f};
+      glm::vec4 scaling = {0.0f, 0.0f, 0.0f, 1.0f};
     } initial;
 
   } transform;
@@ -40,25 +40,25 @@ class ABase {
   virtual TransformData& GetTransformData() noexcept;
 
   void setPos(float x, float y, float z) noexcept;
-  void setPos(const glm::vec3& pos) noexcept;
-  glm::vec3& getPos() noexcept;
+  void setPos(const glm::vec4& pos) noexcept;
+  glm::vec4& getPos() noexcept;
 
   void addPos(float x = 0.0f, float y = 0.0f, float z = 0.0f) noexcept;
-  void addPos(const glm::vec3& delta) noexcept;
+  void addPos(const glm::vec4& delta) noexcept;
 
   void setRotation(float x = 0.0f, float y = 0.0f, float z = 0.0f) noexcept;
-  void setRotation(const glm::vec3& rotation) noexcept;
-  glm::vec3& getRotation() noexcept;
+  void setRotation(const glm::vec4& rotation) noexcept;
+  glm::vec4& getRotation() noexcept;
 
   void addRotation(float x = 0.0f, float y = 0.0f, float z = 0.0f) noexcept;
-  void addRotation(const glm::vec3& delta) noexcept;
+  void addRotation(const glm::vec4& delta) noexcept;
 
   void setScale(float x, float y, float z) noexcept;
-  void setScale(const glm::vec3& scale) noexcept;
-  glm::vec3& getScale() noexcept;
+  void setScale(const glm::vec4& scale) noexcept;
+  glm::vec4& getScale() noexcept;
 
   void addScale(float x = 1.0f, float y = 1.0f, float z = 1.0f) noexcept;
-  void addScale(const glm::vec3& delta) noexcept;
+  void addScale(const glm::vec4& delta) noexcept;
 
   uint8_t TypeId();
 };
