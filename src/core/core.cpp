@@ -7,6 +7,7 @@
 #include "core/managers/minput.h"
 #include "core/managers/mmodel.h"
 #include "core/managers/mscript.h"
+#include "core/managers/mref.h"
 
 class MGraphics* mgrGfx = nullptr;
 class MWindow* mgrWnd = nullptr;
@@ -14,6 +15,7 @@ class MDebug* mgrDbg = nullptr;
 class MInput* mgrInput = nullptr;
 class MModel* mgrModel = nullptr;
 class MScript* mgrScript = nullptr;
+class MRef* mgrRef = nullptr;
 
 void core::run() {
   // initialize engine
@@ -21,6 +23,7 @@ void core::run() {
   RE_LOG(Log, "-------------\n");
   RE_LOG(Log, "Initializing engine core...");
 
+  mgrRef = &MRef::get();
   mgrScript = &MScript::get();
   loadCoreConfig();
 

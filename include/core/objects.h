@@ -2,6 +2,20 @@
 
 #include "vk_mem_alloc.h"
 
+enum class EBCMode {  // VkBuffer creation mode
+  CPU_UNIFORM = 0,    // create uniform buffer for GPU programs
+  CPU_VERTEX,         // create vertex buffer for the iGPU (UNUSED)
+  CPU_INDEX,          // create index buffer for the iGPU (UNUSED)
+  DGPU_VERTEX,        // create dedicated GPU vertex buffer
+  DGPU_INDEX          // create dedicated GPU index buffer
+};
+
+enum class EAType {  // actor type
+  BASE = 0,
+  CAMERA,
+  MODEL
+};
+
 struct RVkQueueFamilyIndices {
   std::vector<int32_t> graphics;
   std::vector<int32_t> compute;
@@ -86,18 +100,4 @@ struct WMeshData {
 struct WActorPtr {
   class ABase* ptr = nullptr;
   EAType type = EAType::BASE;
-};
-
-enum class EBCMode {    // VkBuffer creation mode
-  CPU_UNIFORM = 0,      // create uniform buffer for GPU programs
-  CPU_VERTEX,           // create vertex buffer for the iGPU (UNUSED)
-  CPU_INDEX,            // create index buffer for the iGPU (UNUSED)
-  DGPU_VERTEX,          // create dedicated GPU vertex buffer
-  DGPU_INDEX            // create dedicated GPU index buffer
-};
-
-enum class EAType {     // actor type
-  BASE = 0,
-  CAMERA,
-  MODEL
 };

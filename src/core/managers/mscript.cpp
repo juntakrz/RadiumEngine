@@ -1,12 +1,13 @@
 #include "pch.h"
 #include "core/managers/mscript.h"
 #include "core/managers/mgraphics.h"
+#include "core/managers/mref.h"
 #include "core/core.h"
 #include "util/util.h"
 
 using json = nlohmann::json;
 
-MScript::MScript() { RE_LOG(Log, "Preparing script manager."); }
+MScript::MScript() { RE_LOG(Log, "Created script manager."); }
 
 TResult MScript::loadMap(const char* mapName) {
   // map structure constants
@@ -80,6 +81,8 @@ void MScript::jsonParseCameras(const json* cameraData) noexcept {
     return;
   }
 
+  std::string activatedCamera = "";
+
   for (const auto& it : cameraData->at("cameras")) {
     // create camera if it doesn't exist
     if (it.contains("name")) {
@@ -87,8 +90,7 @@ void MScript::jsonParseCameras(const json* cameraData) noexcept {
 
       if (name == "$ACTIVE") {
         if (it.contains("activate")) {
-          std::string activatedCamera = it.at("activate");
-          mgrGfx->setCamera(activatedCamera.c_str());
+          activatedCamera = it.at("activate");
           continue;
         }
       }
@@ -136,9 +138,11 @@ void MScript::jsonParseCameras(const json* cameraData) noexcept {
         }
       }
 
-      //DF.RefM->Add(name, ptr, DFRefMgr::Type::Camera);
+      mgrRef->registerActor(name.c_str(), newCamera, EAType::CAMERA);
     }
   }
+
+  if (activatedCamera != "") mgrGfx->setCamera(activatedCamera.c_str());
 }
 
 void MScript::jsonParseMaterials(const json* materialData) noexcept {}
