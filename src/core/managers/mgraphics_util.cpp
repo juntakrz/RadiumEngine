@@ -8,6 +8,13 @@ TResult MGraphics::createBuffer(EBCMode mode, VkDeviceSize size,
                                 void* inData, VmaAllocationInfo* outAllocInfo) {
   switch ((uint8_t)mode) {
     case (uint8_t)EBCMode::CPU_UNIFORM: {
+
+      if (!outAllocInfo) {
+        RE_LOG(Warning,
+               "No allocation info structure provided while creating buffer in "
+               "a CPU_UNIFORM mode.");
+      }
+
       VkBufferCreateInfo bcInfo{};
       bcInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
       bcInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
@@ -16,7 +23,8 @@ TResult MGraphics::createBuffer(EBCMode mode, VkDeviceSize size,
 
       VmaAllocationCreateInfo allocInfo{};
       allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-      allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+      allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+                        VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
       if (vmaCreateBuffer(memAlloc, &bcInfo, &allocInfo, &outBuffer, &outAlloc,
                           outAllocInfo) != VK_SUCCESS) {
@@ -24,15 +32,7 @@ TResult MGraphics::createBuffer(EBCMode mode, VkDeviceSize size,
         return RE_ERROR;
       }
 
-      if (inData) {
-        void* pData = nullptr;
-        if (vmaMapMemory(memAlloc, outAlloc, &pData) != VK_SUCCESS) {
-          RE_LOG(Error, "Failed to map memory for CPU_UNIFORM buffer data.");
-          return RE_ERROR;
-        };
-        memcpy(outBuffer, inData, size);
-        vmaUnmapMemory(memAlloc, outAlloc);
-      }
+      memcpy(outBuffer, inData, size);
 
       return RE_OK;
     }
@@ -118,9 +118,8 @@ TResult MGraphics::createBuffer(EBCMode mode, VkDeviceSize size,
           static_cast<uint32_t>(queueFamilyIndices.size());
 
       VmaAllocationCreateInfo allocInfo{};
-      allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-      allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
-                        VMA_ALLOCATION_CREATE_MAPPED_BIT;
+      allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+      allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
       if (vmaCreateBuffer(memAlloc, &bcInfo, &allocInfo, &stagingBuffer,
                           &stagingAlloc, &stagingAllocInfo) != VK_SUCCESS) {
@@ -128,9 +127,13 @@ TResult MGraphics::createBuffer(EBCMode mode, VkDeviceSize size,
         return RE_ERROR;
       }
 
-      // not using Map/Unmap functions due to VMA_ALLOCATION_CREATE_MAPPED_BIT
-      // flag
-      memcpy(stagingAllocInfo.pMappedData, inData, size);
+      void* pData = nullptr;
+      if (vmaMapMemory(memAlloc, stagingAlloc, &pData) != VK_SUCCESS) {
+        RE_LOG(Error, "Failed to map memory for DGPU_VERTEX buffer data.");
+        return RE_ERROR;
+      };
+      memcpy(pData, inData, size);
+      vmaUnmapMemory(memAlloc, stagingAlloc);
 
       // destination buffer
       bcInfo.usage =
@@ -140,8 +143,8 @@ TResult MGraphics::createBuffer(EBCMode mode, VkDeviceSize size,
       allocInfo.flags = NULL;
       allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-      if(vmaCreateBuffer(memAlloc, &bcInfo, &allocInfo, &outBuffer,
-        &outAlloc, outAllocInfo) != VK_SUCCESS) {
+      if (vmaCreateBuffer(memAlloc, &bcInfo, &allocInfo, &outBuffer, &outAlloc,
+                          outAllocInfo) != VK_SUCCESS) {
         RE_LOG(Error, "Failed to create DGPU_VERTEX buffer.");
         return RE_ERROR;
       };
@@ -153,8 +156,7 @@ TResult MGraphics::createBuffer(EBCMode mode, VkDeviceSize size,
 
       copyBuffer(stagingBuffer, outBuffer, &copyInfo);
 
-      vmaDestroyBuffer(memAlloc, stagingBuffer,
-                       stagingAlloc);
+      vmaDestroyBuffer(memAlloc, stagingBuffer, stagingAlloc);
 
       return RE_OK;
     }
@@ -181,8 +183,7 @@ TResult MGraphics::createBuffer(EBCMode mode, VkDeviceSize size,
 
       VmaAllocationCreateInfo allocInfo{};
       allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-      allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
-                        VMA_ALLOCATION_CREATE_MAPPED_BIT;
+      allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
       if (vmaCreateBuffer(memAlloc, &bcInfo, &allocInfo, &stagingBuffer,
                           &stagingAlloc, &stagingAllocInfo) != VK_SUCCESS) {
@@ -190,9 +191,13 @@ TResult MGraphics::createBuffer(EBCMode mode, VkDeviceSize size,
         return RE_ERROR;
       }
 
-      // not using Map/Unmap functions due to VMA_ALLOCATION_CREATE_MAPPED_BIT
-      // flag
-      memcpy(stagingAllocInfo.pMappedData, inData, size);
+      void* pData = nullptr;
+      if (vmaMapMemory(memAlloc, stagingAlloc, &pData) != VK_SUCCESS) {
+        RE_LOG(Error, "Failed to map memory for DGPU_INDEX buffer data.");
+        return RE_ERROR;
+      };
+      memcpy(pData, inData, size);
+      vmaUnmapMemory(memAlloc, stagingAlloc);
 
       // destination vertex buffer
       bcInfo.usage =
@@ -325,6 +330,8 @@ void MGraphics::setCamera(const char* name) {
 
   sRender.pActiveCamera = cameras.at(name).get();
 }
+
+void MGraphics::setCamera(ACamera* pCamera) { sRender.pActiveCamera = pCamera; }
 
 TResult MGraphics::destroyCamera(const char* name) {
   if (cameras.find(name) != cameras.end()) {
