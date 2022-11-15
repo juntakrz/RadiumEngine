@@ -4,12 +4,15 @@
 
 void ACamera::setPerspective(float FOV, float aspectRatio, float nearZ,
                                float farZ) noexcept {
-  m_ModelViewProj.matProjection =
-      glm::perspective(FOV, aspectRatio, nearZ, farZ);
+  m_projection = glm::perspective(FOV, aspectRatio, nearZ, farZ);
+}
+
+glm::mat4& ACamera::view() {
+  // TODO: insert return statement here
 }
 
 void ACamera::setUpVector(glm::vec4 upVector) { m_vecUp = upVector; }
 
 void ACamera::setUpVector(float x, float y, float z) {
-  m_vecUp = {x, y, z, 0.0f};
+  m_vecUp = {x, y, z};
 }

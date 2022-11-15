@@ -228,6 +228,14 @@ void MGraphics::destroyUniformBuffers() {
 //
 }
 
+void MGraphics::updateUniformBuffers() {
+  static auto startTime = std::chrono::high_resolution_clock::now();
+  auto currentTime = std::chrono::high_resolution_clock::now();
+  float time = std::chrono::duration<float, std::chrono::seconds::period>(
+                   currentTime - startTime)
+                   .count();
+}
+
 VkShaderModule MGraphics::createShaderModule(std::vector<char>& shaderCode) {
   VkShaderModuleCreateInfo smInfo{};
   smInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;

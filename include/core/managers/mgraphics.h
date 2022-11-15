@@ -106,6 +106,7 @@ public:
 
   TResult createUniformBuffers();
   void destroyUniformBuffers();
+  void updateUniformBuffers();
 
  private:
   TResult checkInstanceValidationLayers();

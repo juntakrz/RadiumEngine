@@ -8,15 +8,18 @@ class ACamera : public ABase {
   float m_deltaRotation = 0.03f;
 
   // camera specific vectors: up and forward directions
-  glm::vec4 m_vecUp = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
-  glm::vec4 m_vecFwd = glm::vec4(0.0f, 0.0f, 1.0f, 0.0f);
+  glm::vec3 m_vecUp = glm::vec3(0.0f, 1.0f, 0.0f);
+  glm::vec3 m_vecFwd = glm::vec3(0.0f, 0.0f, 1.0f);
 
   // processed vectors
-  glm::vec4 m_vecPos, m_vecFocus;
+  glm::vec3 m_vecPos, m_vecFocus;
 
   // view data
   glm::vec4 m_perspData;
   glm::vec4 m_orthoData;
+
+  glm::mat4 m_view;        // view matrix
+  glm::mat4 m_projection;  // projection matrix
 
   // view mode - lookAt object or lookTo direction
   bool m_lookAt = false;
@@ -24,17 +27,18 @@ class ACamera : public ABase {
   ACamera* m_pTargetCam = nullptr;    // if nullptr - won't follow
 
  public:
-  RMVPMatrices m_ModelViewProj;
-
- public:
   ACamera() noexcept {};
   virtual ~ACamera() override {};
 
-  // get reference to model - view - projection matrices
-  RMVPMatrices& getMVP() { return m_ModelViewProj; };
-
+  // sets camera projection matrix as perspective
   void setPerspective(float FOV, float aspectRatio, float nearZ,
                         float farZ) noexcept;
+
+  // get view matrix for current camera position and rotation
+  glm::mat4& view();
+
+  // get projection matrix using currently selected camera mode
+  glm::mat4& projection() { return m_projection; };
 
   void setUpVector(glm::vec4 upVector);
   void setUpVector(float x, float y, float z);
