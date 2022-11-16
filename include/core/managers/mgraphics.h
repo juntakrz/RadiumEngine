@@ -52,7 +52,7 @@ class MGraphics {
     RCameraSettings cameraSettings;
 
     ACamera* pActiveCamera = nullptr;
-    std::vector<RBuffer> buffersUniform;
+    std::vector<RBuffer> buffersMVP;
     RMVPMatrices modelViewProjection;
   } sRender;
 
@@ -105,15 +105,15 @@ public:
   TResult createDescriptorSetLayouts();
   void destroyDescriptorSetLayouts();
 
-  TResult createUniformBuffers();
-  void destroyUniformBuffers();
-  void updateUniformBuffers();
+  TResult createMVPBuffers();
+  void destroyMVPBuffers();
+  void updateMVPBuffer(uint32_t currentImage);
 
   // creates identity MVP matrices
   RMVPMatrices* getMVP();
 
-  // creates MVP matrices using currently active camera and provided mesh data
-  RMVPMatrices* getMVP(ABase* pActor);
+  // creates MVP matrices using currently active camera and model transform
+  RMVPMatrices* updateMVP(glm::mat4* pTransform);
 
  private:
   TResult checkInstanceValidationLayers();
@@ -257,8 +257,6 @@ public:
   void destroySyncObjects();
 
   TResult drawFrame();
-
-  void updateUniformBuffer(RBuffer* buffer, uint32_t image);
 
   void updateAspectRatio();
   void setFOV(float FOV);

@@ -97,7 +97,7 @@ TResult MGraphics::initialize() {
 
   mgrModel->createMesh();
   bindMesh(mgrModel->meshes.back().get());
-  createUniformBuffers();
+  createMVPBuffers();
 
   return chkResult;
 }
@@ -113,7 +113,7 @@ void MGraphics::deinitialize() {
   destroyRenderPass();
   destroySurface();
   mgrModel->destroyAllMeshes();
-  destroyUniformBuffers();
+  destroyMVPBuffers();
   destroyMemAlloc();
   if(bRequireValidationLayers) mgrDbg->destroy(APIInstance);
   destroyLogicalDevice();
@@ -207,46 +207,51 @@ void MGraphics::destroyDescriptorSetLayouts(){
   }
 }
 
-TResult MGraphics::createUniformBuffers() {
+TResult MGraphics::createMVPBuffers() {
   // each frame will require a separate buffer, so 2 FIF would need buffers * 2
-  sRender.buffersUniform.resize(MAX_FRAMES_IN_FLIGHT);
+  sRender.buffersMVP.resize(MAX_FRAMES_IN_FLIGHT);
 
   VkDeviceSize uboMVPsize = sizeof(RMVPMatrices);
 
-  for (int i = 0; i < sRender.buffersUniform.size();
+  for (int i = 0; i < sRender.buffersMVP.size();
        i += MAX_FRAMES_IN_FLIGHT) {
     createBuffer(EBCMode::CPU_UNIFORM, uboMVPsize,
-                 sRender.buffersUniform[i].buffer,
-                 sRender.buffersUniform[i].allocation, getMVP(),
-                 &sRender.buffersUniform[i].allocInfo);
+                 sRender.buffersMVP[i].buffer,
+                 sRender.buffersMVP[i].allocation, getMVP(),
+                 &sRender.buffersMVP[i].allocInfo);
     createBuffer(EBCMode::CPU_UNIFORM, uboMVPsize,
-                 sRender.buffersUniform[i + 1].buffer,
-                 sRender.buffersUniform[i + 1].allocation, getMVP(),
-                 &sRender.buffersUniform[i + 1].allocInfo);
+                 sRender.buffersMVP[i + 1].buffer,
+                 sRender.buffersMVP[i + 1].allocation, getMVP(),
+                 &sRender.buffersMVP[i + 1].allocInfo);
   }
 
   return RE_OK;
 }
 
-void MGraphics::destroyUniformBuffers() {
-  for (auto& it : sRender.buffersUniform) {
+void MGraphics::destroyMVPBuffers() {
+  for (auto& it : sRender.buffersMVP) {
     vmaDestroyBuffer(memAlloc, it.buffer, it.allocation);
   }
 }
 
-void MGraphics::updateUniformBuffers() {
+void MGraphics::updateMVPBuffer(uint32_t currentImage) {
   static auto startTime = std::chrono::high_resolution_clock::now();
   auto currentTime = std::chrono::high_resolution_clock::now();
   float time = std::chrono::duration<float, std::chrono::seconds::period>(
                    currentTime - startTime)
                    .count();
+
+  auto r = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f),
+                       glm::vec3(0.0f, 0.0f, 1.0f));
+  memcpy(sRender.buffersMVP[currentImage].allocInfo.pMappedData,
+         updateMVP(&r), sizeof(RMVPMatrices));
 }
 
 RMVPMatrices* MGraphics::getMVP() {
   return &sRender.modelViewProjection;
 }
 
-RMVPMatrices* MGraphics::getMVP(ABase* pActor) {
+RMVPMatrices* MGraphics::updateMVP(glm::mat4* pTransform) {
   sRender.modelViewProjection = {glm::mat4(1.0f), sRender.pActiveCamera->view(),
           sRender.pActiveCamera->projection()};
 

@@ -479,6 +479,9 @@ TResult MGraphics::drawFrame() {
     return RE_ERROR;
   }
 
+  // update MVP buffers
+  updateMVPBuffer(sSystem.idIFFrame);
+
   // reset fences if we will do any work this frame e.g. no swap chain
   // recreation
   vkResetFences(logicalDevice.device, 1,
@@ -553,10 +556,6 @@ TResult MGraphics::drawFrame() {
   sSystem.idIFFrame = ++sSystem.idIFFrame % MAX_FRAMES_IN_FLIGHT;
 
   return chkResult;
-}
-
-void MGraphics::updateUniformBuffer(RBuffer* buffer, uint32_t image) {
-
 }
 
 void MGraphics::updateAspectRatio() {
