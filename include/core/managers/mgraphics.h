@@ -53,6 +53,7 @@ class MGraphics {
 
     ACamera* pActiveCamera = nullptr;
     std::vector<RBuffer> buffersUniform;
+    RMVPMatrices modelViewProjection;
   } sRender;
 
   std::unordered_map<std::string, std::unique_ptr<ACamera>> cameras;
@@ -107,6 +108,12 @@ public:
   TResult createUniformBuffers();
   void destroyUniformBuffers();
   void updateUniformBuffers();
+
+  // creates identity MVP matrices
+  RMVPMatrices* getMVP();
+
+  // creates MVP matrices using currently active camera and provided mesh data
+  RMVPMatrices* getMVP(ABase* pActor);
 
  private:
   TResult checkInstanceValidationLayers();

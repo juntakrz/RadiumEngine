@@ -114,9 +114,9 @@ void MScript::jsonParseCameras(const json* cameraData) noexcept {
         it.at("rotation").get_to(upVector);
       }
 
-      newCamera->setPos({pos[0], pos[1], pos[2], 0.0f});
-      newCamera->setRotation({rotation[0], rotation[1], rotation[2], 0.0f});
-      newCamera->setUpVector({upVector[0], upVector[1], upVector[2], 0.0f});
+      newCamera->setPos({pos[0], pos[1], pos[2]});
+      newCamera->setRotation({rotation[0], rotation[1], rotation[2]});
+      newCamera->setUpVector({upVector[0], upVector[1], upVector[2]});
 
       // set camera mode
       /* vars:

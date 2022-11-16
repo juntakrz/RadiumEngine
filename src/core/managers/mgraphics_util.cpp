@@ -32,7 +32,7 @@ TResult MGraphics::createBuffer(EBCMode mode, VkDeviceSize size,
         return RE_ERROR;
       }
 
-      memcpy(outBuffer, inData, size);
+      memcpy(outAllocInfo->pMappedData, inData, size);
 
       return RE_OK;
     }

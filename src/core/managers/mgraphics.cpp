@@ -97,6 +97,7 @@ TResult MGraphics::initialize() {
 
   mgrModel->createMesh();
   bindMesh(mgrModel->meshes.back().get());
+  createUniformBuffers();
 
   return chkResult;
 }
@@ -112,6 +113,7 @@ void MGraphics::deinitialize() {
   destroyRenderPass();
   destroySurface();
   mgrModel->destroyAllMeshes();
+  destroyUniformBuffers();
   destroyMemAlloc();
   if(bRequireValidationLayers) mgrDbg->destroy(APIInstance);
   destroyLogicalDevice();
@@ -215,17 +217,21 @@ TResult MGraphics::createUniformBuffers() {
        i += MAX_FRAMES_IN_FLIGHT) {
     createBuffer(EBCMode::CPU_UNIFORM, uboMVPsize,
                  sRender.buffersUniform[i].buffer,
-                 sRender.buffersUniform[i].allocation, &sRender.pActiveCamera->getMVP());
+                 sRender.buffersUniform[i].allocation, getMVP(),
+                 &sRender.buffersUniform[i].allocInfo);
     createBuffer(EBCMode::CPU_UNIFORM, uboMVPsize,
                  sRender.buffersUniform[i + 1].buffer,
-                 sRender.buffersUniform[i + 1].allocation, &sRender.pActiveCamera->getMVP());
+                 sRender.buffersUniform[i + 1].allocation, getMVP(),
+                 &sRender.buffersUniform[i + 1].allocInfo);
   }
 
   return RE_OK;
 }
 
 void MGraphics::destroyUniformBuffers() {
-//
+  for (auto& it : sRender.buffersUniform) {
+    vmaDestroyBuffer(memAlloc, it.buffer, it.allocation);
+  }
 }
 
 void MGraphics::updateUniformBuffers() {
@@ -234,6 +240,17 @@ void MGraphics::updateUniformBuffers() {
   float time = std::chrono::duration<float, std::chrono::seconds::period>(
                    currentTime - startTime)
                    .count();
+}
+
+RMVPMatrices* MGraphics::getMVP() {
+  return &sRender.modelViewProjection;
+}
+
+RMVPMatrices* MGraphics::getMVP(ABase* pActor) {
+  sRender.modelViewProjection = {glm::mat4(1.0f), sRender.pActiveCamera->view(),
+          sRender.pActiveCamera->projection()};
+
+  return &sRender.modelViewProjection;
 }
 
 VkShaderModule MGraphics::createShaderModule(std::vector<char>& shaderCode) {

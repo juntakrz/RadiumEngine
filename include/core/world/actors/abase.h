@@ -22,7 +22,7 @@ class ABase {
       // initial data defined by Set* methods
       glm::vec3 translation = {0.0f, 0.0f, 0.0f};
       glm::vec3 rotation = {0.0f, 0.0f, 0.0f};
-      glm::vec3 scaling = {0.0f, 0.0f, 0.0f};
+      glm::vec3 scaling = {1.0f, 1.0f, 1.0f};
     } initial;
 
   } transform;

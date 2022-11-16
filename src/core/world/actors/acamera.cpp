@@ -7,12 +7,12 @@ void ACamera::setPerspective(float FOV, float aspectRatio, float nearZ,
   m_projection = glm::perspective(FOV, aspectRatio, nearZ, farZ);
 }
 
-glm::mat4& ACamera::view() {
-  // TODO: insert return statement here
+glm::mat4 ACamera::view() {
+  return m_view = glm::lookAtLH(transform.translation, m_center, m_up);
 }
 
-void ACamera::setUpVector(glm::vec4 upVector) { m_vecUp = upVector; }
+void ACamera::setUpVector(const glm::vec3& upVector) { m_up = upVector; }
 
 void ACamera::setUpVector(float x, float y, float z) {
-  m_vecUp = {x, y, z};
+  m_up = {x, y, z};
 }

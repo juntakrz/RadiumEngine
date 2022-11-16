@@ -77,9 +77,9 @@ struct NextVertex {
 
 // uniform buffer object for vertex shader (model * view * projection)
 struct RMVPMatrices {
-  glm::mat4 matModel      = glm::mat4(1.0f);
-  glm::mat4 matView       = glm::mat4(1.0f);
-  glm::mat4 matProjection = glm::mat4(1.0f);
+  glm::mat4 model      = glm::mat4(1.0f);
+  glm::mat4 view       = glm::mat4(1.0f);
+  glm::mat4 projection = glm::mat4(1.0f);
 };
 
 struct RCameraSettings {

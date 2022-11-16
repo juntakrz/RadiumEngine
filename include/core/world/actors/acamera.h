@@ -3,13 +3,13 @@
 #include "core/world/actors/abase.h"
 
 class ACamera : public ABase {
- private:
+ protected:
   float m_deltaMove = 1.0f;
   float m_deltaRotation = 0.03f;
 
   // camera specific vectors: up and forward directions
-  glm::vec3 m_vecUp = glm::vec3(0.0f, 1.0f, 0.0f);
-  glm::vec3 m_vecFwd = glm::vec3(0.0f, 0.0f, 1.0f);
+  glm::vec3 m_up = glm::vec3(0.0f, 1.0f, 0.0f);
+  glm::vec3 m_center = glm::vec3(0.0f, 0.0f, 1.0f);
 
   // processed vectors
   glm::vec3 m_vecPos, m_vecFocus;
@@ -35,12 +35,12 @@ class ACamera : public ABase {
                         float farZ) noexcept;
 
   // get view matrix for current camera position and rotation
-  glm::mat4& view();
+  glm::mat4 view();
 
   // get projection matrix using currently selected camera mode
   glm::mat4& projection() { return m_projection; };
 
-  void setUpVector(glm::vec4 upVector);
+  void setUpVector(const glm::vec3& upVector);
   void setUpVector(float x, float y, float z);
   /*
   void Move(float x = 0.0f, float y = 0.0f, float z = 0.0f) noexcept;
