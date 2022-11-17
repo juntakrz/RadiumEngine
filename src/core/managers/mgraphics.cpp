@@ -97,7 +97,8 @@ TResult MGraphics::initialize() {
 
   mgrModel->createMesh();
   bindMesh(mgrModel->meshes.back().get());
-  createMVPBuffers();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createMVPBuffers();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorPool();
 
   return chkResult;
 }
@@ -113,6 +114,7 @@ void MGraphics::deinitialize() {
   destroyRenderPass();
   destroySurface();
   mgrModel->destroyAllMeshes();
+  destroyDescriptorPool();
   destroyMVPBuffers();
   destroyMemAlloc();
   if(bRequireValidationLayers) mgrDbg->destroy(APIInstance);
@@ -205,6 +207,33 @@ void MGraphics::destroyDescriptorSetLayouts(){
   for (auto& it : sSystem.descSetLayouts) {
     vkDestroyDescriptorSetLayout(logicalDevice.device, it, nullptr);
   }
+}
+
+TResult MGraphics::createDescriptorPool() {
+  RE_LOG(Log, "Creating descriptor pool.");
+
+  VkDescriptorPoolSize poolSize{};
+  poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  poolSize.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+  VkDescriptorPoolCreateInfo poolInfo{};
+  poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+  poolInfo.poolSizeCount = 1;
+  poolInfo.pPoolSizes = &poolSize;
+  poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+  if (vkCreateDescriptorPool(logicalDevice.device, &poolInfo, nullptr,
+                             &sSystem.descPool) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to create descriptor pool.");
+    return RE_CRITICAL;
+  }
+
+  return RE_OK;
+}
+
+void MGraphics::destroyDescriptorPool() {
+  RE_LOG(Log, "Destroying descriptor pool.");
+  vkDestroyDescriptorPool(logicalDevice.device, sSystem.descPool, nullptr);
 }
 
 TResult MGraphics::createMVPBuffers() {
