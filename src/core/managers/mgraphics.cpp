@@ -99,6 +99,8 @@ TResult MGraphics::initialize() {
   bindMesh(mgrModel->meshes.back().get());
   if (chkResult <= RE_ERRORLIMIT) chkResult = createMVPBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorPool();
+  //if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSetLayouts();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSets();
 
   return chkResult;
 }
@@ -191,19 +193,23 @@ TResult MGraphics::createDescriptorSetLayouts() {
   uboMVPInfo.bindingCount = 1;
   uboMVPInfo.pBindings = &uboMVPBind;
 
-  sSystem.descSetLayouts.emplace_back();
-  if (vkCreateDescriptorSetLayout(logicalDevice.device, &uboMVPInfo, nullptr,
-                                  &sSystem.descSetLayouts.back()) !=
-      VK_SUCCESS) {
-    sSystem.descSetLayouts.erase(sSystem.descSetLayouts.end());
-    RE_LOG(Critical, "Failed to create MVP matrix descriptor set layout.");
-    return RE_CRITICAL;
+  for (uint8_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+    sSystem.descSetLayouts.emplace_back();
+    if (vkCreateDescriptorSetLayout(logicalDevice.device, &uboMVPInfo, nullptr,
+                                    &sSystem.descSetLayouts.back()) !=
+        VK_SUCCESS) {
+      sSystem.descSetLayouts.erase(sSystem.descSetLayouts.end());
+      RE_LOG(Critical, "Failed to create MVP matrix descriptor set layout.");
+      return RE_CRITICAL;
+    }
   }
 
   return RE_OK;
 }
 
 void MGraphics::destroyDescriptorSetLayouts(){
+  RE_LOG(Log, "Removing descriptor set layouts.");
+
   for (auto& it : sSystem.descSetLayouts) {
     vkDestroyDescriptorSetLayout(logicalDevice.device, it, nullptr);
   }
@@ -235,6 +241,25 @@ void MGraphics::destroyDescriptorPool() {
   RE_LOG(Log, "Destroying descriptor pool.");
   vkDestroyDescriptorPool(logicalDevice.device, sSystem.descPool, nullptr);
 }
+
+TResult MGraphics::createDescriptorSets() {
+  VkDescriptorSetAllocateInfo setAllocInfo{};
+  setAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+  setAllocInfo.descriptorPool = sSystem.descPool;
+  setAllocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+  setAllocInfo.pSetLayouts = sSystem.descSetLayouts.data();
+
+  sSystem.descSets.resize(MAX_FRAMES_IN_FLIGHT);
+  if (vkAllocateDescriptorSets(logicalDevice.device, &setAllocInfo,
+                               sSystem.descSets.data()) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to allocate descriptor sets.");
+    return RE_CRITICAL;
+  }
+
+  return RE_OK;
+}
+
+void MGraphics::destroyDescriptorSets() {}
 
 TResult MGraphics::createMVPBuffers() {
   // each frame will require a separate buffer, so 2 FIF would need buffers * 2

@@ -37,6 +37,7 @@ class MGraphics {
     VkPipeline pipeline;
     uint32_t idIFFrame = 0;                     // in flight frame index
     VkDescriptorPool descPool;
+    std::vector<VkDescriptorSet> descSets;
     std::vector<VkDescriptorSetLayout> descSetLayouts;
     std::vector<WMesh*> meshes;                 // meshes rendered during the current frame
   } sSystem;
@@ -108,6 +109,9 @@ public:
 
   TResult createDescriptorPool();
   void destroyDescriptorPool();
+
+  TResult createDescriptorSets();
+  void destroyDescriptorSets();
 
   TResult createMVPBuffers();
   void destroyMVPBuffers();
