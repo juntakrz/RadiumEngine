@@ -1,6 +1,9 @@
 #pragma once
 
 namespace core {
+
+extern class MGraphics* graphics;
+
 void run();
 void mainEventLoop();
 void stop(TResult cause);

@@ -7,9 +7,9 @@
 #include "core/renderer/renderer.h"
 #include "core/world/actors/acamera.h"
 
-MGraphics::MGraphics() { RE_LOG(Log, "Creating graphics manager."); };
+core::MGraphics::MGraphics() { RE_LOG(Log, "Creating graphics manager."); };
 
-TResult MGraphics::createInstance() {
+TResult core::MGraphics::createInstance() {
   VkApplicationInfo appInfo{};
   appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
   appInfo.pApplicationName = config::appTitle;
@@ -21,7 +21,7 @@ TResult MGraphics::createInstance() {
   return createInstance(&appInfo);
 }
 
-TResult MGraphics::createInstance(VkApplicationInfo* appInfo) {
+TResult core::MGraphics::createInstance(VkApplicationInfo* appInfo) {
   RE_LOG(Log, "Creating Vulkan instance.");
   
   if (bRequireValidationLayers) {
@@ -60,20 +60,20 @@ TResult MGraphics::createInstance(VkApplicationInfo* appInfo) {
   return RE_OK;
 }
 
-TResult MGraphics::destroyInstance() {
+TResult core::MGraphics::destroyInstance() {
   RE_LOG(Log, "Destroying Vulkan instance.");
   vkDestroyInstance(APIInstance, nullptr);
   return RE_OK;
 }
 
-TResult MGraphics::initialize() {
+TResult core::MGraphics::initialize() {
   TResult chkResult = RE_OK;
 
-  chkResult = MGraphics::get().createInstance();
+  chkResult = core::graphics->createInstance();
 
   // debug manager setup
   if (chkResult <= RE_ERRORLIMIT)
-    chkResult = MDebug::get().create(MGraphics::get().APIInstance);
+    chkResult = MDebug::get().create(core::graphics->APIInstance);
 
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSurface();
 
@@ -105,7 +105,7 @@ TResult MGraphics::initialize() {
   return chkResult;
 }
 
-void MGraphics::deinitialize() {
+void core::MGraphics::deinitialize() {
   waitForSystemIdle();
 
   destroySwapChain();
@@ -124,7 +124,7 @@ void MGraphics::deinitialize() {
   destroyInstance();
 }
 
-TResult MGraphics::createMemAlloc() {
+TResult core::MGraphics::createMemAlloc() {
   RE_LOG(Log, "initializing Vulkan memory allocator.");
 
   VmaAllocatorCreateInfo allocCreateInfo{};
@@ -141,18 +141,18 @@ TResult MGraphics::createMemAlloc() {
   return RE_OK;
 }
 
-void MGraphics::destroyMemAlloc() {
+void core::MGraphics::destroyMemAlloc() {
   RE_LOG(Log, "Destroying Vulkan memory allocator.");
   vmaDestroyAllocator(memAlloc);
 }
 
-void MGraphics::waitForSystemIdle() {
+void core::MGraphics::waitForSystemIdle() {
   vkQueueWaitIdle(logicalDevice.queues.graphics);
   vkQueueWaitIdle(logicalDevice.queues.present);
   vkDeviceWaitIdle(logicalDevice.device);
 }
 
-TResult MGraphics::createSurface() {
+TResult core::MGraphics::createSurface() {
   RE_LOG(Log, "Creating rendering surface.");
 
   if (glfwCreateWindowSurface(APIInstance, MWindow::get().window(), nullptr,
@@ -165,12 +165,12 @@ TResult MGraphics::createSurface() {
   return RE_OK;
 }
 
-void MGraphics::destroySurface() {
+void core::MGraphics::destroySurface() {
   RE_LOG(Log, "Destroying drawing surface.");
   vkDestroySurfaceKHR(APIInstance, surface, nullptr);
 }
 
-uint32_t MGraphics::bindMesh(WMesh* pMesh) {
+uint32_t core::MGraphics::bindMesh(WMesh* pMesh) {
   if (!pMesh) {
     RE_LOG(Error, "no mesh provided.");
     return -1;
@@ -180,7 +180,7 @@ uint32_t MGraphics::bindMesh(WMesh* pMesh) {
   return (uint32_t)system.meshes.size() - 1;
 }
 
-TResult MGraphics::createDescriptorSetLayouts() {
+TResult core::MGraphics::createDescriptorSetLayouts() {
   VkDescriptorSetLayoutBinding uboMVPBind{};
   uboMVPBind.binding = 0;                                         // binding location in a shader
   uboMVPBind.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;  // type of binding
@@ -207,7 +207,7 @@ TResult MGraphics::createDescriptorSetLayouts() {
   return RE_OK;
 }
 
-void MGraphics::destroyDescriptorSetLayouts(){
+void core::MGraphics::destroyDescriptorSetLayouts(){
   RE_LOG(Log, "Removing descriptor set layouts.");
 
   for (auto& it : system.descSetLayouts) {
@@ -215,7 +215,7 @@ void MGraphics::destroyDescriptorSetLayouts(){
   }
 }
 
-TResult MGraphics::createDescriptorPool() {
+TResult core::MGraphics::createDescriptorPool() {
   RE_LOG(Log, "Creating descriptor pool.");
 
   VkDescriptorPoolSize poolSize{};
@@ -237,12 +237,12 @@ TResult MGraphics::createDescriptorPool() {
   return RE_OK;
 }
 
-void MGraphics::destroyDescriptorPool() {
+void core::MGraphics::destroyDescriptorPool() {
   RE_LOG(Log, "Destroying descriptor pool.");
   vkDestroyDescriptorPool(logicalDevice.device, system.descPool, nullptr);
 }
 
-TResult MGraphics::createDescriptorSets() {
+TResult core::MGraphics::createDescriptorSets() {
   VkDescriptorSetAllocateInfo setAllocInfo{};
   setAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
   setAllocInfo.descriptorPool = system.descPool;
@@ -259,9 +259,9 @@ TResult MGraphics::createDescriptorSets() {
   return RE_OK;
 }
 
-void MGraphics::destroyDescriptorSets() {}
+void core::MGraphics::destroyDescriptorSets() {}
 
-TResult MGraphics::createMVPBuffers() {
+TResult core::MGraphics::createMVPBuffers() {
   // each frame will require a separate buffer, so 2 FIF would need buffers * 2
   view.buffersMVP.resize(MAX_FRAMES_IN_FLIGHT);
 
@@ -282,13 +282,13 @@ TResult MGraphics::createMVPBuffers() {
   return RE_OK;
 }
 
-void MGraphics::destroyMVPBuffers() {
+void core::MGraphics::destroyMVPBuffers() {
   for (auto& it : view.buffersMVP) {
     vmaDestroyBuffer(memAlloc, it.buffer, it.allocation);
   }
 }
 
-void MGraphics::updateMVPBuffer(uint32_t currentImage) {
+void core::MGraphics::updateMVPBuffer(uint32_t currentImage) {
   static auto startTime = std::chrono::high_resolution_clock::now();
   auto currentTime = std::chrono::high_resolution_clock::now();
   float time = std::chrono::duration<float, std::chrono::seconds::period>(
@@ -301,18 +301,18 @@ void MGraphics::updateMVPBuffer(uint32_t currentImage) {
          updateMVP(&r), sizeof(RMVPMatrices));
 }
 
-RMVPMatrices* MGraphics::getMVP() {
+RMVPMatrices* core::MGraphics::getMVP() {
   return &view.modelViewProjection;
 }
 
-RMVPMatrices* MGraphics::updateMVP(glm::mat4* pTransform) {
+RMVPMatrices* core::MGraphics::updateMVP(glm::mat4* pTransform) {
   view.modelViewProjection = {glm::mat4(1.0f), view.pActiveCamera->view(),
           view.pActiveCamera->projection()};
 
   return &view.modelViewProjection;
 }
 
-VkShaderModule MGraphics::createShaderModule(std::vector<char>& shaderCode) {
+VkShaderModule core::MGraphics::createShaderModule(std::vector<char>& shaderCode) {
   VkShaderModuleCreateInfo smInfo{};
   smInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
   smInfo.codeSize = shaderCode.size();
@@ -328,7 +328,7 @@ VkShaderModule MGraphics::createShaderModule(std::vector<char>& shaderCode) {
   return shaderModule;
 }
 
-TResult MGraphics::checkInstanceValidationLayers() {
+TResult core::MGraphics::checkInstanceValidationLayers() {
   uint32_t layerCount = 0;
   std::vector<VkLayerProperties> availableValidationLayers;
   VkResult checkResult;
@@ -371,7 +371,7 @@ TResult MGraphics::checkInstanceValidationLayers() {
   return RE_OK;
 }
 
-std::vector<const char*> MGraphics::getRequiredInstanceExtensions() {
+std::vector<const char*> core::MGraphics::getRequiredInstanceExtensions() {
   uint32_t extensionCount = 0;
   const char** ppExtensions;
 
@@ -386,7 +386,7 @@ std::vector<const char*> MGraphics::getRequiredInstanceExtensions() {
   return requiredExtensions;
 }
 
-std::vector<VkExtensionProperties> MGraphics::getInstanceExtensions() {
+std::vector<VkExtensionProperties> core::MGraphics::getInstanceExtensions() {
   uint32_t extensionCount = 0;
   std::vector<VkExtensionProperties> extensionProperties;
 

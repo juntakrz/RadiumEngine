@@ -2,9 +2,9 @@
 #include "core/managers/mgraphics.h"
 #include "core/renderer/renderer.h"
 
-TResult MGraphics::initLogicalDevice() { return initLogicalDevice(physicalDevice); }
+TResult core::MGraphics::initLogicalDevice() { return initLogicalDevice(physicalDevice); }
 
-TResult MGraphics::initLogicalDevice(
+TResult core::MGraphics::initLogicalDevice(
     const RVkPhysicalDevice& physicalDeviceData) {
   if (physicalDeviceData.queueFamilyIndices.graphics.empty()) return RE_ERROR;
 
@@ -78,7 +78,7 @@ TResult MGraphics::initLogicalDevice(
   return RE_OK;
 }
 
-void MGraphics::destroyLogicalDevice(VkDevice device,
+void core::MGraphics::destroyLogicalDevice(VkDevice device,
                                      const VkAllocationCallbacks* pAllocator) {
   if (!device) device = logicalDevice.device;
   RE_LOG(Log, "Destroying logical device, handle: 0x%016llX.", device);

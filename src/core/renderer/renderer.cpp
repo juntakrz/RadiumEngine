@@ -19,7 +19,7 @@ TResult core::renderer::create() {
 
   // graphics manager setup (responsible for Vulkan instance and GPU management)
   RE_LOG(Log, "Initializing graphics subsystem.");
-  chkResult = MGraphics::get().initialize();
+  chkResult = core::graphics->initialize();
   RE_CHECK(chkResult);
 
   RE_LOG(Log, "Rendering system successfully initialized.");
@@ -28,7 +28,7 @@ TResult core::renderer::create() {
 }
 
 void core::renderer::destroy() {
-  MGraphics::get().deinitialize();
+  core::graphics->deinitialize();
   MWindow::get().destroyWindow();
   glfwTerminate();
 }
@@ -36,7 +36,7 @@ void core::renderer::destroy() {
 TResult core::renderer::drawFrame () {
   TResult chkResult = RE_OK;
 
-  chkResult = MGraphics::get().drawFrame();
+  chkResult = core::graphics->drawFrame();
 
   return chkResult;
 }

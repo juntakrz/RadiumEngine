@@ -99,7 +99,7 @@ void MScript::jsonParseCameras(const json* cameraData) noexcept {
       float rotation[3] = {0.0f, 0.0f, 0.0f};
       float upVector[3] = {0.0f, 0.0f, 0.0f};
 
-      ACamera* newCamera = MGraphics::get().createCamera(name.c_str(), nullptr);
+      ACamera* newCamera = core::graphics->createCamera(name.c_str(), nullptr);
 
       // set camera position
       if (it.contains("position")) {
@@ -142,7 +142,7 @@ void MScript::jsonParseCameras(const json* cameraData) noexcept {
     }
   }
 
-  if (activatedCamera != "") MGraphics::get().setCamera(activatedCamera.c_str());
+  if (activatedCamera != "") core::graphics->setCamera(activatedCamera.c_str());
 }
 
 void MScript::jsonParseMaterials(const json* materialData) noexcept {}

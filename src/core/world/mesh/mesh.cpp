@@ -14,14 +14,14 @@ WMesh::WMesh() {
 
 void WMesh::createVertexBuffer() {
   VkDeviceSize size = vertices.size() * sizeof(RVertex);
-  MGraphics::get().createBuffer(EBCMode::DGPU_VERTEX, size, vertexBuffer.buffer,
+  core::graphics->createBuffer(EBCMode::DGPU_VERTEX, size, vertexBuffer.buffer,
                        vertexBuffer.allocation, vertices.data(),
                        &vertexBuffer.allocInfo);
 }
 
 void WMesh::createIndexBuffer() {
   VkDeviceSize size = indices.size() * sizeof(indices[0]);
-  MGraphics::get().createBuffer(EBCMode::DGPU_INDEX, size, indexBuffer.buffer,
+  core::graphics->createBuffer(EBCMode::DGPU_INDEX, size, indexBuffer.buffer,
                        indexBuffer.allocation, indices.data(),
                        &indexBuffer.allocInfo);
 }
@@ -32,8 +32,8 @@ void WMesh::allocateMemory() {
 }
 
 void WMesh::destroy() {
-  vmaDestroyBuffer(MGraphics::get().memAlloc, vertexBuffer.buffer,
+  vmaDestroyBuffer(core::graphics->memAlloc, vertexBuffer.buffer,
                    vertexBuffer.allocation);
-  vmaDestroyBuffer(MGraphics::get().memAlloc, indexBuffer.buffer,
+  vmaDestroyBuffer(core::graphics->memAlloc, indexBuffer.buffer,
                    indexBuffer.allocation);
 }

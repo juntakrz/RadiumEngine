@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "core/managers/mwindow.h"
 #include "core/managers/mgraphics.h"
+#include "core/core.h"
 
 MWindow::MWindow() { RE_LOG(Log, "Creating window manager."); }
 
@@ -45,5 +46,5 @@ TResult MWindow::destroyWindow(GLFWwindow* pOtherWindow) {
 GLFWwindow* MWindow::window() { return pWindow.get(); }
 
 void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
-  MGraphics::get().bFramebufferResized = true;
+  core::graphics->bFramebufferResized = true;
 }

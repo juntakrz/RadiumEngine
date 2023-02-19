@@ -2,7 +2,7 @@
 #include "core/managers/mgraphics.h"
 #include "core/renderer/renderer.h"
 
-TResult MGraphics::enumPhysicalDevices() {
+TResult core::MGraphics::enumPhysicalDevices() {
   uint32_t numDevices = 0, index = 0;
   std::vector<VkPhysicalDevice> physicalDevices;
 
@@ -25,7 +25,7 @@ TResult MGraphics::enumPhysicalDevices() {
   return RE_OK;
 }
 
-TResult MGraphics::initPhysicalDevice() {
+TResult core::MGraphics::initPhysicalDevice() {
   for (const auto& deviceInfo : availablePhysicalDevices)
     if (initPhysicalDevice(deviceInfo) == RE_OK) return RE_OK;
 
@@ -34,7 +34,7 @@ TResult MGraphics::initPhysicalDevice() {
   return RE_CRITICAL;
 }
 
-TResult MGraphics::initPhysicalDevice(const RVkPhysicalDevice& device) {
+TResult core::MGraphics::initPhysicalDevice(const RVkPhysicalDevice& device) {
   if (!device.bIsValid) return RE_ERROR;
 
   physicalDevice = device;
@@ -46,7 +46,7 @@ TResult MGraphics::initPhysicalDevice(const RVkPhysicalDevice& device) {
   return RE_OK;
 }
 
-TResult MGraphics::setPhysicalDeviceData(VkPhysicalDevice device,
+TResult core::MGraphics::setPhysicalDeviceData(VkPhysicalDevice device,
                                          RVkPhysicalDevice& outDeviceData) {
   if (!device) return RE_ERROR;
 
@@ -84,17 +84,17 @@ TResult MGraphics::setPhysicalDeviceData(VkPhysicalDevice device,
   return finalResult;
 }
 
-std::vector<RVkPhysicalDevice>& MGraphics::physicalDevices() {
+std::vector<RVkPhysicalDevice>& core::MGraphics::physicalDevices() {
   return availablePhysicalDevices;
 }
 
-RVkPhysicalDevice* MGraphics::physicalDevices(uint32_t id) {
+RVkPhysicalDevice* core::MGraphics::physicalDevices(uint32_t id) {
   return (id > availablePhysicalDevices.size())
              ? nullptr
              : &availablePhysicalDevices.at(id);
 }
 
-TResult MGraphics::queryPhysicalDeviceSwapChainInfo(
+TResult core::MGraphics::queryPhysicalDeviceSwapChainInfo(
     const RVkPhysicalDevice& deviceData, RVkSwapChainInfo& outSwapChainInfo) {
   uint32_t formatCount = 0, presentModeCount = 0;
   TResult chkResult = RE_OK;
@@ -120,7 +120,7 @@ TResult MGraphics::queryPhysicalDeviceSwapChainInfo(
   return chkResult;
 }
 
-uint32_t MGraphics::findPhysicalDeviceMemoryType(uint32_t typeFilter,
+uint32_t core::MGraphics::findPhysicalDeviceMemoryType(uint32_t typeFilter,
                                    VkMemoryPropertyFlags properties) {
   for (uint32_t i = 0; i < physicalDevice.memProperties.memoryTypeCount; ++i) {
     if ((typeFilter & (1 << i)) && (physicalDevice.memProperties.memoryTypes[i].propertyFlags &
@@ -134,7 +134,7 @@ uint32_t MGraphics::findPhysicalDeviceMemoryType(uint32_t typeFilter,
 
 // private
 
-TResult MGraphics::checkPhysicalDeviceExtensionSupport(
+TResult core::MGraphics::checkPhysicalDeviceExtensionSupport(
     const RVkPhysicalDevice& deviceData) {
   bool bExtSupported = false;
   std::vector<VkExtensionProperties> extProperties =
@@ -164,7 +164,7 @@ TResult MGraphics::checkPhysicalDeviceExtensionSupport(
   return RE_OK;
 }
 
-std::vector<VkExtensionProperties> MGraphics::getPhysicalDeviceExtensions(
+std::vector<VkExtensionProperties> core::MGraphics::getPhysicalDeviceExtensions(
     const RVkPhysicalDevice& deviceData) {
   uint32_t extensionCount = 0;
   std::vector<VkExtensionProperties> extProperties;
@@ -178,7 +178,7 @@ std::vector<VkExtensionProperties> MGraphics::getPhysicalDeviceExtensions(
   return extProperties;
 }
 
-TResult MGraphics::setPhysicalDeviceQueueFamilies(
+TResult core::MGraphics::setPhysicalDeviceQueueFamilies(
     RVkPhysicalDevice& deviceData) {
   uint32_t queueFamilyPropertyCount = 0, index = 0;
   VkBool32 presentSupport = false;

@@ -9,11 +9,16 @@
 #include "core/managers/mscript.h"
 #include "core/managers/mref.h"
 
+class core::MGraphics* core::graphics = nullptr;
+
 void core::run() {
+
   // initialize engine
   RE_LOG(Log, "Radium Engine");
   RE_LOG(Log, "-------------\n");
   RE_LOG(Log, "Initializing engine core...");
+
+  core::graphics = &core::MGraphics::get();
 
   loadCoreConfig();
 

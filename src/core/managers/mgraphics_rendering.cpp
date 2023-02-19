@@ -2,7 +2,7 @@
 #include "core/managers/mgraphics.h"
 #include "core/world/mesh/mesh.h"
 
-TResult MGraphics::createRenderPass() {
+TResult core::MGraphics::createRenderPass() {
   RE_LOG(Log, "Creating render pass");
 
   VkAttachmentDescription colorAttachment{};
@@ -50,12 +50,12 @@ TResult MGraphics::createRenderPass() {
   return RE_OK;
 }
 
-void MGraphics::destroyRenderPass() {
+void core::MGraphics::destroyRenderPass() {
   RE_LOG(Log, "Destroying render pass.");
   vkDestroyRenderPass(logicalDevice.device, system.renderPass, nullptr);
 }
 
-TResult MGraphics::createGraphicsPipeline() {
+TResult core::MGraphics::createGraphicsPipeline() {
   RE_LOG(Log, "Creating graphics pipeline.");
 
   std::vector<char> vsCode = readFile(TEXT("content/shaders/vs_default.spv"));
@@ -229,14 +229,14 @@ TResult MGraphics::createGraphicsPipeline() {
   return RE_OK;
 }
 
-void MGraphics::destroyGraphicsPipeline() {
+void core::MGraphics::destroyGraphicsPipeline() {
   RE_LOG(Log, "Shutting down graphics pipeline.");
   destroyDescriptorSetLayouts();
   vkDestroyPipeline(logicalDevice.device, system.pipeline, nullptr);
   vkDestroyPipelineLayout(logicalDevice.device, system.pipelineLayout, nullptr);
 }
 
-TResult MGraphics::createCommandPools() {
+TResult core::MGraphics::createCommandPools() {
   RE_LOG(Log, "Creating command pool.");
 
   VkCommandPoolCreateInfo cmdPoolRenderInfo{};
@@ -267,13 +267,13 @@ TResult MGraphics::createCommandPools() {
   return RE_OK;
 }
 
-void MGraphics::destroyCommandPools() {
+void core::MGraphics::destroyCommandPools() {
   RE_LOG(Log, "Destroying command pools.");
   vkDestroyCommandPool(logicalDevice.device, command.poolRender, nullptr);
   vkDestroyCommandPool(logicalDevice.device, command.poolTransfer, nullptr);
 }
 
-TResult MGraphics::createCommandBuffers() {
+TResult core::MGraphics::createCommandBuffers() {
   RE_LOG(Log, "Creating rendering command buffers for %d frames.",
          MAX_FRAMES_IN_FLIGHT);
 
@@ -309,7 +309,7 @@ TResult MGraphics::createCommandBuffers() {
   return RE_OK;
 }
 
-void MGraphics::destroyCommandBuffers() {
+void core::MGraphics::destroyCommandBuffers() {
   RE_LOG(Log, "Freeing %d rendering command buffers.",
          command.bufferview.size());
   vkFreeCommandBuffers(logicalDevice.device, command.poolRender,
@@ -323,7 +323,7 @@ void MGraphics::destroyCommandBuffers() {
                        command.buffersTransfer.data());
 }
 
-TResult MGraphics::recordCommandBuffer(VkCommandBuffer commandBuffer,
+TResult core::MGraphics::recordCommandBuffer(VkCommandBuffer commandBuffer,
                                      uint32_t imageIndex) {
   VkCommandBufferBeginInfo beginInfo{};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -397,7 +397,7 @@ TResult MGraphics::recordCommandBuffer(VkCommandBuffer commandBuffer,
   return RE_OK;
 }
 
-TResult MGraphics::createSyncObjects() {
+TResult core::MGraphics::createSyncObjects() {
   RE_LOG(Log, "Creating sychronization objects for %d frames.",
          MAX_FRAMES_IN_FLIGHT);
 
@@ -439,7 +439,7 @@ TResult MGraphics::createSyncObjects() {
   return RE_OK;
 }
 
-void MGraphics::destroySyncObjects() {
+void core::MGraphics::destroySyncObjects() {
   RE_LOG(Log, "Destroying synchronization objects.");
 
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
@@ -453,7 +453,7 @@ void MGraphics::destroySyncObjects() {
   }
 }
 
-TResult MGraphics::drawFrame() {
+TResult core::MGraphics::drawFrame() {
   uint32_t imageIndex = -1;
   TResult chkResult = RE_OK;
 
@@ -558,16 +558,16 @@ TResult MGraphics::drawFrame() {
   return chkResult;
 }
 
-void MGraphics::updateAspectRatio() {
+void core::MGraphics::updateAspectRatio() {
   view.cameraSettings.aspectRatio =
       (float)swapchain.imageExtent.width / swapchain.imageExtent.height;
 }
 
-void MGraphics::setFOV(float FOV) { view.cameraSettings.FOV = FOV; }
+void core::MGraphics::setFOV(float FOV) { view.cameraSettings.FOV = FOV; }
 
-void MGraphics::setViewDistance(float farZ) { view.cameraSettings.farZ; }
+void core::MGraphics::setViewDistance(float farZ) { view.cameraSettings.farZ; }
 
-void MGraphics::setViewDistance(float nearZ, float farZ) {
+void core::MGraphics::setViewDistance(float nearZ, float farZ) {
   view.cameraSettings.nearZ = nearZ;
   view.cameraSettings.farZ = farZ;
 }
