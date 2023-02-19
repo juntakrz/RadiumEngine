@@ -20,15 +20,15 @@ class MGraphics {
     std::vector<VkImage> images;
     std::vector<VkImageView> imageViews;
     std::vector<VkFramebuffer> framebuffers;
-  } sSwapchain;
+  } swapchain;
 
   // command buffers and pools data
   struct {
     VkCommandPool poolRender;
     VkCommandPool poolTransfer;
-    std::vector<VkCommandBuffer> buffersRender;
+    std::vector<VkCommandBuffer> bufferview;
     std::vector<VkCommandBuffer> buffersTransfer;
-  } sCmd;
+  } command;
 
   // render system data - passes, pipelines, mesh data to render
   struct {
@@ -40,14 +40,14 @@ class MGraphics {
     std::vector<VkDescriptorSet> descSets;
     std::vector<VkDescriptorSetLayout> descSetLayouts;
     std::vector<WMesh*> meshes;                 // meshes rendered during the current frame
-  } sSystem;
+  } system;
 
   // multi-threaded synchronization objects
   struct {
     std::vector<VkSemaphore> sImgAvailable;
     std::vector<VkSemaphore> sRndrFinished;
     std::vector<VkFence> fInFlight;
-  } sSync;
+  } sync;
 
   // objects used in shaders
   struct {
@@ -56,7 +56,7 @@ class MGraphics {
     ACamera* pActiveCamera = nullptr;
     std::vector<RBuffer> buffersMVP;
     RMVPMatrices modelViewProjection;
-  } sRender;
+  } view;
 
   std::unordered_map<std::string, std::unique_ptr<ACamera>> cameras;
 
@@ -68,7 +68,7 @@ public:
   RVkPhysicalDevice physicalDevice;
   RVkLogicalDevice logicalDevice;
   VmaAllocator memAlloc;
-  uint32_t framesRendered = 0;
+  uint32_t frameviewed = 0;
   bool bFramebufferResized = false;
 
  private:

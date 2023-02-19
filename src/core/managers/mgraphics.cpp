@@ -176,8 +176,8 @@ uint32_t MGraphics::bindMesh(WMesh* pMesh) {
     return -1;
   }
 
-  sSystem.meshes.emplace_back(pMesh);
-  return (uint32_t)sSystem.meshes.size() - 1;
+  system.meshes.emplace_back(pMesh);
+  return (uint32_t)system.meshes.size() - 1;
 }
 
 TResult MGraphics::createDescriptorSetLayouts() {
@@ -194,11 +194,11 @@ TResult MGraphics::createDescriptorSetLayouts() {
   uboMVPInfo.pBindings = &uboMVPBind;
 
   for (uint8_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-    sSystem.descSetLayouts.emplace_back();
+    system.descSetLayouts.emplace_back();
     if (vkCreateDescriptorSetLayout(logicalDevice.device, &uboMVPInfo, nullptr,
-                                    &sSystem.descSetLayouts.back()) !=
+                                    &system.descSetLayouts.back()) !=
         VK_SUCCESS) {
-      sSystem.descSetLayouts.erase(sSystem.descSetLayouts.end());
+      system.descSetLayouts.erase(system.descSetLayouts.end());
       RE_LOG(Critical, "Failed to create MVP matrix descriptor set layout.");
       return RE_CRITICAL;
     }
@@ -210,7 +210,7 @@ TResult MGraphics::createDescriptorSetLayouts() {
 void MGraphics::destroyDescriptorSetLayouts(){
   RE_LOG(Log, "Removing descriptor set layouts.");
 
-  for (auto& it : sSystem.descSetLayouts) {
+  for (auto& it : system.descSetLayouts) {
     vkDestroyDescriptorSetLayout(logicalDevice.device, it, nullptr);
   }
 }
@@ -229,7 +229,7 @@ TResult MGraphics::createDescriptorPool() {
   poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
   if (vkCreateDescriptorPool(logicalDevice.device, &poolInfo, nullptr,
-                             &sSystem.descPool) != VK_SUCCESS) {
+                             &system.descPool) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create descriptor pool.");
     return RE_CRITICAL;
   }
@@ -239,19 +239,19 @@ TResult MGraphics::createDescriptorPool() {
 
 void MGraphics::destroyDescriptorPool() {
   RE_LOG(Log, "Destroying descriptor pool.");
-  vkDestroyDescriptorPool(logicalDevice.device, sSystem.descPool, nullptr);
+  vkDestroyDescriptorPool(logicalDevice.device, system.descPool, nullptr);
 }
 
 TResult MGraphics::createDescriptorSets() {
   VkDescriptorSetAllocateInfo setAllocInfo{};
   setAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-  setAllocInfo.descriptorPool = sSystem.descPool;
+  setAllocInfo.descriptorPool = system.descPool;
   setAllocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-  setAllocInfo.pSetLayouts = sSystem.descSetLayouts.data();
+  setAllocInfo.pSetLayouts = system.descSetLayouts.data();
 
-  sSystem.descSets.resize(MAX_FRAMES_IN_FLIGHT);
+  system.descSets.resize(MAX_FRAMES_IN_FLIGHT);
   if (vkAllocateDescriptorSets(logicalDevice.device, &setAllocInfo,
-                               sSystem.descSets.data()) != VK_SUCCESS) {
+                               system.descSets.data()) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to allocate descriptor sets.");
     return RE_CRITICAL;
   }
@@ -263,27 +263,27 @@ void MGraphics::destroyDescriptorSets() {}
 
 TResult MGraphics::createMVPBuffers() {
   // each frame will require a separate buffer, so 2 FIF would need buffers * 2
-  sRender.buffersMVP.resize(MAX_FRAMES_IN_FLIGHT);
+  view.buffersMVP.resize(MAX_FRAMES_IN_FLIGHT);
 
   VkDeviceSize uboMVPsize = sizeof(RMVPMatrices);
 
-  for (int i = 0; i < sRender.buffersMVP.size();
+  for (int i = 0; i < view.buffersMVP.size();
        i += MAX_FRAMES_IN_FLIGHT) {
     createBuffer(EBCMode::CPU_UNIFORM, uboMVPsize,
-                 sRender.buffersMVP[i].buffer,
-                 sRender.buffersMVP[i].allocation, getMVP(),
-                 &sRender.buffersMVP[i].allocInfo);
+                 view.buffersMVP[i].buffer,
+                 view.buffersMVP[i].allocation, getMVP(),
+                 &view.buffersMVP[i].allocInfo);
     createBuffer(EBCMode::CPU_UNIFORM, uboMVPsize,
-                 sRender.buffersMVP[i + 1].buffer,
-                 sRender.buffersMVP[i + 1].allocation, getMVP(),
-                 &sRender.buffersMVP[i + 1].allocInfo);
+                 view.buffersMVP[i + 1].buffer,
+                 view.buffersMVP[i + 1].allocation, getMVP(),
+                 &view.buffersMVP[i + 1].allocInfo);
   }
 
   return RE_OK;
 }
 
 void MGraphics::destroyMVPBuffers() {
-  for (auto& it : sRender.buffersMVP) {
+  for (auto& it : view.buffersMVP) {
     vmaDestroyBuffer(memAlloc, it.buffer, it.allocation);
   }
 }
@@ -297,19 +297,19 @@ void MGraphics::updateMVPBuffer(uint32_t currentImage) {
 
   auto r = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f),
                        glm::vec3(0.0f, 0.0f, 1.0f));
-  memcpy(sRender.buffersMVP[currentImage].allocInfo.pMappedData,
+  memcpy(view.buffersMVP[currentImage].allocInfo.pMappedData,
          updateMVP(&r), sizeof(RMVPMatrices));
 }
 
 RMVPMatrices* MGraphics::getMVP() {
-  return &sRender.modelViewProjection;
+  return &view.modelViewProjection;
 }
 
 RMVPMatrices* MGraphics::updateMVP(glm::mat4* pTransform) {
-  sRender.modelViewProjection = {glm::mat4(1.0f), sRender.pActiveCamera->view(),
-          sRender.pActiveCamera->projection()};
+  view.modelViewProjection = {glm::mat4(1.0f), view.pActiveCamera->view(),
+          view.pActiveCamera->projection()};
 
-  return &sRender.modelViewProjection;
+  return &view.modelViewProjection;
 }
 
 VkShaderModule MGraphics::createShaderModule(std::vector<char>& shaderCode) {

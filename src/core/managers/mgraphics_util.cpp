@@ -240,17 +240,17 @@ TResult MGraphics::copyBuffer(VkBuffer srcBuffer, VkBuffer& dstBuffer,
   cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-  vkBeginCommandBuffer(sCmd.buffersTransfer[cmdBufferId], &cmdBufferBeginInfo);
+  vkBeginCommandBuffer(command.buffersTransfer[cmdBufferId], &cmdBufferBeginInfo);
 
-  vkCmdCopyBuffer(sCmd.buffersTransfer[cmdBufferId], srcBuffer,
+  vkCmdCopyBuffer(command.buffersTransfer[cmdBufferId], srcBuffer,
                   dstBuffer, 1, copyRegion);
 
-  vkEndCommandBuffer(sCmd.buffersTransfer[cmdBufferId]);
+  vkEndCommandBuffer(command.buffersTransfer[cmdBufferId]);
 
   VkSubmitInfo submitInfo{};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
   submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &sCmd.buffersTransfer[cmdBufferId];
+  submitInfo.pCommandBuffers = &command.buffersTransfer[cmdBufferId];
 
   vkQueueSubmit(logicalDevice.queues.transfer, 1, &submitInfo, VK_NULL_HANDLE);
   vkQueueWaitIdle(logicalDevice.queues.transfer);
@@ -269,17 +269,17 @@ TResult MGraphics::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
   cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-  vkBeginCommandBuffer(sCmd.buffersTransfer[cmdBufferId], &cmdBufferBeginInfo);
+  vkBeginCommandBuffer(command.buffersTransfer[cmdBufferId], &cmdBufferBeginInfo);
 
-  vkCmdCopyBuffer(sCmd.buffersTransfer[cmdBufferId], srcBuffer->buffer,
+  vkCmdCopyBuffer(command.buffersTransfer[cmdBufferId], srcBuffer->buffer,
                   dstBuffer->buffer, 1, copyRegion);
 
-  vkEndCommandBuffer(sCmd.buffersTransfer[cmdBufferId]);
+  vkEndCommandBuffer(command.buffersTransfer[cmdBufferId]);
 
   VkSubmitInfo submitInfo{};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
   submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &sCmd.buffersTransfer[cmdBufferId];
+  submitInfo.pCommandBuffers = &command.buffersTransfer[cmdBufferId];
 
   vkQueueSubmit(logicalDevice.queues.transfer, 1, &submitInfo, VK_NULL_HANDLE);
   vkQueueWaitIdle(logicalDevice.queues.transfer);
@@ -298,8 +298,8 @@ ACamera* MGraphics::createCamera(const char* name,
           cameraSettings->nearZ, cameraSettings->farZ);
     } else {
       cameras.at(name)->setPerspective(
-          sRender.cameraSettings.FOV, sRender.cameraSettings.aspectRatio,
-          sRender.cameraSettings.nearZ, sRender.cameraSettings.farZ);
+          view.cameraSettings.FOV, view.cameraSettings.aspectRatio,
+          view.cameraSettings.nearZ, view.cameraSettings.farZ);
     }
 
     RE_LOG(Log, "Created camera '%s'.", name);
@@ -328,10 +328,10 @@ void MGraphics::setCamera(const char* name) {
     }
   }
 
-  sRender.pActiveCamera = cameras.at(name).get();
+  view.pActiveCamera = cameras.at(name).get();
 }
 
-void MGraphics::setCamera(ACamera* pCamera) { sRender.pActiveCamera = pCamera; }
+void MGraphics::setCamera(ACamera* pCamera) { view.pActiveCamera = pCamera; }
 
 TResult MGraphics::destroyCamera(const char* name) {
   if (cameras.find(name) != cameras.end()) {
