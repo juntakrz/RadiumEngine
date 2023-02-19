@@ -69,11 +69,11 @@ TResult MGraphics::destroyInstance() {
 TResult MGraphics::initialize() {
   TResult chkResult = RE_OK;
 
-  chkResult = mgrGfx->createInstance();
+  chkResult = MGraphics::get().createInstance();
 
   // debug manager setup
   if (chkResult <= RE_ERRORLIMIT)
-    chkResult = mgrDbg->create(mgrGfx->APIInstance);
+    chkResult = MDebug::get().create(MGraphics::get().APIInstance);
 
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSurface();
 
@@ -95,8 +95,8 @@ TResult MGraphics::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCommandBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();
 
-  mgrModel->createMesh();
-  bindMesh(mgrModel->meshes.back().get());
+  MModel::get().createMesh();
+  bindMesh(MModel::get().meshes.back().get());
   if (chkResult <= RE_ERRORLIMIT) chkResult = createMVPBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorPool();
   //if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSetLayouts();
@@ -115,11 +115,11 @@ void MGraphics::deinitialize() {
   destroyGraphicsPipeline();
   destroyRenderPass();
   destroySurface();
-  mgrModel->destroyAllMeshes();
+  MModel::get().destroyAllMeshes();
   destroyDescriptorPool();
   destroyMVPBuffers();
   destroyMemAlloc();
-  if(bRequireValidationLayers) mgrDbg->destroy(APIInstance);
+  if(bRequireValidationLayers) MDebug::get().destroy(APIInstance);
   destroyLogicalDevice();
   destroyInstance();
 }

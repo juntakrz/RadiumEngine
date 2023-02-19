@@ -9,38 +9,21 @@
 #include "core/managers/mscript.h"
 #include "core/managers/mref.h"
 
-class MGraphics* mgrGfx = nullptr;
-class MWindow* mgrWnd = nullptr;
-class MDebug* mgrDbg = nullptr;
-class MInput* mgrInput = nullptr;
-class MModel* mgrModel = nullptr;
-class MScript* mgrScript = nullptr;
-class MRef* mgrRef = nullptr;
-
 void core::run() {
   // initialize engine
   RE_LOG(Log, "Radium Engine");
   RE_LOG(Log, "-------------\n");
   RE_LOG(Log, "Initializing engine core...");
 
-  mgrRef = &MRef::get();
-  mgrScript = &MScript::get();
   loadCoreConfig();
 
-  // create and register managers
-  RE_LOG(Log, "Registering managers.");
-  mgrWnd = &MWindow::get();
-  mgrGfx = &MGraphics::get();
-  mgrDbg = &MDebug::get();
-  mgrInput = &MInput::get();
-  mgrModel = &MModel::get();
-
+  RE_LOG(Log, "Creating renderer.");
   RE_CHECK(core::renderer::create());
-  mgrInput->initialize(mgrWnd->window());
+  MInput::get().initialize(MWindow::get().window());
 
   RE_LOG(Log, "Successfully initialized engine core.");
 
-  mgrScript->loadMap("default");
+  MScript::get().loadMap("default");
 
   RE_LOG(Log, "Launching main event loop.");
 
@@ -78,7 +61,7 @@ void core::loadCoreConfig(const wchar_t* path) {
   uint8_t requirements = 3;
   const char* cfgName = "cfgCore";
 
-  json* data = mgrScript->jsonLoad(path, cfgName);
+  json* data = MScript::get().jsonLoad(path, cfgName);
 
   if (data->contains("core")) {
     const auto& coreData = data->at("core");
