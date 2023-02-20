@@ -288,10 +288,19 @@ void core::MRenderer::destroyMVPBuffers() {
 void core::MRenderer::updateModelViewProjectionBuffers(uint32_t currentImage) {
   float time = core::time.getTimeSinceInitialization();
 
-  auto rotation = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f),
-                       glm::vec3(0.0f, 0.0f, 1.0f));
+  // rewrite this and UpdateMVP method to use data from the current/provided camera
+  view.modelViewProjectionData.model = glm::rotate(
+      glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+  view.modelViewProjectionData.view =
+      glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f),
+                  glm::vec3(0.0f, 0.0f, 1.0f));
+  view.modelViewProjectionData.projection = view.pActiveCamera->projection();
+
+  // OpenGL/GLM Y coordinate has to be inverted for Vulkan
+  view.modelViewProjectionData.projection[1][1] *= -1.0f;
+
   memcpy(view.modelViewProjectionBuffers[currentImage].allocInfo.pMappedData,
-         updateMVP(&rotation), sizeof(RModelViewProjUBO));
+         &view.modelViewProjectionData, sizeof(RModelViewProjUBO));
 }
 
 RModelViewProjUBO* core::MRenderer::getMVPview() {
