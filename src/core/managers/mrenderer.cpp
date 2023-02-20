@@ -1,10 +1,11 @@
 #include "pch.h"
 #include "vk_mem_alloc.h"
 #include "core/core.h"
-#include "core/managers/MRenderer.h"
+#include "core/managers/mrenderer.h"
 #include "core/managers/mdebug.h"
 #include "core/managers/mwindow.h"
 #include "core/managers/mactors.h"
+#include "core/managers/mtime.h"
 #include "core/world/actors/acamera.h"
 
 core::MRenderer::MRenderer() { RE_LOG(Log, "Creating graphics manager."); };
@@ -284,17 +285,13 @@ void core::MRenderer::destroyMVPBuffers() {
   }
 }
 
-void core::MRenderer::updateMVPBuffer(uint32_t currentImage) {
-  static auto startTime = std::chrono::high_resolution_clock::now();
-  auto currentTime = std::chrono::high_resolution_clock::now();
-  float time = std::chrono::duration<float, std::chrono::seconds::period>(
-                   currentTime - startTime)
-                   .count();
+void core::MRenderer::updateModelViewProjectionBuffers(uint32_t currentImage) {
+  float time = core::time.getTimeSinceInitialization();
 
-  auto r = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f),
+  auto rotation = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f),
                        glm::vec3(0.0f, 0.0f, 1.0f));
   memcpy(view.modelViewProjectionBuffers[currentImage].allocInfo.pMappedData,
-         updateMVP(&r), sizeof(RModelViewProjUBO));
+         updateMVP(&rotation), sizeof(RModelViewProjUBO));
 }
 
 RModelViewProjUBO* core::MRenderer::getMVPview() {

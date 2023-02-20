@@ -69,7 +69,7 @@ namespace core {
     std::vector<RVkPhysicalDevice> availablePhysicalDevices;
     RVkPhysicalDevice physicalDevice;
     RVkLogicalDevice logicalDevice;
-    VmaAllocator memAlloc;
+    VmaAllocator memAlloc = nullptr;
     uint32_t frameviewed = 0;
     bool bFramebufferResized = false;
 
@@ -117,7 +117,7 @@ namespace core {
 
     TResult createMVPBuffers();
     void destroyMVPBuffers();
-    void updateMVPBuffer(uint32_t currentImage);
+    void updateModelViewProjectionBuffers(uint32_t currentImage);
 
     // creates identity MVP matrices
     RModelViewProjUBO* getMVPview();

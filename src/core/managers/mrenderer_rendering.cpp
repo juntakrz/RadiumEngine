@@ -1,5 +1,7 @@
 #include "pch.h"
+#include "core/core.h"
 #include "core/managers/MRenderer.h"
+#include "core/managers/MTime.h"
 #include "core/world/mesh/mesh.h"
 
 TResult core::MRenderer::createRenderPass() {
@@ -479,8 +481,11 @@ TResult core::MRenderer::drawFrame() {
     return RE_ERROR;
   }
 
+  // get new delta time between frames
+  core::time.tickTimer();
+
   // update MVP buffers
-  updateMVPBuffer(system.idIFFrame);
+  updateModelViewProjectionBuffers(system.idIFFrame);
 
   // reset fences if we will do any work this frame e.g. no swap chain
   // recreation

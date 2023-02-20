@@ -7,6 +7,7 @@
 #include "core/managers/mactors.h"
 #include "core/managers/mscript.h"
 #include "core/managers/mref.h"
+#include "core/managers/mtime.h"
 
 class core::MRenderer& core::renderer = MRenderer::get();
 class core::MWindow& core::window = MWindow::get();
@@ -15,7 +16,7 @@ class core::MScript& core::script = MScript::get();
 class core::MActors& core::actors = MActors::get();
 class core::MRef& core::ref = MRef::get();
 class core::MDebug& core::debug = MDebug::get();
-//class core::MTime& core::time = MTime::get();
+class core::MTime& core::time = MTime::get();
 
 void core::run() {
 

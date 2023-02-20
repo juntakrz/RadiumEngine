@@ -9,7 +9,7 @@ extern class MScript& script;
 extern class MActors& actors;
 extern class MRef& ref;
 extern class MDebug& debug;
-//extern class MTime& time;
+extern class MTime& time;
 
 void run();
 void mainEventLoop();
