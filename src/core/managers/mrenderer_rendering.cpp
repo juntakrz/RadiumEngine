@@ -1,8 +1,8 @@
 #include "pch.h"
-#include "core/managers/mgraphics.h"
+#include "core/managers/mrenderer.h"
 #include "core/world/mesh/mesh.h"
 
-TResult core::MGraphics::createRenderPass() {
+TResult core::mrenderer::createRenderPass() {
   RE_LOG(Log, "Creating render pass");
 
   VkAttachmentDescription colorAttachment{};
@@ -50,12 +50,12 @@ TResult core::MGraphics::createRenderPass() {
   return RE_OK;
 }
 
-void core::MGraphics::destroyRenderPass() {
+void core::mrenderer::destroyRenderPass() {
   RE_LOG(Log, "Destroying render pass.");
   vkDestroyRenderPass(logicalDevice.device, system.renderPass, nullptr);
 }
 
-TResult core::MGraphics::createGraphicsPipeline() {
+TResult core::mrenderer::createGraphicsPipeline() {
   RE_LOG(Log, "Creating graphics pipeline.");
 
   std::vector<char> vsCode = readFile(TEXT("content/shaders/vs_default.spv"));
@@ -229,14 +229,14 @@ TResult core::MGraphics::createGraphicsPipeline() {
   return RE_OK;
 }
 
-void core::MGraphics::destroyGraphicsPipeline() {
+void core::mrenderer::destroyGraphicsPipeline() {
   RE_LOG(Log, "Shutting down graphics pipeline.");
   destroyDescriptorSetLayouts();
   vkDestroyPipeline(logicalDevice.device, system.pipeline, nullptr);
   vkDestroyPipelineLayout(logicalDevice.device, system.pipelineLayout, nullptr);
 }
 
-TResult core::MGraphics::createCommandPools() {
+TResult core::mrenderer::createCommandPools() {
   RE_LOG(Log, "Creating command pool.");
 
   VkCommandPoolCreateInfo cmdPoolRenderInfo{};
@@ -267,13 +267,13 @@ TResult core::MGraphics::createCommandPools() {
   return RE_OK;
 }
 
-void core::MGraphics::destroyCommandPools() {
+void core::mrenderer::destroyCommandPools() {
   RE_LOG(Log, "Destroying command pools.");
   vkDestroyCommandPool(logicalDevice.device, command.poolRender, nullptr);
   vkDestroyCommandPool(logicalDevice.device, command.poolTransfer, nullptr);
 }
 
-TResult core::MGraphics::createCommandBuffers() {
+TResult core::mrenderer::createCommandBuffers() {
   RE_LOG(Log, "Creating rendering command buffers for %d frames.",
          MAX_FRAMES_IN_FLIGHT);
 
@@ -309,7 +309,7 @@ TResult core::MGraphics::createCommandBuffers() {
   return RE_OK;
 }
 
-void core::MGraphics::destroyCommandBuffers() {
+void core::mrenderer::destroyCommandBuffers() {
   RE_LOG(Log, "Freeing %d rendering command buffers.",
          command.bufferview.size());
   vkFreeCommandBuffers(logicalDevice.device, command.poolRender,
@@ -323,7 +323,7 @@ void core::MGraphics::destroyCommandBuffers() {
                        command.buffersTransfer.data());
 }
 
-TResult core::MGraphics::recordCommandBuffer(VkCommandBuffer commandBuffer,
+TResult core::mrenderer::recordCommandBuffer(VkCommandBuffer commandBuffer,
                                      uint32_t imageIndex) {
   VkCommandBufferBeginInfo beginInfo{};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -354,11 +354,11 @@ TResult core::MGraphics::recordCommandBuffer(VkCommandBuffer commandBuffer,
 
   VkViewport viewport{};
   viewport.x = 0.0f;
-  viewport.y = (core::renderer::bFlipViewPortY)
+  viewport.y = (core::vulkan::bFlipViewPortY)
                    ? static_cast<float>(swapchain.imageExtent.height)
                    : 0.0f;
   viewport.width = static_cast<float>(swapchain.imageExtent.width);
-  viewport.height = (core::renderer::bFlipViewPortY)
+  viewport.height = (core::vulkan::bFlipViewPortY)
                         ? -static_cast<float>(swapchain.imageExtent.height)
                         : static_cast<float>(swapchain.imageExtent.height);
   viewport.minDepth = 0.0f;
@@ -397,7 +397,7 @@ TResult core::MGraphics::recordCommandBuffer(VkCommandBuffer commandBuffer,
   return RE_OK;
 }
 
-TResult core::MGraphics::createSyncObjects() {
+TResult core::mrenderer::createSyncObjects() {
   RE_LOG(Log, "Creating sychronization objects for %d frames.",
          MAX_FRAMES_IN_FLIGHT);
 
@@ -439,7 +439,7 @@ TResult core::MGraphics::createSyncObjects() {
   return RE_OK;
 }
 
-void core::MGraphics::destroySyncObjects() {
+void core::mrenderer::destroySyncObjects() {
   RE_LOG(Log, "Destroying synchronization objects.");
 
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
@@ -453,7 +453,7 @@ void core::MGraphics::destroySyncObjects() {
   }
 }
 
-TResult core::MGraphics::drawFrame() {
+TResult core::mrenderer::drawFrame() {
   uint32_t imageIndex = -1;
   TResult chkResult = RE_OK;
 
@@ -558,16 +558,16 @@ TResult core::MGraphics::drawFrame() {
   return chkResult;
 }
 
-void core::MGraphics::updateAspectRatio() {
+void core::mrenderer::updateAspectRatio() {
   view.cameraSettings.aspectRatio =
       (float)swapchain.imageExtent.width / swapchain.imageExtent.height;
 }
 
-void core::MGraphics::setFOV(float FOV) { view.cameraSettings.FOV = FOV; }
+void core::mrenderer::setFOV(float FOV) { view.cameraSettings.FOV = FOV; }
 
-void core::MGraphics::setViewDistance(float farZ) { view.cameraSettings.farZ; }
+void core::mrenderer::setViewDistance(float farZ) { view.cameraSettings.farZ; }
 
-void core::MGraphics::setViewDistance(float nearZ, float farZ) {
+void core::mrenderer::setViewDistance(float nearZ, float farZ) {
   view.cameraSettings.nearZ = nearZ;
   view.cameraSettings.farZ = farZ;
 }

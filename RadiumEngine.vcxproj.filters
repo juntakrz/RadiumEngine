@@ -21,16 +21,13 @@
     <ClCompile Include="src\pch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\renderer\renderer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\core\core.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\managers\mwindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mgraphics.cpp">
+    <ClCompile Include="src\core\managers\mrenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\managers\mdebug.cpp">
@@ -39,16 +36,16 @@
     <ClCompile Include="src\core\objects.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mgraphics_swapchain.cpp">
+    <ClCompile Include="src\core\managers\mrenderer_swapchain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mgraphics_physicaldevice.cpp">
+    <ClCompile Include="src\core\managers\mrenderer_physicaldevice.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\util\util.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mgraphics_rendering.cpp">
+    <ClCompile Include="src\core\managers\mrenderer_rendering.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\config.cpp">
@@ -66,13 +63,13 @@
     <ClCompile Include="src\core\world\mesh\mesh.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mgraphics_logicaldevice.cpp">
+    <ClCompile Include="src\core\managers\mrenderer_logicaldevice.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\renderer\vk_mem_alloc.cpp">
+    <ClCompile Include="src\core\vk_mem_alloc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mgraphics_util.cpp">
+    <ClCompile Include="src\core\managers\mrenderer_util.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\managers\mtime.cpp">
@@ -98,9 +95,6 @@
     <ClInclude Include="include\pch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\renderer\renderer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\core\core.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -113,7 +107,7 @@
     <ClInclude Include="include\core\managers\common.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\managers\mgraphics.h">
+    <ClInclude Include="include\core\managers\mrenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\config.h">

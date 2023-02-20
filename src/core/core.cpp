@@ -1,15 +1,14 @@
 #include "pch.h"
 #include "core/core.h"
-#include "core/renderer/renderer.h"
 #include "core/managers/mwindow.h"
-#include "core/managers/mgraphics.h"
+#include "core/managers/mrenderer.h"
 #include "core/managers/mdebug.h"
 #include "core/managers/minput.h"
 #include "core/managers/mmodel.h"
 #include "core/managers/mscript.h"
 #include "core/managers/mref.h"
 
-class core::MGraphics* core::graphics = nullptr;
+class core::mrenderer& core::graphics = mrenderer::get();
 
 void core::run() {
 
@@ -18,12 +17,12 @@ void core::run() {
   RE_LOG(Log, "-------------\n");
   RE_LOG(Log, "Initializing engine core...");
 
-  core::graphics = &core::MGraphics::get();
+  //core::graphics = &core::mrenderer::get();
 
   loadCoreConfig();
 
   RE_LOG(Log, "Creating renderer.");
-  RE_CHECK(core::renderer::create());
+  RE_CHECK(core::create());
   MInput::get().initialize(MWindow::get().window());
 
   RE_LOG(Log, "Successfully initialized engine core.");
@@ -40,7 +39,7 @@ void core::run() {
 void core::mainEventLoop() {
   while (!glfwWindowShouldClose(MWindow::get().window())) {
     glfwPollEvents();
-    core::renderer::drawFrame();
+    core::drawFrame();
   }
 }
 
@@ -48,7 +47,7 @@ void core::stop(TResult cause) {
   if (cause == RE_OK) {
     RE_LOG(Log, "Shutting down on call.");
 
-    core::renderer::destroy();
+    core::destroy();
   }
   else {
     RE_LOG(
@@ -92,4 +91,41 @@ void core::loadCoreConfig(const wchar_t* path) {
   }
 
   RE_LOG(Error, "Core configuration file seems to be corrupted.");
+}
+
+TResult core::create() {
+  RE_LOG(Log, "Initializing core rendering system.");
+
+  TResult chkResult = 0;
+
+  // initialize Vulkan API using GLFW
+  glfwInit();
+
+  // window manager setup 
+  chkResult = MWindow::get().createWindow(config::renderWidth, config::renderHeight,
+    config::appTitle, nullptr, nullptr);
+  RE_CHECK(chkResult);
+
+  // graphics manager setup (responsible for Vulkan instance and GPU management)
+  RE_LOG(Log, "Initializing rendering module.");
+  chkResult = core::graphics.initialize();
+  RE_CHECK(chkResult);
+
+  RE_LOG(Log, "Rendering module successfully initialized.");
+
+  return chkResult;
+}
+
+void core::destroy() {
+  core::graphics.deinitialize();
+  MWindow::get().destroyWindow();
+  glfwTerminate();
+}
+
+TResult core::drawFrame() {
+  TResult chkResult = RE_OK;
+
+  chkResult = core::graphics.drawFrame();
+
+  return chkResult;
 }

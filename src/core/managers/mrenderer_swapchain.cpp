@@ -1,8 +1,8 @@
 #include "pch.h"
-#include "core/managers/mgraphics.h"
+#include "core/managers/mrenderer.h"
 #include "core/managers/mwindow.h"
 
-TResult core::MGraphics::initSwapChain(VkFormat format, VkColorSpaceKHR colorSpace,
+TResult core::mrenderer::initSwapChain(VkFormat format, VkColorSpaceKHR colorSpace,
                                  VkPresentModeKHR presentMode,
                                  RVkPhysicalDevice* device) {
   RE_LOG(Log, "Creating the swap chain for presentation.");
@@ -35,7 +35,7 @@ TResult core::MGraphics::initSwapChain(VkFormat format, VkColorSpaceKHR colorSpa
   return chkResult;
 }
 
-TResult core::MGraphics::setSwapChainFormat(const RVkPhysicalDevice& deviceData,
+TResult core::mrenderer::setSwapChainFormat(const RVkPhysicalDevice& deviceData,
                                       const VkFormat& format,
                                       const VkColorSpaceKHR& colorSpace) {
   RE_LOG(Log, "Setting up swap chain format.");
@@ -61,7 +61,7 @@ TResult core::MGraphics::setSwapChainFormat(const RVkPhysicalDevice& deviceData,
   return RE_WARNING;
 }
 
-TResult core::MGraphics::setSwapChainPresentMode(const RVkPhysicalDevice& deviceData,
+TResult core::mrenderer::setSwapChainPresentMode(const RVkPhysicalDevice& deviceData,
                                            VkPresentModeKHR presentMode) {
   RE_LOG(Log, "Setting up swap chain present mode.");
 
@@ -82,7 +82,7 @@ TResult core::MGraphics::setSwapChainPresentMode(const RVkPhysicalDevice& device
   return RE_WARNING;
 }
 
-TResult core::MGraphics::setSwapChainExtent(const RVkPhysicalDevice& deviceData) {
+TResult core::mrenderer::setSwapChainExtent(const RVkPhysicalDevice& deviceData) {
   // check if current extent is within limits and set it as active if so
   const VkSurfaceCapabilitiesKHR& capabilities =
       deviceData.swapChainInfo.capabilities;
@@ -111,7 +111,7 @@ TResult core::MGraphics::setSwapChainExtent(const RVkPhysicalDevice& deviceData)
   return RE_OK;
 }
 
-TResult core::MGraphics::setSwapChainImageCount(const RVkPhysicalDevice& deviceData) {
+TResult core::mrenderer::setSwapChainImageCount(const RVkPhysicalDevice& deviceData) {
   const VkSurfaceCapabilitiesKHR& capabilities =
       deviceData.swapChainInfo.capabilities;
   uint32_t imageCount = capabilities.minImageCount + 1;
@@ -122,7 +122,7 @@ TResult core::MGraphics::setSwapChainImageCount(const RVkPhysicalDevice& deviceD
   return RE_OK;
 }
 
-TResult core::MGraphics::createSwapChain() {
+TResult core::mrenderer::createSwapChain() {
   if (!swapchain.imageCount) {
     RE_LOG(Error,
            "swap chain creation failed. Either no capable physical devices "
@@ -182,7 +182,7 @@ TResult core::MGraphics::createSwapChain() {
   return RE_OK;
 }
 
-void core::MGraphics::destroySwapChain() {
+void core::mrenderer::destroySwapChain() {
   RE_LOG(Log, "Cleaning up the swap chain.");
 
   for (VkFramebuffer framebuffer : swapchain.framebuffers) {
@@ -196,7 +196,7 @@ void core::MGraphics::destroySwapChain() {
   vkDestroySwapchainKHR(logicalDevice.device, swapChain, nullptr);
 }
 
-TResult core::MGraphics::recreateSwapChain() {
+TResult core::mrenderer::recreateSwapChain() {
   TResult chkResult, finalResult = RE_OK;
   int width, height;
   glfwGetFramebufferSize(MWindow::get().window(), &width, &height);
@@ -220,7 +220,7 @@ TResult core::MGraphics::recreateSwapChain() {
 
 // private
 
-TResult core::MGraphics::createSwapChainImageViews() {
+TResult core::mrenderer::createSwapChainImageViews() {
   RE_LOG(Log, "Creating image views for swap chain.");
 
   swapchain.imageViews.resize(swapchain.images.size());
@@ -254,7 +254,7 @@ TResult core::MGraphics::createSwapChainImageViews() {
   return RE_OK;
 }
 
-TResult core::MGraphics::createFramebuffers() {
+TResult core::mrenderer::createFramebuffers() {
   RE_LOG(Log, "Creating framebuffers.");
 
   swapchain.framebuffers.resize(swapchain.imageViews.size());

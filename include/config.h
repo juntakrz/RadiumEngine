@@ -16,7 +16,16 @@ extern bool bDevMode;
 };  // namespace config
 
 namespace core {
-namespace renderer {
+namespace vulkan {
+
+// Vulkan API version
+const uint32_t APIversion = VK_API_VERSION_1_2;
+
+// mandatory extensions required by the renderer
+const std::vector<const char*> requiredExtensions = {
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME
+};
+
 // desired swap chain settings, will be set if supported by the physical device
 const VkFormat format = VK_FORMAT_B8G8R8A8_SRGB;
 const VkColorSpaceKHR colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
@@ -24,6 +33,7 @@ const VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 constexpr uint8_t maxFramesInFlight = MAX_FRAMES_IN_FLIGHT;
 
 constexpr bool bFlipViewPortY = true;    // for OpenGL / Direct3D vertex coordinate compatibility
+
 }
 }  // namespace core
 
