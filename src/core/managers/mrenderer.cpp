@@ -99,7 +99,7 @@ TResult core::MRenderer::initialize() {
   bindMesh(core::actors.meshes.back().get());
   if (chkResult <= RE_ERRORLIMIT) chkResult = createMVPBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorPool();
-  //if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSetLayouts();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSetLayouts();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSets();
 
   return chkResult;
@@ -181,17 +181,19 @@ uint32_t core::MRenderer::bindMesh(WMesh* pMesh) {
 }
 
 TResult core::MRenderer::createDescriptorSetLayouts() {
-  VkDescriptorSetLayoutBinding uboMVPBind{};
-  uboMVPBind.binding = 0;                                         // binding location in a shader
-  uboMVPBind.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;  // type of binding
-  uboMVPBind.descriptorCount = 1;                                 // binding can be an array of UBOs, but MVP is a single UBO
-  uboMVPBind.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;             // will be bound to vertex shader
-  uboMVPBind.pImmutableSamplers = nullptr;                        // for texture samplers
+
+  // layout for model view projection matrices for vertex shader
+  VkDescriptorSetLayoutBinding uboMVPLayout{};
+  uboMVPLayout.binding = 0;                                         // binding location in a shader
+  uboMVPLayout.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;  // type of binding
+  uboMVPLayout.descriptorCount = 1;                                 // binding can be an array of UBOs, but MVP is a single UBO
+  uboMVPLayout.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;             // will be bound to vertex shader
+  uboMVPLayout.pImmutableSamplers = nullptr;                        // for image samplers
 
   VkDescriptorSetLayoutCreateInfo uboMVPInfo{};
   uboMVPInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
   uboMVPInfo.bindingCount = 1;
-  uboMVPInfo.pBindings = &uboMVPBind;
+  uboMVPInfo.pBindings = &uboMVPLayout;
 
   for (uint8_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
     system.descSetLayouts.emplace_back();
@@ -262,28 +264,22 @@ TResult core::MRenderer::createDescriptorSets() {
 void core::MRenderer::destroyDescriptorSets() {}
 
 TResult core::MRenderer::createMVPBuffers() {
-  // each frame will require a separate buffer, so 2 FIF would need buffers * 2
-  view.buffersMVP.resize(MAX_FRAMES_IN_FLIGHT);
+  // each frame will require a separate buffer, so 2 frames in flight would require buffers * 2
+  view.modelViewProjectionBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
-  VkDeviceSize uboMVPsize = sizeof(RMVPMatrices);
+  VkDeviceSize uboMVPsize = sizeof(RModelViewProjUBO);
 
-  for (int i = 0; i < view.buffersMVP.size();
+  for (int i = 0; i < view.modelViewProjectionBuffers.size();
        i += MAX_FRAMES_IN_FLIGHT) {
-    createBuffer(EBCMode::CPU_UNIFORM, uboMVPsize,
-                 view.buffersMVP[i].buffer,
-                 view.buffersMVP[i].allocation, getMVP(),
-                 &view.buffersMVP[i].allocInfo);
-    createBuffer(EBCMode::CPU_UNIFORM, uboMVPsize,
-                 view.buffersMVP[i + 1].buffer,
-                 view.buffersMVP[i + 1].allocation, getMVP(),
-                 &view.buffersMVP[i + 1].allocInfo);
+    createBuffer(EBCMode::CPU_UNIFORM, uboMVPsize, view.modelViewProjectionBuffers[i], getMVPview());
+    createBuffer(EBCMode::CPU_UNIFORM, uboMVPsize, view.modelViewProjectionBuffers[i + 1], getMVPview());
   }
 
   return RE_OK;
 }
 
 void core::MRenderer::destroyMVPBuffers() {
-  for (auto& it : view.buffersMVP) {
+  for (auto& it : view.modelViewProjectionBuffers) {
     vmaDestroyBuffer(memAlloc, it.buffer, it.allocation);
   }
 }
@@ -297,19 +293,19 @@ void core::MRenderer::updateMVPBuffer(uint32_t currentImage) {
 
   auto r = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f),
                        glm::vec3(0.0f, 0.0f, 1.0f));
-  memcpy(view.buffersMVP[currentImage].allocInfo.pMappedData,
-         updateMVP(&r), sizeof(RMVPMatrices));
+  memcpy(view.modelViewProjectionBuffers[currentImage].allocInfo.pMappedData,
+         updateMVP(&r), sizeof(RModelViewProjUBO));
 }
 
-RMVPMatrices* core::MRenderer::getMVP() {
-  return &view.modelViewProjection;
+RModelViewProjUBO* core::MRenderer::getMVPview() {
+  return &view.modelViewProjectionData;
 }
 
-RMVPMatrices* core::MRenderer::updateMVP(glm::mat4* pTransform) {
-  view.modelViewProjection = {glm::mat4(1.0f), view.pActiveCamera->view(),
+RModelViewProjUBO* core::MRenderer::updateMVP(glm::mat4* pTransform) {
+  view.modelViewProjectionData = {glm::mat4(1.0f), view.pActiveCamera->view(),
           view.pActiveCamera->projection()};
 
-  return &view.modelViewProjection;
+  return &view.modelViewProjectionData;
 }
 
 VkShaderModule core::MRenderer::createShaderModule(std::vector<char>& shaderCode) {

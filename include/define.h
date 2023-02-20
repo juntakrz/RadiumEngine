@@ -43,6 +43,5 @@ constexpr char Critical =   RE_CRITICAL;
 *	Txxx		- type definition
 *	Mxxx		- manager class, is a singleton and must be called using get() method
 *	Rxxx		- renderer related class object (e.g. Vulkan API-based data structures)
-* Uboxxx  - uniform buffer object, used in shaders
 * Wxxx    - world related class object (e.g. meshes and primitives)
 */

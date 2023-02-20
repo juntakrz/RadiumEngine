@@ -75,13 +75,6 @@ struct NextVertex {
   glm::vec3 binormal;   // BINORMAL
 };
 
-// uniform buffer object for vertex shader (model * view * projection)
-struct RMVPMatrices {
-  glm::mat4 model      = glm::mat4(1.0f);
-  glm::mat4 view       = glm::mat4(1.0f);
-  glm::mat4 projection = glm::mat4(1.0f);
-};
-
 struct RCameraSettings {
   float aspectRatio = 16.0f / 9.0f;
   float FOV = 90.0f;
@@ -100,4 +93,13 @@ struct WMeshData {
 struct WActorPtr {
   class ABase* ptr = nullptr;
   EAType type = EAType::BASE;
+};
+
+// uniform buffer objects
+// 
+// view matrix UBO for vertex shader (model * view * projection)
+struct RModelViewProjUBO {
+  glm::mat4 model = glm::mat4(1.0f);
+  glm::mat4 view = glm::mat4(1.0f);
+  glm::mat4 projection = glm::mat4(1.0f);
 };

@@ -14,16 +14,14 @@ WMesh::WMesh() {
 
 void WMesh::createVertexBuffer() {
   VkDeviceSize size = vertices.size() * sizeof(RVertex);
-  core::renderer.createBuffer(EBCMode::DGPU_VERTEX, size, vertexBuffer.buffer,
-                       vertexBuffer.allocation, vertices.data(),
-                       &vertexBuffer.allocInfo);
+  core::renderer.createBuffer(EBCMode::DGPU_VERTEX, size, vertexBuffer,
+                              vertices.data());
 }
 
 void WMesh::createIndexBuffer() {
   VkDeviceSize size = indices.size() * sizeof(indices[0]);
-  core::renderer.createBuffer(EBCMode::DGPU_INDEX, size, indexBuffer.buffer,
-                       indexBuffer.allocation, indices.data(),
-                       &indexBuffer.allocInfo);
+  core::renderer.createBuffer(EBCMode::DGPU_INDEX, size, indexBuffer,
+                              indices.data());
 }
 
 void WMesh::allocateMemory() {

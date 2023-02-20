@@ -28,7 +28,7 @@ namespace core {
     struct {
       VkCommandPool poolRender;
       VkCommandPool poolTransfer;
-      std::vector<VkCommandBuffer> bufferview;
+      std::vector<VkCommandBuffer> bufferView;
       std::vector<VkCommandBuffer> buffersTransfer;
     } command;
 
@@ -37,11 +37,11 @@ namespace core {
       VkRenderPass renderPass;
       VkPipelineLayout pipelineLayout;
       VkPipeline pipeline;
-      uint32_t idIFFrame = 0;                     // in flight frame index
+      uint32_t idIFFrame = 0;                                       // in flight frame index
       VkDescriptorPool descPool;
       std::vector<VkDescriptorSet> descSets;
       std::vector<VkDescriptorSetLayout> descSetLayouts;
-      std::vector<WMesh*> meshes;                 // meshes rendered during the current frame
+      std::vector<WMesh*> meshes;                                   // meshes rendered during the current frame
     } system;
 
     // multi-threaded synchronization objects
@@ -51,13 +51,13 @@ namespace core {
       std::vector<VkFence> fInFlight;
     } sync;
 
-    // objects used in shaders
+    // current camera view data
     struct {
       RCameraSettings cameraSettings;
 
       ACamera* pActiveCamera = nullptr;
-      std::vector<RBuffer> buffersMVP;
-      RMVPMatrices modelViewProjection;
+      std::vector<RBuffer> modelViewProjectionBuffers;
+      RModelViewProjUBO modelViewProjectionData;
     } view;
 
     std::unordered_map<std::string, std::unique_ptr<ACamera>> cameras;
@@ -120,10 +120,10 @@ namespace core {
     void updateMVPBuffer(uint32_t currentImage);
 
     // creates identity MVP matrices
-    RMVPMatrices* getMVP();
+    RModelViewProjUBO* getMVPview();
 
     // creates MVP matrices using currently active camera and model transform
-    RMVPMatrices* updateMVP(glm::mat4* pTransform);
+    RModelViewProjUBO* updateMVP(glm::mat4* pTransform);
 
   private:
     TResult checkInstanceValidationLayers();
@@ -135,12 +135,10 @@ namespace core {
     //
   public:
     /* create buffer for CPU/iGPU or dedicated GPU use:
-    * defining inData makes the method copy data to an outgoing buffer internally,
+    defining inData makes the method copy data to an outgoing buffer internally,
     otherwise empty but allocated VkBuffer is the result e.g. for a later data copy.
-    * outAllocInfo is optional, but can be defined if allocation data is required*/
-    TResult createBuffer(EBCMode mode, VkDeviceSize size, VkBuffer& outBuffer,
-      VmaAllocation& outAlloc, void* inData = nullptr,
-      VmaAllocationInfo* outAllocInfo = nullptr);
+    */
+    TResult createBuffer(EBCMode mode, VkDeviceSize size, RBuffer& outBuffer, void* inData = nullptr);
 
     // copy buffer with SRC and DST bits
     TResult copyBuffer(VkBuffer srcBuffer, VkBuffer& dstBuffer,

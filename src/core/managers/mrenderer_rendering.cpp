@@ -277,17 +277,17 @@ TResult core::MRenderer::createCommandBuffers() {
   RE_LOG(Log, "Creating rendering command buffers for %d frames.",
          MAX_FRAMES_IN_FLIGHT);
 
-  command.bufferview.resize(MAX_FRAMES_IN_FLIGHT);
+  command.bufferView.resize(MAX_FRAMES_IN_FLIGHT);
 
   VkCommandBufferAllocateInfo cmdBufferInfo{};
   cmdBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
   cmdBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
   cmdBufferInfo.commandPool = command.poolRender;
   cmdBufferInfo.commandBufferCount =
-      (uint32_t)command.bufferview.size();
+      (uint32_t)command.bufferView.size();
 
   if (vkAllocateCommandBuffers(logicalDevice.device, &cmdBufferInfo,
-                               command.bufferview.data()) != VK_SUCCESS) {
+                               command.bufferView.data()) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to allocate rendering command buffers.");
     return RE_CRITICAL;
   }
@@ -311,10 +311,10 @@ TResult core::MRenderer::createCommandBuffers() {
 
 void core::MRenderer::destroyCommandBuffers() {
   RE_LOG(Log, "Freeing %d rendering command buffers.",
-         command.bufferview.size());
+         command.bufferView.size());
   vkFreeCommandBuffers(logicalDevice.device, command.poolRender,
-                       static_cast<uint32_t>(command.bufferview.size()),
-                       command.bufferview.data());
+                       static_cast<uint32_t>(command.bufferView.size()),
+                       command.bufferView.data());
 
   RE_LOG(Log, "Freeing %d transfer command buffer.",
          command.buffersTransfer.size());
@@ -487,9 +487,10 @@ TResult core::MRenderer::drawFrame() {
   vkResetFences(logicalDevice.device, 1,
                 &sync.fInFlight[system.idIFFrame]);
 
-  vkResetCommandBuffer(command.bufferview[system.idIFFrame], NULL);
+  vkResetCommandBuffer(command.bufferView[system.idIFFrame], NULL);
 
-  recordCommandBuffer(command.bufferview[system.idIFFrame], imageIndex);
+  // generate frame data
+  recordCommandBuffer(command.bufferView[system.idIFFrame], imageIndex);
 
   // wait until image to write color data to is acquired
   VkSemaphore waitSems[] = {sync.sImgAvailable[system.idIFFrame]};
@@ -506,7 +507,7 @@ TResult core::MRenderer::drawFrame() {
       waitStages;  // each stage index corresponds to provided semaphore index
   submitInfo.commandBufferCount = 1;
   submitInfo.pCommandBuffers =
-      &command.bufferview[system.idIFFrame];  // submit command buffer
+      &command.bufferView[system.idIFFrame];  // submit command buffer
                                                    // recorded previously
   submitInfo.signalSemaphoreCount = 1;
   submitInfo.pSignalSemaphores =

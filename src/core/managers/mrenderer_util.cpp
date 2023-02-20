@@ -3,227 +3,222 @@
 #include "core/managers/MRenderer.h"
 #include "core/world/actors/acamera.h"
 
-TResult core::MRenderer::createBuffer(EBCMode mode, VkDeviceSize size,
-                                VkBuffer& outBuffer, VmaAllocation& outAlloc,
-                                void* inData, VmaAllocationInfo* outAllocInfo) {
+TResult core::MRenderer::createBuffer(EBCMode mode, VkDeviceSize size, RBuffer& outBuffer, void* inData)
+{
   switch ((uint8_t)mode) {
-    case (uint8_t)EBCMode::CPU_UNIFORM: {
+  case (uint8_t)EBCMode::CPU_UNIFORM: {
 
-      if (!outAllocInfo) {
-        RE_LOG(Warning,
-               "No allocation info structure provided while creating buffer in "
-               "a CPU_UNIFORM mode.");
-      }
+    VkBufferCreateInfo bcInfo{};
+    bcInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bcInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    bcInfo.size = size;
+    bcInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-      VkBufferCreateInfo bcInfo{};
-      bcInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-      bcInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-      bcInfo.size = size;
-      bcInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    VmaAllocationCreateInfo allocInfo{};
+    allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+      VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
-      VmaAllocationCreateInfo allocInfo{};
-      allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-      allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
-                        VMA_ALLOCATION_CREATE_MAPPED_BIT;
-
-      if (vmaCreateBuffer(memAlloc, &bcInfo, &allocInfo, &outBuffer, &outAlloc,
-                          outAllocInfo) != VK_SUCCESS) {
-        RE_LOG(Error, "Failed to create CPU_UNIFORM buffer.");
-        return RE_ERROR;
-      }
-
-      memcpy(outAllocInfo->pMappedData, inData, size);
-
-      return RE_OK;
+    if (vmaCreateBuffer(memAlloc, &bcInfo, &allocInfo, &outBuffer.buffer, &outBuffer.allocation,
+      &outBuffer.allocInfo) != VK_SUCCESS) {
+      RE_LOG(Error, "Failed to create CPU_UNIFORM buffer.");
+      return RE_ERROR;
     }
 
-    case (uint8_t)EBCMode::CPU_VERTEX: {
-      VkBufferCreateInfo bcInfo{};
-      bcInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-      bcInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-      bcInfo.size = size;
-      bcInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-      VmaAllocationCreateInfo allocInfo{};
-      allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-      allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
-      if (vmaCreateBuffer(memAlloc, &bcInfo, &allocInfo, &outBuffer, &outAlloc,
-                          outAllocInfo) != VK_SUCCESS) {
-        RE_LOG(Error, "Failed to create CPU_VERTEX buffer.");
-        return RE_ERROR;
-      }
-
-      if (inData) {
-        void* pData = nullptr;
-        if (vmaMapMemory(memAlloc, outAlloc, &pData) != VK_SUCCESS) {
-          RE_LOG(Error, "Failed to map memory for CPU_VERTEX buffer data.");
-          return RE_ERROR;
-        };
-        memcpy(pData, inData, size);
-        vmaUnmapMemory(memAlloc, outAlloc);
-      }
-
-      return RE_OK;
+    if (inData) {
+      memcpy(outBuffer.allocInfo.pMappedData, inData, size);
     }
 
-    case (uint8_t)EBCMode::CPU_INDEX: {
-      VkBufferCreateInfo bcInfo{};
-      bcInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-      bcInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-      bcInfo.size = size;
-      bcInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    return RE_OK;
+  }
 
-      VmaAllocationCreateInfo allocInfo{};
-      allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-      allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+  case (uint8_t)EBCMode::CPU_VERTEX: {
+    VkBufferCreateInfo bcInfo{};
+    bcInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bcInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    bcInfo.size = size;
+    bcInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-      if (vmaCreateBuffer(memAlloc, &bcInfo, &allocInfo, &outBuffer, &outAlloc,
-                          outAllocInfo) != VK_SUCCESS) {
-        RE_LOG(Error, "Failed to create CPU_INDEX buffer.");
-        return RE_ERROR;
-      }
+    VmaAllocationCreateInfo allocInfo{};
+    allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
-      if (inData) {
-        void* pData = nullptr;
-        if (vmaMapMemory(memAlloc, outAlloc, &pData) != VK_SUCCESS) {
-          RE_LOG(Error, "Failed to map memory for CPU_INDEX buffer data.");
-          return RE_ERROR;
-        };
-        memcpy(pData, inData, size);
-        vmaUnmapMemory(memAlloc, outAlloc);
-      }
-
-      return RE_OK;
+    if (vmaCreateBuffer(memAlloc, &bcInfo, &allocInfo, &outBuffer.buffer, &outBuffer.allocation,
+      &outBuffer.allocInfo) != VK_SUCCESS) {
+      RE_LOG(Error, "Failed to create CPU_VERTEX buffer.");
+      return RE_ERROR;
     }
 
-    case (uint8_t)EBCMode::DGPU_VERTEX: {
-      // staging buffer
-      VkBuffer stagingBuffer;
-      VmaAllocation stagingAlloc{};
-      VmaAllocationInfo stagingAllocInfo{};
-
-      VkBufferCreateInfo bcInfo{};
-      bcInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-      bcInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-      bcInfo.size = size;
-      bcInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
-
-      std::vector<uint32_t> queueFamilyIndices = {
-          (uint32_t)physicalDevice.queueFamilyIndices.graphics.at(0),
-          (uint32_t)physicalDevice.queueFamilyIndices.transfer.at(0)};
-
-      bcInfo.pQueueFamilyIndices = queueFamilyIndices.data();
-      bcInfo.queueFamilyIndexCount =
-          static_cast<uint32_t>(queueFamilyIndices.size());
-
-      VmaAllocationCreateInfo allocInfo{};
-      allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
-      allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
-      if (vmaCreateBuffer(memAlloc, &bcInfo, &allocInfo, &stagingBuffer,
-                          &stagingAlloc, &stagingAllocInfo) != VK_SUCCESS) {
-        RE_LOG(Error, "Failed to create staging buffer with DGPU_VERTEX mode.");
-        return RE_ERROR;
-      }
-
+    if (inData) {
       void* pData = nullptr;
-      if (vmaMapMemory(memAlloc, stagingAlloc, &pData) != VK_SUCCESS) {
-        RE_LOG(Error, "Failed to map memory for DGPU_VERTEX buffer data.");
+      if (vmaMapMemory(memAlloc, outBuffer.allocation, &pData) != VK_SUCCESS) {
+        RE_LOG(Error, "Failed to map memory for CPU_VERTEX buffer data.");
         return RE_ERROR;
       };
       memcpy(pData, inData, size);
-      vmaUnmapMemory(memAlloc, stagingAlloc);
-
-      // destination buffer
-      bcInfo.usage =
-          VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-
-      allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-      allocInfo.flags = NULL;
-      allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-      if (vmaCreateBuffer(memAlloc, &bcInfo, &allocInfo, &outBuffer, &outAlloc,
-                          outAllocInfo) != VK_SUCCESS) {
-        RE_LOG(Error, "Failed to create DGPU_VERTEX buffer.");
-        return RE_ERROR;
-      };
-
-      VkBufferCopy copyInfo{};
-      copyInfo.srcOffset = 0;
-      copyInfo.dstOffset = 0;
-      copyInfo.size = size;
-
-      copyBuffer(stagingBuffer, outBuffer, &copyInfo);
-
-      vmaDestroyBuffer(memAlloc, stagingBuffer, stagingAlloc);
-
-      return RE_OK;
+      vmaUnmapMemory(memAlloc, outBuffer.allocation);
     }
 
-    case (uint8_t)EBCMode::DGPU_INDEX: {
-      // staging buffer
-      VkBuffer stagingBuffer;
-      VmaAllocation stagingAlloc{};
-      VmaAllocationInfo stagingAllocInfo{};
+    return RE_OK;
+  }
 
-      VkBufferCreateInfo bcInfo{};
-      bcInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-      bcInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-      bcInfo.size = size;
-      bcInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+  case (uint8_t)EBCMode::CPU_INDEX: {
+    VkBufferCreateInfo bcInfo{};
+    bcInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bcInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+    bcInfo.size = size;
+    bcInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-      std::vector<uint32_t> queueFamilyIndices = {
-          (uint32_t)physicalDevice.queueFamilyIndices.graphics.at(0),
-          (uint32_t)physicalDevice.queueFamilyIndices.transfer.at(0)};
+    VmaAllocationCreateInfo allocInfo{};
+    allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
-      bcInfo.pQueueFamilyIndices = queueFamilyIndices.data();
-      bcInfo.queueFamilyIndexCount =
-          static_cast<uint32_t>(queueFamilyIndices.size());
+    if (vmaCreateBuffer(memAlloc, &bcInfo, &allocInfo, &outBuffer.buffer, &outBuffer.allocation,
+      &outBuffer.allocInfo) != VK_SUCCESS) {
+      RE_LOG(Error, "Failed to create CPU_INDEX buffer.");
+      return RE_ERROR;
+    }
 
-      VmaAllocationCreateInfo allocInfo{};
-      allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-      allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
-      if (vmaCreateBuffer(memAlloc, &bcInfo, &allocInfo, &stagingBuffer,
-                          &stagingAlloc, &stagingAllocInfo) != VK_SUCCESS) {
-        RE_LOG(Error, "Failed to create staging buffer with DGPU_VERTEX mode.");
-        return RE_ERROR;
-      }
-
+    if (inData) {
       void* pData = nullptr;
-      if (vmaMapMemory(memAlloc, stagingAlloc, &pData) != VK_SUCCESS) {
-        RE_LOG(Error, "Failed to map memory for DGPU_INDEX buffer data.");
+      if (vmaMapMemory(memAlloc, outBuffer.allocation, &pData) != VK_SUCCESS) {
+        RE_LOG(Error, "Failed to map memory for CPU_INDEX buffer data.");
         return RE_ERROR;
       };
       memcpy(pData, inData, size);
-      vmaUnmapMemory(memAlloc, stagingAlloc);
-
-      // destination vertex buffer
-      bcInfo.usage =
-          VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-
-      allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-      allocInfo.flags = NULL;
-      allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-      if (vmaCreateBuffer(memAlloc, &bcInfo, &allocInfo, &outBuffer, &outAlloc,
-                          outAllocInfo) != VK_SUCCESS) {
-        RE_LOG(Error, "Failed to create DGPU_VERTEX buffer.");
-        return RE_ERROR;
-      };
-
-      VkBufferCopy copyInfo{};
-      copyInfo.srcOffset = 0;
-      copyInfo.dstOffset = 0;
-      copyInfo.size = size;
-
-      copyBuffer(stagingBuffer, outBuffer, &copyInfo);
-
-      vmaDestroyBuffer(memAlloc, stagingBuffer, stagingAlloc);
-
-      return RE_OK;
+      vmaUnmapMemory(memAlloc, outBuffer.allocation);
     }
+
+    return RE_OK;
+  }
+
+  case (uint8_t)EBCMode::DGPU_VERTEX: {
+    // staging buffer
+    VkBuffer stagingBuffer;
+    VmaAllocation stagingAlloc{};
+    VmaAllocationInfo stagingAllocInfo{};
+
+    VkBufferCreateInfo bcInfo{};
+    bcInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bcInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    bcInfo.size = size;
+    bcInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+
+    std::vector<uint32_t> queueFamilyIndices = {
+        (uint32_t)physicalDevice.queueFamilyIndices.graphics.at(0),
+        (uint32_t)physicalDevice.queueFamilyIndices.transfer.at(0) };
+
+    bcInfo.pQueueFamilyIndices = queueFamilyIndices.data();
+    bcInfo.queueFamilyIndexCount =
+      static_cast<uint32_t>(queueFamilyIndices.size());
+
+    VmaAllocationCreateInfo allocInfo{};
+    allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+
+    if (vmaCreateBuffer(memAlloc, &bcInfo, &allocInfo, &stagingBuffer,
+      &stagingAlloc, &stagingAllocInfo) != VK_SUCCESS) {
+      RE_LOG(Error, "Failed to create staging buffer with DGPU_VERTEX mode.");
+      return RE_ERROR;
+    }
+
+    void* pData = nullptr;
+    if (vmaMapMemory(memAlloc, stagingAlloc, &pData) != VK_SUCCESS) {
+      RE_LOG(Error, "Failed to map memory for DGPU_VERTEX buffer data.");
+      return RE_ERROR;
+    };
+    memcpy(pData, inData, size);
+    vmaUnmapMemory(memAlloc, stagingAlloc);
+
+    // destination buffer
+    bcInfo.usage =
+      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+
+    allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+    allocInfo.flags = NULL;
+    allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+    if (vmaCreateBuffer(memAlloc, &bcInfo, &allocInfo, &outBuffer.buffer, &outBuffer.allocation,
+      &outBuffer.allocInfo) != VK_SUCCESS) {
+      RE_LOG(Error, "Failed to create DGPU_VERTEX buffer.");
+      return RE_ERROR;
+    };
+
+    VkBufferCopy copyInfo{};
+    copyInfo.srcOffset = 0;
+    copyInfo.dstOffset = 0;
+    copyInfo.size = size;
+
+    copyBuffer(stagingBuffer, outBuffer.buffer, &copyInfo);
+
+    vmaDestroyBuffer(memAlloc, stagingBuffer, stagingAlloc);
+
+    return RE_OK;
+  }
+
+  case (uint8_t)EBCMode::DGPU_INDEX: {
+    // staging buffer
+    VkBuffer stagingBuffer;
+    VmaAllocation stagingAlloc{};
+    VmaAllocationInfo stagingAllocInfo{};
+
+    VkBufferCreateInfo bcInfo{};
+    bcInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bcInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    bcInfo.size = size;
+    bcInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+
+    std::vector<uint32_t> queueFamilyIndices = {
+        (uint32_t)physicalDevice.queueFamilyIndices.graphics.at(0),
+        (uint32_t)physicalDevice.queueFamilyIndices.transfer.at(0) };
+
+    bcInfo.pQueueFamilyIndices = queueFamilyIndices.data();
+    bcInfo.queueFamilyIndexCount =
+      static_cast<uint32_t>(queueFamilyIndices.size());
+
+    VmaAllocationCreateInfo allocInfo{};
+    allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+
+    if (vmaCreateBuffer(memAlloc, &bcInfo, &allocInfo, &stagingBuffer,
+      &stagingAlloc, &stagingAllocInfo) != VK_SUCCESS) {
+      RE_LOG(Error, "Failed to create staging buffer with DGPU_VERTEX mode.");
+      return RE_ERROR;
+    }
+
+    void* pData = nullptr;
+    if (vmaMapMemory(memAlloc, stagingAlloc, &pData) != VK_SUCCESS) {
+      RE_LOG(Error, "Failed to map memory for DGPU_INDEX buffer data.");
+      return RE_ERROR;
+    };
+    memcpy(pData, inData, size);
+    vmaUnmapMemory(memAlloc, stagingAlloc);
+
+    // destination vertex buffer
+    bcInfo.usage =
+      VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+
+    allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+    allocInfo.flags = NULL;
+    allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+    if (vmaCreateBuffer(memAlloc, &bcInfo, &allocInfo, &outBuffer.buffer, &outBuffer.allocation,
+      &outBuffer.allocInfo) != VK_SUCCESS) {
+      RE_LOG(Error, "Failed to create DGPU_VERTEX buffer.");
+      return RE_ERROR;
+    };
+
+    VkBufferCopy copyInfo{};
+    copyInfo.srcOffset = 0;
+    copyInfo.dstOffset = 0;
+    copyInfo.size = size;
+
+    copyBuffer(stagingBuffer, outBuffer.buffer, &copyInfo);
+
+    vmaDestroyBuffer(memAlloc, stagingBuffer, stagingAlloc);
+
+    return RE_OK;
+  }
   }
 
   return RE_OK;
