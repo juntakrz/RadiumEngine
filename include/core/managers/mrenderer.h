@@ -9,7 +9,7 @@ class WMesh;
 
 namespace core {
 
-  class mrenderer {
+  class MRenderer {
   private:
 
     // swapchain data
@@ -74,15 +74,15 @@ namespace core {
     bool bFramebufferResized = false;
 
   private:
-    mrenderer();
+    MRenderer();
 
   public:
-    static mrenderer& get() {
-      static mrenderer _sInstance;
+    static MRenderer& get() {
+      static MRenderer _sInstance;
       return _sInstance;
     }
-    mrenderer(const mrenderer&) = delete;
-    mrenderer& operator=(const mrenderer&) = delete;
+    MRenderer(const MRenderer&) = delete;
+    MRenderer& operator=(const MRenderer&) = delete;
 
     TResult createInstance();
     TResult createInstance(VkApplicationInfo* appInfo);
@@ -131,7 +131,7 @@ namespace core {
     std::vector<VkExtensionProperties> getInstanceExtensions();
 
     //
-    // mrenderer_util
+    // MRenderer_util
     //
   public:
     /* create buffer for CPU/iGPU or dedicated GPU use:
@@ -157,7 +157,7 @@ namespace core {
     void setCamera(ACamera* pCamera);
 
     //
-    // mrenderer_physicaldevice
+    // MRenderer_physicaldevice
     //
   public:
     // find all available physical devices and store them in graphics manager
@@ -198,7 +198,7 @@ namespace core {
     // -----
 
     //
-    // mrenderer_logicaldevice
+    // MRenderer_logicaldevice
     //
 
   public:
@@ -213,7 +213,7 @@ namespace core {
     // -----
 
     //
-    // mrenderer_swapchain
+    // MRenderer_swapchain
     //
 
     // try to initialize swap chain with the desired format and active physical
@@ -246,7 +246,7 @@ namespace core {
     // -----
 
     //
-    // mrenderer_rendering
+    // MRenderer_rendering
     //
 
   public:

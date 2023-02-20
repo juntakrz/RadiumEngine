@@ -1,8 +1,9 @@
 #include "pch.h"
+#include "core/core.h"
 #include "core/managers/mrenderer.h"
 #include "core/managers/mwindow.h"
 
-TResult core::mrenderer::initSwapChain(VkFormat format, VkColorSpaceKHR colorSpace,
+TResult core::MRenderer::initSwapChain(VkFormat format, VkColorSpaceKHR colorSpace,
                                  VkPresentModeKHR presentMode,
                                  RVkPhysicalDevice* device) {
   RE_LOG(Log, "Creating the swap chain for presentation.");
@@ -35,7 +36,7 @@ TResult core::mrenderer::initSwapChain(VkFormat format, VkColorSpaceKHR colorSpa
   return chkResult;
 }
 
-TResult core::mrenderer::setSwapChainFormat(const RVkPhysicalDevice& deviceData,
+TResult core::MRenderer::setSwapChainFormat(const RVkPhysicalDevice& deviceData,
                                       const VkFormat& format,
                                       const VkColorSpaceKHR& colorSpace) {
   RE_LOG(Log, "Setting up swap chain format.");
@@ -61,7 +62,7 @@ TResult core::mrenderer::setSwapChainFormat(const RVkPhysicalDevice& deviceData,
   return RE_WARNING;
 }
 
-TResult core::mrenderer::setSwapChainPresentMode(const RVkPhysicalDevice& deviceData,
+TResult core::MRenderer::setSwapChainPresentMode(const RVkPhysicalDevice& deviceData,
                                            VkPresentModeKHR presentMode) {
   RE_LOG(Log, "Setting up swap chain present mode.");
 
@@ -82,7 +83,7 @@ TResult core::mrenderer::setSwapChainPresentMode(const RVkPhysicalDevice& device
   return RE_WARNING;
 }
 
-TResult core::mrenderer::setSwapChainExtent(const RVkPhysicalDevice& deviceData) {
+TResult core::MRenderer::setSwapChainExtent(const RVkPhysicalDevice& deviceData) {
   // check if current extent is within limits and set it as active if so
   const VkSurfaceCapabilitiesKHR& capabilities =
       deviceData.swapChainInfo.capabilities;
@@ -98,7 +99,7 @@ TResult core::mrenderer::setSwapChainExtent(const RVkPhysicalDevice& deviceData)
   // otherwise determine the correct extent
   int width = 0, height = 0;
 
-  glfwGetFramebufferSize(MWindow::get().window(), &width, &height);
+  glfwGetFramebufferSize(core::window.getWindow(), &width, &height);
   swapchain.imageExtent = {static_cast<uint32_t>(width),
                                static_cast<uint32_t>(height)};
   swapchain.imageExtent.width = std::clamp(
@@ -111,7 +112,7 @@ TResult core::mrenderer::setSwapChainExtent(const RVkPhysicalDevice& deviceData)
   return RE_OK;
 }
 
-TResult core::mrenderer::setSwapChainImageCount(const RVkPhysicalDevice& deviceData) {
+TResult core::MRenderer::setSwapChainImageCount(const RVkPhysicalDevice& deviceData) {
   const VkSurfaceCapabilitiesKHR& capabilities =
       deviceData.swapChainInfo.capabilities;
   uint32_t imageCount = capabilities.minImageCount + 1;
@@ -122,7 +123,7 @@ TResult core::mrenderer::setSwapChainImageCount(const RVkPhysicalDevice& deviceD
   return RE_OK;
 }
 
-TResult core::mrenderer::createSwapChain() {
+TResult core::MRenderer::createSwapChain() {
   if (!swapchain.imageCount) {
     RE_LOG(Error,
            "swap chain creation failed. Either no capable physical devices "
@@ -182,7 +183,7 @@ TResult core::mrenderer::createSwapChain() {
   return RE_OK;
 }
 
-void core::mrenderer::destroySwapChain() {
+void core::MRenderer::destroySwapChain() {
   RE_LOG(Log, "Cleaning up the swap chain.");
 
   for (VkFramebuffer framebuffer : swapchain.framebuffers) {
@@ -196,15 +197,15 @@ void core::mrenderer::destroySwapChain() {
   vkDestroySwapchainKHR(logicalDevice.device, swapChain, nullptr);
 }
 
-TResult core::mrenderer::recreateSwapChain() {
+TResult core::MRenderer::recreateSwapChain() {
   TResult chkResult, finalResult = RE_OK;
   int width, height;
-  glfwGetFramebufferSize(MWindow::get().window(), &width, &height);
+  glfwGetFramebufferSize(core::window.getWindow(), &width, &height);
 
   if (width == 0 || height == 0) RE_LOG(Log, "Minimization detected.");
 
   while (width == 0 || height == 0) {
-    glfwGetFramebufferSize(MWindow::get().window(), &width, &height);
+    glfwGetFramebufferSize(core::window.getWindow(), &width, &height);
     glfwWaitEvents();
   }
 
@@ -220,7 +221,7 @@ TResult core::mrenderer::recreateSwapChain() {
 
 // private
 
-TResult core::mrenderer::createSwapChainImageViews() {
+TResult core::MRenderer::createSwapChainImageViews() {
   RE_LOG(Log, "Creating image views for swap chain.");
 
   swapchain.imageViews.resize(swapchain.images.size());
@@ -254,7 +255,7 @@ TResult core::mrenderer::createSwapChainImageViews() {
   return RE_OK;
 }
 
-TResult core::mrenderer::createFramebuffers() {
+TResult core::MRenderer::createFramebuffers() {
   RE_LOG(Log, "Creating framebuffers.");
 
   swapchain.framebuffers.resize(swapchain.imageViews.size());

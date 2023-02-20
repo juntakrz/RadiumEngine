@@ -2,7 +2,14 @@
 
 namespace core {
 
-extern class mrenderer& graphics;
+extern class MRenderer& renderer;
+extern class MWindow& window;
+extern class MInput& input;
+extern class MScript& script;
+extern class MActors& actors;
+extern class MRef& ref;
+extern class MDebug& debug;
+//extern class MTime& time;
 
 void run();
 void mainEventLoop();

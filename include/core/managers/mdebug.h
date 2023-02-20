@@ -2,42 +2,45 @@
 
 #include "common.h"
 
-class MDebug {
-private:
-  VkDebugUtilsMessengerEXT debugMessenger;
-  VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo;
+namespace core {
 
-  MDebug();
-  ~MDebug() {};
+  class MDebug {
+  private:
+    VkDebugUtilsMessengerEXT debugMessenger;
+    VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo;
 
-public:
-  static MDebug& get() {
-    static MDebug _sInstance;
-    return _sInstance;
-  }
-  MDebug(const MDebug&) = delete;
-  MDebug& operator=(const MDebug&) = delete;
+    MDebug();
+    ~MDebug() {};
 
-  TResult create(VkInstance instance, VkAllocationCallbacks* pAllocator = nullptr,
-                 VkDebugUtilsMessengerCreateInfoEXT* pUserData = nullptr);
+  public:
+    static MDebug& get() {
+      static MDebug _sInstance;
+      return _sInstance;
+    }
+    MDebug(const MDebug&) = delete;
+    MDebug& operator=(const MDebug&) = delete;
 
-  void destroy(VkInstance instance,
-               VkAllocationCallbacks* pAllocator = nullptr);
+    TResult create(VkInstance instance, VkAllocationCallbacks* pAllocator = nullptr,
+      VkDebugUtilsMessengerCreateInfoEXT* pUserData = nullptr);
 
-  VkDebugUtilsMessengerCreateInfoEXT* info() { return &debugCreateInfo; }
+    void destroy(VkInstance instance,
+      VkAllocationCallbacks* pAllocator = nullptr);
 
-private:
-  static VKAPI_ATTR VkBool32 VKAPI_CALL
-    callback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-             VkDebugUtilsMessageTypeFlagsEXT messageType,
-             const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-             void* pUserData);
+    VkDebugUtilsMessengerCreateInfoEXT* info() { return &debugCreateInfo; }
 
-  VkResult createDebugUtilsMessengerEXT(
-    VkInstance instance,
-    const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
-    const VkAllocationCallbacks* pAllocator);
+  private:
+    static VKAPI_ATTR VkBool32 VKAPI_CALL
+      callback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+        VkDebugUtilsMessageTypeFlagsEXT messageType,
+        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+        void* pUserData);
 
-  void DestroyDebugUtilsMessengerEXT(VkInstance instance,
-                                     const VkAllocationCallbacks* pAllocator);
-};
+    VkResult createDebugUtilsMessengerEXT(
+      VkInstance instance,
+      const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+      const VkAllocationCallbacks* pAllocator);
+
+    void DestroyDebugUtilsMessengerEXT(VkInstance instance,
+      const VkAllocationCallbacks* pAllocator);
+  };
+}

@@ -1,15 +1,15 @@
 #include "pch.h"
 #include "core/managers/mscript.h"
-#include "core/managers/mrenderer.h"
+#include "core/managers/MRenderer.h"
 #include "core/managers/mref.h"
 #include "core/core.h"
 #include "util/util.h"
 
 using json = nlohmann::json;
 
-MScript::MScript() { RE_LOG(Log, "Created script manager."); }
+core::MScript::MScript() { RE_LOG(Log, "Created script manager."); }
 
-TResult MScript::loadMap(const char* mapName) {
+TResult core::MScript::loadMap(const char* mapName) {
   // map structure constants
   const std::wstring mapPath = RE_MAP_PATH + toWString(mapName) + TEXT(".map/");
   const std::wstring initPath = mapPath + L"init.json";
@@ -25,7 +25,7 @@ TResult MScript::loadMap(const char* mapName) {
   return RE_OK;
 }
 
-json* MScript::jsonLoad(const wchar_t* path, const char* name) noexcept {
+json* core::MScript::jsonLoad(const wchar_t* path, const char* name) noexcept {
   if (!path) {
     RE_LOG(Error, "jsonLoad received empty path.");
     return nullptr;
@@ -53,7 +53,7 @@ json* MScript::jsonLoad(const wchar_t* path, const char* name) noexcept {
   return &m_jsons.at(name);
 }
 
-json* MScript::jsonGet(const char* name) {
+json* core::MScript::jsonGet(const char* name) {
   if (m_jsons.find(name) != m_jsons.end()) {
     return &m_jsons.at(name);
   }
@@ -62,7 +62,7 @@ json* MScript::jsonGet(const char* name) {
   return nullptr;
 }
 
-TResult MScript::jsonRemove(const char* jsonId) {
+TResult core::MScript::jsonRemove(const char* jsonId) {
   if (m_jsons.find(jsonId) != m_jsons.end()) {
     m_jsons.erase(jsonId);
     return RE_OK;
@@ -72,9 +72,9 @@ TResult MScript::jsonRemove(const char* jsonId) {
   return RE_ERROR;
 }
 
-void MScript::clearAllScripts() { m_jsons.clear(); }
+void core::MScript::clearAllScripts() { m_jsons.clear(); }
 
-void MScript::jsonParseCameras(const json* cameraData) noexcept {
+void core::MScript::jsonParseCameras(const json* cameraData) noexcept {
   
   if (!cameraData) {
     RE_LOG(Error, "no camera data was provided for map parser.");
@@ -99,7 +99,7 @@ void MScript::jsonParseCameras(const json* cameraData) noexcept {
       float rotation[3] = {0.0f, 0.0f, 0.0f};
       float upVector[3] = {0.0f, 0.0f, 0.0f};
 
-      ACamera* newCamera = core::graphics.createCamera(name.c_str(), nullptr);
+      ACamera* newCamera = core::renderer.createCamera(name.c_str(), nullptr);
 
       // set camera position
       if (it.contains("position")) {
@@ -138,17 +138,17 @@ void MScript::jsonParseCameras(const json* cameraData) noexcept {
         }
       }
 
-      MRef::get().registerActor(name.c_str(), newCamera, EAType::CAMERA);
+      core::ref.registerActor(name.c_str(), newCamera, EAType::CAMERA);
     }
   }
 
-  if (activatedCamera != "") core::graphics.setCamera(activatedCamera.c_str());
+  if (activatedCamera != "") core::renderer.setCamera(activatedCamera.c_str());
 }
 
-void MScript::jsonParseMaterials(const json* materialData) noexcept {}
+void core::MScript::jsonParseMaterials(const json* materialData) noexcept {}
 
-void MScript::jsonParseLights(const json* lightData) noexcept {}
+void core::MScript::jsonParseLights(const json* lightData) noexcept {}
 
-void MScript::jsonParseObjects(const json* objectData) noexcept {}
+void core::MScript::jsonParseObjects(const json* objectData) noexcept {}
 
-void MScript::jsonParseCommands(const json* commandData) noexcept {}
+void core::MScript::jsonParseCommands(const json* commandData) noexcept {}

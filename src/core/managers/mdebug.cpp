@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "core/managers/mdebug.h"
 
-MDebug::MDebug() {
+core::MDebug::MDebug() {
   RE_LOG(Log, "Creating graphics debug manager.");
 
   debugCreateInfo = {};
@@ -15,7 +15,7 @@ MDebug::MDebug() {
   debugCreateInfo.pfnUserCallback = callback;
 }
 
-TResult MDebug::create(VkInstance instance, VkAllocationCallbacks* pAllocator,
+TResult core::MDebug::create(VkInstance instance, VkAllocationCallbacks* pAllocator,
                     VkDebugUtilsMessengerCreateInfoEXT* pUserData) {
   if (!bRequireValidationLayers) return RE_OK;
 
@@ -29,13 +29,13 @@ TResult MDebug::create(VkInstance instance, VkAllocationCallbacks* pAllocator,
   return RE_OK;
 }
 
-void MDebug::destroy(VkInstance instance, VkAllocationCallbacks* pAllocator) {
+void core::MDebug::destroy(VkInstance instance, VkAllocationCallbacks* pAllocator) {
   RE_LOG(Log, "Destroying graphics debug messenger.");
   DestroyDebugUtilsMessengerEXT(instance, pAllocator);
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL
-MDebug::callback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+core::MDebug::callback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
                 VkDebugUtilsMessageTypeFlagsEXT messageType,
                 const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
                 void* pUserData) {
@@ -43,7 +43,7 @@ MDebug::callback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
   return VK_FALSE;
 }
 
-VkResult MDebug::createDebugUtilsMessengerEXT(
+VkResult core::MDebug::createDebugUtilsMessengerEXT(
     VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pdebugCreateInfo,
     const VkAllocationCallbacks* pAllocator) {
   auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
@@ -55,7 +55,7 @@ VkResult MDebug::createDebugUtilsMessengerEXT(
   }
 }
 
-void MDebug::DestroyDebugUtilsMessengerEXT(VkInstance instance,
+void core::MDebug::DestroyDebugUtilsMessengerEXT(VkInstance instance,
                                    const VkAllocationCallbacks* pAllocator) {
   auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
       instance, "vkDestroyDebugUtilsMessengerEXT");

@@ -1,8 +1,8 @@
 #include "pch.h"
-#include "core/managers/mrenderer.h"
+#include "core/managers/MRenderer.h"
 #include "core/world/mesh/mesh.h"
 
-TResult core::mrenderer::createRenderPass() {
+TResult core::MRenderer::createRenderPass() {
   RE_LOG(Log, "Creating render pass");
 
   VkAttachmentDescription colorAttachment{};
@@ -50,12 +50,12 @@ TResult core::mrenderer::createRenderPass() {
   return RE_OK;
 }
 
-void core::mrenderer::destroyRenderPass() {
+void core::MRenderer::destroyRenderPass() {
   RE_LOG(Log, "Destroying render pass.");
   vkDestroyRenderPass(logicalDevice.device, system.renderPass, nullptr);
 }
 
-TResult core::mrenderer::createGraphicsPipeline() {
+TResult core::MRenderer::createGraphicsPipeline() {
   RE_LOG(Log, "Creating graphics pipeline.");
 
   std::vector<char> vsCode = readFile(TEXT("content/shaders/vs_default.spv"));
@@ -229,14 +229,14 @@ TResult core::mrenderer::createGraphicsPipeline() {
   return RE_OK;
 }
 
-void core::mrenderer::destroyGraphicsPipeline() {
+void core::MRenderer::destroyGraphicsPipeline() {
   RE_LOG(Log, "Shutting down graphics pipeline.");
   destroyDescriptorSetLayouts();
   vkDestroyPipeline(logicalDevice.device, system.pipeline, nullptr);
   vkDestroyPipelineLayout(logicalDevice.device, system.pipelineLayout, nullptr);
 }
 
-TResult core::mrenderer::createCommandPools() {
+TResult core::MRenderer::createCommandPools() {
   RE_LOG(Log, "Creating command pool.");
 
   VkCommandPoolCreateInfo cmdPoolRenderInfo{};
@@ -267,13 +267,13 @@ TResult core::mrenderer::createCommandPools() {
   return RE_OK;
 }
 
-void core::mrenderer::destroyCommandPools() {
+void core::MRenderer::destroyCommandPools() {
   RE_LOG(Log, "Destroying command pools.");
   vkDestroyCommandPool(logicalDevice.device, command.poolRender, nullptr);
   vkDestroyCommandPool(logicalDevice.device, command.poolTransfer, nullptr);
 }
 
-TResult core::mrenderer::createCommandBuffers() {
+TResult core::MRenderer::createCommandBuffers() {
   RE_LOG(Log, "Creating rendering command buffers for %d frames.",
          MAX_FRAMES_IN_FLIGHT);
 
@@ -309,7 +309,7 @@ TResult core::mrenderer::createCommandBuffers() {
   return RE_OK;
 }
 
-void core::mrenderer::destroyCommandBuffers() {
+void core::MRenderer::destroyCommandBuffers() {
   RE_LOG(Log, "Freeing %d rendering command buffers.",
          command.bufferview.size());
   vkFreeCommandBuffers(logicalDevice.device, command.poolRender,
@@ -323,7 +323,7 @@ void core::mrenderer::destroyCommandBuffers() {
                        command.buffersTransfer.data());
 }
 
-TResult core::mrenderer::recordCommandBuffer(VkCommandBuffer commandBuffer,
+TResult core::MRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer,
                                      uint32_t imageIndex) {
   VkCommandBufferBeginInfo beginInfo{};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -397,7 +397,7 @@ TResult core::mrenderer::recordCommandBuffer(VkCommandBuffer commandBuffer,
   return RE_OK;
 }
 
-TResult core::mrenderer::createSyncObjects() {
+TResult core::MRenderer::createSyncObjects() {
   RE_LOG(Log, "Creating sychronization objects for %d frames.",
          MAX_FRAMES_IN_FLIGHT);
 
@@ -439,7 +439,7 @@ TResult core::mrenderer::createSyncObjects() {
   return RE_OK;
 }
 
-void core::mrenderer::destroySyncObjects() {
+void core::MRenderer::destroySyncObjects() {
   RE_LOG(Log, "Destroying synchronization objects.");
 
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
@@ -453,7 +453,7 @@ void core::mrenderer::destroySyncObjects() {
   }
 }
 
-TResult core::mrenderer::drawFrame() {
+TResult core::MRenderer::drawFrame() {
   uint32_t imageIndex = -1;
   TResult chkResult = RE_OK;
 
@@ -558,16 +558,16 @@ TResult core::mrenderer::drawFrame() {
   return chkResult;
 }
 
-void core::mrenderer::updateAspectRatio() {
+void core::MRenderer::updateAspectRatio() {
   view.cameraSettings.aspectRatio =
       (float)swapchain.imageExtent.width / swapchain.imageExtent.height;
 }
 
-void core::mrenderer::setFOV(float FOV) { view.cameraSettings.FOV = FOV; }
+void core::MRenderer::setFOV(float FOV) { view.cameraSettings.FOV = FOV; }
 
-void core::mrenderer::setViewDistance(float farZ) { view.cameraSettings.farZ; }
+void core::MRenderer::setViewDistance(float farZ) { view.cameraSettings.farZ; }
 
-void core::mrenderer::setViewDistance(float nearZ, float farZ) {
+void core::MRenderer::setViewDistance(float nearZ, float farZ) {
   view.cameraSettings.nearZ = nearZ;
   view.cameraSettings.farZ = farZ;
 }

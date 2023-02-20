@@ -54,7 +54,7 @@
     <ClCompile Include="src\core\managers\minput.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mmodel.cpp">
+    <ClCompile Include="src\core\managers\mactors.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\world\mesh\mesh_plane.cpp">
@@ -143,7 +143,7 @@
     <ClInclude Include="include\core\world\primitives\cube.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\managers\mmodel.h">
+    <ClInclude Include="include\core\managers\mactors.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\core\world\mesh\mesh.h">

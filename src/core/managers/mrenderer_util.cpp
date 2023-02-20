@@ -1,9 +1,9 @@
 #include "pch.h"
 #include "vk_mem_alloc.h"
-#include "core/managers/mrenderer.h"
+#include "core/managers/MRenderer.h"
 #include "core/world/actors/acamera.h"
 
-TResult core::mrenderer::createBuffer(EBCMode mode, VkDeviceSize size,
+TResult core::MRenderer::createBuffer(EBCMode mode, VkDeviceSize size,
                                 VkBuffer& outBuffer, VmaAllocation& outAlloc,
                                 void* inData, VmaAllocationInfo* outAllocInfo) {
   switch ((uint8_t)mode) {
@@ -229,7 +229,7 @@ TResult core::mrenderer::createBuffer(EBCMode mode, VkDeviceSize size,
   return RE_OK;
 }
 
-TResult core::mrenderer::copyBuffer(VkBuffer srcBuffer, VkBuffer& dstBuffer,
+TResult core::MRenderer::copyBuffer(VkBuffer srcBuffer, VkBuffer& dstBuffer,
                               VkBufferCopy* copyRegion, uint32_t cmdBufferId) {
   if (cmdBufferId > MAX_TRANSFER_BUFFERS) {
     RE_LOG(Warning, "Invalid index of transfer buffer, using default.");
@@ -258,7 +258,7 @@ TResult core::mrenderer::copyBuffer(VkBuffer srcBuffer, VkBuffer& dstBuffer,
   return RE_OK;
 }
 
-TResult core::mrenderer::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
+TResult core::MRenderer::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
                               VkBufferCopy* copyRegion, uint32_t cmdBufferId) {
   if (cmdBufferId > MAX_TRANSFER_BUFFERS) {
     RE_LOG(Warning, "Invalid index of transfer buffer, using default.");
@@ -287,7 +287,7 @@ TResult core::mrenderer::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
   return RE_OK;
 }
 
-ACamera* core::mrenderer::createCamera(const char* name,
+ACamera* core::MRenderer::createCamera(const char* name,
                                  RCameraSettings* cameraSettings) {
   if (cameras.try_emplace(name).second) {
     cameras.at(name) = std::make_unique<ACamera>();
@@ -312,7 +312,7 @@ ACamera* core::mrenderer::createCamera(const char* name,
   return getCamera(name);
 }
 
-ACamera* core::mrenderer::getCamera(const char* name) {
+ACamera* core::MRenderer::getCamera(const char* name) {
   if (cameras.find(name) != cameras.end()) {
     return cameras.at(name).get();
   }
@@ -320,7 +320,7 @@ ACamera* core::mrenderer::getCamera(const char* name) {
   return nullptr;
 }
 
-void core::mrenderer::setCamera(const char* name) {
+void core::MRenderer::setCamera(const char* name) {
   if (bRequireValidationLayers) {
     if (cameras.find(name) == cameras.end()) {
       RE_LOG(Error, "Failed to set camera '%s'. Camera not found.", name);
@@ -331,9 +331,9 @@ void core::mrenderer::setCamera(const char* name) {
   view.pActiveCamera = cameras.at(name).get();
 }
 
-void core::mrenderer::setCamera(ACamera* pCamera) { view.pActiveCamera = pCamera; }
+void core::MRenderer::setCamera(ACamera* pCamera) { view.pActiveCamera = pCamera; }
 
-TResult core::mrenderer::destroyCamera(const char* name) {
+TResult core::MRenderer::destroyCamera(const char* name) {
   if (cameras.find(name) != cameras.end()) {
     cameras.erase(name);
     return RE_OK;

@@ -1,7 +1,7 @@
 #include "pch.h"
-#include "core/managers/mrenderer.h"
+#include "core/managers/MRenderer.h"
 
-TResult core::mrenderer::enumPhysicalDevices() {
+TResult core::MRenderer::enumPhysicalDevices() {
   uint32_t numDevices = 0, index = 0;
   std::vector<VkPhysicalDevice> physicalDevices;
 
@@ -24,7 +24,7 @@ TResult core::mrenderer::enumPhysicalDevices() {
   return RE_OK;
 }
 
-TResult core::mrenderer::initPhysicalDevice() {
+TResult core::MRenderer::initPhysicalDevice() {
   for (const auto& deviceInfo : availablePhysicalDevices)
     if (initPhysicalDevice(deviceInfo) == RE_OK) return RE_OK;
 
@@ -33,7 +33,7 @@ TResult core::mrenderer::initPhysicalDevice() {
   return RE_CRITICAL;
 }
 
-TResult core::mrenderer::initPhysicalDevice(const RVkPhysicalDevice& device) {
+TResult core::MRenderer::initPhysicalDevice(const RVkPhysicalDevice& device) {
   if (!device.bIsValid) return RE_ERROR;
 
   physicalDevice = device;
@@ -45,7 +45,7 @@ TResult core::mrenderer::initPhysicalDevice(const RVkPhysicalDevice& device) {
   return RE_OK;
 }
 
-TResult core::mrenderer::setPhysicalDeviceData(VkPhysicalDevice device,
+TResult core::MRenderer::setPhysicalDeviceData(VkPhysicalDevice device,
                                          RVkPhysicalDevice& outDeviceData) {
   if (!device) return RE_ERROR;
 
@@ -83,17 +83,17 @@ TResult core::mrenderer::setPhysicalDeviceData(VkPhysicalDevice device,
   return finalResult;
 }
 
-std::vector<RVkPhysicalDevice>& core::mrenderer::physicalDevices() {
+std::vector<RVkPhysicalDevice>& core::MRenderer::physicalDevices() {
   return availablePhysicalDevices;
 }
 
-RVkPhysicalDevice* core::mrenderer::physicalDevices(uint32_t id) {
+RVkPhysicalDevice* core::MRenderer::physicalDevices(uint32_t id) {
   return (id > availablePhysicalDevices.size())
              ? nullptr
              : &availablePhysicalDevices.at(id);
 }
 
-TResult core::mrenderer::queryPhysicalDeviceSwapChainInfo(
+TResult core::MRenderer::queryPhysicalDeviceSwapChainInfo(
     const RVkPhysicalDevice& deviceData, RVkSwapChainInfo& outSwapChainInfo) {
   uint32_t formatCount = 0, presentModeCount = 0;
   TResult chkResult = RE_OK;
@@ -119,7 +119,7 @@ TResult core::mrenderer::queryPhysicalDeviceSwapChainInfo(
   return chkResult;
 }
 
-uint32_t core::mrenderer::findPhysicalDeviceMemoryType(uint32_t typeFilter,
+uint32_t core::MRenderer::findPhysicalDeviceMemoryType(uint32_t typeFilter,
                                    VkMemoryPropertyFlags properties) {
   for (uint32_t i = 0; i < physicalDevice.memProperties.memoryTypeCount; ++i) {
     if ((typeFilter & (1 << i)) && (physicalDevice.memProperties.memoryTypes[i].propertyFlags &
@@ -133,7 +133,7 @@ uint32_t core::mrenderer::findPhysicalDeviceMemoryType(uint32_t typeFilter,
 
 // private
 
-TResult core::mrenderer::checkPhysicalDeviceExtensionSupport(
+TResult core::MRenderer::checkPhysicalDeviceExtensionSupport(
     const RVkPhysicalDevice& deviceData) {
   bool bExtSupported = false;
   std::vector<VkExtensionProperties> extProperties =
@@ -163,7 +163,7 @@ TResult core::mrenderer::checkPhysicalDeviceExtensionSupport(
   return RE_OK;
 }
 
-std::vector<VkExtensionProperties> core::mrenderer::getPhysicalDeviceExtensions(
+std::vector<VkExtensionProperties> core::MRenderer::getPhysicalDeviceExtensions(
     const RVkPhysicalDevice& deviceData) {
   uint32_t extensionCount = 0;
   std::vector<VkExtensionProperties> extProperties;
@@ -177,7 +177,7 @@ std::vector<VkExtensionProperties> core::mrenderer::getPhysicalDeviceExtensions(
   return extProperties;
 }
 
-TResult core::mrenderer::setPhysicalDeviceQueueFamilies(
+TResult core::MRenderer::setPhysicalDeviceQueueFamilies(
     RVkPhysicalDevice& deviceData) {
   uint32_t queueFamilyPropertyCount = 0, index = 0;
   VkBool32 presentSupport = false;

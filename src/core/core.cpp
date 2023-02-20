@@ -1,14 +1,21 @@
 #include "pch.h"
 #include "core/core.h"
 #include "core/managers/mwindow.h"
-#include "core/managers/mrenderer.h"
+#include "core/managers/MRenderer.h"
 #include "core/managers/mdebug.h"
 #include "core/managers/minput.h"
-#include "core/managers/mmodel.h"
+#include "core/managers/mactors.h"
 #include "core/managers/mscript.h"
 #include "core/managers/mref.h"
 
-class core::mrenderer& core::graphics = mrenderer::get();
+class core::MRenderer& core::renderer = MRenderer::get();
+class core::MWindow& core::window = MWindow::get();
+class core::MInput& core::input = MInput::get();
+class core::MScript& core::script = MScript::get();
+class core::MActors& core::actors = MActors::get();
+class core::MRef& core::ref = MRef::get();
+class core::MDebug& core::debug = MDebug::get();
+//class core::MTime& core::time = MTime::get();
 
 void core::run() {
 
@@ -17,17 +24,17 @@ void core::run() {
   RE_LOG(Log, "-------------\n");
   RE_LOG(Log, "Initializing engine core...");
 
-  //core::graphics = &core::mrenderer::get();
+  //core::graphics = &core::MRenderer::get();
 
   loadCoreConfig();
 
   RE_LOG(Log, "Creating renderer.");
   RE_CHECK(core::create());
-  MInput::get().initialize(MWindow::get().window());
+  core::input.initialize(core::window.getWindow());
 
   RE_LOG(Log, "Successfully initialized engine core.");
 
-  MScript::get().loadMap("default");
+  core::script.loadMap("default");
 
   RE_LOG(Log, "Launching main event loop.");
 
@@ -37,7 +44,7 @@ void core::run() {
 }
 
 void core::mainEventLoop() {
-  while (!glfwWindowShouldClose(MWindow::get().window())) {
+  while (!glfwWindowShouldClose(core::window.getWindow())) {
     glfwPollEvents();
     core::drawFrame();
   }
@@ -65,7 +72,7 @@ void core::loadCoreConfig(const wchar_t* path) {
   uint8_t requirements = 3;
   const char* cfgName = "cfgCore";
 
-  json* data = MScript::get().jsonLoad(path, cfgName);
+  json* data = core::script.jsonLoad(path, cfgName);
 
   if (data->contains("core")) {
     const auto& coreData = data->at("core");
@@ -102,13 +109,13 @@ TResult core::create() {
   glfwInit();
 
   // window manager setup 
-  chkResult = MWindow::get().createWindow(config::renderWidth, config::renderHeight,
+  chkResult = core::window.createWindow(config::renderWidth, config::renderHeight,
     config::appTitle, nullptr, nullptr);
   RE_CHECK(chkResult);
 
   // graphics manager setup (responsible for Vulkan instance and GPU management)
   RE_LOG(Log, "Initializing rendering module.");
-  chkResult = core::graphics.initialize();
+  chkResult = core::renderer.initialize();
   RE_CHECK(chkResult);
 
   RE_LOG(Log, "Rendering module successfully initialized.");
@@ -117,15 +124,15 @@ TResult core::create() {
 }
 
 void core::destroy() {
-  core::graphics.deinitialize();
-  MWindow::get().destroyWindow();
+  core::renderer.deinitialize();
+  core::window.destroyWindow();
   glfwTerminate();
 }
 
 TResult core::drawFrame() {
   TResult chkResult = RE_OK;
 
-  chkResult = core::graphics.drawFrame();
+  chkResult = core::renderer.drawFrame();
 
   return chkResult;
 }

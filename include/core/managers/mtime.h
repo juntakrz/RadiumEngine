@@ -1,19 +1,22 @@
 #pragma once
 
-class MTime {
-  std::thread coreTimer;
+namespace core {
 
-  MTime();
+  class MTime {
+    std::thread coreTimer;
 
- public:
-  static MTime& get() {
-    static MTime _sInstance;
-    return _sInstance;
-  }
+    MTime();
 
-  MTime(const MTime&) = delete;
-  MTime& operator=(const MTime&) = delete;
+  public:
+    static MTime& get() {
+      static MTime _sInstance;
+      return _sInstance;
+    }
 
-  void startCoreTimer();
-  void stopCoreTimer();
-};
+    MTime(const MTime&) = delete;
+    MTime& operator=(const MTime&) = delete;
+
+    void startCoreTimer();
+    void stopCoreTimer();
+  };
+}

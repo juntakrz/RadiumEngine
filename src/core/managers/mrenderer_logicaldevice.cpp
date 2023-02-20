@@ -1,9 +1,9 @@
 #include "pch.h"
-#include "core/managers/mrenderer.h"
+#include "core/managers/MRenderer.h"
 
-TResult core::mrenderer::initLogicalDevice() { return initLogicalDevice(physicalDevice); }
+TResult core::MRenderer::initLogicalDevice() { return initLogicalDevice(physicalDevice); }
 
-TResult core::mrenderer::initLogicalDevice(
+TResult core::MRenderer::initLogicalDevice(
     const RVkPhysicalDevice& physicalDeviceData) {
   if (physicalDeviceData.queueFamilyIndices.graphics.empty()) return RE_ERROR;
 
@@ -77,7 +77,7 @@ TResult core::mrenderer::initLogicalDevice(
   return RE_OK;
 }
 
-void core::mrenderer::destroyLogicalDevice(VkDevice device,
+void core::MRenderer::destroyLogicalDevice(VkDevice device,
                                      const VkAllocationCallbacks* pAllocator) {
   if (!device) device = logicalDevice.device;
   RE_LOG(Log, "Destroying logical device, handle: 0x%016llX.", device);
