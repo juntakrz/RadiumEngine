@@ -90,6 +90,7 @@ TResult core::MRenderer::initialize() {
                       core::vulkan::presentMode);
   updateAspectRatio();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createRenderPass();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSetLayouts();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createGraphicsPipeline();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createFramebuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCommandPools();
@@ -100,7 +101,6 @@ TResult core::MRenderer::initialize() {
   bindMesh(core::actors.meshes.back().get());
   if (chkResult <= RE_ERRORLIMIT) chkResult = createMVPBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorPool();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSetLayouts();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSets();
 
   return chkResult;
@@ -182,7 +182,6 @@ uint32_t core::MRenderer::bindMesh(WMesh* pMesh) {
 }
 
 TResult core::MRenderer::createDescriptorSetLayouts() {
-
   // layout for model view projection matrices for vertex shader
   VkDescriptorSetLayoutBinding uboMVPLayout{};
   uboMVPLayout.binding = 0;                                         // binding location in a shader
@@ -196,15 +195,11 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
   uboMVPInfo.bindingCount = 1;
   uboMVPInfo.pBindings = &uboMVPLayout;
 
-  for (uint8_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-    system.descSetLayouts.emplace_back();
-    if (vkCreateDescriptorSetLayout(logicalDevice.device, &uboMVPInfo, nullptr,
-                                    &system.descSetLayouts.back()) !=
-        VK_SUCCESS) {
-      system.descSetLayouts.erase(system.descSetLayouts.end());
-      RE_LOG(Critical, "Failed to create MVP matrix descriptor set layout.");
-      return RE_CRITICAL;
-    }
+  if (vkCreateDescriptorSetLayout(logicalDevice.device, &uboMVPInfo, nullptr,
+                                  &system.descriptorSetLayout) !=
+      VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to create MVP matrix descriptor set layout.");
+    return RE_CRITICAL;
   }
 
   return RE_OK;
@@ -213,14 +208,14 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
 void core::MRenderer::destroyDescriptorSetLayouts(){
   RE_LOG(Log, "Removing descriptor set layouts.");
 
-  for (auto& it : system.descSetLayouts) {
-    vkDestroyDescriptorSetLayout(logicalDevice.device, it, nullptr);
-  }
+  vkDestroyDescriptorSetLayout(logicalDevice.device, system.descriptorSetLayout,
+                               nullptr);
 }
 
 TResult core::MRenderer::createDescriptorPool() {
   RE_LOG(Log, "Creating descriptor pool.");
 
+  // the number of descriptors in the given pool
   VkDescriptorPoolSize poolSize{};
   poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
   poolSize.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
@@ -230,9 +225,10 @@ TResult core::MRenderer::createDescriptorPool() {
   poolInfo.poolSizeCount = 1;
   poolInfo.pPoolSizes = &poolSize;
   poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+  poolInfo.flags = 0;
 
   if (vkCreateDescriptorPool(logicalDevice.device, &poolInfo, nullptr,
-                             &system.descPool) != VK_SUCCESS) {
+                             &system.descriptorPool) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create descriptor pool.");
     return RE_CRITICAL;
   }
@@ -242,27 +238,61 @@ TResult core::MRenderer::createDescriptorPool() {
 
 void core::MRenderer::destroyDescriptorPool() {
   RE_LOG(Log, "Destroying descriptor pool.");
-  vkDestroyDescriptorPool(logicalDevice.device, system.descPool, nullptr);
+  vkDestroyDescriptorPool(logicalDevice.device, system.descriptorPool, nullptr);
 }
 
 TResult core::MRenderer::createDescriptorSets() {
+
+  RE_LOG(Log, "Creating descriptor sets.");
+
+  std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT,
+                                             system.descriptorSetLayout);
+
   VkDescriptorSetAllocateInfo setAllocInfo{};
   setAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-  setAllocInfo.descriptorPool = system.descPool;
+  setAllocInfo.descriptorPool = system.descriptorPool;
   setAllocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-  setAllocInfo.pSetLayouts = system.descSetLayouts.data();
+  setAllocInfo.pSetLayouts = layouts.data();
 
-  system.descSets.resize(MAX_FRAMES_IN_FLIGHT);
+  system.descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+
   if (vkAllocateDescriptorSets(logicalDevice.device, &setAllocInfo,
-                               system.descSets.data()) != VK_SUCCESS) {
+                               system.descriptorSets.data()) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to allocate descriptor sets.");
     return RE_CRITICAL;
   }
 
+  RE_LOG(Log, "Populating descriptor sets.");
+
+  for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+    
+    uint32_t descriptorCount = 1u;
+
+    // data for descriptor set
+    VkDescriptorBufferInfo descriptorBufferInfo;
+    descriptorBufferInfo.buffer = view.modelViewProjectionBuffers[i].buffer;
+    descriptorBufferInfo.offset = 0;
+    descriptorBufferInfo.range = sizeof(RModelViewProjUBO);
+
+    // settings used for writing to descriptor sets
+    VkWriteDescriptorSet writeDescriptorSet;
+    writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeDescriptorSet.dstSet = system.descriptorSets[i];
+    writeDescriptorSet.dstBinding = 0;
+    writeDescriptorSet.dstArrayElement = 0;
+    writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    writeDescriptorSet.descriptorCount = descriptorCount;
+    writeDescriptorSet.pBufferInfo = &descriptorBufferInfo;
+    writeDescriptorSet.pImageInfo = nullptr;
+    writeDescriptorSet.pTexelBufferView = nullptr;
+    writeDescriptorSet.pNext = nullptr;
+
+    vkUpdateDescriptorSets(logicalDevice.device, descriptorCount,
+                           &writeDescriptorSet, 0, nullptr);
+  }
+
   return RE_OK;
 }
-
-void core::MRenderer::destroyDescriptorSets() {}
 
 TResult core::MRenderer::createMVPBuffers() {
   // each frame will require a separate buffer, so 2 frames in flight would require buffers * 2
@@ -290,11 +320,15 @@ void core::MRenderer::updateModelViewProjectionBuffers(uint32_t currentImage) {
 
   // rewrite this and UpdateMVP method to use data from the current/provided camera
   view.modelViewProjectionData.model = glm::rotate(
-      glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+      glm::mat4(1.0f), time * glm::radians(40.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+
   view.modelViewProjectionData.view =
       glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f),
                   glm::vec3(0.0f, 0.0f, 1.0f));
-  view.modelViewProjectionData.projection = view.pActiveCamera->projection();
+  //view.modelViewProjectionData.projection = view.pActiveCamera->projection();
+  view.modelViewProjectionData.projection = glm::perspective(
+      glm::radians(45.0f),
+      swapchain.imageExtent.width / (float)swapchain.imageExtent.height, 0.1f, 10000.0f);
 
   // OpenGL/GLM Y coordinate has to be inverted for Vulkan
   view.modelViewProjectionData.projection[1][1] *= -1.0f;

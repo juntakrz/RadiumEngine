@@ -117,18 +117,18 @@ TResult core::MRenderer::createGraphicsPipeline() {
   viewportInfo.pScissors = &scissor;
   viewportInfo.scissorCount = 1;
 
-  VkPipelineRasterizationStateCreateInfo rasterInfo{};
-  rasterInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-  rasterInfo.depthClampEnable = VK_FALSE;
-  rasterInfo.rasterizerDiscardEnable = VK_FALSE;
-  rasterInfo.polygonMode = VK_POLYGON_MODE_FILL;
-  rasterInfo.lineWidth = 1.0f;
-  rasterInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-  rasterInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
-  rasterInfo.depthBiasEnable = VK_FALSE;
-  rasterInfo.depthBiasConstantFactor = 0.0f;
-  rasterInfo.depthBiasClamp = 0.0f;
-  rasterInfo.depthBiasSlopeFactor = 0.0f;
+  VkPipelineRasterizationStateCreateInfo rasterizationInfo{};
+  rasterizationInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+  rasterizationInfo.depthClampEnable = VK_FALSE;
+  rasterizationInfo.rasterizerDiscardEnable = VK_FALSE;
+  rasterizationInfo.polygonMode = VK_POLYGON_MODE_FILL;
+  rasterizationInfo.lineWidth = 1.0f;
+  rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+  rasterizationInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
+  rasterizationInfo.depthBiasEnable = VK_FALSE;
+  //rasterizationInfo.depthBiasConstantFactor = 0.0f;
+  //rasterizationInfo.depthBiasClamp = 0.0f;
+  //rasterizationInfo.depthBiasSlopeFactor = 0.0f;
 
   VkPipelineMultisampleStateCreateInfo multisampleInfo{};
   multisampleInfo.sType =
@@ -181,13 +181,10 @@ TResult core::MRenderer::createGraphicsPipeline() {
   dynStateInfo.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
   dynStateInfo.pDynamicStates = dynamicStates.data();
 
-  // generate base set layouts
-  createDescriptorSetLayouts();
-
   VkPipelineLayoutCreateInfo layoutInfo{};
   layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-  layoutInfo.setLayoutCount = static_cast<uint32_t>(system.descSetLayouts.size());
-  layoutInfo.pSetLayouts = system.descSetLayouts.data();
+  layoutInfo.setLayoutCount = 1;
+  layoutInfo.pSetLayouts = &system.descriptorSetLayout;
   layoutInfo.pushConstantRangeCount = 0;
   layoutInfo.pPushConstantRanges = nullptr;
 
@@ -206,7 +203,7 @@ TResult core::MRenderer::createGraphicsPipeline() {
   graphicsPipelineInfo.pDynamicState = &dynStateInfo;
   graphicsPipelineInfo.pMultisampleState = &multisampleInfo;
   graphicsPipelineInfo.pInputAssemblyState = &inputAssemblyInfo;
-  graphicsPipelineInfo.pRasterizationState = &rasterInfo;
+  graphicsPipelineInfo.pRasterizationState = &rasterizationInfo;
   graphicsPipelineInfo.pViewportState = &viewportInfo;
   graphicsPipelineInfo.stageCount = 2;
   graphicsPipelineInfo.pStages = shaderStages;
@@ -386,6 +383,10 @@ TResult core::MRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer,
   vkCmdBindIndexBuffer(commandBuffer, system.meshes[0]->indexBuffer.buffer, 0,
                        VK_INDEX_TYPE_UINT32);
 
+  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          system.pipelineLayout, 0, 1,
+                          &system.descriptorSets[system.idIFFrame], 0, nullptr);
+
   vkCmdDrawIndexed(commandBuffer, numIndices, 1, 0, 0, 0);
 
   vkCmdEndRenderPass(commandBuffer);
@@ -403,9 +404,9 @@ TResult core::MRenderer::createSyncObjects() {
   RE_LOG(Log, "Creating sychronization objects for %d frames.",
          MAX_FRAMES_IN_FLIGHT);
 
-  sync.sImgAvailable.resize(MAX_FRAMES_IN_FLIGHT);
-  sync.sRndrFinished.resize(MAX_FRAMES_IN_FLIGHT);
-  sync.fInFlight.resize(MAX_FRAMES_IN_FLIGHT);
+  sync.semImgAvailable.resize(MAX_FRAMES_IN_FLIGHT);
+  sync.semRenderFinished.resize(MAX_FRAMES_IN_FLIGHT);
+  sync.fenceInFlight.resize(MAX_FRAMES_IN_FLIGHT);
 
   VkSemaphoreCreateInfo semInfo{};
   semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -417,21 +418,21 @@ TResult core::MRenderer::createSyncObjects() {
 
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
     if (vkCreateSemaphore(logicalDevice.device, &semInfo, nullptr,
-                          &sync.sImgAvailable[i]) != VK_SUCCESS) {
+                          &sync.semImgAvailable[i]) != VK_SUCCESS) {
       RE_LOG(Critical, "failed to create 'image available' semaphore.");
 
       return RE_CRITICAL;
     }
 
     if (vkCreateSemaphore(logicalDevice.device, &semInfo, nullptr,
-                          &sync.sRndrFinished[i]) != VK_SUCCESS) {
+                          &sync.semRenderFinished[i]) != VK_SUCCESS) {
       RE_LOG(Critical, "failed to create 'render finished' semaphore.");
 
       return RE_CRITICAL;
     }
 
     if (vkCreateFence(logicalDevice.device, &fenInfo, nullptr,
-                      &sync.fInFlight[i])) {
+                      &sync.fenceInFlight[i])) {
       RE_LOG(Critical, "failed to create 'in flight' fence.");
 
       return RE_CRITICAL;
@@ -445,12 +446,12 @@ void core::MRenderer::destroySyncObjects() {
   RE_LOG(Log, "Destroying synchronization objects.");
 
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-    vkDestroySemaphore(logicalDevice.device, sync.sImgAvailable[i],
+    vkDestroySemaphore(logicalDevice.device, sync.semImgAvailable[i],
                        nullptr);
-    vkDestroySemaphore(logicalDevice.device, sync.sRndrFinished[i],
+    vkDestroySemaphore(logicalDevice.device, sync.semRenderFinished[i],
                        nullptr);
 
-    vkDestroyFence(logicalDevice.device, sync.fInFlight[i],
+    vkDestroyFence(logicalDevice.device, sync.fenceInFlight[i],
                    nullptr);
   }
 }
@@ -460,12 +461,12 @@ TResult core::MRenderer::drawFrame() {
   TResult chkResult = RE_OK;
 
   vkWaitForFences(logicalDevice.device, 1,
-                  &sync.fInFlight[system.idIFFrame], VK_TRUE,
+                  &sync.fenceInFlight[system.idIFFrame], VK_TRUE,
                   UINT64_MAX);
 
   VkResult APIResult =
       vkAcquireNextImageKHR(logicalDevice.device, swapChain, UINT64_MAX,
-                            sync.sImgAvailable[system.idIFFrame],
+                            sync.semImgAvailable[system.idIFFrame],
                             VK_NULL_HANDLE, &imageIndex);
 
   if (APIResult == VK_ERROR_OUT_OF_DATE_KHR) {
@@ -490,7 +491,7 @@ TResult core::MRenderer::drawFrame() {
   // reset fences if we will do any work this frame e.g. no swap chain
   // recreation
   vkResetFences(logicalDevice.device, 1,
-                &sync.fInFlight[system.idIFFrame]);
+                &sync.fenceInFlight[system.idIFFrame]);
 
   vkResetCommandBuffer(command.bufferView[system.idIFFrame], NULL);
 
@@ -498,9 +499,9 @@ TResult core::MRenderer::drawFrame() {
   recordCommandBuffer(command.bufferView[system.idIFFrame], imageIndex);
 
   // wait until image to write color data to is acquired
-  VkSemaphore waitSems[] = {sync.sImgAvailable[system.idIFFrame]};
+  VkSemaphore waitSems[] = {sync.semImgAvailable[system.idIFFrame]};
   VkSemaphore signalSems[] = {
-      sync.sRndrFinished[system.idIFFrame]};
+      sync.semRenderFinished[system.idIFFrame]};
   VkPipelineStageFlags waitStages[] = {
       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
@@ -521,7 +522,7 @@ TResult core::MRenderer::drawFrame() {
   // submit an array featuring command buffers to graphics queue and signal
   // fence for CPU to wait for execution
   if (vkQueueSubmit(logicalDevice.queues.graphics, 1, &submitInfo,
-                    sync.fInFlight[system.idIFFrame]) !=
+                    sync.fenceInFlight[system.idIFFrame]) !=
       VK_SUCCESS) {
     RE_LOG(Error, "Failed to submit data to graphics queue.");
 

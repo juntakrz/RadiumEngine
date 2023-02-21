@@ -38,17 +38,18 @@ namespace core {
       VkPipelineLayout pipelineLayout;
       VkPipeline pipeline;
       uint32_t idIFFrame = 0;                                       // in flight frame index
-      VkDescriptorPool descPool;
-      std::vector<VkDescriptorSet> descSets;
-      std::vector<VkDescriptorSetLayout> descSetLayouts;
+      VkDescriptorPool descriptorPool;
+      std::vector<VkDescriptorSet> descriptorSets;
+      //std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
+      VkDescriptorSetLayout descriptorSetLayout;
       std::vector<WMesh*> meshes;                                   // meshes rendered during the current frame
     } system;
 
     // multi-threaded synchronization objects
     struct {
-      std::vector<VkSemaphore> sImgAvailable;
-      std::vector<VkSemaphore> sRndrFinished;
-      std::vector<VkFence> fInFlight;
+      std::vector<VkSemaphore> semImgAvailable;
+      std::vector<VkSemaphore> semRenderFinished;
+      std::vector<VkFence> fenceInFlight;
     } sync;
 
     // current camera view data
@@ -113,7 +114,6 @@ namespace core {
     void destroyDescriptorPool();
 
     TResult createDescriptorSets();
-    void destroyDescriptorSets();
 
     TResult createMVPBuffers();
     void destroyMVPBuffers();
