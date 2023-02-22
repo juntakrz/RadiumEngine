@@ -279,7 +279,7 @@ TResult core::MRenderer::createDescriptorSets() {
     VkDescriptorBufferInfo descriptorBufferInfo;
     descriptorBufferInfo.buffer = view.modelViewProjectionBuffers[i].buffer;
     descriptorBufferInfo.offset = 0;
-    descriptorBufferInfo.range = sizeof(RModelViewProjUBO);
+    descriptorBufferInfo.range = sizeof(RSModelViewProjection);
 
     // settings used for writing to descriptor sets
     VkWriteDescriptorSet writeDescriptorSet;
@@ -305,7 +305,7 @@ TResult core::MRenderer::createMVPBuffers() {
   // each frame will require a separate buffer, so 2 frames in flight would require buffers * 2
   view.modelViewProjectionBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
-  VkDeviceSize uboMVPsize = sizeof(RModelViewProjUBO);
+  VkDeviceSize uboMVPsize = sizeof(RSModelViewProjection);
 
   for (int i = 0; i < view.modelViewProjectionBuffers.size();
        i += MAX_FRAMES_IN_FLIGHT) {
@@ -328,10 +328,7 @@ void core::MRenderer::updateModelViewProjectionBuffers(uint32_t currentImage) {
   // rewrite this and UpdateMVP method to use data from the current/provided camera
   glm::mat4 t = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.2f));
   view.modelViewProjectionData.model =
-      glm::rotate(t, time * glm::radians(40.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-
-  view.modelViewProjectionData.view = glm::mat4(1.0f);
- // view.modelViewProjectionData.projection = glm::mat4(1.0f);
+      glm::rotate(t, glm::mod(time * glm::radians(90.0f), glm::two_pi<float>()), glm::vec3(0.0f, 0.3f, 1.0f));
 
   glm::vec3 camPos = {-1.0f, 1.0f, -4.0f};
   glm::vec3 targetPos = {0.0f, 0.0f, 0.1f};
@@ -347,14 +344,14 @@ void core::MRenderer::updateModelViewProjectionBuffers(uint32_t currentImage) {
   //view.modelViewProjectionData.projection[1][1] *= -1.0f;
 
   memcpy(view.modelViewProjectionBuffers[currentImage].allocInfo.pMappedData,
-         &view.modelViewProjectionData, sizeof(RModelViewProjUBO));
+         &view.modelViewProjectionData, sizeof(RSModelViewProjection));
 }
 
-RModelViewProjUBO* core::MRenderer::getMVPview() {
+RSModelViewProjection* core::MRenderer::getMVPview() {
   return &view.modelViewProjectionData;
 }
 
-RModelViewProjUBO* core::MRenderer::updateMVP(glm::mat4* pTransform) {
+RSModelViewProjection* core::MRenderer::updateMVP(glm::mat4* pTransform) {
   view.modelViewProjectionData = {glm::mat4(1.0f), view.pActiveCamera->view(),
           view.pActiveCamera->projection()};
 

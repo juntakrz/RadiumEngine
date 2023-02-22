@@ -58,7 +58,7 @@ namespace core {
 
       ACamera* pActiveCamera = nullptr;
       std::vector<RBuffer> modelViewProjectionBuffers;
-      RModelViewProjUBO modelViewProjectionData;
+      RSModelViewProjection modelViewProjectionData;
     } view;
 
     std::unordered_map<std::string, std::unique_ptr<ACamera>> cameras;
@@ -120,10 +120,10 @@ namespace core {
     void updateModelViewProjectionBuffers(uint32_t currentImage);
 
     // creates identity MVP matrices
-    RModelViewProjUBO* getMVPview();
+    RSModelViewProjection* getMVPview();
 
     // creates MVP matrices using currently active camera and model transform
-    RModelViewProjUBO* updateMVP(glm::mat4* pTransform);
+    RSModelViewProjection* updateMVP(glm::mat4* pTransform);
 
   private:
     TResult checkInstanceValidationLayers();

@@ -24,6 +24,7 @@ void core::run() {
 
   #ifndef NDEBUG
   loadDevelopmentConfig();
+  compileShaders_Debug();
   core::debug.initializeRenderDoc();
   #endif
 
@@ -132,6 +133,11 @@ void core::loadCoreConfig(const wchar_t* path) {
   }
 
   RE_LOG(Error, "Core configuration file seems to be corrupted.");
+}
+
+void core::compileShaders_Debug() {
+  RE_LOG(Log, "Compiling shaders with the debugging data attached.");
+  system(RE_PATH_SHDRC);
 }
 
 void core::loadDevelopmentConfig(const wchar_t* path) {

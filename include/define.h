@@ -28,7 +28,8 @@ constexpr bool bRequireValidationLayers = true;
 // global constants
 #define RE_PATH_CONFIG      TEXT("config/config.json")
 #define RE_PATH_DEVCONFIG   TEXT("development/devconfig.json")
-#define RE_MAP_PATH         TEXT("content/maps/")
+#define RE_PATH_MAP         TEXT("content/maps/")
+#define RE_PATH_SHDRC       "development\\compileShaders_Win_x64_DEBUG.bat"
 
 // error levels
 #define RE_OK					      0x00		   // success
@@ -47,5 +48,6 @@ constexpr char Critical =   RE_CRITICAL;
 *	Txxx		- type definition
 *	Mxxx		- manager class, is a singleton and must be called using get() method
 *	Rxxx		- renderer related class object (e.g. Vulkan API-based data structures)
+* RSxxx   - (renderer) shader related object (e.g. struct for model/view/projection matrices)
 * Wxxx    - world related class object (e.g. meshes and primitives)
 */

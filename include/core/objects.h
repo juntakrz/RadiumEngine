@@ -98,8 +98,8 @@ struct WActorPtr {
 // uniform buffer objects
 // 
 // view matrix UBO for vertex shader (model * view * projection)
-struct RModelViewProjUBO {
-  glm::mat4 model = glm::mat4(1.0f);
-  glm::mat4 view = glm::mat4(1.0f);
-  glm::mat4 projection = glm::mat4(1.0f);
+struct RSModelViewProjection {
+  alignas(16) glm::mat4 model = glm::mat4(1.0f);
+  alignas(16) glm::mat4 view = glm::mat4(1.0f);
+  alignas(16) glm::mat4 projection = glm::mat4(1.0f);
 };
