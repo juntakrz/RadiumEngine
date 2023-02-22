@@ -29,7 +29,9 @@ constexpr bool bRequireValidationLayers = true;
 #define RE_PATH_CONFIG      TEXT("config/config.json")
 #define RE_PATH_DEVCONFIG   TEXT("development/devconfig.json")
 #define RE_PATH_MAP         TEXT("content/maps/")
+#define RE_PATH_TEXTURES    TEXT("content/textures/")
 #define RE_PATH_SHDRC       "development\\compileShaders_Win_x64_DEBUG.bat"
+#define RE_MAXTEXTURES      6
 
 // error levels
 #define RE_OK					      0x00		   // success

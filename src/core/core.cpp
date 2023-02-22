@@ -8,14 +8,16 @@
 #include "core/managers/mscript.h"
 #include "core/managers/mref.h"
 #include "core/managers/mtime.h"
+#include "core/managers/mmaterials.h"
 
 class core::MRenderer& core::renderer = MRenderer::get();
 class core::MWindow& core::window = MWindow::get();
 class core::MInput& core::input = MInput::get();
 class core::MScript& core::script = MScript::get();
 class core::MActors& core::actors = MActors::get();
-class core::MRef& core::ref = MRef::get();
 class core::MDebug& core::debug = MDebug::get();
+class core::MMaterials& core::materials = MMaterials::get();
+class core::MRef& core::ref = MRef::get();
 class core::MTime& core::time = MTime::get();
 
 void core::run() {
@@ -24,7 +26,7 @@ void core::run() {
 
   #ifndef NDEBUG
   loadDevelopmentConfig();
-  compileShaders_Debug();
+  core::debug.compileDebugShaders();
   core::debug.initializeRenderDoc();
   #endif
 
@@ -133,11 +135,6 @@ void core::loadCoreConfig(const wchar_t* path) {
   }
 
   RE_LOG(Error, "Core configuration file seems to be corrupted.");
-}
-
-void core::compileShaders_Debug() {
-  RE_LOG(Log, "Compiling shaders in the debug mode.");
-  system(RE_PATH_SHDRC);
 }
 
 void core::loadDevelopmentConfig(const wchar_t* path) {

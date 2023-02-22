@@ -36,6 +36,8 @@ namespace core {
       VkAllocationCallbacks* pAllocator = nullptr);
 
     VkDebugUtilsMessengerCreateInfoEXT* info() { return &m_debugCreateInfo; }
+
+    void compileDebugShaders();
     
     // RenderDoc (methods will not execute if NDEBUG is set)
     void initializeRenderDoc();

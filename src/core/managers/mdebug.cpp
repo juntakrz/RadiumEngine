@@ -34,6 +34,11 @@ void core::MDebug::destroy(VkInstance instance, VkAllocationCallbacks* pAllocato
   DestroyDebugUtilsMessengerEXT(instance, pAllocator);
 }
 
+void core::MDebug::compileDebugShaders() {
+  RE_LOG(Log, "Compiling shaders in the debug mode.");
+  system(RE_PATH_SHDRC);
+}
+
 void core::MDebug::initializeRenderDoc() {
 #ifndef NDEBUG
 
