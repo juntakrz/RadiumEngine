@@ -1,38 +1,41 @@
 #include "pch.h"
 #include "core/core.h"
-#include "core/renderer/renderer.h"
 #include "core/managers/mwindow.h"
-#include "core/managers/mgraphics.h"
+#include "core/managers/MRenderer.h"
 #include "core/managers/mdebug.h"
 #include "core/managers/minput.h"
-#include "core/managers/mmodel.h"
+#include "core/managers/mactors.h"
+#include "core/managers/mscript.h"
+#include "core/managers/mref.h"
+#include "core/managers/mtime.h"
 
-class MGraphics* mgrGfx = nullptr;
-class MWindow* mgrWnd = nullptr;
-class MDebug* mgrDbg = nullptr;
-class MInput* mgrInput = nullptr;
-class MModel* mgrModel = nullptr;
+class core::MRenderer& core::renderer = MRenderer::get();
+class core::MWindow& core::window = MWindow::get();
+class core::MInput& core::input = MInput::get();
+class core::MScript& core::script = MScript::get();
+class core::MActors& core::actors = MActors::get();
+class core::MRef& core::ref = MRef::get();
+class core::MDebug& core::debug = MDebug::get();
+class core::MTime& core::time = MTime::get();
 
 void core::run() {
-  // initialize engine
-  RE_LOG(Log, "Radium Engine");
-  RE_LOG(Log, "-------------\n");
-  RE_LOG(Log, "Initializing engine core...");
 
   loadCoreConfig();
 
-  // create and register managers
-  RE_LOG(Log, "Registering managers.");
-  mgrWnd = &MWindow::get();
-  mgrGfx = &MGraphics::get();
-  mgrDbg = &MDebug::get();
-  mgrInput = &MInput::get();
-  mgrModel = &MModel::get();
+  #ifndef NDEBUG
+  loadDevelopmentConfig();
+  compileShaders_Debug();
+  core::debug.initializeRenderDoc();
+  #endif
 
-  RE_CHECK(core::renderer::create());
-  mgrInput->initialize(mgrWnd->window());
+  RE_LOG(Log, "Creating renderer.");
+  RE_CHECK(core::create());
+  core::input.initialize(core::window.getWindow());
 
   RE_LOG(Log, "Successfully initialized engine core.");
+
+  core::script.loadMap("default");
+
   RE_LOG(Log, "Launching main event loop.");
 
   mainEventLoop();
@@ -41,9 +44,9 @@ void core::run() {
 }
 
 void core::mainEventLoop() {
-  while (!glfwWindowShouldClose(MWindow::get().window())) {
+  while (!glfwWindowShouldClose(core::window.getWindow())) {
     glfwPollEvents();
-    core::renderer::drawFrame();
+    core::drawFrame();
   }
 }
 
@@ -51,7 +54,7 @@ void core::stop(TResult cause) {
   if (cause == RE_OK) {
     RE_LOG(Log, "Shutting down on call.");
 
-    core::renderer::destroy();
+    core::destroy();
   }
   else {
     RE_LOG(
@@ -63,20 +66,53 @@ void core::stop(TResult cause) {
   exit(cause);
 }
 
+TResult core::create() {
+  RE_LOG(Log, "Initializing core rendering system.");
+
+  TResult chkResult = 0;
+
+  // initialize Vulkan API using GLFW
+  glfwInit();
+
+  // window manager setup 
+  chkResult = core::window.createWindow(config::renderWidth, config::renderHeight,
+    config::appTitle, nullptr, nullptr);
+  RE_CHECK(chkResult);
+
+  // graphics manager setup (responsible for Vulkan instance and GPU management)
+  RE_LOG(Log, "Initializing rendering module.");
+  chkResult = core::renderer.initialize();
+  RE_CHECK(chkResult);
+
+  RE_LOG(Log, "Rendering module successfully initialized.");
+
+  return chkResult;
+}
+
+void core::destroy() {
+  core::renderer.deinitialize();
+  core::window.destroyWindow();
+  glfwTerminate();
+}
+
+TResult core::drawFrame() {
+  TResult chkResult = RE_OK;
+
+  chkResult = core::renderer.drawFrame();
+
+  return chkResult;
+}
+
 void core::loadCoreConfig(const wchar_t* path) {
-  json data;
-  uint32_t resolution[2] = { config::renderWidth, config::renderHeight };
+  using json = nlohmann::json;
+  uint32_t resolution[2] = {config::renderWidth, config::renderHeight};
   uint8_t requirements = 3;
+  const char* cfgName = "cfgCore";
 
-  if (jsonLoad(path, &data) != RE_OK) {
-    RE_LOG(Error,
-           "Failed to load core configuration file. Default settings will be "
-           "used.");
-    return;
-  };
+  json* data = core::script.jsonLoad(path, cfgName);
 
-  if (data.contains("core")) {
-    const auto& coreData = data.at("core");
+  if (data->contains("core")) {
+    const auto& coreData = data->at("core");
     if (coreData.contains("resolution")) {
       coreData.at("resolution").get_to(resolution);
       config::renderWidth = resolution[0];
@@ -93,10 +129,43 @@ void core::loadCoreConfig(const wchar_t* path) {
   }
 
   if (!requirements) {
-    RE_LOG(Log, "Successfully loaded core config at '%s'.",
-           wstrToStr(path).c_str());
     return;
   }
 
   RE_LOG(Error, "Core configuration file seems to be corrupted.");
+}
+
+void core::compileShaders_Debug() {
+  RE_LOG(Log, "Compiling shaders with the debugging data attached.");
+  system(RE_PATH_SHDRC);
+}
+
+void core::loadDevelopmentConfig(const wchar_t* path) {
+  #ifndef NDEBUG
+  using json = nlohmann::json;
+  const char* cfgName = "cfgDevelopment";
+
+  json* data = core::script.jsonLoad(path, cfgName);
+
+  // look for renderdoc settings
+  if (data->contains("renderdoc")) {
+    const auto& coreData = data->at("renderdoc");
+    if (coreData.contains("enabled")) {
+      coreData.at("enabled").get_to(core::debug.getRenderDoc().bEnabled);
+    }
+    
+    if (core::debug.getRenderDoc().bEnabled) {
+      if (coreData.contains("path")) {
+        std::string path;
+        coreData.at("path").get_to(path);
+        core::debug.getRenderDoc().path = path + "renderdoc.dll";
+      }
+      if (coreData.contains("showOverlay")) {
+        coreData.at("showOverlay")
+            .get_to(core::debug.getRenderDoc().bEnableOverlay);
+      }
+    }
+  }
+
+  #endif
 }

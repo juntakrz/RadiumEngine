@@ -2,42 +2,59 @@
 
 #include "common.h"
 
-class MDebug {
-private:
-  VkDebugUtilsMessengerEXT debugMessenger;
-  VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo;
+namespace core {
 
-  MDebug();
-  ~MDebug() {};
+  class MDebug {
+  private:
+    VkDebugUtilsMessengerEXT m_debugMessenger;
+    VkDebugUtilsMessengerCreateInfoEXT m_debugCreateInfo;
 
-public:
-  static MDebug& get() {
-    static MDebug _sInstance;
-    return _sInstance;
-  }
-  MDebug(const MDebug&) = delete;
-  MDebug& operator=(const MDebug&) = delete;
+#ifndef NDEBUG
+    struct DebugRenderDoc {
+      bool bEnabled = false;
+      std::string path = "";
+      bool bEnableOverlay = true;
+      RENDERDOC_API_1_6_0* pAPI = nullptr;
+    } m_renderdoc;
+#endif
 
-  TResult create(VkInstance instance, VkAllocationCallbacks* pAllocator = nullptr,
-                 VkDebugUtilsMessengerCreateInfoEXT* pUserData = nullptr);
+    MDebug();
+    ~MDebug() {};
 
-  void destroy(VkInstance instance,
-               VkAllocationCallbacks* pAllocator = nullptr);
+  public:
+    static MDebug& get() {
+      static MDebug _sInstance;
+      return _sInstance;
+    }
+    MDebug(const MDebug&) = delete;
+    MDebug& operator=(const MDebug&) = delete;
 
-  VkDebugUtilsMessengerCreateInfoEXT* info() { return &debugCreateInfo; }
+    TResult create(VkInstance instance, VkAllocationCallbacks* pAllocator = nullptr,
+      VkDebugUtilsMessengerCreateInfoEXT* pUserData = nullptr);
 
-private:
-  static VKAPI_ATTR VkBool32 VKAPI_CALL
-    callback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-             VkDebugUtilsMessageTypeFlagsEXT messageType,
-             const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-             void* pUserData);
+    void destroy(VkInstance instance,
+      VkAllocationCallbacks* pAllocator = nullptr);
 
-  VkResult createDebugUtilsMessengerEXT(
-    VkInstance instance,
-    const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
-    const VkAllocationCallbacks* pAllocator);
+    VkDebugUtilsMessengerCreateInfoEXT* info() { return &m_debugCreateInfo; }
+    
+    // RenderDoc (methods will not execute if NDEBUG is set)
+    void initializeRenderDoc();
+    void enableRenderDocOverlay(bool bEnable);
+    DebugRenderDoc& getRenderDoc();
 
-  void DestroyDebugUtilsMessengerEXT(VkInstance instance,
-                                     const VkAllocationCallbacks* pAllocator);
-};
+  private:
+    static VKAPI_ATTR VkBool32 VKAPI_CALL
+      callback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+        VkDebugUtilsMessageTypeFlagsEXT messageType,
+        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+        void* pUserData);
+
+    VkResult createDebugUtilsMessengerEXT(
+      VkInstance instance,
+      const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+      const VkAllocationCallbacks* pAllocator);
+
+    void DestroyDebugUtilsMessengerEXT(VkInstance instance,
+      const VkAllocationCallbacks* pAllocator);
+  };
+}

@@ -10,6 +10,7 @@
 // standard library headers
 #include <algorithm>
 #include <conio.h>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -22,7 +23,14 @@
 #include <set>
 #include <stdarg.h>
 #include <string>
+#include <thread>
 #include <vector>
+
+// debug modules
+#ifndef NDEBUG
+#include <debug/renderdoc_app.h>
+#include <windows.h>
+#endif
 
 // internal global definitions
 #include "define.h"
@@ -31,6 +39,7 @@
 // Vulkan API related headers
 #include <GLFW/glfw3.h>
 #include <GLM/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 // external engine modules
 #include <json/json.hpp>

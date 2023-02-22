@@ -1,10 +1,9 @@
 #include "pch.h"
-#include "core/managers/mgraphics.h"
-#include "core/renderer/renderer.h"
+#include "core/managers/MRenderer.h"
 
-TResult MGraphics::initLogicalDevice() { return initLogicalDevice(physicalDevice); }
+TResult core::MRenderer::initLogicalDevice() { return initLogicalDevice(physicalDevice); }
 
-TResult MGraphics::initLogicalDevice(
+TResult core::MRenderer::initLogicalDevice(
     const RVkPhysicalDevice& physicalDeviceData) {
   if (physicalDeviceData.queueFamilyIndices.graphics.empty()) return RE_ERROR;
 
@@ -30,9 +29,9 @@ TResult MGraphics::initLogicalDevice(
       static_cast<uint32_t>(deviceQueues.size());
   deviceCreateInfo.pEnabledFeatures = &physicalDeviceData.features;
   deviceCreateInfo.enabledExtensionCount =
-      static_cast<uint32_t>(core::renderer::requiredExtensions.size());
+      static_cast<uint32_t>(core::vulkan::requiredExtensions.size());
   deviceCreateInfo.ppEnabledExtensionNames =
-      core::renderer::requiredExtensions.data();
+      core::vulkan::requiredExtensions.data();
   deviceCreateInfo.enabledLayerCount =
       static_cast<uint32_t>(requiredLayers.size());
   deviceCreateInfo.ppEnabledLayerNames = requiredLayers.data();
@@ -78,10 +77,9 @@ TResult MGraphics::initLogicalDevice(
   return RE_OK;
 }
 
-void MGraphics::destroyLogicalDevice(VkDevice device,
+void core::MRenderer::destroyLogicalDevice(VkDevice device,
                                      const VkAllocationCallbacks* pAllocator) {
   if (!device) device = logicalDevice.device;
   RE_LOG(Log, "Destroying logical device, handle: 0x%016llX.", device);
-  vkFreeMemory(logicalDevice.device, logicalDevice.vertexBufferMemory, nullptr);
   vkDestroyDevice(device, pAllocator);
 }

@@ -1,10 +1,11 @@
 #include "pch.h"
 #include "core/managers/mwindow.h"
-#include "core/managers/mgraphics.h"
+#include "core/managers/MRenderer.h"
+#include "core/core.h"
 
-MWindow::MWindow() { RE_LOG(Log, "Creating window manager."); }
+core::MWindow::MWindow() { RE_LOG(Log, "Creating window manager."); }
 
-TResult MWindow::createWindow(const uint32_t& width, const uint32_t& height,
+TResult core::MWindow::createWindow(const uint32_t& width, const uint32_t& height,
                               const char* title, GLFWmonitor* monitor,
                               GLFWwindow* share) {
   RE_LOG(Log, "Initializing window subsystem.");
@@ -27,7 +28,7 @@ TResult MWindow::createWindow(const uint32_t& width, const uint32_t& height,
   return RE_OK;
 }
 
-TResult MWindow::destroyWindow(GLFWwindow* pOtherWindow) {
+TResult core::MWindow::destroyWindow(GLFWwindow* pOtherWindow) {
   RE_LOG(Log, "Closing the window.");
 
   if (pWindow) {
@@ -42,8 +43,8 @@ TResult MWindow::destroyWindow(GLFWwindow* pOtherWindow) {
   return RE_OK;
 }
 
-GLFWwindow* MWindow::window() { return pWindow.get(); }
+GLFWwindow* core::MWindow::getWindow() { return pWindow.get(); }
 
-void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
-  MGraphics::get().bFramebufferResized = true;
+void core::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
+  core::renderer.bFramebufferResized = true;
 }

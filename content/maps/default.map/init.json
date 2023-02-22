@@ -1,0 +1,26 @@
+{
+  "materials": {
+    "Mat_LoadScr": {
+      "name": "Mat_LoadScr",
+      "manageTextures": true,
+      "shaders": {
+        "vs": "VS_FlatTexture",
+        "ps": "PS_FlatTexture"
+      },
+      "textures": {
+        "tex0": "img_loadscr.dds"
+      },
+      "variables": {
+        "ambient": [ 0.3, 0.1, 0.0 ],
+        "F0": [ 0.12, 0.11, 0.1 ]
+      },
+      "passes": [
+        "standard"
+      ]
+    }
+  },
+
+  "loadScreen": {
+    "useMaterial" : "Mat_LoadScr"
+  }
+}
