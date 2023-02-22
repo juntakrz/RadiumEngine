@@ -9,7 +9,10 @@
 #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
 
 // global macros
-#define TEXT(x) L ## x
+#ifdef NDEBUG
+#define TEXT(x) L ## x                // conflicts with WinAPI definitions in debug builds
+#endif
+
 #define RE_LOG(l, x, ...) processMessage(l, x, __VA_ARGS__)
 #define RE_CHECK(x) validate(x)
 #define ASSERT(x) \
@@ -24,6 +27,7 @@ constexpr bool bRequireValidationLayers = true;
 
 // global constants
 #define RE_PATH_CONFIG      TEXT("config/config.json")
+#define RE_PATH_DEVCONFIG   TEXT("development/devconfig.json")
 #define RE_MAP_PATH         TEXT("content/maps/")
 
 // error levels

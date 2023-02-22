@@ -6,8 +6,14 @@ namespace core {
 
   class MDebug {
   private:
-    VkDebugUtilsMessengerEXT debugMessenger;
-    VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo;
+    VkDebugUtilsMessengerEXT m_debugMessenger;
+    VkDebugUtilsMessengerCreateInfoEXT m_debugCreateInfo;
+
+    std::string m_renderDocPath = "";       // retrieved on launch from the development configuration
+
+    #ifndef NDEBUG
+    RENDERDOC_API_1_6_0* m_pRenderDoc = nullptr;
+    #endif
 
     MDebug();
     ~MDebug() {};
@@ -26,7 +32,11 @@ namespace core {
     void destroy(VkInstance instance,
       VkAllocationCallbacks* pAllocator = nullptr);
 
-    VkDebugUtilsMessengerCreateInfoEXT* info() { return &debugCreateInfo; }
+    VkDebugUtilsMessengerCreateInfoEXT* info() { return &m_debugCreateInfo; }
+    
+    // RenderDoc (methods will not execute if NDEBUG is set)
+    void initializeRenderDoc();
+    void setRenderDocModulePath(const std::string& path);
 
   private:
     static VKAPI_ATTR VkBool32 VKAPI_CALL

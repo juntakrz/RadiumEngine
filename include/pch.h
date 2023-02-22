@@ -26,6 +26,12 @@
 #include <thread>
 #include <vector>
 
+// debug modules
+#ifndef NDEBUG
+#include <debug/renderdoc_app.h>
+#include <windows.h>
+#endif
+
 // internal global definitions
 #include "define.h"
 #include "define_t.h"

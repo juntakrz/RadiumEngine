@@ -20,14 +20,12 @@ class core::MTime& core::time = MTime::get();
 
 void core::run() {
 
-  // initialize engine
-  RE_LOG(Log, "Radium Engine");
-  RE_LOG(Log, "-------------\n");
-  RE_LOG(Log, "Initializing engine core...");
-
-  //core::graphics = &core::MRenderer::get();
-
   loadCoreConfig();
+
+  #ifndef NDEBUG
+  loadDevelopmentConfig();
+  core::debug.initializeRenderDoc();
+  #endif
 
   RE_LOG(Log, "Creating renderer.");
   RE_CHECK(core::create());
@@ -67,40 +65,6 @@ void core::stop(TResult cause) {
   exit(cause);
 }
 
-void core::loadCoreConfig(const wchar_t* path) {
-  using json = nlohmann::json;
-  uint32_t resolution[2] = { config::renderWidth, config::renderHeight };
-  uint8_t requirements = 3;
-  const char* cfgName = "cfgCore";
-
-  json* data = core::script.jsonLoad(path, cfgName);
-
-  if (data->contains("core")) {
-    const auto& coreData = data->at("core");
-    if (coreData.contains("resolution")) {
-      coreData.at("resolution").get_to(resolution);
-      config::renderWidth = resolution[0];
-      config::renderHeight = resolution[1];
-      --requirements;
-    }
-
-    if (coreData.contains("devMode")) {
-      coreData.at("devMode").get_to(config::bDevMode);
-      --requirements;
-    }
-
-    --requirements;
-  }
-
-  if (!requirements) {
-    RE_LOG(Log, "Successfully loaded core config at '%s'.",
-           toString(path).c_str());
-    return;
-  }
-
-  RE_LOG(Error, "Core configuration file seems to be corrupted.");
-}
-
 TResult core::create() {
   RE_LOG(Log, "Initializing core rendering system.");
 
@@ -136,4 +100,56 @@ TResult core::drawFrame() {
   chkResult = core::renderer.drawFrame();
 
   return chkResult;
+}
+
+void core::loadCoreConfig(const wchar_t* path) {
+  using json = nlohmann::json;
+  uint32_t resolution[2] = {config::renderWidth, config::renderHeight};
+  uint8_t requirements = 3;
+  const char* cfgName = "cfgCore";
+
+  json* data = core::script.jsonLoad(path, cfgName);
+
+  if (data->contains("core")) {
+    const auto& coreData = data->at("core");
+    if (coreData.contains("resolution")) {
+      coreData.at("resolution").get_to(resolution);
+      config::renderWidth = resolution[0];
+      config::renderHeight = resolution[1];
+      --requirements;
+    }
+
+    if (coreData.contains("devMode")) {
+      coreData.at("devMode").get_to(config::bDevMode);
+      --requirements;
+    }
+
+    --requirements;
+  }
+
+  if (!requirements) {
+    return;
+  }
+
+  RE_LOG(Error, "Core configuration file seems to be corrupted.");
+}
+
+void core::loadDevelopmentConfig(const wchar_t* path) {
+  #ifndef NDEBUG
+  using json = nlohmann::json;
+  const char* cfgName = "cfgDevelopment";
+  std::string renderDocPath = "";
+
+  json* data = core::script.jsonLoad(path, cfgName);
+
+  if (data->contains("debug")) {
+    const auto& coreData = data->at("debug");
+    if (coreData.contains("renderdocpath")) {
+      coreData.at("renderdocpath").get_to(renderDocPath);
+    }
+  }
+
+  core::debug.setRenderDocModulePath(renderDocPath);
+
+  #endif
 }

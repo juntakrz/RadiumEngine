@@ -8,7 +8,14 @@
 #include "core/managers/mtime.h"
 #include "core/world/actors/acamera.h"
 
-core::MRenderer::MRenderer() { RE_LOG(Log, "Creating graphics manager."); };
+core::MRenderer::MRenderer() {
+  // currently these singletons are passed by reference,
+  // so initial log messages have to be here
+  RE_LOG(Log, "Radium Engine");
+  RE_LOG(Log, "-------------\n");
+  RE_LOG(Log, "Initializing engine core...");
+  RE_LOG(Log, "Creating graphics manager.");
+};
 
 TResult core::MRenderer::createInstance() {
   VkApplicationInfo appInfo{};
