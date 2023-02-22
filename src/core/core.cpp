@@ -138,18 +138,28 @@ void core::loadDevelopmentConfig(const wchar_t* path) {
   #ifndef NDEBUG
   using json = nlohmann::json;
   const char* cfgName = "cfgDevelopment";
-  std::string renderDocPath = "";
 
   json* data = core::script.jsonLoad(path, cfgName);
 
-  if (data->contains("debug")) {
-    const auto& coreData = data->at("debug");
-    if (coreData.contains("renderdocpath")) {
-      coreData.at("renderdocpath").get_to(renderDocPath);
+  // look for renderdoc settings
+  if (data->contains("renderdoc")) {
+    const auto& coreData = data->at("renderdoc");
+    if (coreData.contains("enabled")) {
+      coreData.at("enabled").get_to(core::debug.getRenderDoc().bEnabled);
+    }
+    
+    if (core::debug.getRenderDoc().bEnabled) {
+      if (coreData.contains("path")) {
+        std::string path;
+        coreData.at("path").get_to(path);
+        core::debug.getRenderDoc().path = path + "renderdoc.dll";
+      }
+      if (coreData.contains("showOverlay")) {
+        coreData.at("showOverlay")
+            .get_to(core::debug.getRenderDoc().bEnableOverlay);
+      }
     }
   }
-
-  core::debug.setRenderDocModulePath(renderDocPath);
 
   #endif
 }

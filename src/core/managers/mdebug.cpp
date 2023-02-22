@@ -36,23 +36,29 @@ void core::MDebug::destroy(VkInstance instance, VkAllocationCallbacks* pAllocato
 
 void core::MDebug::initializeRenderDoc() {
 #ifndef NDEBUG
+
+  if (!m_renderdoc.bEnabled) {
+      RE_LOG(Log, "RenderDoc integration is disabled.");
+      return;
+  }
+
   RE_LOG(Log, "Integrating RenderDoc.");
 
-  if (m_renderDocPath == "") {
+  if (m_renderdoc.path == "") {
       RE_LOG(Error,
              "Path to RenderDoc module is empty. RenderDoc will not be "
              "integrated.");
       return;
   }
 
-  HMODULE renderDocModule = LoadLibraryA(m_renderDocPath.c_str());
+  HMODULE renderDocModule = LoadLibraryA(m_renderdoc.path.c_str());
 
   if (renderDocModule == NULL) {
       DWORD lastError = GetLastError();
       RE_LOG(Error,
              "Failed to get handle for 'renderdoc.dll'. WinAPI error code: %u, "
              "path to module: '%s'.",
-             lastError, m_renderDocPath.c_str());
+             lastError, m_renderdoc.path.c_str());
       return;
   }
 
@@ -66,20 +72,44 @@ void core::MDebug::initializeRenderDoc() {
       return;
   }
 
-  if (getAPI(eRENDERDOC_API_Version_1_6_0, (void**)&m_pRenderDoc) != 1) {
+  if (getAPI(eRENDERDOC_API_Version_1_6_0, (void**)&m_renderdoc.pAPI) != 1) {
       RE_LOG(Error, "Failed to set RenderDoc API 1.6.0 up.");
       return;
+  }
+
+  // disable capture keys, should capture frames from the connected RenderDoc app
+  if (m_renderdoc.pAPI) {
+      m_renderdoc.pAPI->SetCaptureKeys(NULL, 0);
+      enableRenderDocOverlay(m_renderdoc.bEnableOverlay);
   }
 
 #endif
 }
 
-void core::MDebug::setRenderDocModulePath(const std::string& path) {
-#ifndef NDEBUG
-  m_renderDocPath = path + "renderdoc.dll";
-  RE_LOG(Log, "RenderDoc full module path is set to: '%s'.",
-         m_renderDocPath.c_str());
-#endif
+core::MDebug::DebugRenderDoc& core::MDebug::getRenderDoc() {
+  #ifndef NDEBUG
+  return m_renderdoc;
+  #endif
+}
+
+void core::MDebug::enableRenderDocOverlay(bool bEnable) {
+  #ifndef NDEBUG
+  m_renderdoc.bEnableOverlay = bEnable;
+
+  if (m_renderdoc.pAPI) {
+    if (m_renderdoc.bEnableOverlay) {
+      m_renderdoc.pAPI->MaskOverlayBits(
+          RENDERDOC_OverlayBits::eRENDERDOC_Overlay_All,
+          RENDERDOC_OverlayBits::eRENDERDOC_Overlay_All);
+
+      return;
+    }
+
+    m_renderdoc.pAPI->MaskOverlayBits(
+        RENDERDOC_OverlayBits::eRENDERDOC_Overlay_None,
+        RENDERDOC_OverlayBits::eRENDERDOC_Overlay_None);
+  }
+  #endif
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL

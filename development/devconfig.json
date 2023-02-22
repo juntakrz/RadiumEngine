@@ -1,5 +1,7 @@
 {
-  "debug" : {
-    "renderdocpath" : "f:\\dev\\RenderDoc\\"
+  "renderdoc" : {
+	"enabled" : true,
+    "path" : "f:\\dev\\RenderDoc\\",
+	"showOverlay" : true
   }
 }

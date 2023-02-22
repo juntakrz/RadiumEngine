@@ -9,11 +9,14 @@ namespace core {
     VkDebugUtilsMessengerEXT m_debugMessenger;
     VkDebugUtilsMessengerCreateInfoEXT m_debugCreateInfo;
 
-    std::string m_renderDocPath = "";       // retrieved on launch from the development configuration
-
-    #ifndef NDEBUG
-    RENDERDOC_API_1_6_0* m_pRenderDoc = nullptr;
-    #endif
+#ifndef NDEBUG
+    struct DebugRenderDoc {
+      bool bEnabled = false;
+      std::string path = "";
+      bool bEnableOverlay = true;
+      RENDERDOC_API_1_6_0* pAPI = nullptr;
+    } m_renderdoc;
+#endif
 
     MDebug();
     ~MDebug() {};
@@ -36,7 +39,8 @@ namespace core {
     
     // RenderDoc (methods will not execute if NDEBUG is set)
     void initializeRenderDoc();
-    void setRenderDocModulePath(const std::string& path);
+    void enableRenderDocOverlay(bool bEnable);
+    DebugRenderDoc& getRenderDoc();
 
   private:
     static VKAPI_ATTR VkBool32 VKAPI_CALL
