@@ -124,11 +124,11 @@ TResult core::MRenderer::createGraphicsPipeline() {
   rasterizationInfo.polygonMode = VK_POLYGON_MODE_FILL;
   rasterizationInfo.lineWidth = 1.0f;
   rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-  rasterizationInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+  rasterizationInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
   rasterizationInfo.depthBiasEnable = VK_FALSE;
-  //rasterizationInfo.depthBiasConstantFactor = 0.0f;
-  //rasterizationInfo.depthBiasClamp = 0.0f;
-  //rasterizationInfo.depthBiasSlopeFactor = 0.0f;
+  rasterizationInfo.depthBiasConstantFactor = 0.0f;
+  rasterizationInfo.depthBiasClamp = 0.0f;
+  rasterizationInfo.depthBiasSlopeFactor = 0.0f;
 
   VkPipelineMultisampleStateCreateInfo multisampleInfo{};
   multisampleInfo.sType =

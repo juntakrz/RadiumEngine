@@ -11,7 +11,11 @@ layout(location = 1) in vec3 inColor;
 
 layout(location = 0) out vec3 outColor;
 
+out gl_PerVertex {
+	vec4 gl_Position;
+};
+
 void main(){
-	gl_Position = inMVP.model * inMVP.view * inMVP.proj * vec4(inPos, 1.0);
+	gl_Position = inMVP.proj * inMVP.view * inMVP.model * vec4(inPos, 1.0);
 	outColor = inColor;
 }
