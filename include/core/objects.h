@@ -60,19 +60,14 @@ struct RBuffer {
 };
 
 struct RVertex {
-  glm::vec3 pos;
-  glm::vec3 color;
+  glm::vec3 pos;       // POSITION
+  glm::vec2 tex;       // TEXCOORD
+  glm::vec3 normal;    // NORMAL
+  glm::vec3 tangent;   // TANGENT
+  glm::vec3 binormal;  // BINORMAL
 
   static VkVertexInputBindingDescription getBindingDesc();
   static std::vector<VkVertexInputAttributeDescription> getAttributeDescs();
-};
-
-struct NextVertex {
-  glm::vec3 pos;        // POSITION
-  glm::vec2 tex;        // TEXCOORD
-  glm::vec3 normal;     // NORMAL
-  glm::vec3 tangent;    // TANGENT
-  glm::vec3 binormal;   // BINORMAL
 };
 
 struct RCameraSettings {

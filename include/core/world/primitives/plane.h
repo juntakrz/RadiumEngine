@@ -21,9 +21,7 @@ class WPrimitive_Plane {
       for (int j = 0; j <= divY; j++) {
         vertices.emplace_back();
         vertices.back().pos = {stepX * i - 1, 1 - (stepY * j), 0.0f};
-        //vertices.back().tex = {stepX * i / 2, stepY * j / 2};
-        vertices.back().color = {random(0.0f, 1.0f), random(0.0f, 1.0f),
-                                 random(0.0f, 1.0f)};
+        vertices.back().tex = {stepX * i / 2, stepY * j / 2};
       }
     }
 

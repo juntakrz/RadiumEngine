@@ -136,7 +136,7 @@ void core::loadCoreConfig(const wchar_t* path) {
 }
 
 void core::compileShaders_Debug() {
-  RE_LOG(Log, "Compiling shaders with the debugging data attached.");
+  RE_LOG(Log, "Compiling shaders in the debug mode.");
   system(RE_PATH_SHDRC);
 }
 
