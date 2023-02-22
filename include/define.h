@@ -1,8 +1,5 @@
 #pragma once
 
-// define input codes
-#include "define_input.h"
-
 // global library definitions
 #define GLFW_INCLUDE_VULKAN
 #define GLM_FORCE_RADIANS
