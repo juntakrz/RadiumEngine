@@ -1,5 +1,8 @@
 #pragma once
 
+// define input codes
+#include "define_input.h"
+
 // global library definitions
 #define GLFW_INCLUDE_VULKAN
 #define GLM_FORCE_RADIANS
@@ -47,6 +50,7 @@ constexpr char Critical =   RE_CRITICAL;
 
 // naming conventions
 /*
+* Exxx    - enum
 *	Txxx		- type definition
 *	Mxxx		- manager class, is a singleton and must be called using get() method
 *	Rxxx		- renderer related class object (e.g. Vulkan API-based data structures)

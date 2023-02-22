@@ -265,6 +265,7 @@
     <ClInclude Include="include\core\world\primitives\sphere.h" />
     <ClInclude Include="include\core\world\primitives\triangleindex.h" />
     <ClInclude Include="include\define.h" />
+    <ClInclude Include="include\define_input.h" />
     <ClInclude Include="include\pch.h" />
     <ClInclude Include="include\config.h" />
     <ClInclude Include="include\define_t.h" />

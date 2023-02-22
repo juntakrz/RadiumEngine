@@ -5,5 +5,15 @@
     "vsync" : false,
     "loadMap" : "default",
     "devMode" : false
+  },
+  "keyboard" : {
+	"moveForward" : "W",
+	"moveBack" : "S",
+	"moveLeft" : "A",
+	"moveRight" : "D",
+	"moveUp" : "Shift",
+	"moveDown" : "Ctrl",
+	"mouseMode" : "Space",
+	"devKey" : "F1"
   }
 }
