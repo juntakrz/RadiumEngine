@@ -6,6 +6,7 @@
 // linked libraries
 #pragma comment(lib, "glfw3.lib")
 #pragma comment(lib, "vulkan-1.lib")
+#pragma comment(lib, "ktx_read.lib")
 
 // standard library headers
 #include <algorithm>
@@ -39,14 +40,20 @@
 // Vulkan API related headers
 #include <GLFW/glfw3.h>
 #include <GLM/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
+#include <GLM/gtc/matrix_transform.hpp>
+#include <GLM/gtx/rotate_vector.hpp>
+#include <GLM/gtx/quaternion.hpp>
+#include <GLM/gtc/quaternion.hpp>
+#include <GLM/gtc/type_ptr.hpp>
+#include <GLM/gtx/euler_angles.hpp>
+#include <ktxvulkan.h>
 
 // external engine modules
-#include <json/json.hpp>
+#include <json.hpp>
 
 /* comments:
 * 
-* relies on Visual C++ 17 2022 redistributable package
+* relies on Visual C++ 20 2022 redistributable package
 * glfw3.lib - GLFW 3.3.8 built for Visual Studio 17 2022 v143 using 10.0.19041 SDK and /MD
 * 
 */

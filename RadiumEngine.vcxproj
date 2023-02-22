@@ -116,7 +116,7 @@
       <ConformanceMode>true</ConformanceMode>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -134,7 +134,7 @@
       <ConformanceMode>true</ConformanceMode>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -154,52 +154,70 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mdebug.cpp">
+    <ClCompile Include="src\core\managers\debug.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mrenderer.cpp">
+    <ClCompile Include="src\core\managers\input_table.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\core\managers\materials.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\core\managers\materials_texture.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\core\managers\player.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\core\managers\renderer.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mrenderer_logicaldevice.cpp">
+    <ClCompile Include="src\core\managers\renderer_logicaldevice.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mrenderer_physicaldevice.cpp">
+    <ClCompile Include="src\core\managers\renderer_physicaldevice.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mrenderer_rendering.cpp">
+    <ClCompile Include="src\core\managers\renderer_rendering.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mrenderer_swapchain.cpp">
+    <ClCompile Include="src\core\managers\renderer_swapchain.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mrenderer_util.cpp">
+    <ClCompile Include="src\core\managers\renderer_util.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core\managers\minput.cpp">
+    <ClCompile Include="src\core\managers\input.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mactors.cpp">
+    <ClCompile Include="src\core\managers\actors.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mref.cpp" />
-    <ClCompile Include="src\core\managers\mscript.cpp">
+    <ClCompile Include="src\core\managers\ref.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\core\managers\script.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mtime.cpp">
+    <ClCompile Include="src\core\managers\time.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mwindow.cpp">
+    <ClCompile Include="src\core\managers\window.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\core\managers\world.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
@@ -208,21 +226,35 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\core\vk_mem_alloc.cpp" />
-    <ClCompile Include="src\core\world\actors\abase.cpp">
+    <ClCompile Include="src\core\world\actors\base.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core\world\actors\acamera.cpp">
+    <ClCompile Include="src\core\world\actors\camera.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core\world\mesh\mesh.cpp">
+    <ClCompile Include="src\core\world\actors\pawn.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core\world\mesh\mesh_plane.cpp">
+    <ClCompile Include="src\core\world\model\primitive.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\core\world\model\primitive_custom.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\core\world\model\primitive_plane.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\core\world\model\model.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\core\world\model\primitive_sphere.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -240,41 +272,56 @@
   <ItemGroup>
     <ClInclude Include="include\core\core.h" />
     <ClInclude Include="include\core\managers\common.h" />
-    <ClInclude Include="include\core\managers\mdebug.h" />
-    <ClInclude Include="include\core\managers\mrenderer.h" />
-    <ClInclude Include="include\core\managers\minput.h" />
-    <ClInclude Include="include\core\managers\mactors.h" />
-    <ClInclude Include="include\core\managers\mref.h" />
-    <ClInclude Include="include\core\managers\mscript.h" />
-    <ClInclude Include="include\core\managers\mtime.h" />
-    <ClInclude Include="include\core\managers\mwindow.h" />
-    <ClInclude Include="include\core\world\actors\abase.h" />
-    <ClInclude Include="include\core\world\mesh\mesh_include.h" />
+    <ClInclude Include="include\core\managers\debug.h" />
+    <ClInclude Include="include\core\managers\materials.h" />
+    <ClInclude Include="include\core\managers\player.h" />
+    <ClInclude Include="include\core\managers\renderer.h" />
+    <ClInclude Include="include\core\managers\input.h" />
+    <ClInclude Include="include\core\managers\actors.h" />
+    <ClInclude Include="include\core\managers\ref.h" />
+    <ClInclude Include="include\core\managers\script.h" />
+    <ClInclude Include="include\core\managers\time.h" />
+    <ClInclude Include="include\core\managers\window.h" />
+    <ClInclude Include="include\core\managers\world.h" />
+    <ClInclude Include="include\core\world\actors\base.h" />
+    <ClInclude Include="include\core\world\actors\pawn.h" />
     <ClInclude Include="include\core\objects.h" />
-    <ClInclude Include="include\core\world\mesh\mesh_plane.h" />
-    <ClInclude Include="include\core\world\mesh\mesh.h" />
-    <ClInclude Include="include\core\world\primitives\cube.h" />
-    <ClInclude Include="include\core\world\primitives\plane.h" />
-    <ClInclude Include="include\core\world\primitives\primitives_include.h" />
-    <ClInclude Include="include\core\world\primitives\sphere.h" />
-    <ClInclude Include="include\core\world\primitives\triangleindex.h" />
+    <ClInclude Include="include\core\world\model\primitive_custom.h" />
+    <ClInclude Include="include\core\world\model\primitive_plane.h" />
+    <ClInclude Include="include\core\world\model\primitive.h" />
+    <ClInclude Include="include\core\world\model\model.h" />
+    <ClInclude Include="include\core\world\model\primitive_sphere.h" />
+    <ClInclude Include="include\core\world\primitivegen\cube.h" />
+    <ClInclude Include="include\core\world\primitivegen\plane.h" />
+    <ClInclude Include="include\core\world\primitivegen\primitivegen_include.h" />
+    <ClInclude Include="include\core\world\primitivegen\sphere.h" />
+    <ClInclude Include="include\core\world\primitivegen\primitivedata.h" />
     <ClInclude Include="include\define.h" />
+    <ClInclude Include="include\define_input.h" />
     <ClInclude Include="include\pch.h" />
     <ClInclude Include="include\config.h" />
     <ClInclude Include="include\define_t.h" />
     <ClInclude Include="include\util\math.h" />
     <ClInclude Include="include\util\util.h" />
+    <ClInclude Include="lib\include\tinygltf\tiny_gltf.h" />
     <ClInclude Include="lib\include\vk_mem_alloc.h" />
-    <ClInclude Include="include\core\world\actors\acamera.h" />
+    <ClInclude Include="include\core\world\actors\camera.h" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="lib\glfw3.lib" />
+    <Library Include="lib\ktx_read.lib" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".gitattributes" />
     <None Include=".gitignore" />
-    <None Include="compileShaders_Win_x64.bat" />
     <None Include="config\config.json" />
+    <None Include="content\maps\default.map\cameras.json" />
+    <None Include="content\maps\default.map\camerasNext.json" />
+    <None Include="content\maps\default.map\commands.json" />
+    <None Include="content\maps\default.map\init.json" />
+    <None Include="content\maps\default.map\lights.json" />
+    <None Include="content\maps\default.map\materials.json" />
+    <None Include="content\maps\default.map\objects.json" />
     <None Include="content\shaders\default.frag" />
     <None Include="content\shaders\default.vert" />
     <None Include="content\shaders\fs_default.spv" />
@@ -282,6 +329,8 @@
     <None Include="content\shaders\vs_default.spv" />
     <None Include="content_src\shaders\fs_default.frag" />
     <None Include="content_src\shaders\vs_default.vert" />
+    <None Include="development\compileShaders_Win_x64_DEBUG.bat" />
+    <None Include="development\devconfig.json" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
