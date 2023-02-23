@@ -57,6 +57,8 @@ void core::stop(TResult cause) {
     RE_LOG(Log, "Shutting down on call.");
 
     core::destroy();
+
+    RE_LOG(Log, "Exiting program normally.");
   }
   else {
     RE_LOG(
@@ -128,6 +130,26 @@ void core::loadCoreConfig(const wchar_t* path) {
     }
 
     --requirements;
+  }
+
+  RE_LOG(Log, "Parsing input bindings.");
+
+  if (data->contains("keyboard")) {
+    const auto& keySet = data->at("keyboard");
+    
+    for (const auto& it : keySet.items()) {
+      std::string bindInput;
+      it.value().get_to(bindInput);
+      core::input.setInputBinding(it.key(), bindInput);
+    }
+  }
+
+  if (data->contains("mouse")) {
+    const auto& mouseSet = data->at("mouse");
+
+    for (const auto& it : mouseSet.items()) {
+      // read mouse axes here
+    }
   }
 
   if (!requirements) {

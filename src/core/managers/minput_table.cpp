@@ -4,7 +4,7 @@
 void core::MInput::setDefaultInputs() {
   RE_LOG(Log, "Setting up default input bindings and data.");
 
-  // input pairs
+  // default input bindings
   m_inputBinds["moveForward"] = GLFW_KEY_W;
   m_inputBinds["moveBack"] = GLFW_KEY_S;
   m_inputBinds["moveLeft"] = GLFW_KEY_A;
@@ -85,6 +85,7 @@ void core::MInput::setDefaultInputs() {
   m_inputAliases["CapsLock"] = GLFW_KEY_CAPS_LOCK;
   m_inputAliases["LShift"] = GLFW_KEY_LEFT_SHIFT;
   m_inputAliases["LCtrl"] = GLFW_KEY_LEFT_CONTROL;
+  m_inputAliases["Space"] = GLFW_KEY_SPACE;
   m_inputAliases["Backspace"] = GLFW_KEY_BACKSPACE;
   m_inputAliases["Enter"] = GLFW_KEY_ENTER;
   m_inputAliases["RShift"] = GLFW_KEY_RIGHT_SHIFT;
@@ -113,4 +114,12 @@ void core::MInput::setDefaultInputs() {
   m_inputAliases["Num8"] = GLFW_KEY_KP_8;
   m_inputAliases["Num9"] = GLFW_KEY_KP_9;
   m_inputAliases["Num0"] = GLFW_KEY_KP_0;
+
+  m_inputAliases["NumAdd"] = GLFW_KEY_KP_ADD;
+  m_inputAliases["NumDecimal"] = GLFW_KEY_KP_DECIMAL;
+  m_inputAliases["NumDivide"] = GLFW_KEY_KP_DIVIDE;
+  m_inputAliases["NumEnter"] = GLFW_KEY_KP_ENTER;
+  m_inputAliases["NumEqual"] = GLFW_KEY_KP_EQUAL;
+  m_inputAliases["NumMultiply"] = GLFW_KEY_KP_MULTIPLY;
+  m_inputAliases["NumSubtract"] = GLFW_KEY_KP_SUBTRACT;
 }

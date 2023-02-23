@@ -14,12 +14,13 @@ namespace core {
       bool bEnabled = false;
       std::string path = "";
       bool bEnableOverlay = true;
+      HMODULE hRenderDocModule = NULL;
       RENDERDOC_API_1_6_0* pAPI = nullptr;
     } m_renderdoc;
 #endif
 
     MDebug();
-    ~MDebug() {};
+    ~MDebug();
 
   public:
     static MDebug& get() {

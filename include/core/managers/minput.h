@@ -39,7 +39,7 @@ namespace core {
 
   TResult initialize(GLFWwindow* window);
 
-  void addInputBinding(std::string name, std::string key);
+  void setInputBinding(std::string name, std::string key);
 
   template <typename C>
   void bindFunction(int key, int action, C* owner, void (C::*function)()) {

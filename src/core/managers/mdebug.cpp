@@ -15,6 +15,15 @@ core::MDebug::MDebug() {
   m_debugCreateInfo.pfnUserCallback = callback;
 }
 
+core::MDebug::~MDebug() {
+  #ifndef NDEBUG
+  if (m_renderdoc.hRenderDocModule != NULL) {
+    RE_LOG(Log, "Freeing RenderDoc module.");
+    FreeLibrary(m_renderdoc.hRenderDocModule);
+  }
+  #endif
+}
+
 TResult core::MDebug::create(VkInstance instance, VkAllocationCallbacks* pAllocator,
                     VkDebugUtilsMessengerCreateInfoEXT* pUserData) {
   if (!bRequireValidationLayers) return RE_OK;
@@ -56,9 +65,9 @@ void core::MDebug::initializeRenderDoc() {
       return;
   }
 
-  HMODULE renderDocModule = LoadLibraryA(m_renderdoc.path.c_str());
+  m_renderdoc.hRenderDocModule = LoadLibraryA(m_renderdoc.path.c_str());
 
-  if (renderDocModule == NULL) {
+  if (m_renderdoc.hRenderDocModule == NULL) {
       DWORD lastError = GetLastError();
       RE_LOG(Error,
              "Failed to get handle for 'renderdoc.dll'. WinAPI error code: %u, "
@@ -67,8 +76,8 @@ void core::MDebug::initializeRenderDoc() {
       return;
   }
 
-  pRENDERDOC_GetAPI getAPI =
-      (pRENDERDOC_GetAPI)GetProcAddress(renderDocModule, "RENDERDOC_GetAPI");
+  pRENDERDOC_GetAPI getAPI = (pRENDERDOC_GetAPI)GetProcAddress(
+      m_renderdoc.hRenderDocModule, "RENDERDOC_GetAPI");
 
   if (getAPI == nullptr) {
       RE_LOG(Error,

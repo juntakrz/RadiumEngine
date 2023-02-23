@@ -2,14 +2,15 @@
 #include "core/managers/minput.h"
 #include "util/util.h"
 
-core::MInput::MInput() { RE_LOG(Log, "Creating input manager."); }
+core::MInput::MInput() {
+  RE_LOG(Log, "Creating input manager.");
+  setDefaultInputs();
+}
 
 TResult core::MInput::initialize(GLFWwindow* window) {
   TResult chkResult = RE_OK;
 
   glfwSetKeyCallback(window, keyEventCallback);
-
-  setDefaultInputs();
 
   bindFunction(KEY("devKey"), GLFW_PRESS, this, &MInput::actPressTest);
   bindFunction(KEY("devKey"), GLFW_RELEASE, this, &MInput::actReleaseTest);
@@ -17,7 +18,7 @@ TResult core::MInput::initialize(GLFWwindow* window) {
   return chkResult;
 }
 
-void core::MInput::addInputBinding(std::string name, std::string key) {
+void core::MInput::setInputBinding(std::string name, std::string key) {
   if (m_inputAliases.find(key) != m_inputAliases.end()) {
     m_inputBinds[name] = m_inputAliases[key];
 
@@ -25,7 +26,7 @@ void core::MInput::addInputBinding(std::string name, std::string key) {
   }
 
   RE_LOG(Error, "%s: key id for '%s' was not resolved, won't bind to '%s'.",
-         __FUNCTION__, key, name);
+         __FUNCTION__, key.c_str(), name.c_str());
 }
 
 TInputFuncs& core::MInput::binds() { return get().m_inputFuncs; }

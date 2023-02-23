@@ -6,14 +6,17 @@
     "loadMap" : "default",
     "devMode" : false
   },
+  "graphics" : {
+	"viewDistance" : 1000.0
+  },
   "keyboard" : {
 	"moveForward" : "W",
 	"moveBack" : "S",
 	"moveLeft" : "A",
 	"moveRight" : "D",
-	"moveUp" : "Shift",
-	"moveDown" : "Ctrl",
+	"moveUp" : "LShift",
+	"moveDown" : "LCtrl",
 	"mouseMode" : "Space",
-	"devKey" : "F1"
+	"devKey" : "`"
   }
 }

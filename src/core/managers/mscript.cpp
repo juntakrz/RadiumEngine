@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "core/managers/mscript.h"
-#include "core/managers/MRenderer.h"
+#include "core/managers/mrenderer.h"
+#include "core/managers/mactors.h"
 #include "core/managers/mref.h"
 #include "core/core.h"
 #include "util/util.h"
@@ -99,7 +100,7 @@ void core::MScript::jsonParseCameras(const json* cameraData) noexcept {
       float rotation[3] = {0.0f, 0.0f, 0.0f};
       float upVector[3] = {0.0f, 0.0f, 0.0f};
 
-      ACamera* newCamera = core::renderer.createCamera(name.c_str(), nullptr);
+      ACamera* newCamera = core::actors.createCamera(name.c_str(), nullptr);
 
       // set camera position
       if (it.contains("position")) {

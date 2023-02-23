@@ -12,7 +12,10 @@ extern const char* appTitle;
 extern const char* engineTitle;
 extern uint32_t renderWidth;
 extern uint32_t renderHeight;
+extern float viewDistance;                      // aka FarZ
 extern bool bDevMode;
+
+float getAspectRatio();
 };  // namespace config
 
 namespace core {

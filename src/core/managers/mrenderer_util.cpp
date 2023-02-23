@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "vk_mem_alloc.h"
-#include "core/managers/MRenderer.h"
+#include "core/core.h"
+#include "core/managers/mrenderer.h"
+#include "core/managers/mactors.h"
 #include "core/world/actors/acamera.h"
 
 TResult core::MRenderer::createBuffer(EBCMode mode, VkDeviceSize size, RBuffer& outBuffer, void* inData)
@@ -282,58 +284,20 @@ TResult core::MRenderer::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
   return RE_OK;
 }
 
-ACamera* core::MRenderer::createCamera(const char* name,
-                                 RCameraSettings* cameraSettings) {
-  if (cameras.try_emplace(name).second) {
-    cameras.at(name) = std::make_unique<ACamera>();
-
-    if (cameraSettings) {
-      cameras.at(name)->setPerspective(
-          cameraSettings->FOV, cameraSettings->aspectRatio,
-          cameraSettings->nearZ, cameraSettings->farZ);
-    } else {
-      cameras.at(name)->setPerspective(
-          view.cameraSettings.FOV, view.cameraSettings.aspectRatio,
-          view.cameraSettings.nearZ, view.cameraSettings.farZ);
-    }
-
-    RE_LOG(Log, "Created camera '%s'.", name);
-    return cameras.at(name).get();
-  }
-
-  RE_LOG(Error,
-         "Failed to create camera '%s'. Probably already exists. Attempting to "
-         "find it.", name);
-  return getCamera(name);
-}
-
-ACamera* core::MRenderer::getCamera(const char* name) {
-  if (cameras.find(name) != cameras.end()) {
-    return cameras.at(name).get();
-  }
-
-  return nullptr;
-}
-
 void core::MRenderer::setCamera(const char* name) {
-  if (bRequireValidationLayers) {
-    if (cameras.find(name) == cameras.end()) {
-      RE_LOG(Error, "Failed to set camera '%s'. Camera not found.", name);
-      return;
-    }
+  if (ACamera* pCamera = core::actors.getCamera(name)) {
+    view.pActiveCamera = pCamera;
+    return;
   }
 
-  view.pActiveCamera = cameras.at(name).get();
+  RE_LOG(Error, "Failed to set camera '%s' - not found.", name);
 }
 
-void core::MRenderer::setCamera(ACamera* pCamera) { view.pActiveCamera = pCamera; }
-
-TResult core::MRenderer::destroyCamera(const char* name) {
-  if (cameras.find(name) != cameras.end()) {
-    cameras.erase(name);
-    return RE_OK;
+void core::MRenderer::setCamera(ACamera* pCamera) {
+  if (pCamera != nullptr) {
+    view.pActiveCamera = pCamera;
+    return;
   }
 
-  RE_LOG(Error, "Failed to delete '%s' camera. Not found.", name);
-  return RE_ERROR;
+  RE_LOG(Error, "Failed to set camera, received nullptr.");
 }

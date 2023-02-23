@@ -61,8 +61,6 @@ namespace core {
       RSModelViewProjection modelViewProjectionData;
     } view;
 
-    std::unordered_map<std::string, std::unique_ptr<ACamera>> cameras;
-
   public:
     VkInstance APIInstance = VK_NULL_HANDLE;
     VkSwapchainKHR swapChain = VK_NULL_HANDLE;
@@ -145,10 +143,6 @@ namespace core {
       VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
     TResult copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
       VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
-
-    ACamera* createCamera(const char* name, RCameraSettings* cameraSettings);
-    TResult destroyCamera(const char* name);
-    ACamera* getCamera(const char* name);
 
     // set camera from create cameras by name
     void setCamera(const char* name);

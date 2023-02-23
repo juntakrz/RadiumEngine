@@ -32,6 +32,7 @@ constexpr bool bRequireValidationLayers = true;
 #define RE_PATH_TEXTURES    TEXT("content/textures/")
 #define RE_PATH_SHDRC       "development\\compileShaders_Win_x64_DEBUG.bat"
 #define RE_MAXTEXTURES      6
+#define RE_NEARZ            0.01f
 
 // error levels
 #define RE_OK					      0x00		   // success
