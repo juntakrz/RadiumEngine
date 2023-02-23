@@ -32,6 +32,9 @@ class ABase {
 
   } transform;
 
+  float translationSpeed = 1.0f;
+  float rotationSpeed = 1.0f;
+
  public:
   std::string m_name;
   glm::mat4 m_matMain = glm::mat4(1.0f);

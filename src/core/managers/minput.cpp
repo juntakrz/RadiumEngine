@@ -7,13 +7,22 @@ core::MInput::MInput() {
   setDefaultInputs();
 }
 
+uint32_t core::MInput::bindingToKey(const char* bindingName) { 
+  if (m_inputBinds.find(bindingName) != m_inputBinds.end()) {
+    return m_inputBinds.at(bindingName);
+  }
+
+  RE_LOG(Error, "Failed to find binding '%s'.", bindingName);
+  return -1;
+}
+
 TResult core::MInput::initialize(GLFWwindow* window) {
   TResult chkResult = RE_OK;
 
   glfwSetKeyCallback(window, keyEventCallback);
 
-  bindFunction(KEY("devKey"), GLFW_PRESS, this, &MInput::actPressTest);
-  bindFunction(KEY("devKey"), GLFW_RELEASE, this, &MInput::actReleaseTest);
+  bindFunction(GETKEY("devKey"), GLFW_PRESS, this, &MInput::actPressTest);
+  bindFunction(GETKEY("devKey"), GLFW_RELEASE, this, &MInput::actReleaseTest);
 
   return chkResult;
 }
@@ -33,7 +42,7 @@ TInputFuncs& core::MInput::binds() { return get().m_inputFuncs; }
 
 void core::MInput::keyEventCallback(GLFWwindow* window, int key, int scancode,
                               int action, int mods) {
-  using func = void (*)();
+  //using func = void (*)();
 
   if (binds().find(key) != binds().end()) {
     auto& keyBind = binds()[key];

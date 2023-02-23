@@ -2,7 +2,7 @@
 
 #include "common.h"
 
-#define KEY(x) m_inputBinds.at(x)
+#define GETKEY(x) core::MInput::get().bindingToKey(x)
 
 // stores function calls for a given input
 typedef std::unordered_map<int, std::unordered_map<int, TFuncPtr>>
@@ -16,7 +16,7 @@ typedef std::unordered_map<std::string, uint32_t> TInputBinds;
 
 namespace core {
 
-  class MInput {
+class MInput {
  private:
   TInputFuncs m_inputFuncs;
   TInputAliases m_inputAliases;
@@ -24,6 +24,9 @@ namespace core {
 
  private:
   MInput();
+
+  void actPressTest();
+  void actReleaseTest();
 
   // set up default inputs always used by the engine
   void setDefaultInputs();
@@ -39,6 +42,8 @@ namespace core {
 
   TResult initialize(GLFWwindow* window);
 
+  uint32_t bindingToKey(const char* bindingName);
+
   void setInputBinding(std::string name, std::string key);
 
   template <typename C>
@@ -47,20 +52,9 @@ namespace core {
     keyBind[action] = std::make_unique<OFuncPtr<C>>(owner, function);
   }
 
-  template <typename C>
-  void bindFunction(const char* actionName, int action, C* owner,
-                    void (C::*function)()) {
-    // looks up a key code from the std::unordered_map<std::string, int>
-    // by 'actionName' and calls key code based bindFunction with it
-    // can be useful for separately configured named key actions
-  }
-
   static TInputFuncs& binds();
 
   static void keyEventCallback(GLFWwindow* window, int key, int scancode,
                                int action, int mods);
-
-  void actPressTest();
-  void actReleaseTest();
 };
-}
+}  // namespace core
