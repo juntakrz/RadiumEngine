@@ -112,7 +112,7 @@ void core::MScript::jsonParseCameras(const json* cameraData) noexcept {
       }
 
       if (it.contains("upVector")) {
-        it.at("rotation").get_to(upVector);
+        it.at("upVector").get_to(upVector);
       }
 
       newCamera->setPos({pos[0], pos[1], pos[2]});

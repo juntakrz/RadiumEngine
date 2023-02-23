@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "core/world/actors/abase.h"
+#include "core/world/actors/acamera.h"
 #include "util/math.h"
+#include "util/util.h"
 
 glm::mat4& ABase::GetTransform() noexcept { return m_matMain; }
 
@@ -21,11 +23,11 @@ void ABase::setPos(const glm::vec3& pos) noexcept {
 
 glm::vec3& ABase::getPos() noexcept { return transform.translation; }
 
-void ABase::addPos(float x, float y, float z) noexcept {
+void ABase::translate(float x, float y, float z) noexcept {
   transform.translation += glm::vec3(x, y, z);
 }
 
-void ABase::addPos(const glm::vec3& delta) noexcept {
+void ABase::translate(const glm::vec3& delta) noexcept {
   transform.translation += delta;
 }
 
@@ -41,11 +43,11 @@ void ABase::setRotation(const glm::vec3& rotation) noexcept {
 
 glm::vec3& ABase::getRotation() noexcept { return transform.rotation; }
 
-void ABase::addRotation(float x, float y, float z) noexcept {
+void ABase::rotate(float x, float y, float z) noexcept {
   math::wrapAnglesGLM(transform.rotation += glm::vec3(x, y, z));
 }
 
-void ABase::addRotation(const glm::vec3& delta) noexcept {
+void ABase::rotate(const glm::vec3& delta) noexcept {
   math::wrapAnglesGLM(transform.rotation += delta);
 }
 
@@ -61,12 +63,12 @@ void ABase::setScale(const glm::vec3& scale) noexcept {
 
 glm::vec3& ABase::getScale() noexcept { return transform.scaling; }
 
-void ABase::addScale(float x, float y, float z) noexcept {
+void ABase::scale(float x, float y, float z) noexcept {
   transform.scaling *= glm::vec3(x, y, z);
 }
 
-void ABase::addScale(const glm::vec3& delta) noexcept {
+void ABase::scale(const glm::vec3& delta) noexcept {
   transform.scaling *= delta;
 }
 
-uint8_t ABase::TypeId() { return 0; }
+const uint32_t ABase::typeId() { return m_typeId; }

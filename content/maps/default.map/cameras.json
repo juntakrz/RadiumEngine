@@ -3,7 +3,7 @@
 
     "camMain": {
       "name": "camMain",
-      "position": [ -1.4, 0.3, 1.0 ],
+      "position": [ 0.0, 0.0, -2.0 ],
       "rotation": [ 0.0, 0.0, 0.0 ],
 	  "upVector": [ 0.0, 1.0, 0.0 ]
     },

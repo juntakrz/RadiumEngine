@@ -6,12 +6,17 @@
  * inheriting classes
  */
 
-class ABase {
- public:
-  std::string m_name;
-  glm::mat4 m_matMain = glm::mat4(1.0f);
+enum EActorType {
+  Base,
+  Camera
+};
 
+class ACamera;
+
+class ABase {
  protected:
+  EActorType m_typeId = EActorType::Base;
+
   struct TransformData {
     // data used in actual transformation calculations
     glm::vec3 translation = {0.0f, 0.0f, 0.0f};
@@ -27,12 +32,22 @@ class ABase {
 
   } transform;
 
+ public:
+  std::string m_name;
+  glm::mat4 m_matMain = glm::mat4(1.0f);
+
  protected:
   ABase(){};
   virtual ~ABase(){};
 
  public:
- 
+  // try to get this actor as its real subclass
+  // example: ACamera* camera = actor.getAs<ACamera>();
+  template <typename T>
+  T* getAs() noexcept {
+    return dynamic_cast<T*>(this);
+  };
+
   // returns matrix with all transformations applied
   virtual glm::mat4& GetTransform() noexcept;
 
@@ -43,22 +58,22 @@ class ABase {
   void setPos(const glm::vec3& pos) noexcept;
   glm::vec3& getPos() noexcept;
 
-  void addPos(float x = 0.0f, float y = 0.0f, float z = 0.0f) noexcept;
-  void addPos(const glm::vec3& delta) noexcept;
+  void translate(float x = 0.0f, float y = 0.0f, float z = 0.0f) noexcept;
+  void translate(const glm::vec3& delta) noexcept;
 
   void setRotation(float x = 0.0f, float y = 0.0f, float z = 0.0f) noexcept;
   void setRotation(const glm::vec3& rotation) noexcept;
   glm::vec3& getRotation() noexcept;
 
-  void addRotation(float x = 0.0f, float y = 0.0f, float z = 0.0f) noexcept;
-  void addRotation(const glm::vec3& delta) noexcept;
+  void rotate(float x = 0.0f, float y = 0.0f, float z = 0.0f) noexcept;
+  void rotate(const glm::vec3& delta) noexcept;
 
   void setScale(float x, float y, float z) noexcept;
   void setScale(const glm::vec3& scale) noexcept;
   glm::vec3& getScale() noexcept;
 
-  void addScale(float x = 1.0f, float y = 1.0f, float z = 1.0f) noexcept;
-  void addScale(const glm::vec3& delta) noexcept;
+  void scale(float x = 1.0f, float y = 1.0f, float z = 1.0f) noexcept;
+  void scale(const glm::vec3& delta) noexcept;
 
-  uint8_t TypeId();
+  const uint32_t typeId();
 };

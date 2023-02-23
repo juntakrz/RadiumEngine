@@ -7,7 +7,8 @@
     "devMode" : false
   },
   "graphics" : {
-	"viewDistance" : 1000.0
+	"viewDistance" : 1000.0,
+	"FOV" : 90.0
   },
   "keyboard" : {
 	"moveForward" : "W",

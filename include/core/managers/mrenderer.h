@@ -121,7 +121,7 @@ namespace core {
     RSModelViewProjection* getMVPview();
 
     // creates MVP matrices using currently active camera and model transform
-    RSModelViewProjection* updateMVP(glm::mat4* pTransform);
+    RSModelViewProjection* updateModelViewProjection(glm::mat4* pTransform);
 
   private:
     TResult checkInstanceValidationLayers();

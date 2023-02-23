@@ -115,8 +115,11 @@ void core::loadCoreConfig(const wchar_t* path) {
 
   json* data = core::script.jsonLoad(path, cfgName);
 
+  RE_LOG(Log, "Reading base application settings.");
+
   if (data->contains("core")) {
     const auto& coreData = data->at("core");
+
     if (coreData.contains("resolution")) {
       coreData.at("resolution").get_to(resolution);
       config::renderWidth = resolution[0];
@@ -130,6 +133,20 @@ void core::loadCoreConfig(const wchar_t* path) {
     }
 
     --requirements;
+  }
+
+  RE_LOG(Log, "Applying graphics settings.");
+
+  if (data->contains("graphics")) {
+    const auto& graphicsData = data->at("graphics");
+
+    if (graphicsData.contains("viewDistance")) {
+      graphicsData.at("viewDistance").get_to(config::viewDistance);
+    }
+
+    if (graphicsData.contains("FOV")) {
+      graphicsData.at("FOV").get_to(config::FOV);
+    }
   }
 
   RE_LOG(Log, "Parsing input bindings.");

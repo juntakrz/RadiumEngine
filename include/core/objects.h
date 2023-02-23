@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vk_mem_alloc.h"
+#include "config.h"
 
 enum class EBCMode {  // VkBuffer creation mode
   CPU_UNIFORM = 0,    // create uniform buffer for GPU programs
@@ -71,10 +72,10 @@ struct RVertex {
 };
 
 struct RCameraSettings {
-  float aspectRatio = 16.0f / 9.0f;
-  float FOV = 90.0f;
-  float nearZ = 0.1f;
-  float farZ = 1000.0f;
+  float aspectRatio = config::getAspectRatio();
+  float FOV = config::FOV;
+  float nearZ = RE_NEARZ;
+  float farZ = config::viewDistance;
 };
 
 struct WMeshData {

@@ -330,18 +330,8 @@ void core::MRenderer::updateModelViewProjectionBuffers(uint32_t currentImage) {
   view.modelViewProjectionData.model =
       glm::rotate(t, glm::mod(time * glm::radians(90.0f), glm::two_pi<float>()), glm::vec3(0.0f, 0.3f, 1.0f));
 
-  glm::vec3 camPos = {-1.0f, 1.0f, -4.0f};
-  glm::vec3 targetPos = {0.0f, 0.0f, 0.1f};
-
-  view.modelViewProjectionData.view =
-      glm::lookAt(camPos, camPos + targetPos, glm::vec3(0.0f, 1.0f, 0.0f));
-  //view.modelViewProjectionData.projection = view.pActiveCamera->projection();
-  view.modelViewProjectionData.projection = glm::perspective(
-      glm::radians(75.0f),
-      swapchain.imageExtent.width / (float)swapchain.imageExtent.height, 0.001f, 10000.0f);
-
-  // OpenGL/GLM Y coordinate has to be inverted for Vulkan
-  //view.modelViewProjectionData.projection[1][1] *= -1.0f;
+  view.modelViewProjectionData.view = view.pActiveCamera->getView();
+  view.modelViewProjectionData.projection = view.pActiveCamera->getProjection();
 
   memcpy(view.modelViewProjectionBuffers[currentImage].allocInfo.pMappedData,
          &view.modelViewProjectionData, sizeof(RSModelViewProjection));
@@ -351,9 +341,9 @@ RSModelViewProjection* core::MRenderer::getMVPview() {
   return &view.modelViewProjectionData;
 }
 
-RSModelViewProjection* core::MRenderer::updateMVP(glm::mat4* pTransform) {
-  view.modelViewProjectionData = {glm::mat4(1.0f), view.pActiveCamera->view(),
-          view.pActiveCamera->projection()};
+RSModelViewProjection* core::MRenderer::updateModelViewProjection(glm::mat4* pTransform) {
+  view.modelViewProjectionData = {glm::mat4(1.0f), view.pActiveCamera->getView(),
+          view.pActiveCamera->getProjection()};
 
   return &view.modelViewProjectionData;
 }

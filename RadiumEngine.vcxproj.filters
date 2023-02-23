@@ -199,12 +199,20 @@
     <None Include="content\shaders\default.frag" />
     <None Include="content_src\shaders\fs_default.frag" />
     <None Include="content_src\shaders\vs_default.vert" />
-    <None Include="compileShaders_Win_x64.bat">
-      <Filter>Source Files</Filter>
-    </None>
     <None Include="config\config.json" />
     <None Include="content\shaders\fs_default.spv" />
     <None Include="content\shaders\shaders" />
     <None Include="content\shaders\vs_default.spv" />
+    <None Include="content\maps\default.map\cameras.json" />
+    <None Include="content\maps\default.map\camerasNext.json" />
+    <None Include="content\maps\default.map\commands.json" />
+    <None Include="content\maps\default.map\init.json" />
+    <None Include="content\maps\default.map\lights.json" />
+    <None Include="content\maps\default.map\materials.json" />
+    <None Include="content\maps\default.map\objects.json" />
+    <None Include="development\devconfig.json" />
+    <None Include="development\compileShaders_Win_x64_DEBUG.bat">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

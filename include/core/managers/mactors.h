@@ -24,9 +24,13 @@ namespace core {
   MActors(const MActors&) = delete;
   MActors& operator=(const MActors&) = delete;
 
+  // CAMERA
+
   ACamera* createCamera(const char* name, RCameraSettings* cameraSettings = nullptr);
   TResult destroyCamera(const char* name);
   ACamera* getCamera(const char* name);
+
+  // MESH
 
   TResult createMesh();
   TResult destroyMesh(uint32_t index);
