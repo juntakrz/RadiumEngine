@@ -1,9 +1,10 @@
 #include "pch.h"
+#include "core/core.h"
 #include "core/managers/mscript.h"
 #include "core/managers/mrenderer.h"
 #include "core/managers/mactors.h"
+#include "core/managers/mplayer.h"
 #include "core/managers/mref.h"
-#include "core/core.h"
 #include "util/util.h"
 
 using json = nlohmann::json;
@@ -143,7 +144,12 @@ void core::MScript::jsonParseCameras(const json* cameraData) noexcept {
     }
   }
 
-  if (activatedCamera != "") core::renderer.setCamera(activatedCamera.c_str());
+  if (activatedCamera != "") {
+    core::renderer.setCamera(activatedCamera.c_str());
+
+    // TODO: make this a separate thing in a map config
+    core::player.controlActor(core::renderer.getCamera());
+  }
 }
 
 void core::MScript::jsonParseMaterials(const json* materialData) noexcept {}

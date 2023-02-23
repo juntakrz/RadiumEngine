@@ -305,3 +305,5 @@ void core::MRenderer::setCamera(ACamera* pCamera) {
 
   RE_LOG(Error, "Failed to set camera, received nullptr.");
 }
+
+ACamera* core::MRenderer::getCamera() { return view.pActiveCamera; }

@@ -18,9 +18,6 @@ class ACamera : public ABase {
   // processed vectors
   glm::vec3 m_vecPos, m_vecFocus;
 
-  float m_deltaMove = 1.0f;
-  float m_deltaRotation = 0.03f;
-
   glm::mat4 m_view;        // view matrix
   glm::mat4 m_projection;  // projection matrix
 

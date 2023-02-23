@@ -148,6 +148,8 @@ namespace core {
     void setCamera(const char* name);
     void setCamera(ACamera* pCamera);
 
+    ACamera* getCamera();
+
     //
     // MRenderer_physicaldevice
     //

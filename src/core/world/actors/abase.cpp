@@ -4,9 +4,9 @@
 #include "util/math.h"
 #include "util/util.h"
 
-glm::mat4& ABase::GetTransform() noexcept { return m_mainTransformationMatrix; }
+glm::mat4& ABase::getTransform() noexcept { return m_mainTransformationMatrix; }
 
-ABase::TransformData& ABase::GetTransformData() noexcept {
+ABase::TransformData& ABase::getTransformData() noexcept {
   return m_transformData;
 }
 

@@ -53,10 +53,10 @@ class ABase {
   };
 
   // returns matrix with all transformations applied
-  virtual glm::mat4& GetTransform() noexcept;
+  virtual glm::mat4& getTransform() noexcept;
 
   // data set used for transformation calculations
-  virtual TransformData& GetTransformData() noexcept;
+  virtual TransformData& getTransformData() noexcept;
 
   void setPos(float x, float y, float z) noexcept;
   void setPos(const glm::vec3& pos) noexcept;

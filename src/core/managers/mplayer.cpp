@@ -2,6 +2,7 @@
 #include "core/core.h"
 #include "core/managers/minput.h"
 #include "core/managers/mplayer.h"
+#include "core/world/actors/abase.h"
 
 core::MPlayer::MPlayer() {
   RE_LOG(Log, "Created player controller manager.");
@@ -56,25 +57,25 @@ void core::MPlayer::freeActor(ABase* pActor) {
 }
 
 void core::MPlayer::moveForward() {
-  RE_LOG(Log, "%s: Moving forward.", __FUNCTION__);
+  m_pActor->translate(0.0f, 0.0f, 1.0f);
 }
 
 void core::MPlayer::moveBack() {
-  RE_LOG(Log, "%s: Moving back.", __FUNCTION__);
+  m_pActor->translate(0.0f, 0.0f, -1.0f);
 }
 
 void core::MPlayer::moveLeft() {
-  RE_LOG(Log, "%s: Moving left.", __FUNCTION__);
+  m_pActor->translate(-1.0f, 0.0f, 0.0f);
 }
 
 void core::MPlayer::moveRight() {
-  RE_LOG(Log, "%s: Moving right.", __FUNCTION__);
+  m_pActor->translate(1.0f, 0.0f, 0.0f);
 }
 
 void core::MPlayer::moveUp() {
-  RE_LOG(Log, "%s: Moving up.", __FUNCTION__);
+  m_pActor->translate(0.0f, 1.0f, 0.0f);
 }
 
 void core::MPlayer::moveDown() {
-  RE_LOG(Log, "%s: Moving down.", __FUNCTION__);
+  m_pActor->translate(0.0f, -1.0f, 0.0f);
 }
