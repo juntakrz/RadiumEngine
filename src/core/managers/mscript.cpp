@@ -98,7 +98,7 @@ void core::MScript::jsonParseCameras(const json* cameraData) noexcept {
 
       float pos[3] = {0.0f, 0.0f, 0.0f};
       float rotation[3] = {0.0f, 0.0f, 0.0f};
-      float upVector[3] = {0.0f, 0.0f, 0.0f};
+      float upVector[3] = {0.0f, 1.0f, 0.0f};
 
       ACamera* newCamera = core::actors.createCamera(name.c_str(), nullptr);
 
@@ -139,7 +139,7 @@ void core::MScript::jsonParseCameras(const json* cameraData) noexcept {
         }
       }
 
-      core::ref.registerActor(name.c_str(), newCamera, EAType::CAMERA);
+      core::ref.registerActor(name.c_str(), newCamera);
     }
   }
 

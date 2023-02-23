@@ -14,16 +14,11 @@ class MActors {
 
   } m_actors;
 
-  // actors controlled by the player input
-  std::vector<ABase*> m_inputActors;
-
  public:
   std::vector<std::unique_ptr<WMesh>> meshes;
 
  private:
   MActors();
-
-  void bindDefaultMethods();
 
  public:
   static MActors& get() {
@@ -46,20 +41,5 @@ class MActors {
   TResult createMesh();
   TResult destroyMesh(uint32_t index);
   void destroyAllMeshes();
-
-  // ACTOR INTERFACE
-
-  void controlActor(ABase* pActor);
-  void controlCamera(const char* name);
-
-  void freeActor(ABase* pActor);
-
-  // standard movement methods which control currently selected actors
-  void translateForward();
-  void translateBack();
-  void translateLeft();
-  void translateRight();
-  void translateUp();
-  void translateDown();
 };
 }  // namespace core

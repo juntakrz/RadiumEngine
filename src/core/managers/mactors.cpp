@@ -6,25 +6,7 @@
 #include "core/world/actors/acamera.h"
 
 core::MActors::MActors() {
-  RE_LOG(Log, "Creating mesh and model manager.");
-  bindDefaultMethods();
-}
-
-void core::MActors::bindDefaultMethods() {
-  RE_LOG(Log, "Binding default actor methods.");
-
-  core::input.bindFunction(GETKEY("moveForward"), GLFW_PRESS, this,
-                           &MActors::translateForward);
-  core::input.bindFunction(GETKEY("moveBack"), GLFW_PRESS, this,
-                           &MActors::translateBack);
-  core::input.bindFunction(GETKEY("moveLeft"), GLFW_PRESS, this,
-                           &MActors::translateLeft);
-  core::input.bindFunction(GETKEY("moveRight"), GLFW_PRESS, this,
-                           &MActors::translateRight);
-  core::input.bindFunction(GETKEY("moveUp"), GLFW_PRESS, this,
-                           &MActors::translateUp);
-  core::input.bindFunction(GETKEY("moveDown"), GLFW_PRESS, this,
-                           &MActors::translateDown);
+  RE_LOG(Log, "Creating actors manager.");
 }
 
 ACamera* core::MActors::createCamera(const char* name,
@@ -100,56 +82,4 @@ void core::MActors::destroyAllMeshes() {
   }
 
   meshes.clear();
-}
-
-void core::MActors::controlActor(ABase* pActor) {
-  for (const auto it : m_inputActors) {
-    if (it == pActor) {
-      RE_LOG(Warning,
-             "Actor at %d seems to be already receiving input, won't assign.",
-             pActor);
-      return;
-    }
-  }
-
-  m_inputActors.emplace_back(pActor);
-}
-
-void core::MActors::controlCamera(const char* name) {}
-
-void core::MActors::freeActor(ABase* pActor) {
-  for (const auto it : m_inputActors) {
-    if (it == pActor) {
-      //m_inputActors.erase(it);
-      return;
-    }
-  }
-
-  RE_LOG(Warning,
-         "Actor at %d is not receiving input, won't unassign.",
-         pActor);
-}
-
-void core::MActors::translateForward() {
-  RE_LOG(Log, "%s: Moving forward.", __FUNCTION__);
-}
-
-void core::MActors::translateBack() {
-  RE_LOG(Log, "%s: Moving back.", __FUNCTION__);
-}
-
-void core::MActors::translateLeft() {
-  RE_LOG(Log, "%s: Moving left.", __FUNCTION__);
-}
-
-void core::MActors::translateRight() {
-  RE_LOG(Log, "%s: Moving right.", __FUNCTION__);
-}
-
-void core::MActors::translateUp() {
-  RE_LOG(Log, "%s: Moving up.", __FUNCTION__);
-}
-
-void core::MActors::translateDown() {
-  RE_LOG(Log, "%s: Moving down.", __FUNCTION__);
 }

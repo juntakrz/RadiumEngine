@@ -9,6 +9,7 @@ extern class MScript& script;
 extern class MActors& actors;
 extern class MDebug& debug;
 extern class MMaterials& materials;
+extern class MPlayer& player;
 extern class MRef& ref;
 extern class MTime& time;
 

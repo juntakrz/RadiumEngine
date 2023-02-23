@@ -5,6 +5,7 @@
 #include "core/managers/mdebug.h"
 #include "core/managers/minput.h"
 #include "core/managers/mactors.h"
+#include "core/managers/mplayer.h"
 #include "core/managers/mscript.h"
 #include "core/managers/mref.h"
 #include "core/managers/mtime.h"
@@ -17,6 +18,7 @@ class core::MScript& core::script = MScript::get();
 class core::MActors& core::actors = MActors::get();
 class core::MDebug& core::debug = MDebug::get();
 class core::MMaterials& core::materials = MMaterials::get();
+class core::MPlayer& core::player = MPlayer::get();
 class core::MRef& core::ref = MRef::get();
 class core::MTime& core::time = MTime::get();
 
@@ -33,6 +35,7 @@ void core::run() {
   RE_LOG(Log, "Creating renderer.");
   RE_CHECK(core::create());
   core::input.initialize(core::window.getWindow());
+  core::player.initialize();
 
   RE_LOG(Log, "Successfully initialized engine core.");
 

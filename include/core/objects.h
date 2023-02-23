@@ -12,9 +12,9 @@ enum class EBCMode {  // VkBuffer creation mode
 };
 
 enum class EAType {  // actor type
-  BASE = 0,
-  CAMERA,
-  MODEL
+  Base,
+  Camera,
+  Model
 };
 
 struct RVkQueueFamilyIndices {
@@ -84,11 +84,6 @@ struct WMeshData {
   std::string material;
   std::unique_ptr<class WMesh> pMesh;       // visible main mesh
   std::unique_ptr<class WMesh> pAuxMesh;    // simpler mesh used for occlusion testing/collision etc.
-};
-
-struct WActorPtr {
-  class ABase* ptr = nullptr;
-  EAType type = EAType::BASE;
 };
 
 // uniform buffer objects

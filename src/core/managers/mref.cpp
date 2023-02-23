@@ -5,12 +5,15 @@
 
 core::MRef::MRef() { RE_LOG(Log, "Created reference manager."); }
 
-void core::MRef::registerActor(const char* name, ABase* pActor, EAType type) {
-  if (!actorPointers.try_emplace(name).second) {
+void core::MRef::registerActor(const char* name, ABase* pActor) {
+  if (!m_actorPointers.try_emplace(name).second) {
     RE_LOG(Error, "Failed to register actor '%s'.", name);
     return;
   }
 
-  actorPointers.at(name).ptr = pActor;
-  actorPointers.at(name).type = type;
+  m_actorPointers.at(name) = pActor;
+}
+
+ABase* core::MRef::getActor(const char* name) {
+  return m_actorPointers.at(name);
 }

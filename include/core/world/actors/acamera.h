@@ -10,7 +10,7 @@ class ACamera : public ABase {
     glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f);
     glm::vec3 focusPoint = glm::vec3(0.0f, 0.0f, 1.0f);
     glm::vec4 perspectiveData;
-    glm::vec4 orthogonalData;
+    glm::vec4 orthographicData;
     bool bAnchorFocusPoint = false;  // rotate around focus point if true
     ABase* targetActor = nullptr;    // use this actor as a focus point
   } m_viewData;

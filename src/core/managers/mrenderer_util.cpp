@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "vk_mem_alloc.h"
 #include "core/core.h"
+#include "core/managers/mref.h"
 #include "core/managers/mrenderer.h"
 #include "core/managers/mactors.h"
 #include "core/world/actors/acamera.h"
@@ -285,7 +286,10 @@ TResult core::MRenderer::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
 }
 
 void core::MRenderer::setCamera(const char* name) {
-  if (ACamera* pCamera = core::actors.getCamera(name)) {
+  if (ACamera* pCamera = core::ref.getActor(name)->getAs<ACamera>()) {
+#ifndef NDEBUG
+    RE_LOG(Log, "Selecting camera '%s'.", name);
+#endif
     view.pActiveCamera = pCamera;
     return;
   }

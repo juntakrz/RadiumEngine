@@ -30,14 +30,15 @@ class ABase {
       glm::vec3 scaling = {1.0f, 1.0f, 1.0f};
     } initial;
 
-  } transform;
+  } m_transformData;
 
-  float translationSpeed = 1.0f;
-  float rotationSpeed = 1.0f;
+  glm::mat4 m_mainTransformationMatrix = glm::mat4(1.0f);
 
  public:
-  std::string m_name;
-  glm::mat4 m_matMain = glm::mat4(1.0f);
+  std::string name;
+  
+  float translationSpeed = 1.0f;
+  float rotationSpeed = 1.0f;
 
  protected:
   ABase(){};

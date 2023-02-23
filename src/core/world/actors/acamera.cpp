@@ -8,7 +8,7 @@ void ACamera::setPerspective(float FOV, float aspectRatio, float nearZ,
 }
 
 glm::mat4& ACamera::getView() {
-  return m_view = glm::lookAt(transform.translation, transform.translation + m_viewData.focusPoint, m_viewData.upVector);
+  return m_view = glm::lookAt(m_transformData.translation, m_transformData.translation + m_viewData.focusPoint, m_viewData.upVector);
 }
 
 glm::mat4& ACamera::getProjection() { return m_projection; }
