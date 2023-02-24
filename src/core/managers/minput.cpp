@@ -1,10 +1,30 @@
 #include "pch.h"
+#include "core/core.h"
 #include "core/managers/minput.h"
+#include "core/managers/mwindow.h"
 #include "util/util.h"
 
 core::MInput::MInput() {
   RE_LOG(Log, "Creating input manager.");
   setDefaultInputs();
+}
+
+void core::MInput::scanInput() {
+  GLFWwindow* pWindow = core::window.getWindow();
+
+  // get status for every bound repeated action key and call the proper function
+  for (const auto& it : m_inputBinds) {
+    int keyState = glfwGetKey(pWindow, it.second);
+
+    if (m_inputFuncsRepeated.contains(it.second)) {
+      const auto& keyStateVector = m_inputFuncsRepeated.at(it.second);
+
+      if (keyStateVector[keyState] != nullptr) {
+        keyStateVector[keyState]->exec();
+      }
+
+    }
+  }
 }
 
 uint32_t core::MInput::bindingToKey(const char* bindingName) { 
@@ -38,16 +58,19 @@ void core::MInput::setInputBinding(std::string name, std::string key) {
          __FUNCTION__, key.c_str(), name.c_str());
 }
 
-TInputFuncs& core::MInput::binds() { return get().m_inputFuncs; }
+TInputFuncs& core::MInput::getBindings(bool bRepeated) {
+  return (bRepeated) ? get().m_inputFuncsRepeated : get().m_inputFuncsSingle;
+}
 
 void core::MInput::keyEventCallback(GLFWwindow* window, int key, int scancode,
                               int action, int mods) {
-  //using func = void (*)();
 
-  if (binds().find(key) != binds().end()) {
-    auto& keyBind = binds()[key];
-    if (keyBind.find(action) != keyBind.end()) {
-      keyBind[action]->exec();
+  // get status for every bound single action key and call the proper function
+  if (get().m_inputFuncsSingle.contains(key)) {
+    const auto& keyStateVector = get().m_inputFuncsSingle.at(key);
+
+    if (keyStateVector[action] != nullptr) {
+      keyStateVector[action]->exec();
     }
   }
 }

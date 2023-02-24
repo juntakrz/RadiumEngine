@@ -43,9 +43,6 @@ void core::run() {
 
   RE_LOG(Log, "Launching main event loop.");
 
-  // ??? not working?
-  glfwSetInputMode(core::window.getWindow(), GLFW_STICKY_KEYS, GLFW_TRUE);
-
   mainEventLoop();
 
   stop(RE_OK);
@@ -54,6 +51,7 @@ void core::run() {
 void core::mainEventLoop() {
   while (!glfwWindowShouldClose(core::window.getWindow())) {
     glfwPollEvents();
+    core::input.scanInput();
     core::drawFrame();
   }
 }

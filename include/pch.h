@@ -46,7 +46,7 @@
 
 /* comments:
 * 
-* relies on Visual C++ 17 2022 redistributable package
+* relies on Visual C++ 20 2022 redistributable package
 * glfw3.lib - GLFW 3.3.8 built for Visual Studio 17 2022 v143 using 10.0.19041 SDK and /MD
 * 
 */

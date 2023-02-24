@@ -12,17 +12,17 @@ void core::MPlayer::bindDefaultMethods() {
   RE_LOG(Log, "Binding default player controller methods.");
 
   core::input.bindFunction(GETKEY("moveForward"), GLFW_PRESS, this,
-                           &MPlayer::moveForward);
+                           &MPlayer::moveForward, true);
   core::input.bindFunction(GETKEY("moveBack"), GLFW_PRESS, this,
-                           &MPlayer::moveBack);
+                           &MPlayer::moveBack, true);
   core::input.bindFunction(GETKEY("moveLeft"), GLFW_PRESS, this,
-                           &MPlayer::moveLeft);
+                           &MPlayer::moveLeft, true);
   core::input.bindFunction(GETKEY("moveRight"), GLFW_PRESS, this,
-                           &MPlayer::moveRight);
-  core::input.bindFunction(GETKEY("moveUp"), GLFW_PRESS, this,
-                           &MPlayer::moveUp);
+                           &MPlayer::moveRight, true);
+  core::input.bindFunction(GETKEY("moveUp"), GLFW_PRESS, this, &MPlayer::moveUp,
+                           true);
   core::input.bindFunction(GETKEY("moveDown"), GLFW_PRESS, this,
-                           &MPlayer::moveDown);
+                           &MPlayer::moveDown, true);
 }
 
 void core::MPlayer::initialize() { bindDefaultMethods(); }
