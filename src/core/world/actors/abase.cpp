@@ -1,4 +1,6 @@
 #include "pch.h"
+#include "core/core.h"
+#include "core/managers/mtime.h"
 #include "core/world/actors/abase.h"
 #include "core/world/actors/acamera.h"
 #include "util/math.h"
@@ -26,15 +28,15 @@ void ABase::setPos(const glm::vec3& pos) noexcept {
 glm::vec3& ABase::getPos() noexcept { return m_transformData.translation; }
 
 void ABase::translate(float x, float y, float z) noexcept {
-  m_transformData.translation += glm::vec3(x, y, z);
+  m_transformData.translation += glm::vec3(x, y, z) * core::time.getDeltaTime();
 }
 
 void ABase::translate(const glm::vec3& delta) noexcept {
-  m_transformData.translation += delta;
+  m_transformData.translation += delta * core::time.getDeltaTime();
 }
 
 void ABase::setRotation(float x, float y, float z) noexcept {
-  math::wrapAnglesGLM(m_transformData.rotation = glm::vec3(x, y, z));
+  math::wrapAnglesGLM(m_transformData.rotation = glm::vec3(x, y, z)) ;
   m_transformData.initial.rotation = m_transformData.rotation;
 }
 
