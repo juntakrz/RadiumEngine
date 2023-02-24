@@ -37,8 +37,12 @@ class ACamera : public ABase {
   // get projection matrix using currently selected camera mode
   glm::mat4& getProjection();
 
-  void setUpVector(const glm::vec3& upVector);
-  void setUpVector(float x, float y, float z);
+  void setUpVector(float x, float y, float z) noexcept;
+  void setUpVector(const glm::vec3& upVector) noexcept;
 
+  void setAnchorPoint(float x, float y, float z) noexcept;
+  void setAnchorPoint(glm::vec3& newAnchorPoint) noexcept;
+
+  virtual void translate(float x, float y, float z) noexcept override;
   virtual void rotate(float x, float y, float z) noexcept override;
 };

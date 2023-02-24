@@ -23,6 +23,7 @@ class ABase {
     glm::vec3 translation = {0.0f, 0.0f, 0.0f};
     glm::vec3 rotation = {0.0f, 0.0f, 0.0f};
     glm::vec3 scaling = {1.0f, 1.0f, 1.0f};
+    glm::vec3 frontVector = {0.0f, 0.0f, 1.0f};
 
     struct {
       // initial data defined by Set* methods
