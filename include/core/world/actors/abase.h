@@ -8,7 +8,8 @@
 
 enum EActorType {
   Base,
-  Camera
+  Camera,
+  Model
 };
 
 class ACamera;
@@ -32,13 +33,14 @@ class ABase {
 
   } m_transformData;
 
+  float m_translationSpeed = 1.0f;
+  float m_rotationSpeed = 1.0f;
+  float m_scalingSpeed = 1.0f;
+
   glm::mat4 m_mainTransformationMatrix = glm::mat4(1.0f);
 
  public:
   std::string name;
-  
-  float translationSpeed = 1.0f;
-  float rotationSpeed = 1.0f;
 
  protected:
   ABase(){};
@@ -58,26 +60,30 @@ class ABase {
   // data set used for transformation calculations
   virtual TransformData& getTransformData() noexcept;
 
-  void setPos(float x, float y, float z) noexcept;
-  void setPos(const glm::vec3& pos) noexcept;
-  glm::vec3& getPos() noexcept;
+  virtual void setPos(float x, float y, float z) noexcept;
+  virtual void setPos(const glm::vec3& pos) noexcept;
+  virtual glm::vec3& getPos() noexcept;
 
-  void translate(float x = 0.0f, float y = 0.0f, float z = 0.0f) noexcept;
-  void translate(const glm::vec3& delta) noexcept;
+  virtual void translate(float x, float y, float z) noexcept;
+  virtual void translate(const glm::vec3& delta) noexcept;
 
-  void setRotation(float x = 0.0f, float y = 0.0f, float z = 0.0f) noexcept;
-  void setRotation(const glm::vec3& rotation) noexcept;
-  glm::vec3& getRotation() noexcept;
+  virtual void setRotation(float x, float y, float z) noexcept;
+  virtual void setRotation(const glm::vec3& rotation) noexcept;
+  virtual glm::vec3& getRotation() noexcept;
 
-  void rotate(float x = 0.0f, float y = 0.0f, float z = 0.0f) noexcept;
-  void rotate(const glm::vec3& delta) noexcept;
+  virtual void rotate(float x, float y, float z) noexcept;
+  virtual void rotate(const glm::vec3& delta) noexcept;
 
-  void setScale(float x, float y, float z) noexcept;
-  void setScale(const glm::vec3& scale) noexcept;
-  glm::vec3& getScale() noexcept;
+  virtual void setScale(float x, float y, float z) noexcept;
+  virtual void setScale(const glm::vec3& scale) noexcept;
+  virtual glm::vec3& getScale() noexcept;
 
-  void scale(float x = 1.0f, float y = 1.0f, float z = 1.0f) noexcept;
-  void scale(const glm::vec3& delta) noexcept;
+  virtual void scale(float x, float y, float z) noexcept;
+  virtual void scale(const glm::vec3& delta) noexcept;
+
+  void setTranslationSpeed(const float& newSpeed);
+  void setRotationSpeed(const float& newSpeed);
+  void setScalingSpeed(const float& newSpeed);
 
   const uint32_t typeId();
 };

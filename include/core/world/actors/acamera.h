@@ -39,4 +39,6 @@ class ACamera : public ABase {
 
   void setUpVector(const glm::vec3& upVector);
   void setUpVector(float x, float y, float z);
+
+  virtual void rotate(float x, float y, float z) noexcept override;
 };

@@ -18,6 +18,10 @@
 	"moveUp" : "LShift",
 	"moveDown" : "LCtrl",
 	"mouseMode" : "Space",
+	"rollLeft" : "Left",
+	"rollRight" : "Right",
+	"pitchUp" : "Up",
+	"pitchDown" : "Down",
 	"devKey" : "`"
   }
 }

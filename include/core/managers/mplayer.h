@@ -35,5 +35,10 @@ class MPlayer {
   void moveRight();
   void moveUp();
   void moveDown();
+
+  void rollLeft();
+  void rollRight();
+  void pitchUp();
+  void pitchDown();
 };
 }  // namespace core

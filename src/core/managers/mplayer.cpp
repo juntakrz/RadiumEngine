@@ -21,8 +21,17 @@ void core::MPlayer::bindDefaultMethods() {
                            &MPlayer::moveRight, true);
   core::input.bindFunction(GETKEY("moveUp"), GLFW_PRESS, this, &MPlayer::moveUp,
                            true);
-  core::input.bindFunction(GETKEY("moveDown"), GLFW_PRESS, this,
-                           &MPlayer::moveDown, true);
+  core::input.bindFunction(core::MInput::get().bindingToKey("moveDown"),
+                           GLFW_PRESS, this, &MPlayer::moveDown, true);
+  
+  core::input.bindFunction(GETKEY("rollLeft"), GLFW_PRESS, this,
+                           &MPlayer::rollLeft, true);
+  core::input.bindFunction(GETKEY("rollRight"), GLFW_PRESS, this,
+                           &MPlayer::rollRight, true);
+  core::input.bindFunction(GETKEY("pitchUp"), GLFW_PRESS, this,
+                           &MPlayer::pitchUp, true);
+  core::input.bindFunction(GETKEY("pitchDown"), GLFW_PRESS, this,
+                           &MPlayer::pitchDown, true);
 }
 
 void core::MPlayer::initialize() { bindDefaultMethods(); }
@@ -77,5 +86,12 @@ void core::MPlayer::moveUp() {
 }
 
 void core::MPlayer::moveDown() {
-  m_pActor->translate(0.0f, -1.0f, 0.0f);
-}
+  m_pActor->translate(0.0f, -1.0f, 0.0f); }
+
+void core::MPlayer::rollLeft() { m_pActor->rotate(0.0f, -1.0f, 0.0f); }
+
+void core::MPlayer::rollRight() { m_pActor->rotate(0.0f, 1.0f, 0.0f); }
+
+void core::MPlayer::pitchUp() { m_pActor->rotate(-1.0f, 0.0f, 0.0f); }
+
+void core::MPlayer::pitchDown() { m_pActor->rotate(1.0f, 0.0f, 0.0f); }
