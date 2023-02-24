@@ -2,23 +2,22 @@
 #include "core/managers/mtime.h"
 
 core::MTime::MTime() {
-  currentTimePoint = std::chrono::high_resolution_clock::now();
-  initialTimePoint = currentTimePoint;
+  m_currentTimePoint = glfwGetTime();
+  m_initialTimePoint = m_currentTimePoint;
 }
 
 float core::MTime::tickTimer() {
-  oldTimePoint = currentTimePoint;
-  currentTimePoint = std::chrono::high_resolution_clock::now();
-  return lastDeltaTime =
-             std::chrono::duration<float, std::chrono::seconds::period>(
-                 currentTimePoint - oldTimePoint)
-                 .count();
+  m_oldTimePoint = m_currentTimePoint;
+  m_currentTimePoint = glfwGetTime();
+
+  return m_lastDeltaTime = static_cast<float>(m_currentTimePoint - m_oldTimePoint);
 }
 
-float core::MTime::getDeltaTime() { return lastDeltaTime; }
+float core::MTime::getDeltaTime() { return m_lastDeltaTime; }
 
 float core::MTime::getTimeSinceInitialization() {
-  return std::chrono::duration<float, std::chrono::seconds::period>(
-             currentTimePoint - initialTimePoint)
-      .count();
+  m_oldTimePoint = m_currentTimePoint;
+  m_currentTimePoint = glfwGetTime();
+
+  return static_cast<float>(m_currentTimePoint - m_initialTimePoint);
 }

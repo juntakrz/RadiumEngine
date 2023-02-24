@@ -4,10 +4,10 @@ namespace core {
 
   class MTime {
     //std::thread coreTimerThread;
-    std::chrono::steady_clock::time_point initialTimePoint;
-    std::chrono::steady_clock::time_point oldTimePoint;
-    std::chrono::steady_clock::time_point currentTimePoint;
-    float lastDeltaTime = 0.0f;
+    double m_initialTimePoint;
+    double m_oldTimePoint;
+    double m_currentTimePoint;
+    float m_lastDeltaTime = 0.0f;
 
     MTime();
 
