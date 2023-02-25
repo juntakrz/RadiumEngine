@@ -36,10 +36,9 @@ void ACamera::rotate(float x, float y, float z) noexcept {
       break;
     }
     case false: {
-      m_viewData.focusPoint =
-          glm::rotateX(m_transformData.frontVector, m_transformData.rotation.x);
-      m_viewData.focusPoint =
-          glm::rotateY(m_viewData.focusPoint, m_transformData.rotation.y);
+      m_viewData.focusPoint = glm::rotateX(
+          glm::rotateY(m_transformData.frontVector, m_transformData.rotation.y),
+          m_transformData.rotation.x);
       break;
     }
   }
@@ -47,8 +46,6 @@ void ACamera::rotate(float x, float y, float z) noexcept {
 
 void ACamera::translate(float x, float y, float z) noexcept {
   glm::vec3 moveDirection =
-      glm::rotateY(glm::vec3(x, y, z), m_transformData.rotation.y);
-  moveDirection = glm::rotateX(moveDirection, m_transformData.rotation.x);
+      glm::rotateX(glm::rotateY(glm::vec3(x, y, z), m_transformData.rotation.y), m_transformData.rotation.x);
   m_transformData.translation += moveDirection * m_translationSpeed * core::time.getDeltaTime();
-  //m_transformData.translation = glm::rotate(m_transformData.translation, m_transformData.rotation.x, glm::vec3(x,y,z));
 }
