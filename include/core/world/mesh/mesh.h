@@ -1,14 +1,17 @@
 #pragma once
 
 #include "core/objects.h"
+#include "core/world/primitives/primitives_include.h"
 
 class WMesh {
  private:
-  void createVertexBuffer();
-  void createIndexBuffer();
+  void createVertexBuffer(const std::vector<RVertex>& vertexData);
+  void createIndexBuffer(const std::vector<uint32_t>& indexData);
 
  protected:
-  virtual void allocateMemory();        // allocate memory for vertex and index buffers
+  // allocate memory and create vertex and index buffers
+  virtual void createBuffers(const std::vector<RVertex>& vertexData,
+                             const std::vector<uint32_t>& indexData);
 
  public:
   WMesh();
@@ -20,7 +23,6 @@ class WMesh {
  public:
   RBuffer vertexBuffer;
   RBuffer indexBuffer;
-
-  std::vector<RVertex> vertices;
-  std::vector<uint32_t> indices;
+  uint32_t vertexCount = 0u;
+  uint32_t indexCount = 0u;
 };

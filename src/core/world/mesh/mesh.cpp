@@ -12,21 +12,24 @@ WMesh::WMesh() {
   indexBuffer.allocation = VK_NULL_HANDLE;
 };
 
-void WMesh::createVertexBuffer() {
-  VkDeviceSize size = vertices.size() * sizeof(RVertex);
+void WMesh::createVertexBuffer(const std::vector<RVertex>& vertexData) {
+  VkDeviceSize size = vertexData.size() * sizeof(RVertex);
   core::renderer.createBuffer(EBCMode::DGPU_VERTEX, size, vertexBuffer,
-                              vertices.data());
+                              (void*)vertexData.data());
+  vertexCount = static_cast<uint32_t>(vertexData.size());
 }
 
-void WMesh::createIndexBuffer() {
-  VkDeviceSize size = indices.size() * sizeof(indices[0]);
+void WMesh::createIndexBuffer(const std::vector<uint32_t>& indexData) {
+  VkDeviceSize size = indexData.size() * sizeof(indexData[0]);
   core::renderer.createBuffer(EBCMode::DGPU_INDEX, size, indexBuffer,
-                              indices.data());
+                              (void*)indexData.data());
+  indexCount = static_cast<uint32_t>(indexData.size());
 }
 
-void WMesh::allocateMemory() {
-  createVertexBuffer();
-  createIndexBuffer();
+void WMesh::createBuffers(const std::vector<RVertex>& vertexData,
+                          const std::vector<uint32_t>& indexData) {
+  createVertexBuffer(vertexData);
+  createIndexBuffer(indexData);
 }
 
 void WMesh::destroy() {

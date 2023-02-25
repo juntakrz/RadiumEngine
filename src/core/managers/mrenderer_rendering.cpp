@@ -373,10 +373,8 @@ TResult core::MRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer,
 
   VkBuffer vertexBuffers[] = {system.meshes[0]->vertexBuffer.buffer};
   VkDeviceSize offsets[] = {0};
-  uint32_t numVertices =
-      static_cast<uint32_t>(system.meshes[0]->vertices.size());
-  uint32_t numIndices =
-      static_cast<uint32_t>(system.meshes[0]->indices.size());
+  uint32_t numVertices = system.meshes[0]->vertexCount;
+  uint32_t numIndices = system.meshes[0]->indexCount;
 
   vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
