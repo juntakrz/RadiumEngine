@@ -283,6 +283,7 @@
     <ClInclude Include="include\define_t.h" />
     <ClInclude Include="include\util\math.h" />
     <ClInclude Include="include\util\util.h" />
+    <ClInclude Include="lib\include\tinygltf\tiny_gltf.h" />
     <ClInclude Include="lib\include\vk_mem_alloc.h" />
     <ClInclude Include="include\core\world\actors\acamera.h" />
   </ItemGroup>

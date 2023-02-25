@@ -7,6 +7,9 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define GLM_FORCE_SSE42
 #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
+#define TINYGLTF_IMPLEMENTATION
+#define TINYGLTF_NO_STB_IMAGE
+#define TINYGLTF_NO_STB_IMAGE_WRITE
 
 // global macros
 #ifdef NDEBUG
@@ -33,6 +36,7 @@ constexpr bool bRequireValidationLayers = true;
 #define RE_PATH_SHDRC       "development\\compileShaders_Win_x64_DEBUG.bat"
 #define RE_MAXTEXTURES      6
 #define RE_NEARZ            0.01f
+#define RE_MAXJOINTS        128
 
 // error levels
 #define RE_OK					      0x00		   // success
