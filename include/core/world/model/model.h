@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/world/model/mesh.h"
+
 class WModel {
   std::string name = "$NONAMEMODEL$";
 

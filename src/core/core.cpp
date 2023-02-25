@@ -10,6 +10,7 @@
 #include "core/managers/ref.h"
 #include "core/managers/time.h"
 #include "core/managers/materials.h"
+#include "core/managers/world.h"
 
 class core::MRenderer& core::renderer = MRenderer::get();
 class core::MWindow& core::window = MWindow::get();
@@ -21,6 +22,7 @@ class core::MMaterials& core::materials = MMaterials::get();
 class core::MPlayer& core::player = MPlayer::get();
 class core::MRef& core::ref = MRef::get();
 class core::MTime& core::time = MTime::get();
+class core::MWorld& core::world = MWorld::get();
 
 void core::run() {
 

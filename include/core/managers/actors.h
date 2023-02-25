@@ -15,7 +15,7 @@ class MActors {
   } m_actors;
 
  public:
-  std::vector<std::unique_ptr<WMesh>> meshes;
+  std::vector<std::unique_ptr<WMesh>> meshes;     // OBSOLETE! should use WModel class instead and only as part of APawn
 
  private:
   MActors();
