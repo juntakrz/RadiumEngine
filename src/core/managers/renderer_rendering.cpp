@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "core/core.h"
-#include "core/managers/MRenderer.h"
-#include "core/managers/MTime.h"
-#include "core/world/mesh/mesh.h"
+#include "core/managers/renderer.h"
+#include "core/managers/time.h"
+#include "core/world/model/mesh.h"
 
 TResult core::MRenderer::createRenderPass() {
   RE_LOG(Log, "Creating render pass");

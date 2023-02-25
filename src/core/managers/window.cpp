@@ -1,6 +1,6 @@
 #include "pch.h"
-#include "core/managers/mwindow.h"
-#include "core/managers/MRenderer.h"
+#include "core/managers/window.h"
+#include "core/managers/renderer.h"
 #include "core/core.h"
 
 core::MWindow::MWindow() { RE_LOG(Log, "Creating window manager."); }

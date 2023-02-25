@@ -1,10 +1,10 @@
 #include "pch.h"
 #include "core/core.h"
-#include "core/managers/mscript.h"
-#include "core/managers/mrenderer.h"
-#include "core/managers/mactors.h"
-#include "core/managers/mplayer.h"
-#include "core/managers/mref.h"
+#include "core/managers/script.h"
+#include "core/managers/renderer.h"
+#include "core/managers/actors.h"
+#include "core/managers/player.h"
+#include "core/managers/ref.h"
 #include "util/util.h"
 
 using json = nlohmann::json;

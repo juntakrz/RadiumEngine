@@ -9,7 +9,7 @@
 enum EActorType {
   Base,
   Camera,
-  Model
+  Pawn
 };
 
 class ACamera;

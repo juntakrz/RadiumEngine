@@ -1,14 +1,6 @@
 #pragma once
 
-#include "core/world/actors/abase.h"
-#include "core/world/mesh/mesh.h"
-
-class WMesh;
-
-class AModel : public ABase {
- protected:
-  EActorType m_typeId = EActorType::Model;
-
+class WModel {
   std::string name = "$NONAMEMODEL$";
 
   struct SModelNode {
@@ -37,8 +29,4 @@ class AModel : public ABase {
 
   std::vector<std::unique_ptr<SModelNode>> pNodes;
   std::vector<std::unique_ptr<WMesh>> pMeshes;
-
- public:
-  AModel() noexcept {};
-  virtual ~AModel() override{};
 };

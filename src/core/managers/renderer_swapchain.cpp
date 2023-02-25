@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "core/core.h"
-#include "core/managers/mrenderer.h"
-#include "core/managers/mwindow.h"
+#include "core/managers/renderer.h"
+#include "core/managers/window.h"
 
 TResult core::MRenderer::initSwapChain(VkFormat format, VkColorSpaceKHR colorSpace,
                                  VkPresentModeKHR presentMode,

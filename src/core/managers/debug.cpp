@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "core/managers/mdebug.h"
+#include "core/managers/debug.h"
 
 core::MDebug::MDebug() {
   RE_LOG(Log, "Creating graphics debug manager.");

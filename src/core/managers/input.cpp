@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "core/core.h"
-#include "core/managers/minput.h"
-#include "core/managers/mwindow.h"
+#include "core/managers/input.h"
+#include "core/managers/window.h"
 #include "util/util.h"
 
 core::MInput::MInput() {

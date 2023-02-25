@@ -3,7 +3,7 @@
 #include "vk_mem_alloc.h"
 #include "core/objects.h"
 #include "common.h"
-#include "core/world/actors/acamera.h"
+#include "core/world/actors/camera.h"
 
 class WMesh;
 

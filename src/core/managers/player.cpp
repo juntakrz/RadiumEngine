@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "core/core.h"
-#include "core/managers/minput.h"
-#include "core/managers/mplayer.h"
-#include "core/world/actors/abase.h"
+#include "core/managers/input.h"
+#include "core/managers/player.h"
+#include "core/world/actors/base.h"
 
 core::MPlayer::MPlayer() {
   RE_LOG(Log, "Created player controller manager.");

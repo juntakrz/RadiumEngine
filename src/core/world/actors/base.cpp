@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "core/core.h"
-#include "core/managers/mtime.h"
-#include "core/world/actors/abase.h"
-#include "core/world/actors/acamera.h"
+#include "core/managers/time.h"
+#include "core/world/actors/base.h"
+#include "core/world/actors/camera.h"
 #include "util/math.h"
 #include "util/util.h"
 

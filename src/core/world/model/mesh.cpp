@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "vk_mem_alloc.h"
 #include "core/core.h"
-#include "core/managers/MRenderer.h"
-#include "core/world/mesh/mesh.h"
+#include "core/managers/renderer.h"
+#include "core/world/model/mesh.h"
 
 WMesh::WMesh() {
   vertexBuffer.buffer = VK_NULL_HANDLE;

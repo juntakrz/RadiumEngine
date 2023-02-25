@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common.h"
-#include "core/world/mesh/mesh.h"
+#include "core/world/model/mesh.h"
 
 class ACamera;
 

@@ -24,82 +24,85 @@
     <ClCompile Include="src\core\core.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mwindow.cpp">
+    <ClCompile Include="src\core\managers\window.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mrenderer.cpp">
+    <ClCompile Include="src\core\managers\renderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mdebug.cpp">
+    <ClCompile Include="src\core\managers\debug.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\objects.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mrenderer_swapchain.cpp">
+    <ClCompile Include="src\core\managers\renderer_swapchain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mrenderer_physicaldevice.cpp">
+    <ClCompile Include="src\core\managers\renderer_physicaldevice.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\util\util.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mrenderer_rendering.cpp">
+    <ClCompile Include="src\core\managers\renderer_rendering.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\config.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\minput.cpp">
+    <ClCompile Include="src\core\managers\input.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mactors.cpp">
+    <ClCompile Include="src\core\managers\actors.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\world\mesh\mesh_plane.cpp">
+    <ClCompile Include="src\core\world\model\mesh_plane.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\world\mesh\mesh.cpp">
+    <ClCompile Include="src\core\world\model\mesh.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mrenderer_logicaldevice.cpp">
+    <ClCompile Include="src\core\managers\renderer_logicaldevice.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\vk_mem_alloc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mrenderer_util.cpp">
+    <ClCompile Include="src\core\managers\renderer_util.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mtime.cpp">
+    <ClCompile Include="src\core\managers\time.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\world\actors\abase.cpp">
+    <ClCompile Include="src\core\world\actors\base.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\world\actors\acamera.cpp">
+    <ClCompile Include="src\core\world\actors\camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\util\math.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mscript.cpp">
+    <ClCompile Include="src\core\managers\script.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mref.cpp">
+    <ClCompile Include="src\core\managers\ref.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mmaterials.cpp">
+    <ClCompile Include="src\core\managers\materials.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\minput_table.cpp">
+    <ClCompile Include="src\core\managers\input_table.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\mplayer.cpp">
+    <ClCompile Include="src\core\managers\player.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\world\actors\amodel.cpp">
+    <ClCompile Include="src\core\world\actors\pawn.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\world\model\model.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -110,7 +113,7 @@
     <ClInclude Include="include\core\core.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\managers\mwindow.h">
+    <ClInclude Include="include\core\managers\window.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\define.h">
@@ -119,13 +122,13 @@
     <ClInclude Include="include\core\managers\common.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\managers\mrenderer.h">
+    <ClInclude Include="include\core\managers\renderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\config.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\managers\mdebug.h">
+    <ClInclude Include="include\core\managers\debug.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\core\objects.h">
@@ -134,7 +137,7 @@
     <ClInclude Include="include\util\util.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\managers\minput.h">
+    <ClInclude Include="include\core\managers\input.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\define_t.h">
@@ -155,52 +158,55 @@
     <ClInclude Include="include\core\world\primitives\cube.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\managers\mactors.h">
+    <ClInclude Include="include\core\managers\actors.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\mesh\mesh.h">
+    <ClInclude Include="include\core\world\model\mesh.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\mesh\mesh_plane.h">
+    <ClInclude Include="include\core\world\model\mesh_plane.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\mesh\mesh_include.h">
+    <ClInclude Include="include\core\world\model\mesh_include.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="lib\include\vk_mem_alloc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\managers\mtime.h">
+    <ClInclude Include="include\core\managers\time.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\actors\abase.h">
+    <ClInclude Include="include\core\world\actors\base.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\util\math.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\actors\acamera.h">
+    <ClInclude Include="include\core\world\actors\camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\managers\mscript.h">
+    <ClInclude Include="include\core\managers\script.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\managers\mref.h">
+    <ClInclude Include="include\core\managers\ref.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\managers\mmaterials.h">
+    <ClInclude Include="include\core\managers\materials.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\define_input.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\managers\mplayer.h">
+    <ClInclude Include="include\core\managers\player.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\actors\amodel.h">
+    <ClInclude Include="include\core\world\actors\pawn.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="lib\include\tinygltf\tiny_gltf.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\world\model\model.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

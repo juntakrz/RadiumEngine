@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "core/objects.h"
-#include "core/world/actors/acamera.h"
-#include "core/managers/mref.h"
+#include "core/world/actors/camera.h"
+#include "core/managers/ref.h"
 
 core::MRef::MRef() { RE_LOG(Log, "Created reference manager."); }
 

@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "core/managers/MRenderer.h"
+#include "core/managers/renderer.h"
 
 TResult core::MRenderer::enumPhysicalDevices() {
   uint32_t numDevices = 0, index = 0;

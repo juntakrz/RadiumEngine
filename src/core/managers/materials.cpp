@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "core/managers/mmaterials.h"
+#include "core/managers/materials.h"
 
 core::MMaterials::MMaterials() { RE_LOG(Log, "Setting up the materials manager."); }
 

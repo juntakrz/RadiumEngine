@@ -1,9 +1,9 @@
 #include "pch.h"
 #include "core/core.h"
-#include "core/managers/mactors.h"
-#include "core/managers/minput.h"
-#include "core/world/mesh/mesh_plane.h"
-#include "core/world/actors/acamera.h"
+#include "core/managers/actors.h"
+#include "core/managers/input.h"
+#include "core/world/model/mesh_plane.h"
+#include "core/world/actors/camera.h"
 
 core::MActors::MActors() {
   RE_LOG(Log, "Creating actors manager.");

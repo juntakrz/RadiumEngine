@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "core/managers/minput.h"
+#include "core/managers/input.h"
 
 void core::MInput::setDefaultInputs() {
   RE_LOG(Log, "Setting up default input bindings and data.");

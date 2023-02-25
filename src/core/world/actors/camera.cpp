@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "core/objects.h"
 #include "core/core.h"
-#include "core/managers/mtime.h"
-#include "core/world/actors/acamera.h"
+#include "core/managers/time.h"
+#include "core/world/actors/camera.h"
 #include "util/util.h"
 
 void ACamera::setPerspective(float FOV, float aspectRatio, float nearZ,

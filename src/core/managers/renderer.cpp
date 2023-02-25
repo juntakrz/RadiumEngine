@@ -1,12 +1,12 @@
 #include "pch.h"
 #include "vk_mem_alloc.h"
 #include "core/core.h"
-#include "core/managers/mrenderer.h"
-#include "core/managers/mdebug.h"
-#include "core/managers/mwindow.h"
-#include "core/managers/mactors.h"
-#include "core/managers/mtime.h"
-#include "core/world/actors/acamera.h"
+#include "core/managers/renderer.h"
+#include "core/managers/debug.h"
+#include "core/managers/window.h"
+#include "core/managers/actors.h"
+#include "core/managers/time.h"
+#include "core/world/actors/camera.h"
 
 core::MRenderer::MRenderer() {
   // currently these singletons are passed by reference,

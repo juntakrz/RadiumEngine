@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/world/actors/abase.h"
+#include "core/world/actors/base.h"
 
 class ACamera : public ABase {
  protected:

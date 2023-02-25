@@ -1,10 +1,10 @@
 #include "pch.h"
 #include "vk_mem_alloc.h"
 #include "core/core.h"
-#include "core/managers/mref.h"
-#include "core/managers/mrenderer.h"
-#include "core/managers/mactors.h"
-#include "core/world/actors/acamera.h"
+#include "core/managers/ref.h"
+#include "core/managers/renderer.h"
+#include "core/managers/actors.h"
+#include "core/world/actors/camera.h"
 
 TResult core::MRenderer::createBuffer(EBCMode mode, VkDeviceSize size, RBuffer& outBuffer, void* inData)
 {
