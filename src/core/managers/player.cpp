@@ -66,32 +66,41 @@ void core::MPlayer::freeActor(ABase* pActor) {
 }
 
 void core::MPlayer::moveForward() {
-  m_pActor->translate(0.0f, 0.0f, 1.0f);
+  m_pActor->translate({0.0f, 0.0f, m_movementData.translationDelta});
 }
 
 void core::MPlayer::moveBack() {
-  m_pActor->translate(0.0f, 0.0f, -1.0f);
+  m_pActor->translate({0.0f, 0.0f, -m_movementData.translationDelta});
 }
 
 void core::MPlayer::moveLeft() {
-  m_pActor->translate(-1.0f, 0.0f, 0.0f);
+  m_pActor->translate({-m_movementData.translationDelta, 0.0f, 0.0f});
 }
 
 void core::MPlayer::moveRight() {
-  m_pActor->translate(1.0f, 0.0f, 0.0f);
+  m_pActor->translate({m_movementData.translationDelta, 0.0f, 0.0f});
 }
 
 void core::MPlayer::moveUp() {
-  m_pActor->translate(0.0f, 1.0f, 0.0f);
+  m_pActor->translate({0.0f, m_movementData.translationDelta, 0.0f});
 }
 
 void core::MPlayer::moveDown() {
-  m_pActor->translate(0.0f, -1.0f, 0.0f); }
+  m_pActor->translate({0.0f, -m_movementData.translationDelta, 0.0f});
+}
 
-void core::MPlayer::rollLeft() { m_pActor->rotate(0.0f, -1.0f, 0.0f); }
+void core::MPlayer::rollLeft() {
+  m_pActor->rotate({0.0f, 1.0f, 0.0f}, -m_movementData.rotationDelta);
+}
 
-void core::MPlayer::rollRight() { m_pActor->rotate(0.0f, 1.0f, 0.0f); }
+void core::MPlayer::rollRight() {
+  m_pActor->rotate({0.0f, 1.0f, 0.0f}, m_movementData.rotationDelta);
+}
 
-void core::MPlayer::pitchUp() { m_pActor->rotate(-1.0f, 0.0f, 0.0f); }
+void core::MPlayer::pitchUp() {
+  m_pActor->rotate({1.0f, 0.0f, 0.0f}, -m_movementData.rotationDelta);
+}
 
-void core::MPlayer::pitchDown() { m_pActor->rotate(1.0f, 0.0f, 0.0f); }
+void core::MPlayer::pitchDown() {
+  m_pActor->rotate({1.0f, 0.0f, 0.0f}, m_movementData.rotationDelta);
+}

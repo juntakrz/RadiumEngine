@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "vk_mem_alloc.h"
+#include "util/math.h"
 #include "core/core.h"
 #include "core/managers/renderer.h"
 #include "core/managers/debug.h"
@@ -328,7 +329,7 @@ void core::MRenderer::updateModelViewProjectionBuffers(uint32_t currentImage) {
   // rewrite this and UpdateMVP method to use data from the current/provided camera
   glm::mat4 t = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.2f));
   view.modelViewProjectionData.model =
-      glm::rotate(t, glm::mod(time * glm::radians(90.0f), glm::two_pi<float>()), glm::vec3(0.0f, 0.3f, 1.0f));
+      glm::rotate(t, glm::mod(time * glm::radians(90.0f), math::twoPI), glm::vec3(0.0f, 0.3f, 1.0f));
 
   view.modelViewProjectionData.view = view.pActiveCamera->getView();
   view.modelViewProjectionData.projection = view.pActiveCamera->getProjection();

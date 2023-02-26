@@ -6,93 +6,79 @@
 #include "util/math.h"
 #include "util/util.h"
 
-glm::mat4& ABase::getTransform() noexcept { return m_mainTransformationMatrix; }
+glm::mat4& ABase::getTransformation() noexcept { return m_transformationMatrix; }
 
-ABase::TransformData& ABase::getTransformData() noexcept {
-  return m_transformData;
+ABase::TransformationData& ABase::getTransformData() noexcept {
+  return m_transformationData;
 }
 
-void ABase::setPos(float x, float y, float z) noexcept {
-  m_transformData.translation.x = x;
-  m_transformData.translation.y = y;
-  m_transformData.translation.z = z;
-
-  m_transformData.initial.translation = m_transformData.translation;
+void ABase::setLocation(const glm::vec3& pos) noexcept {
+  m_transformationData.translation = pos;
+  m_transformationData.initial.translation = m_transformationData.translation;
 }
 
-void ABase::setPos(const glm::vec3& pos) noexcept {
-  m_transformData.translation = pos;
-  m_transformData.initial.translation = m_transformData.translation;
-}
-
-glm::vec3& ABase::getPos() noexcept { return m_transformData.translation; }
-
-void ABase::translate(float x, float y, float z) noexcept {
-  m_transformData.translation +=
-      glm::vec3(x, y, z) * m_translationSpeed * core::time.getDeltaTime();
-}
+glm::vec3& ABase::getLocation() noexcept { return m_transformationData.translation; }
 
 void ABase::translate(const glm::vec3& delta) noexcept {
-  m_transformData.translation +=
-      delta * m_translationSpeed * core::time.getDeltaTime();
+  m_transformationData.translation +=
+      delta * m_translationModifier * core::time.getDeltaTime();
 }
 
-void ABase::setRotation(float x, float y, float z) noexcept {
-  math::wrapAnglesGLM(m_transformData.rotation = glm::vec3(x, y, z)) ;
-  m_transformData.initial.rotation = m_transformData.rotation;
+void ABase::setRotation(const glm::vec3& delta) noexcept {
+  m_transformationData.rotation = glm::quat(delta);
 }
 
-void ABase::setRotation(const glm::vec3& rotation) noexcept {
-  math::wrapAnglesGLM(m_transformData.rotation = rotation);
-  m_transformData.initial.rotation = m_transformData.rotation;
+void ABase::setRotation(const glm::vec3& vector, float angle) noexcept {
+  m_transformationData.rotation = glm::quat(angle, vector);
 }
 
-glm::vec3& ABase::getRotation() noexcept { return m_transformData.rotation; }
+void ABase::setRotation(const glm::quat& newRotation) noexcept {
+  m_transformationData.rotation = newRotation;
+}
 
-void ABase::rotate(float x, float y, float z) noexcept {
-  m_transformData.rotation =
-      glm::mod(m_transformData.rotation + glm::vec3(x, y, z) * m_rotationSpeed *
-                                              core::time.getDeltaTime(),
-               glm::two_pi<float>());
+glm::quat& ABase::getRotation() noexcept {
+  return m_transformationData.rotation;
+}
+
+glm::vec3 ABase::getRotationAngles() noexcept {
+  return glm::eulerAngles(m_transformationData.rotation) * (180.0f / math::PI);
 }
 
 void ABase::rotate(const glm::vec3& delta) noexcept {
-  m_transformData.rotation =
-      glm::mod(delta * m_rotationSpeed * core::time.getDeltaTime(),
-               glm::two_pi<float>());
+  m_transformationData.rotation =
+      glm::mod(delta * m_rotationModifier * core::time.getDeltaTime(),
+               math::twoPI);
 }
 
-void ABase::setScale(float x, float y, float z) noexcept {
-  m_transformData.scaling = glm::vec3(x, y, z);
-  m_transformData.initial.scaling = m_transformData.scaling;
+void ABase::rotate(const glm::vec3& vector, float angle) noexcept {
+  m_transformationData.rotation *= glm::quat(angle, vector);
+}
+
+void ABase::rotate(const glm::quat& delta) noexcept {
+  m_transformationData.rotation *= delta;
 }
 
 void ABase::setScale(const glm::vec3& scale) noexcept {
-  m_transformData.scaling = scale;
-  m_transformData.initial.scaling = m_transformData.scaling;
+  m_transformationData.scaling = scale;
+  m_transformationData.initial.scaling = m_transformationData.scaling;
 }
 
-glm::vec3& ABase::getScale() noexcept { return m_transformData.scaling; }
-
-void ABase::scale(float x, float y, float z) noexcept {
-  m_transformData.scaling *=
-      glm::vec3(x, y, z) * m_scalingSpeed * core::time.getDeltaTime();
-}
+glm::vec3& ABase::getScale() noexcept { return m_transformationData.scaling; }
 
 void ABase::scale(const glm::vec3& delta) noexcept {
-  m_transformData.scaling *= delta * m_scalingSpeed * core::time.getDeltaTime();
+  m_transformationData.scaling *= delta * m_scalingModifier * core::time.getDeltaTime();
 }
 
-void ABase::setTranslationSpeed(const float& newSpeed) {
-  m_translationSpeed = newSpeed;
+void ABase::setTranslationModifier(const float& newModifier) {
+  m_translationModifier = newModifier;
 }
 
-void ABase::setRotationSpeed(const float& newSpeed) {
-  m_rotationSpeed = newSpeed;
+void ABase::setRotationModifier(const float& newModifier) {
+  m_rotationModifier = newModifier;
 }
 
-void ABase::setScalingSpeed(const float& newSpeed) {
-  m_scalingSpeed = newSpeed;
+void ABase::setScalingModifier(const float& newModifier) {
+  m_scalingModifier = newModifier;
 }
 
 const uint32_t ABase::typeId() { return m_typeId; }

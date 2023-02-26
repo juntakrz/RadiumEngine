@@ -18,27 +18,27 @@ class ABase {
  protected:
   EActorType m_typeId = EActorType::Base;
 
-  struct TransformData {
+  struct TransformationData {
     // data used in actual transformation calculations
     glm::vec3 translation = {0.0f, 0.0f, 0.0f};
-    glm::vec3 rotation = {0.0f, 0.0f, 0.0f};
+    glm::quat rotation = {0.0f, 0.0f, 0.0f, 0.0f};
     glm::vec3 scaling = {1.0f, 1.0f, 1.0f};
     glm::vec3 frontVector = {0.0f, 0.0f, 1.0f};
 
     struct {
       // initial data defined by Set* methods
       glm::vec3 translation = {0.0f, 0.0f, 0.0f};
-      glm::vec3 rotation = {0.0f, 0.0f, 0.0f};
+      glm::quat rotation = {0.0f, 0.0f, 0.0f, 0.0f};
       glm::vec3 scaling = {1.0f, 1.0f, 1.0f};
     } initial;
 
-  } m_transformData;
+  } m_transformationData;
 
-  float m_translationSpeed = 1.0f;
-  float m_rotationSpeed = 1.0f;
-  float m_scalingSpeed = 1.0f;
+  float m_translationModifier = 1.0f;
+  float m_rotationModifier = 1.0f;
+  float m_scalingModifier = 1.0f;
 
-  glm::mat4 m_mainTransformationMatrix = glm::mat4(1.0f);
+  glm::mat4 m_transformationMatrix = glm::mat4(1.0f);
 
  public:
   std::string name;
@@ -56,35 +56,34 @@ class ABase {
   };
 
   // returns matrix with all transformations applied
-  virtual glm::mat4& getTransform() noexcept;
+  virtual glm::mat4& getTransformation() noexcept;
 
   // data set used for transformation calculations
-  virtual TransformData& getTransformData() noexcept;
+  virtual TransformationData& getTransformData() noexcept;
 
-  virtual void setPos(float x, float y, float z) noexcept;
-  virtual void setPos(const glm::vec3& pos) noexcept;
-  virtual glm::vec3& getPos() noexcept;
+  virtual void setLocation(const glm::vec3& newLocation) noexcept;
+  virtual glm::vec3& getLocation() noexcept;
 
-  virtual void translate(float x, float y, float z) noexcept;
   virtual void translate(const glm::vec3& delta) noexcept;
 
-  virtual void setRotation(float x, float y, float z) noexcept;
-  virtual void setRotation(const glm::vec3& rotation) noexcept;
-  virtual glm::vec3& getRotation() noexcept;
+  virtual void setRotation(const glm::vec3& newRotation) noexcept;
+  virtual void setRotation(const glm::vec3& newVector, float newAngle) noexcept;
+  virtual void setRotation(const glm::quat& newRotation) noexcept;
+  virtual glm::quat& getRotation() noexcept;
+  virtual glm::vec3 getRotationAngles() noexcept;
 
-  virtual void rotate(float x, float y, float z) noexcept;
   virtual void rotate(const glm::vec3& delta) noexcept;
+  virtual void rotate(const glm::vec3& vector, float angle) noexcept;
+  virtual void rotate(const glm::quat& delta) noexcept;
 
-  virtual void setScale(float x, float y, float z) noexcept;
   virtual void setScale(const glm::vec3& scale) noexcept;
   virtual glm::vec3& getScale() noexcept;
 
-  virtual void scale(float x, float y, float z) noexcept;
   virtual void scale(const glm::vec3& delta) noexcept;
 
-  void setTranslationSpeed(const float& newSpeed);
-  void setRotationSpeed(const float& newSpeed);
-  void setScalingSpeed(const float& newSpeed);
+  void setTranslationModifier(const float& newModifier);
+  void setRotationModifier(const float& newModifier);
+  void setScalingModifier(const float& newModifier);
 
   const uint32_t typeId();
 };

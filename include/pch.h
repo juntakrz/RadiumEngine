@@ -39,8 +39,10 @@
 // Vulkan API related headers
 #include <GLFW/glfw3.h>
 #include <GLM/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtx/rotate_vector.hpp>
+#include <GLM/gtc/matrix_transform.hpp>
+#include <GLM/gtx/rotate_vector.hpp>
+#include <GLM/gtx/quaternion.hpp>
+#include <GLM/gtc/quaternion.hpp>
 
 // external engine modules
 #include <json/json.hpp>

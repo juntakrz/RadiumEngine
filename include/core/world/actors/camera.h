@@ -15,9 +15,6 @@ class ACamera : public ABase {
     ABase* targetActor = nullptr;    // use this actor as a focus point
   } m_viewData;
 
-  // processed vectors
-  glm::vec3 m_vecPos, m_vecFocus;
-
   glm::mat4 m_view;        // view matrix
   glm::mat4 m_projection;  // projection matrix
 
@@ -43,6 +40,8 @@ class ACamera : public ABase {
   void setAnchorPoint(float x, float y, float z) noexcept;
   void setAnchorPoint(glm::vec3& newAnchorPoint) noexcept;
 
-  virtual void translate(float x, float y, float z) noexcept override;
-  virtual void rotate(float x, float y, float z) noexcept override;
+  virtual void translate(const glm::vec3& delta) noexcept override;
+  virtual void rotate(const glm::vec3& delta) noexcept override;
+  virtual void rotate(const glm::vec3& vector, float angle) noexcept override;
+  virtual void rotate(const glm::quat& delta) noexcept override;
 };

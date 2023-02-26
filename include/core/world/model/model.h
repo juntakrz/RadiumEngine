@@ -5,19 +5,19 @@
 class WModel {
   std::string name = "$NONAMEMODEL$";
 
-  struct SModelNode {
+  struct ModelNode {
     std::string name = "$NONAMENODE$";
 
-    SModelNode* pParentNode = nullptr;
-    std::vector<std::unique_ptr<SModelNode>> pChildren;
+    ModelNode* pParentNode = nullptr;
+    std::vector<std::unique_ptr<ModelNode>> pChildren;
 
     std::vector<WMesh*> pMeshes;
     std::vector<WMesh*> pBoundingBoxes;
 
-    glm::mat4 matrix;
-    glm::vec3 translation;
-    glm::vec3 scale;
-    glm::vec3 rotation;
+    glm::mat4 matrix = glm::mat4(1.0f);
+    glm::vec3 translation = glm::vec3(0.0f);
+    glm::quat rotation = glm::quat(glm::vec3(0.0f));
+    glm::vec3 scale = glm::vec3(1.0f);
 
     // transform matrix only for this node
     glm::mat4 getLocalMatrix();
@@ -29,6 +29,6 @@ class WModel {
     void update();
   };
 
-  std::vector<std::unique_ptr<SModelNode>> pNodes;
+  std::vector<std::unique_ptr<ModelNode>> pNodes;
   std::vector<std::unique_ptr<WMesh>> pMeshes;
 };
