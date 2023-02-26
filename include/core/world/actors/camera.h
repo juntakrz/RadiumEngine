@@ -41,7 +41,12 @@ class ACamera : public ABase {
   void setAnchorPoint(glm::vec3& newAnchorPoint) noexcept;
 
   virtual void translate(const glm::vec3& delta) noexcept override;
+
   virtual void rotate(const glm::vec3& delta) noexcept override;
   virtual void rotate(const glm::vec3& vector, float angle) noexcept override;
+
+  // not frame time compensated variant, try to use vector/angle instead
+  // when creating quaternion use call to getDeltaTime() to modify an angle
+  // example: { cos(deltaAngle * getDeltaTime()), 0.0f, 1.0f, 0.0f }
   virtual void rotate(const glm::quat& delta) noexcept override;
 };

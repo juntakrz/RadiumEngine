@@ -2,6 +2,7 @@
 #include "core/core.h"
 #include "core/managers/input.h"
 #include "core/managers/player.h"
+#include "core/managers/time.h"
 #include "core/world/actors/base.h"
 
 core::MPlayer::MPlayer() {

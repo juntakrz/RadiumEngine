@@ -69,10 +69,9 @@ void ACamera::rotate(const glm::vec3& vector, float angle) noexcept {
 }
 
 void ACamera::rotate(const glm::quat& delta) noexcept {
-  //glm::quat frameDelta = delta;
-  //frameDelta.w *= m_rotationModifier * core::time.getDeltaTime();
-  m_transformationData.rotation *=
-      delta * m_rotationModifier * core::time.getDeltaTime();
+  m_transformationData.rotation *= delta;
+  //m_transformationData.rotation *=
+    //  delta * m_rotationModifier * core::time.getDeltaTime();
 
   switch (m_viewData.bAnchorFocusPoint) {
     case true: {
@@ -82,11 +81,6 @@ void ACamera::rotate(const glm::quat& delta) noexcept {
     case false: {
       m_viewData.focusPoint = glm::rotate(m_transformationData.rotation,
                                           m_transformationData.frontVector);
-      RE_LOG(Log, "Location: %.2f, %.2f, %.2f, Focus: %.2f, %.2f, %.2f",
-             m_transformationData.translation.x,
-             m_transformationData.translation.y,
-             m_transformationData.translation.z, m_viewData.focusPoint.x,
-             m_viewData.focusPoint.y, m_viewData.focusPoint.z);
     }
   }
 }

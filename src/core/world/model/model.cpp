@@ -7,13 +7,40 @@ glm::mat4 WModel::ModelNode::getLocalMatrix() {
 }
 
 glm::mat4 WModel::ModelNode::getMatrix() {
-  glm::mat4 m = getLocalMatrix();
-  /*vkglTF::Node *p = parent;
-  while (p) {
-    m = p->localMatrix() * m;
-    p = p->parent;
-  }*/
-  return m;
+  glm::mat4 matrix = getLocalMatrix();
+  ModelNode* pParent = pParentNode;
+  while (pParent) {
+    matrix = pParent->getLocalMatrix() * matrix;
+    pParent = pParent->pParentNode;
+  }
+  return matrix;
 }
 
-void WModel::ModelNode::update() {}
+void WModel::ModelNode::update() {
+  if (!pMeshes.empty()) {
+    glm::mat4 matrix = getMatrix();
+    /*if (skin) {
+      mesh->uniformBlock.matrix = m;
+      // Update join matrices
+      glm::mat4 inverseTransform = glm::inverse(m);
+      size_t numJoints =
+          std::min((uint32_t)skin->joints.size(), MAX_NUM_JOINTS);
+      for (size_t i = 0; i < numJoints; i++) {
+        vkglTF::Node* jointNode = skin->joints[i];
+        glm::mat4 jointMat =
+            jointNode->getMatrix() * skin->inverseBindMatrices[i];
+        jointMat = inverseTransform * jointMat;
+        mesh->uniformBlock.jointMatrix[i] = jointMat;
+      }
+      mesh->uniformBlock.jointcount = (float)numJoints;
+      memcpy(mesh->uniformBuffer.mapped, &mesh->uniformBlock,
+             sizeof(mesh->uniformBlock));
+    } else {
+      memcpy(mesh->uniformBuffer.mapped, &m, sizeof(glm::mat4));
+    }*/
+  }
+
+  for (auto& pChild : pChildren) {
+    pChild->update();
+  }
+}
