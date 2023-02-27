@@ -3,14 +3,14 @@
 #include "core/managers/renderer.h"
 #include "core/world/model/model.h"
 
-glm::mat4 WModel::ModelNode::getLocalMatrix() {
+glm::mat4 WModel::Node::getLocalMatrix() {
   return glm::translate(glm::mat4(1.0f), translation) * glm::mat4(rotation) *
          glm::scale(glm::mat4(1.0f), scale) * matrix;
 }
 
-glm::mat4 WModel::ModelNode::getMatrix() {
+glm::mat4 WModel::Node::getMatrix() {
   glm::mat4 matrix = getLocalMatrix();
-  ModelNode* pParent = pParentNode;
+  Node* pParent = pParentNode;
   while (pParent) {
     matrix = pParent->getLocalMatrix() * matrix;
     pParent = pParent->pParentNode;
@@ -18,15 +18,15 @@ glm::mat4 WModel::ModelNode::getMatrix() {
   return matrix;
 }
 
-WModel::ModelNode::ModelNode() {
+WModel::Node::Node() {
   // prepare buffer and memory to store node transformation matrix
   core::renderer.createBuffer(EBCMode::CPU_UNIFORM,
                               uniformBufferData.bufferSize,
                               uniformBufferData.uniformBuffer);
 }
 
-void WModel::ModelNode::update() {
-  if (!pMeshes.empty()) {
+void WModel::Node::update() {
+  if (!pMeshData) {
     glm::mat4 matrix = getMatrix();
     /*if (skin) {
       mesh->uniformBlock.matrix = m;
