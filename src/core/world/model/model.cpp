@@ -1,4 +1,6 @@
 #include "pch.h"
+#include "core/core.h"
+#include "core/managers/renderer.h"
 #include "core/world/model/model.h"
 
 glm::mat4 WModel::ModelNode::getLocalMatrix() {
@@ -14,6 +16,13 @@ glm::mat4 WModel::ModelNode::getMatrix() {
     pParent = pParent->pParentNode;
   }
   return matrix;
+}
+
+WModel::ModelNode::ModelNode() {
+  // prepare buffer and memory to store node transformation matrix
+  core::renderer.createBuffer(EBCMode::CPU_UNIFORM,
+                              uniformBufferData.bufferSize,
+                              uniformBufferData.uniformBuffer);
 }
 
 void WModel::ModelNode::update() {
@@ -38,6 +47,10 @@ void WModel::ModelNode::update() {
     } else {
       memcpy(mesh->uniformBuffer.mapped, &m, sizeof(glm::mat4));
     }*/
+
+    // store node matrix into a uniform buffer
+    memcpy(uniformBufferData.uniformBuffer.allocInfo.pMappedData, &matrix,
+           sizeof(glm::mat4));
   }
 
   for (auto& pChild : pChildren) {

@@ -15,5 +15,8 @@ class MWorld {
     static MWorld _sInstance;
     return _sInstance;
   }
+
+  // load model from file, optionally give it a custom name
+  void loadModelFromFile(const char* path, const char* name = "");
 };
 }  // namespace core
