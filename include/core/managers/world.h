@@ -14,7 +14,7 @@ class MWorld {
   std::unordered_map<std::string, std::unique_ptr<WModel>> m_models;
 
   MWorld();
-  void processModelNode(WModel* pNewModel, const tinygltf::Model& model,
+  void parseModelNodeProperties(WModel* pNewModel, const tinygltf::Model& model,
                         const tinygltf::Node& node);
 
  public:

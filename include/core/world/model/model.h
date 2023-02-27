@@ -2,7 +2,12 @@
 
 #include "core/world/model/mesh.h"
 
+namespace core {
+class MWorld;
+}
+
 class WModel {
+  friend class core::MWorld;
 
   struct Mesh {
     std::vector<WMesh*> pMeshes;
@@ -27,8 +32,7 @@ class WModel {
 
     struct {
       RBuffer uniformBuffer;
-      static const uint32_t bufferSize =
-          sizeof(glm::mat4) * 2u + sizeof(float);
+      static const uint32_t bufferSize = sizeof(glm::mat4) * 2u + sizeof(float);
       VkDescriptorBufferInfo descriptorBufferInfo{};
       VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
     } uniformBufferData;
@@ -45,8 +49,13 @@ class WModel {
     void update();
   };
 
-  std::string name = "$NONAMEMODEL$";
+  std::string m_name = "$NONAMEMODEL$";
+  uint32_t m_vertexCount = 0u;
+  uint32_t m_indexCount = 0u;
+  std::vector<std::unique_ptr<Node>> m_pNodes;
+  std::vector<std::unique_ptr<WMesh>> m_pMeshes;
 
-  std::vector<std::unique_ptr<Node>> pNodes;
-  std::vector<std::unique_ptr<WMesh>> pMeshes;
+ public:
+  const uint32_t& getVertexCount() { return m_vertexCount; }
+  const uint32_t& getIndexCount() { return m_indexCount; }
 };

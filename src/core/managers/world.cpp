@@ -1,11 +1,15 @@
 #include "pch.h"
 #include "core/managers/world.h"
+#include "core/world/model/model.h"
 
-#include <tinygltf/tiny_gltf.h>
+#define TINYGLTF_IMPLEMENTATION
+#define TINYGLTF_NO_STB_IMAGE
+#define TINYGLTF_NO_STB_IMAGE_WRITE
+#include "tinygltf/tiny_gltf.h"
 
 core::MWorld::MWorld() { RE_LOG(Log, "Initializing world manager."); }
 
-void core::MWorld::processModelNode(WModel* pNewModel,
+void core::MWorld::parseModelNodeProperties(WModel* pNewModel,
                                     const tinygltf::Model& model,
                                     const tinygltf::Node& node) {
   if (!pNewModel) {
@@ -15,11 +19,28 @@ void core::MWorld::processModelNode(WModel* pNewModel,
 
   if (node.children.size() > 0) {
     for (size_t i = 0; i < node.children.size(); i++) {
-      processModelNode(pNewModel, model, model.nodes[node.children[i]]);
+      parseModelNodeProperties(pNewModel, model, model.nodes[node.children[i]]);
     }
   }
 
+  if (node.mesh > -1) {
+    const tinygltf::Mesh& mesh = model.meshes[node.mesh];
 
+    for (size_t i = 0; i < mesh.primitives.size(); ++i) {
+      const tinygltf::Primitive& currentPrimitive = mesh.primitives[i];
+
+      // get vertex count of a current primitive
+      pNewModel->m_vertexCount += static_cast<uint32_t>(
+          model.accessors[currentPrimitive.attributes.find("POSITION")->second]
+              .count);
+
+      // get index count of a current primitive
+      if (currentPrimitive.indices > -1) {
+        pNewModel->m_indexCount += static_cast<uint32_t>(
+            model.accessors[currentPrimitive.indices].count);
+      }
+    }
+  }
 }
 
 TResult core::MWorld::loadModelFromFile(const std::string& path,
@@ -57,12 +78,12 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
   }
 
   uint32_t vertexCount = 0u, vertexPos = 0u, indexCount = 0u, indexPos = 0u;
-  const tinygltf::Scene gltfScene =
+  const tinygltf::Scene& gltfScene =
       gltfModel
           .scenes[gltfModel.defaultScene > -1 ? gltfModel.defaultScene : 0];
 
   for (size_t i = 0; i < gltfScene.nodes.size(); ++i) {
-    processModelNode(pModel, gltfModel, gltfModel.nodes[gltfScene.nodes[i]]);
+    parseModelNodeProperties(pModel, gltfModel, gltfModel.nodes[gltfScene.nodes[i]]);
   }
 
   return RE_OK;
