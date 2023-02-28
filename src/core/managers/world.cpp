@@ -2,7 +2,7 @@
 #include "util/util.h"
 #include "core/managers/world.h"
 #include "core/world/model/primitive_plane.h"
-//#include "core/world/model/primitive_sphere.h"
+#include "core/world/model/primitive_sphere.h"
 //#include "core/world/model/primitive_cube.h"
 #include "core/world/model/model.h"
 
@@ -76,7 +76,6 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
 
 TResult core::MWorld::createModel(EWPrimitive type, std::string name,
                                   int32_t arg0, int32_t arg1) {
-
   auto fValidateNode = [&](WModel::Node* pNode) {
     if (pNode->pMesh == nullptr) {
       RE_LOG(Error, "Node validation failed for '%s', model: '%s'.",
@@ -93,13 +92,12 @@ TResult core::MWorld::createModel(EWPrimitive type, std::string name,
            name.c_str());
     return RE_WARNING;
   }
-  
+
   m_models.at(name) = std::make_unique<WModel>();
   WModel* pModel = m_models.at(name).get();
 
   if (!pModel) {
-    RE_LOG(Error, "Failed to create model '%s'.",
-           name.c_str());
+    RE_LOG(Error, "Failed to create model '%s'.", name.c_str());
     return RE_ERROR;
   }
 
@@ -113,7 +111,20 @@ TResult core::MWorld::createModel(EWPrimitive type, std::string name,
       WModel::Node* pNode = pModel->createNode(nullptr, 0, "node_" + name);
       RE_CHECK(fValidateNode(pNode));
       pModel->m_pLinearNodes.emplace_back(pNode);
-      pNode->pMesh->pPrimitives.emplace_back(std::make_unique<WPrimitive_Plane>());
+      pNode->pMesh->pPrimitives.emplace_back(
+          std::make_unique<WPrimitive_Plane>());
+      pNode->pMesh->pPrimitives.back()->create(arg0, arg1);
+      pModel->m_pLinearPrimitives.emplace_back(
+          pNode->pMesh->pPrimitives.back().get());
+      break;
+    }
+
+    case EWPrimitive::Sphere: {
+      WModel::Node* pNode = pModel->createNode(nullptr, 0, "node_" + name);
+      RE_CHECK(fValidateNode(pNode));
+      pModel->m_pLinearNodes.emplace_back(pNode);
+      pNode->pMesh->pPrimitives.emplace_back(
+          std::make_unique<WPrimitive_Sphere>());
       pNode->pMesh->pPrimitives.back()->create(arg0, arg1);
       pModel->m_pLinearPrimitives.emplace_back(
           pNode->pMesh->pPrimitives.back().get());

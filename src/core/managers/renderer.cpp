@@ -108,7 +108,7 @@ TResult core::MRenderer::initialize() {
 
   // delete this code after model loading/creation code is finished
   core::actors.createPawn("plane0");
-  core::world.createModel(EWPrimitive::Plane, "mdlPlane", 1, 1);
+  core::world.createModel(EWPrimitive::Sphere, "mdlPlane", 16, 0);
   WModel* pModel = core::world.getModel("mdlPlane");
   APawn* pPawn = core::actors.getPawn("plane0");
   pPawn->setModel(pModel);

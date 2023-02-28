@@ -111,6 +111,9 @@
     <ClCompile Include="src\core\world\model\primitive_custom.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\core\world\model\primitive_sphere.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\pch.h">
@@ -216,6 +219,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\core\world\model\primitive_custom.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\world\model\primitive_sphere.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

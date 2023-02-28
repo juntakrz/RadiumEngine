@@ -23,12 +23,12 @@ class WPrimitiveGen_Sphere {
       v = 1 - (float)i / (float)latSegments;
 
       latAngle =
-          (float(i) * M_PI / float(latSegments)) - M_PI_2;
+          (i * static_cast<float>(M_PI) / latSegments - static_cast<float>(M_PI_2));
       dY = sinf(latAngle);
       dXZ = cosf(latAngle);
 
       for (uint16_t j = 0; j <= longSegments; j++) {
-        longAngle = (float)j * (M_PI * 2) / (float)longSegments;
+        longAngle = j * (static_cast<float>(M_PI) * 2) / (float)longSegments;
         u = (float)j / (float)longSegments;
         dX = sinf(longAngle) * dXZ;
         dZ = cosf(longAngle) * dXZ;
