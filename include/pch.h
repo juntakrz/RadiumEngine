@@ -43,6 +43,7 @@
 #include <GLM/gtx/rotate_vector.hpp>
 #include <GLM/gtx/quaternion.hpp>
 #include <GLM/gtc/quaternion.hpp>
+#include <GLM/gtc/type_ptr.hpp>
 
 // external engine modules
 #include <json/json.hpp>

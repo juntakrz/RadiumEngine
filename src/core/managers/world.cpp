@@ -9,40 +9,6 @@
 
 core::MWorld::MWorld() { RE_LOG(Log, "Initializing world manager."); }
 
-void core::MWorld::parseModelNodeProperties(WModel* pNewModel,
-                                    const tinygltf::Model& model,
-                                    const tinygltf::Node& node) {
-  if (!pNewModel) {
-    RE_LOG(Error, "%s: no target model provided.", __FUNCTION__);
-    return;
-  }
-
-  if (node.children.size() > 0) {
-    for (size_t i = 0; i < node.children.size(); i++) {
-      parseModelNodeProperties(pNewModel, model, model.nodes[node.children[i]]);
-    }
-  }
-
-  if (node.mesh > -1) {
-    const tinygltf::Mesh& mesh = model.meshes[node.mesh];
-
-    for (size_t i = 0; i < mesh.primitives.size(); ++i) {
-      const tinygltf::Primitive& currentPrimitive = mesh.primitives[i];
-
-      // get vertex count of a current primitive
-      pNewModel->m_vertexCount += static_cast<uint32_t>(
-          model.accessors[currentPrimitive.attributes.find("POSITION")->second]
-              .count);
-
-      // get index count of a current primitive
-      if (currentPrimitive.indices > -1) {
-        pNewModel->m_indexCount += static_cast<uint32_t>(
-            model.accessors[currentPrimitive.indices].count);
-      }
-    }
-  }
-}
-
 TResult core::MWorld::loadModelFromFile(const std::string& path,
                                         std::string name) {
   tinygltf::Model gltfModel;
@@ -71,7 +37,7 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
     return RE_ERROR;
   }
 
-  // now it's time to create the model object
+  // create the model object
   if (m_models.try_emplace(name).second) {
     m_models.at(name) = std::make_unique<WModel>();
     pModel = m_models.at(name).get();
@@ -82,9 +48,12 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
       gltfModel
           .scenes[gltfModel.defaultScene > -1 ? gltfModel.defaultScene : 0];
 
+  // parse node properties and get index/vertex counts
   for (size_t i = 0; i < gltfScene.nodes.size(); ++i) {
-    parseModelNodeProperties(pModel, gltfModel, gltfModel.nodes[gltfScene.nodes[i]]);
+    pModel->parseNodeProperties(gltfModel, gltfModel.nodes[gltfScene.nodes[i]]);
   }
+
+
 
   return RE_OK;
 }

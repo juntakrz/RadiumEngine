@@ -2,11 +2,6 @@
 
 #include "core/world/model/model.h"
 
-namespace tinygltf {
-class Model;
-class Node;
-}
-
 namespace core {
 
 class MWorld {
@@ -14,8 +9,6 @@ class MWorld {
   std::unordered_map<std::string, std::unique_ptr<WModel>> m_models;
 
   MWorld();
-  void parseModelNodeProperties(WModel* pNewModel, const tinygltf::Model& model,
-                        const tinygltf::Node& node);
 
  public:
   static MWorld& get() {
@@ -23,7 +16,6 @@ class MWorld {
     return _sInstance;
   }
 
-  // load model from file, optionally give it a custom name
-  TResult loadModelFromFile(const std::string& path, std::string name = "");
+  TResult loadModelFromFile(const std::string& path, std::string name);
 };
 }  // namespace core
