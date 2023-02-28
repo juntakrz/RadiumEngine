@@ -13,4 +13,7 @@ class APawn : public ABase {
  public:
   APawn() noexcept {};
   virtual ~APawn() override{};
+
+  virtual void setModel(WModel* pModel);
+  virtual WModel* getModel();
 };

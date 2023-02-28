@@ -439,11 +439,39 @@ WModel::Node* WModel::createNode(WModel::Node* pParentNode, uint32_t nodeIndex,
     return nullptr;
   }
 
+  pNode->name = nodeName;
   pNode->nodeMatrix = glm::mat4(1.0f);
 
   pNode->pMesh = std::make_unique<WModel::Mesh>();
 
   return pNode;
+}
+
+void WModel::destroyNode(std::unique_ptr<WModel::Node>& pNode) {
+  if (!pNode->pChildren.empty()) {
+    for (auto& pChildNode : pNode->pChildren) {
+      destroyNode(pChildNode);
+    };
+  }
+
+  if (pNode->pMesh) {
+    auto& primitives = pNode->pMesh->pPrimitives;
+    for (auto& primitive : primitives) {
+      if (primitive) {
+        primitive->destroy();
+        primitive.reset();
+      }
+    }
+
+    pNode->pChildren.clear();
+    pNode->pMesh->pPrimitives.clear();
+    pNode->pMesh.reset();
+
+    vmaFreeMemory(core::renderer.memAlloc,
+                  pNode->uniformBufferData.uniformBuffer.allocation);
+  }
+
+  pNode.reset();
 }
 
 bool WModel::Mesh::validateBoundingBoxExtent() {
@@ -453,4 +481,31 @@ bool WModel::Mesh::validateBoundingBoxExtent() {
   }
 
   return extent.isValid;
+}
+
+const std::vector<WPrimitive*>& WModel::getPrimitives() {
+  return m_pLinearPrimitives;
+}
+
+TResult WModel::clean() {
+  if (m_pChildNodes.empty()) {
+    RE_LOG(Warning,
+           "Model '%s' can not be cleared. It may be already empty and ready "
+           "for deletion.",
+           m_name.c_str());
+
+    return RE_WARNING;
+  }
+
+  for (auto& node : m_pChildNodes) {
+    destroyNode(node);
+  }
+
+  m_pChildNodes.clear();
+  m_pLinearNodes.clear();
+  m_pLinearPrimitives.clear();
+
+  RE_LOG(Log, "Model '%s' is prepared for deletion.", m_name.c_str());
+
+  return RE_OK;
 }

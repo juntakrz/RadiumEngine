@@ -86,9 +86,17 @@ class WModel {
   WModel::Node* createNode(WModel::Node* pParentNode, uint32_t nodeIndex,
                            std::string nodeName);
 
+  // will destroy this node and its children incl. mesh and primitive contents
+  void destroyNode(std::unique_ptr<WModel::Node>& pNode);
+
   // model creation / generation methods are accessible from the World manager
 
  public:
   const uint32_t& getVertexCount() { return m_vertexCount; }
   const uint32_t& getIndexCount() { return m_indexCount; }
+  const std::vector<WPrimitive*>& getPrimitives();
+
+  // cleans all primitives and nodes within,
+  // model itself won't get destroyed on its own
+  TResult clean();
 };

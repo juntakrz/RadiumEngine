@@ -1,5 +1,4 @@
 #include "pch.h"
-#include "core/world/model/primitive.h"
 #include "core/world/model/primitive_plane.h"
 #include "core/world/primitivegen/plane.h"
 #include "core/core.h"

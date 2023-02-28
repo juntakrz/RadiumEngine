@@ -106,12 +106,17 @@ TResult core::MWorld::createModel(EWPrimitive type, std::string name,
   RE_LOG(Log, "Creating a primitive-based model '%s' (%d, %d).", name.c_str(),
          arg0, arg1);
 
+  pModel->m_name = name;
+
   switch (type) {
     case EWPrimitive::Plane: {
       WModel::Node* pNode = pModel->createNode(nullptr, 0, "node_" + name);
       RE_CHECK(fValidateNode(pNode));
+      pModel->m_pLinearNodes.emplace_back(pNode);
       pNode->pMesh->pPrimitives.emplace_back(std::make_unique<WPrimitive_Plane>());
       pNode->pMesh->pPrimitives.back()->create(arg0, arg1);
+      pModel->m_pLinearPrimitives.emplace_back(
+          pNode->pMesh->pPrimitives.back().get());
       break;
     }
 
@@ -121,4 +126,30 @@ TResult core::MWorld::createModel(EWPrimitive type, std::string name,
   }
 
   return RE_OK;
+}
+
+WModel* core::MWorld::getModel(const char* name) {
+  if (m_models.contains(name)) {
+    return m_models.at(name).get();
+  }
+
+  RE_LOG(Error, "Failed to get model '%s'. It does not exist.", name);
+
+  return nullptr;
+}
+
+void core::MWorld::destroyAllModels() {
+  RE_LOG(Log, "Destroying all models.");
+
+  for (auto& model : m_models) {
+    std::unique_ptr<WModel>& pModel = model.second;
+    std::string name = pModel->m_name;
+    pModel->clean();
+    pModel.reset();
+    RE_LOG(Log, "Model '%s' was successfully destroyed.", name.c_str());
+  }
+
+  m_models.clear();
+  
+  RE_LOG(Log, "Finished removing models.");
 }

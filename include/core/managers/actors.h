@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include "core/world/model/primitive.h"
+#include "core/world/actors/pawn.h"
 
 class ACamera;
 
@@ -11,11 +12,8 @@ class MActors {
  private:
   struct {
     std::unordered_map<std::string, std::unique_ptr<ACamera>> cameras;
-
+    std::unordered_map<std::string, std::unique_ptr<APawn>> pawns;
   } m_actors;
-
- public:
-  std::vector<std::unique_ptr<WPrimitive>> meshes;     // OBSOLETE! should use WModel class instead and only as part of APawn
 
  private:
   MActors();
@@ -36,10 +34,11 @@ class MActors {
   TResult destroyCamera(const char* name);
   ACamera* getCamera(const char* name);
 
-  // MESH
+  // PAWN
 
-  TResult createMesh();
-  TResult destroyMesh(uint32_t index);
-  void destroyAllMeshes();
+  TResult createPawn(const char* name);
+  TResult destroyPawn(const char* name);
+  APawn* getPawn(const char* name);
+  void destroyAllPawns();
 };
 }  // namespace core

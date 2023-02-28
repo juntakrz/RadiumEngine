@@ -1,9 +1,9 @@
 #include "pch.h"
 #include "core/core.h"
-#include "core/managers/actors.h"
 #include "core/managers/input.h"
 #include "core/world/model/primitive_plane.h"
 #include "core/world/actors/camera.h"
+#include "core/managers/actors.h"
 
 core::MActors::MActors() {
   RE_LOG(Log, "Creating actors manager.");
@@ -36,7 +36,7 @@ ACamera* core::MActors::createCamera(const char* name,
 }
 
 TResult core::MActors::destroyCamera(const char* name) {
-  if (m_actors.cameras.find(name) != m_actors.cameras.end()) {
+  if (m_actors.cameras.contains(name)) {
     m_actors.cameras.erase(name);
     return RE_OK;
   }
@@ -46,40 +46,52 @@ TResult core::MActors::destroyCamera(const char* name) {
 }
 
 ACamera* core::MActors::getCamera(const char* name) {
-  if (m_actors.cameras.find(name) != m_actors.cameras.end()) {
+  if (m_actors.cameras.contains(name)) {
     return m_actors.cameras.at(name).get();
   }
 
   return nullptr;
 }
 
-TResult core::MActors::createMesh() {
-  meshes.emplace_back(std::make_unique<WPrimitive_Plane>());
-  meshes.back()->create();
+TResult core::MActors::createPawn(const char* name) {
+  if (!m_actors.pawns.try_emplace(name).second) {
+    RE_LOG(Error, "Failed to created pawn '%s'. It probably already exists.",
+           name);
+    return RE_ERROR;
+  };
+
+  m_actors.pawns.at(name) = std::make_unique<APawn>();
+
+  // should probably add a reference to MRef here?
 
   return RE_OK;
 }
 
-TResult core::MActors::destroyMesh(uint32_t index) {
-  if (index < meshes.size()) {
-    meshes[index]->destroy();
-    meshes[index].reset();
+TResult core::MActors::destroyPawn(const char* name) {
+  if (m_actors.pawns.contains(name)){
+    m_actors.pawns.erase(name);
     return RE_OK;
   }
 
-  RE_LOG(Error,
-         "failed to destroy mesh, probably incorrect index provided (%d)",
-         index);
+  RE_LOG(Error, "Failed to destroy pawn '%s', doesn't exist.", name);
   return RE_ERROR;
 }
 
-void core::MActors::destroyAllMeshes() {
-  RE_LOG(Log, "Clearing all mesh buffers and allocations.");
-
-  for (auto& it : meshes) {
-    it->destroy();
-    it.reset();
+APawn* core::MActors::getPawn(const char* name) {
+  if (m_actors.pawns.contains(name)) {
+    return m_actors.pawns.at(name).get();
   }
 
-  meshes.clear();
+  RE_LOG(Error, "Failed to get pawn '%s'.", name);
+  return nullptr;
+}
+
+void core::MActors::destroyAllPawns() {
+  RE_LOG(Log, "Clearing all pawn buffers and allocations.");
+
+  for (auto& it : m_actors.pawns) {
+    it.second.reset();
+  }
+
+  m_actors.pawns.clear();
 }

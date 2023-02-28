@@ -7,6 +7,7 @@
 #include "core/managers/window.h"
 #include "core/managers/actors.h"
 #include "core/managers/time.h"
+#include "core/managers/world.h"
 #include "core/world/actors/camera.h"
 
 core::MRenderer::MRenderer() {
@@ -105,8 +106,19 @@ TResult core::MRenderer::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCommandBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();
 
-  core::actors.createMesh();
-  bindMesh(core::actors.meshes.back().get());
+  // delete this code after model loading/creation code is finished
+  core::actors.createPawn("plane0");
+  core::world.createModel(EWPrimitive::Plane, "mdlPlane", 1, 1);
+  WModel* pModel = core::world.getModel("mdlPlane");
+  APawn* pPawn = core::actors.getPawn("plane0");
+  pPawn->setModel(pModel);
+
+  auto primitives = pModel->getPrimitives();
+  for (const auto& it : primitives) {
+    bindMesh(it);
+  }
+  //
+
   if (chkResult <= RE_ERRORLIMIT) chkResult = createMVPBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorPool();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSets();
@@ -124,7 +136,8 @@ void core::MRenderer::deinitialize() {
   destroyGraphicsPipeline();
   destroyRenderPass();
   destroySurface();
-  core::actors.destroyAllMeshes();
+  core::actors.destroyAllPawns();
+  core::world.destroyAllModels();
   destroyDescriptorPool();
   destroyMVPBuffers();
   destroyMemAlloc();

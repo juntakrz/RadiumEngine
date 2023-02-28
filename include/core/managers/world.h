@@ -22,5 +22,10 @@ class MWorld {
   // create a simple model using a chosen primitive and arguments
   TResult createModel(EWPrimitive type, std::string name, int32_t arg0,
                       int32_t arg1);
+
+  WModel* getModel(const char* name);
+
+  // call after objects (pawns, statics) using models are already destroyed
+  void destroyAllModels();
 };
 }  // namespace core
