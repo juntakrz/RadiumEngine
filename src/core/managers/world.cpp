@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "core/managers/world.h"
+#include "util/util.h"
 #include "core/world/model/model.h"
 
 #define TINYGLTF_IMPLEMENTATION

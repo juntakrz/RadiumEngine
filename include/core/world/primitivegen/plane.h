@@ -21,7 +21,7 @@ class WPrimitiveGen_Plane {
       for (int j = 0; j <= divY; j++) {
         vertices.emplace_back();
         vertices.back().pos = {stepX * i - 1, 1 - (stepY * j), 0.0f};
-        vertices.back().tex = {stepX * i / 2, stepY * j / 2};
+        vertices.back().tex0 = {stepX * i / 2, stepY * j / 2};
       }
     }
 

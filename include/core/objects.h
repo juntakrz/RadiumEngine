@@ -61,11 +61,15 @@ struct RBuffer {
 };
 
 struct RVertex {
-  glm::vec3 pos;       // POSITION
-  glm::vec2 tex;       // TEXCOORD
-  glm::vec3 normal;    // NORMAL
-  glm::vec3 tangent;   // TANGENT
-  glm::vec3 binormal;  // BINORMAL
+  glm::vec3 pos;        // POSITION
+  glm::vec2 tex0;       // TEXCOORD0
+  glm::vec2 tex1;       // TEXCOORD1
+  glm::vec3 normal;     // NORMAL
+  glm::vec3 tangent;    // TANGENT
+  glm::vec3 binormal;   // BINORMAL
+  glm::vec4 color;      // COLOR
+  glm::vec4 joint;      // JOINT
+  glm::vec4 weight;     // WEIGHT
 
   static VkVertexInputBindingDescription getBindingDesc();
   static std::vector<VkVertexInputAttributeDescription> getAttributeDescs();

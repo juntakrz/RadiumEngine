@@ -35,7 +35,7 @@ class WPrimitiveGen_Sphere {
 
         vertices.emplace_back();
         vertices.back().pos = {dX, dY, dZ};
-        vertices.back().tex = {u, v};
+        vertices.back().tex0 = {u, v};
       }
     }
 

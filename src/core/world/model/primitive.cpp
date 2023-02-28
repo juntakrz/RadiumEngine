@@ -38,3 +38,18 @@ void WPrimitive::destroy() {
   vmaDestroyBuffer(core::renderer.memAlloc, indexBuffer.buffer,
                    indexBuffer.allocation);
 }
+
+void WPrimitive::setBoundingBoxExtent(const glm::vec3& min,
+                                      const glm::vec3& max) {
+  extent.min = min;
+  extent.max = max;
+  extent.isValid = true;
+}
+
+const bool& WPrimitive::getBoundingBoxExtent(glm::vec3& outMin, glm::vec3& outMax) const {
+  if (extent.isValid) {
+    outMin = extent.min;
+    outMax = extent.max;
+  }
+  return extent.isValid;
+}

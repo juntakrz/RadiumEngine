@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/objects.h"
 #include "core/world/model/primitive.h"
 
 namespace core {
@@ -16,8 +17,8 @@ class WModel {
 
   struct Mesh {
     glm::mat4 meshMatrix = glm::mat4(1.0f);
-    std::vector<WPrimitive*> pMeshes;
-    std::vector<WPrimitive*> pBoundingBoxes;
+    std::vector<std::unique_ptr<WPrimitive>> pPrimitives;
+    std::vector<std::unique_ptr<WPrimitive>> pBoundingBoxes;
 
     Mesh(){};
   };
@@ -30,7 +31,7 @@ class WModel {
     Node* pParentNode = nullptr;
     std::vector<std::unique_ptr<Node>> pChildren;
 
-    std::unique_ptr<Mesh> pMeshData;
+    std::unique_ptr<Mesh> pMesh;
 
     glm::mat4 nodeMatrix = glm::mat4(1.0f);
     glm::mat4 jointMatrix = glm::mat4(1.0f);
@@ -63,7 +64,7 @@ class WModel {
   uint32_t m_vertexCount = 0u;
   uint32_t m_indexCount = 0u;
   std::vector<std::unique_ptr<Node>> m_pNodes;
-  std::vector<std::unique_ptr<WPrimitive>> m_pMeshes;
+  std::vector<WPrimitive*> m_pPrimitives;
 
  private:
   void parseNodeProperties(const tinygltf::Model& gltfModel,
