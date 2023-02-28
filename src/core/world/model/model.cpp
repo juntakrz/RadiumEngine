@@ -128,6 +128,11 @@ void WModel::createNode(WModel::Node* pParentNode,
 
   // retrieve mesh data if available
   if (gltfNode.mesh > -1) {
+    const tinygltf::Mesh& gltfMesh = gltfModel.meshes[gltfNode.mesh];
+    pNode->pMeshData = std::make_unique<WModel::Mesh>();
 
+    for (size_t j = 0; j < gltfMesh.primitives.size(); ++j) {
+      const tinygltf::Primitive& gltfPrimitive = gltfMesh.primitives[j];
+    }
   }
 }

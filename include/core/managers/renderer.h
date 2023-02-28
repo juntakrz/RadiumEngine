@@ -5,7 +5,7 @@
 #include "common.h"
 #include "core/world/actors/camera.h"
 
-class WMesh;
+class WPrimitive;
 
 namespace core {
 
@@ -42,7 +42,7 @@ namespace core {
       std::vector<VkDescriptorSet> descriptorSets;
       //std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
       VkDescriptorSetLayout descriptorSetLayout;
-      std::vector<WMesh*> meshes;                                   // meshes rendered during the current frame
+      std::vector<WPrimitive*> meshes;                                   // meshes rendered during the current frame
     } system;
 
     // multi-threaded synchronization objects
@@ -102,7 +102,7 @@ namespace core {
     void destroySurface();
 
     // binds mesh to graphics pipeline
-    uint32_t bindMesh(WMesh* pMesh);
+    uint32_t bindMesh(WPrimitive* pMesh);
 
   private:
     TResult createDescriptorSetLayouts();

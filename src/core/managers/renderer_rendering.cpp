@@ -2,7 +2,7 @@
 #include "core/core.h"
 #include "core/managers/renderer.h"
 #include "core/managers/time.h"
-#include "core/world/model/mesh.h"
+#include "core/world/model/primitive.h"
 
 TResult core::MRenderer::createRenderPass() {
   RE_LOG(Log, "Creating render pass");

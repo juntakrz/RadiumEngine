@@ -3,13 +3,13 @@
 #include "pch.h"
 
 template <class V>
-class WTriangleIndex {
+class WPrimitiveData {
  public:
   std::vector<V> vertices;
   std::vector<uint32_t> indices;
 
-  WTriangleIndex() = default;
-  WTriangleIndex(std::vector<V> inVerts, std::vector<uint32_t> inIndices)
+  WPrimitiveData() = default;
+  WPrimitiveData(std::vector<V> inVerts, std::vector<uint32_t> inIndices)
       : vertices(std::move(inVerts)), indices(std::move(inIndices)) {
     ASSERT(vertices.size() > 2);
     ASSERT(indices.size() % 3 == 0);

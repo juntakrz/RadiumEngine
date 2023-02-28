@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common.h"
-#include "core/world/model/mesh.h"
+#include "core/world/model/primitive.h"
 
 class ACamera;
 
@@ -15,7 +15,7 @@ class MActors {
   } m_actors;
 
  public:
-  std::vector<std::unique_ptr<WMesh>> meshes;     // OBSOLETE! should use WModel class instead and only as part of APawn
+  std::vector<std::unique_ptr<WPrimitive>> meshes;     // OBSOLETE! should use WModel class instead and only as part of APawn
 
  private:
   MActors();

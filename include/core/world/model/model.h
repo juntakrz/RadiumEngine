@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/world/model/mesh.h"
+#include "core/world/model/primitive.h"
 
 namespace core {
 class MWorld;
@@ -15,8 +15,11 @@ class WModel {
   friend class core::MWorld;
 
   struct Mesh {
-    std::vector<WMesh*> pMeshes;
-    std::vector<WMesh*> pBoundingBoxes;
+    glm::mat4 meshMatrix = glm::mat4(1.0f);
+    std::vector<WPrimitive*> pMeshes;
+    std::vector<WPrimitive*> pBoundingBoxes;
+
+    Mesh(){};
   };
 
   struct Node {
@@ -60,7 +63,7 @@ class WModel {
   uint32_t m_vertexCount = 0u;
   uint32_t m_indexCount = 0u;
   std::vector<std::unique_ptr<Node>> m_pNodes;
-  std::vector<std::unique_ptr<WMesh>> m_pMeshes;
+  std::vector<std::unique_ptr<WPrimitive>> m_pMeshes;
 
  private:
   void parseNodeProperties(const tinygltf::Model& gltfModel,

@@ -57,7 +57,7 @@
     <ClCompile Include="src\core\managers\actors.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\world\model\mesh_plane.cpp">
+    <ClCompile Include="src\core\world\model\primitive_plane.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\world\model\mesh.cpp">
@@ -146,31 +146,28 @@
     <ClInclude Include="include\define_t.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\primitives\triangleindex.h">
+    <ClInclude Include="include\core\world\primitivegen\primitivedata.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\primitives\sphere.h">
+    <ClInclude Include="include\core\world\primitivegen\sphere.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\primitives\primitives_include.h">
+    <ClInclude Include="include\core\world\primitivegen\primitivegen_include.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\primitives\plane.h">
+    <ClInclude Include="include\core\world\primitivegen\plane.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\primitives\cube.h">
+    <ClInclude Include="include\core\world\primitivegen\cube.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\core\managers\actors.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\model\mesh.h">
+    <ClInclude Include="include\core\world\model\primitive.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\model\mesh_plane.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\core\world\model\mesh_include.h">
+    <ClInclude Include="include\core\world\model\primitive_plane.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="lib\include\vk_mem_alloc.h">

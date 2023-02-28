@@ -1,9 +1,9 @@
 #pragma once
 
 #include "core/objects.h"
-#include "core/world/primitives/primitives_include.h"
+#include "core/world/primitivegen/primitivegen_include.h"
 
-class WMesh {
+class WPrimitive {
  private:
   void createVertexBuffer(const std::vector<RVertex>& vertexData);
   void createIndexBuffer(const std::vector<uint32_t>& indexData);
@@ -14,8 +14,8 @@ class WMesh {
                              const std::vector<uint32_t>& indexData);
 
  public:
-  WMesh();
-  virtual ~WMesh(){};
+  WPrimitive();
+  virtual ~WPrimitive(){};
 
   virtual void create(int arg1 = 1, int arg2 = 1) = 0;
   virtual void destroy();

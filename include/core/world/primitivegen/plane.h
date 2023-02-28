@@ -1,12 +1,12 @@
 #pragma once
 
-#include "triangleindex.h"
+#include "primitivedata.h"
 #include "util/util.h"
 
-class WPrimitive_Plane {
+class WPrimitiveGen_Plane {
  public:
   template <class V>
-  static WTriangleIndex<V> create(const int& divX, const int& divY) {
+  static WPrimitiveData<V> create(const int& divX, const int& divY) {
     ASSERT(divX > 0);
     ASSERT(divY > 0);
 
@@ -47,12 +47,12 @@ class WPrimitive_Plane {
   }
 
   template <class V>
-  static WTriangleIndex<V> create(int divisions) {
+  static WPrimitiveData<V> create(int divisions) {
     return create<V>(divisions, divisions);
   }
 
   template <class V>
-  static WTriangleIndex<V> create() {
+  static WPrimitiveData<V> create() {
     return create<V>(1);
   }
 };

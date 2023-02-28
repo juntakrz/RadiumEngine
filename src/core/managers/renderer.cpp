@@ -179,7 +179,7 @@ void core::MRenderer::destroySurface() {
   vkDestroySurfaceKHR(APIInstance, surface, nullptr);
 }
 
-uint32_t core::MRenderer::bindMesh(WMesh* pMesh) {
+uint32_t core::MRenderer::bindMesh(WPrimitive* pMesh) {
   if (!pMesh) {
     RE_LOG(Error, "no mesh provided.");
     return -1;

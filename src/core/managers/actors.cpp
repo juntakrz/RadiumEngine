@@ -2,7 +2,7 @@
 #include "core/core.h"
 #include "core/managers/actors.h"
 #include "core/managers/input.h"
-#include "core/world/model/mesh_plane.h"
+#include "core/world/model/primitive_plane.h"
 #include "core/world/actors/camera.h"
 
 core::MActors::MActors() {
@@ -54,7 +54,7 @@ ACamera* core::MActors::getCamera(const char* name) {
 }
 
 TResult core::MActors::createMesh() {
-  meshes.emplace_back(std::make_unique<WMesh_Plane>());
+  meshes.emplace_back(std::make_unique<WPrimitive_Plane>());
   meshes.back()->create();
 
   return RE_OK;

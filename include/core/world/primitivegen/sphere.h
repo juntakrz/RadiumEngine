@@ -1,11 +1,11 @@
 #pragma once
 
-#include "triangleindex.h"
+#include "primitivedata.h"
 
-class WSphere {
+class WPrimitiveGen_Sphere {
  public:
   template <class V>
-  static WTriangleIndex<V> create(uint16_t divisions, bool invertFaces) {
+  static WPrimitiveData<V> create(uint16_t divisions, bool invertFaces) {
     constexpr float radius = 1.0f;
 
     (divisions > 2) ? 0 : divisions = 3;
@@ -73,12 +73,12 @@ class WSphere {
   }
 
   template <class V>
-  static WTriangleIndex<V> create(const uint16_t divisions) {
+  static WPrimitiveData<V> create(const uint16_t divisions) {
     return Create<V>(divisions, false);
   }
 
   template <class V>
-  static WTriangleIndex<V> create() {
+  static WPrimitiveData<V> create() {
     return Create<V>(32, false);
   }
 };

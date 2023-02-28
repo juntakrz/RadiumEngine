@@ -78,14 +78,6 @@ struct RCameraSettings {
   float farZ = config::viewDistance;
 };
 
-struct WMeshData {
-  uint32_t id;
-  std::string name;
-  std::string material;
-  std::unique_ptr<class WMesh> pMesh;       // visible main mesh
-  std::unique_ptr<class WMesh> pAuxMesh;    // simpler mesh used for occlusion testing/collision etc.
-};
-
 // uniform buffer objects
 // 
 // view matrix UBO for vertex shader (model * view * projection)
