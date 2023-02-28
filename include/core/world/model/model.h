@@ -20,13 +20,21 @@ class WModel {
     std::vector<std::unique_ptr<WPrimitive>> pPrimitives;
     std::vector<std::unique_ptr<WPrimitive>> pBoundingBoxes;
 
+    struct {
+      glm::vec3 min = glm::vec3(0.0f);
+      glm::vec3 max = glm::vec3(0.0f);
+      bool isValid = false;
+    } extent;
+
     Mesh(){};
+
+    bool validateBoundingBoxExtent();
   };
 
   struct Node {
     std::string name = "$NONAMENODE$";
     uint32_t index = 0u;
-    int32_t skinIndex = 0;
+    int32_t skinIndex = -1;
 
     Node* pParentNode = nullptr;
     std::vector<std::unique_ptr<Node>> pChildren;
@@ -63,14 +71,20 @@ class WModel {
   std::string m_name = "$NONAMEMODEL$";
   uint32_t m_vertexCount = 0u;
   uint32_t m_indexCount = 0u;
-  std::vector<std::unique_ptr<Node>> m_pNodes;
-  std::vector<WPrimitive*> m_pPrimitives;
+  std::vector<std::unique_ptr<Node>> m_pChildNodes;
+
+  std::vector<WPrimitive*> m_pLinearPrimitives;
+  std::vector<WModel::Node*> m_pLinearNodes;
 
  private:
   void parseNodeProperties(const tinygltf::Model& gltfModel,
                            const tinygltf::Node& gltfNode);
-  void createNode(WModel::Node* pParent, const tinygltf::Model& gltfModel,
+  void createNode(WModel::Node* pParentNode, const tinygltf::Model& gltfModel,
                   const tinygltf::Node& gltfNode, uint32_t gltfNodeIndex);
+
+  // create simple node with a single empty mesh
+  WModel::Node* createNode(WModel::Node* pParentNode, uint32_t nodeIndex,
+                           std::string nodeName);
 
   // model creation / generation methods are accessible from the World manager
 

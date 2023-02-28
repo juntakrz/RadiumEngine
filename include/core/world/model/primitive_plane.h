@@ -2,5 +2,5 @@
 
 class WPrimitive_Plane : public WPrimitive {
  public:
-  virtual void create(int arg1 = 1, int arg2 = 1) override;
+  virtual void create(int arg0 = 1, int arg1 = 1) override;
 };

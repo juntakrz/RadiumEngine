@@ -14,7 +14,14 @@ enum class EBCMode {  // VkBuffer creation mode
 enum class EAType {  // actor type
   Base,
   Camera,
-  Model
+  Pawn
+};
+
+enum class EWPrimitive {
+  Null,
+  Plane,
+  Sphere,
+  Cube
 };
 
 struct RVkQueueFamilyIndices {

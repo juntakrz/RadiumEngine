@@ -95,10 +95,24 @@ void WModel::createNode(WModel::Node* pParentNode,
                         const tinygltf::Model& gltfModel,
                         const tinygltf::Node& gltfNode,
                         uint32_t gltfNodeIndex) {
-  m_pNodes.emplace_back(std::make_unique<WModel::Node>(
-      pParentNode, gltfNodeIndex, gltfNode.name));
+  WModel::Node* pNode = nullptr;
 
-  Node* pNode = m_pNodes.back().get();
+  if (pParentNode == nullptr) {
+    m_pChildNodes.emplace_back(std::make_unique<WModel::Node>(
+        pParentNode, gltfNodeIndex, gltfNode.name));
+    pNode = m_pChildNodes.back().get();
+  } else {
+    pParentNode->pChildren.emplace_back(std::make_unique<WModel::Node>(
+        pParentNode, gltfNodeIndex, gltfNode.name));
+    pNode = pParentNode->pChildren.back().get();
+  }
+
+  if (!pNode) {
+    RE_LOG(Error, "Trying to create the node '%s', but got nullptr.",
+           gltfNode.name.c_str());
+    return;
+  }
+  
   pNode->skinIndex = gltfNode.skin;
   pNode->nodeMatrix = glm::mat4(1.0f);
 
@@ -132,6 +146,7 @@ void WModel::createNode(WModel::Node* pParentNode,
   if (gltfNode.mesh > -1) {
     const tinygltf::Mesh& gltfMesh = gltfModel.meshes[gltfNode.mesh];
     pNode->pMesh = std::make_unique<WModel::Mesh>();
+    WModel::Mesh* pMesh = pNode->pMesh.get();
 
     for (size_t j = 0; j < gltfMesh.primitives.size(); ++j) {
       const tinygltf::Primitive& gltfPrimitive = gltfMesh.primitives[j];
@@ -232,8 +247,7 @@ void WModel::createNode(WModel::Node* pParentNode,
         // vertex colors
         if (gltfPrimitive.attributes.contains("COLOR_0")) {
           const tinygltf::Accessor& accessor =
-              gltfModel
-                  .accessors[gltfPrimitive.attributes.at("COLOR_0")];
+              gltfModel.accessors[gltfPrimitive.attributes.at("COLOR_0")];
           const tinygltf::BufferView& view =
               gltfModel.bufferViews[accessor.bufferView];
           pBufferColors = reinterpret_cast<const float*>(
@@ -248,8 +262,7 @@ void WModel::createNode(WModel::Node* pParentNode,
         // skinning and joints
         if (gltfPrimitive.attributes.contains("JOINTS_0")) {
           const tinygltf::Accessor& jointAccessor =
-              gltfModel
-                  .accessors[gltfPrimitive.attributes.at("JOINTS_0")];
+              gltfModel.accessors[gltfPrimitive.attributes.at("JOINTS_0")];
           const tinygltf::BufferView& jointView =
               gltfModel.bufferViews[jointAccessor.bufferView];
           pBufferJoints =
@@ -338,7 +351,9 @@ void WModel::createNode(WModel::Node* pParentNode,
       // INDICES
       if (hasIndices) {
         const tinygltf::Accessor& accessor =
-            gltfModel.accessors[gltfPrimitive.indices > -1 ? gltfPrimitive.indices : 0];
+            gltfModel
+                .accessors[gltfPrimitive.indices > -1 ? gltfPrimitive.indices
+                                                      : 0];
         const tinygltf::BufferView& bufferView =
             gltfModel.bufferViews[accessor.bufferView];
         const tinygltf::Buffer& buffer = gltfModel.buffers[bufferView.buffer];
@@ -354,8 +369,7 @@ void WModel::createNode(WModel::Node* pParentNode,
           case TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT: {
             const uint32_t* pBuffer = static_cast<const uint32_t*>(dataPtr);
             for (size_t index = 0; index < accessor.count; index++) {
-              indices[index + indexStart] =
-                  pBuffer[index] + vertexStart;
+              indices[index + indexStart] = pBuffer[index] + vertexStart;
             }
             break;
           }
@@ -378,12 +392,65 @@ void WModel::createNode(WModel::Node* pParentNode,
                    accessor.componentType);
             return;
         }
-      }			
+      }
 
       // create new primitive for storing vertex and index data
-      pNode->pMesh->pPrimitives.emplace_back(std::make_unique<WPrimitive_Custom>(vertices, indices));
-      WPrimitive* pPrimitive = pNode->pMesh->pPrimitives.back().get();
+      pMesh->pPrimitives.emplace_back(
+          std::make_unique<WPrimitive_Custom>(vertices, indices));
+      WPrimitive* pPrimitive = pMesh->pPrimitives.back().get();
       pPrimitive->setBoundingBoxExtent(posMin, posMax);
     }
+
+    // calculate bounding box extent for the whole mesh based on created
+    // primitives
+    glm::vec3 minExtent{0.0f}, maxExtent{0.0f};
+    for (const auto& primitive : pMesh->pPrimitives) {
+      if (primitive->getBoundingBoxExtent(minExtent, maxExtent)) {
+        pMesh->extent.min = glm::min(pMesh->extent.min, minExtent);
+        pMesh->extent.max = glm::max(pMesh->extent.max, maxExtent);
+        pMesh->extent.isValid = true;
+
+        m_pLinearPrimitives.emplace_back(primitive.get());
+      }
+    }
   }
+
+  // add a node for linear access
+  m_pLinearNodes.emplace_back(pNode);
+}
+
+WModel::Node* WModel::createNode(WModel::Node* pParentNode, uint32_t nodeIndex,
+                                 std::string nodeName) {
+  WModel::Node* pNode = nullptr;
+
+  if (pParentNode == nullptr) {
+    m_pChildNodes.emplace_back(std::make_unique<WModel::Node>(
+        pParentNode, nodeIndex, nodeName));
+    pNode = m_pChildNodes.back().get();
+  } else {
+    pParentNode->pChildren.emplace_back(std::make_unique<WModel::Node>(
+        pParentNode, nodeIndex, nodeName));
+    pNode = pParentNode->pChildren.back().get();
+  }
+
+  if (!pNode) {
+    RE_LOG(Error, "Trying to create the node '%s', but got nullptr.",
+           nodeName.c_str());
+    return nullptr;
+  }
+
+  pNode->nodeMatrix = glm::mat4(1.0f);
+
+  pNode->pMesh = std::make_unique<WModel::Mesh>();
+
+  return pNode;
+}
+
+bool WModel::Mesh::validateBoundingBoxExtent() {
+  if (extent.min == extent.max) {
+    extent.isValid = false;
+    RE_LOG(Warning, "Bounding box of a mesh was invalidated.");
+  }
+
+  return extent.isValid;
 }

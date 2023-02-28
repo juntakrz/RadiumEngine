@@ -1,6 +1,9 @@
 #include "pch.h"
-#include "core/managers/world.h"
 #include "util/util.h"
+#include "core/managers/world.h"
+#include "core/world/model/primitive_plane.h"
+//#include "core/world/model/primitive_sphere.h"
+//#include "core/world/model/primitive_cube.h"
 #include "core/world/model/model.h"
 
 #define TINYGLTF_IMPLEMENTATION
@@ -17,6 +20,8 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
   std::string error, warning;
   WModel* pModel = nullptr;
   bool bIsBinary = false, bIsModelLoaded = false;
+
+  RE_LOG(Log, "Loading model '%s' from '%s'.", name.c_str(), path.c_str());
 
   size_t extensionLocation = path.rfind(".", path.length());
   if (extensionLocation == std::string::npos) {
@@ -54,7 +59,66 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
     pModel->parseNodeProperties(gltfModel, gltfModel.nodes[gltfScene.nodes[i]]);
   }
 
+  // create nodes using data from glTF model
+  for (size_t n = 0; n < gltfScene.nodes.size(); ++n) {
+    tinygltf::Node& gltfNode = gltfModel.nodes[gltfScene.nodes[n]];
+    pModel->createNode(nullptr, gltfModel, gltfNode, gltfScene.nodes[n]);
+  }
 
+  /*
+  if (gltfModel.animations.size() > 0) {
+    loadAnimations(gltfModel);
+  }
+  loadSkins(gltfModel);*/
+
+  return RE_OK;
+}
+
+TResult core::MWorld::createModel(EWPrimitive type, std::string name,
+                                  int32_t arg0, int32_t arg1) {
+
+  auto fValidateNode = [&](WModel::Node* pNode) {
+    if (pNode->pMesh == nullptr) {
+      RE_LOG(Error, "Node validation failed for '%s', model: '%s'.",
+             pNode->name.c_str(), name.c_str());
+      return RE_ERROR;
+    }
+    return RE_OK;
+  };
+
+  if (!m_models.try_emplace(name).second) {
+    RE_LOG(Warning,
+           "Failed to create model '%s'. Similarly named model probably "
+           "already exists.",
+           name.c_str());
+    return RE_WARNING;
+  }
+  
+  m_models.at(name) = std::make_unique<WModel>();
+  WModel* pModel = m_models.at(name).get();
+
+  if (!pModel) {
+    RE_LOG(Error, "Failed to create model '%s'.",
+           name.c_str());
+    return RE_ERROR;
+  }
+
+  RE_LOG(Log, "Creating a primitive-based model '%s' (%d, %d).", name.c_str(),
+         arg0, arg1);
+
+  switch (type) {
+    case EWPrimitive::Plane: {
+      WModel::Node* pNode = pModel->createNode(nullptr, 0, "node_" + name);
+      RE_CHECK(fValidateNode(pNode));
+      pNode->pMesh->pPrimitives.emplace_back(std::make_unique<WPrimitive_Plane>());
+      pNode->pMesh->pPrimitives.back()->create(arg0, arg1);
+      break;
+    }
+
+    default: {
+      break;
+    }
+  }
 
   return RE_OK;
 }

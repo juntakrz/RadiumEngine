@@ -5,8 +5,8 @@
 #include "core/core.h"
 #include "core/managers/renderer.h"
 
-void WPrimitive_Plane::create(int arg1, int arg2) {
-  auto model = WPrimitiveGen_Plane::create<RVertex>(arg1, arg2);
+void WPrimitive_Plane::create(int arg0, int arg1) {
+  auto model = WPrimitiveGen_Plane::create<RVertex>(arg0, arg1);
 
   createBuffers(model.vertices, model.indices);
 }
