@@ -79,11 +79,15 @@ class WModel {
   // stores indices for primitive binds in rendering manager
   std::vector<uint32_t> m_primitiveBindsIndex;
 
+  // texture samplers used by this model
+  std::vector<RSampler> m_textureSamplers;
+
  private:
   void parseNodeProperties(const tinygltf::Model& gltfModel,
                            const tinygltf::Node& gltfNode);
   void createNode(WModel::Node* pParentNode, const tinygltf::Model& gltfModel,
                   const tinygltf::Node& gltfNode, uint32_t gltfNodeIndex);
+  void setTextureSamplers(const tinygltf::Model& gltfModel);
 
   // create simple node with a single empty mesh
   WModel::Node* createNode(WModel::Node* pParentNode, uint32_t nodeIndex,

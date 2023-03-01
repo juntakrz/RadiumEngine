@@ -2,6 +2,11 @@
 
 #include "common.h"
 
+namespace tinygltf {
+class Model;
+class Node;
+}  // namespace tinygltf
+
 namespace core {
 
 class MMaterials {
@@ -33,15 +38,12 @@ class MMaterials {
     bool manageTextures = false;
   };
 
-  /*
-  struct DFTexture {
+  struct RTexture {
     std::string name;
     std::string filePath;
-    std::shared_ptr<ID3D11ShaderResourceView*> pSRV = nullptr;
-    ID3D11RenderTargetView* pRTV = nullptr;  // used by render to textures
-    ID3D11Texture2D* pTex = nullptr;
   };
 
+  /*
   struct DFShader {
     COMPTR<ID3D11VertexShader> pVS = nullptr;
     COMPTR<ID3D11GeometryShader> pGS = nullptr;
@@ -50,11 +52,11 @@ class MMaterials {
   };*/
 
   std::vector<std::unique_ptr<RMaterial>> m_materials;
-  // std::unordered_map<std::string, DFTexture> m_DFTextures;
+  std::unordered_map<std::string, RTexture> m_textures;
   // std::unordered_map<std::string, DFShader> m_Shaders;
 
  public:
-  struct DMaterial {
+  struct RMaterialDescriptor {
     std::string name;
     bool manageTextures = false;
 
@@ -72,8 +74,8 @@ class MMaterials {
       glm::vec4 ambientColor = {0.0f, 0.0f, 0.0f, 0.0f};
       glm::vec4 F0 = {0.4f, 0.4f, 0.4f, 0.0f};  // basic metal
       float materialIntensity = 1.0f;
-      float specular_metalness = 1.0f;
-      float pow_roughness = 1.0f;
+      float metalness = 1.0f;
+      float roughness = 1.0f;
       float bumpIntensity = 1.0f;
     } material;
 
@@ -92,7 +94,7 @@ class MMaterials {
   // MATERIALS
 
   // add new material, returns material id
-  uint32_t addMaterial(DMaterial *pDesc) noexcept;
+  uint32_t addMaterial(RMaterialDescriptor *pDesc) noexcept;
 
   RMaterial *getMaterial(std::string name) noexcept;
   RMaterial *getMaterial(uint32_t index) noexcept;
@@ -100,5 +102,10 @@ class MMaterials {
   uint32_t getMaterialCount() const noexcept;
   void deleteMaterial(uint32_t index) noexcept;
   void deleteMaterial(std::string name) noexcept;
+
+  // TEXTURES
+
+  // load textures using glTF model data
+  //void loadTexture(const tinygltf::Model &gltfModel);
 };
 }  // namespace core

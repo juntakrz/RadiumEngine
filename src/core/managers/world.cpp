@@ -18,6 +18,9 @@ bool loadImageData(tinygltf::Image* image, const int image_idx,
                    std::string* err, std::string* warn, int req_width,
                    int req_height, const unsigned char* bytes, int size,
                    void* user_data) {
+
+  std::wstring texturePath = RE_PATH_TEXTURES + toWString(image->uri.c_str());
+
   return true;
 }
 }  // namespace callback
@@ -58,10 +61,16 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
   }
 
   // create the model object
-  if (m_models.try_emplace(name).second) {
-    m_models.at(name) = std::make_unique<WModel>();
-    pModel = m_models.at(name).get();
+  if (!m_models.try_emplace(name).second) {
+    RE_LOG(Error,
+           "Failed to add model '%s' to the world - a model with the same name "
+           "already exists.",
+           name.c_str());
+    return RE_ERROR;
   }
+
+  m_models.at(name) = std::make_unique<WModel>();
+  pModel = m_models.at(name).get();
 
   pModel->m_name = name;
 
@@ -69,6 +78,19 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
   const tinygltf::Scene& gltfScene =
       gltfModel
           .scenes[gltfModel.defaultScene > -1 ? gltfModel.defaultScene : 0];
+
+  // texture samplers the model will use
+  pModel->setTextureSamplers(gltfModel);
+
+  // !!
+  for (const tinygltf::Texture& tex : gltfModel.textures) {
+    const tinygltf::Image* pTexture = &gltfModel.images[tex.source];
+    if (tex.sampler == -1) {
+      RSampler textureSampler{};
+    } else {
+      // check Willems' example
+    }
+  }
 
   // parse node properties and get index/vertex counts
   for (size_t i = 0; i < gltfScene.nodes.size(); ++i) {

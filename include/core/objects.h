@@ -82,6 +82,14 @@ struct RVertex {
   static std::vector<VkVertexInputAttributeDescription> getAttributeDescs();
 };
 
+struct RSampler {
+  VkFilter minFilter = VK_FILTER_LINEAR;
+  VkFilter magFilter = VK_FILTER_LINEAR;
+  VkSamplerAddressMode addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  VkSamplerAddressMode addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  VkSamplerAddressMode addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+};
+
 struct RCameraSettings {
   float aspectRatio = config::getAspectRatio();
   float FOV = config::FOV;

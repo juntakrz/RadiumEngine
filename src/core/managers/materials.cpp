@@ -3,7 +3,7 @@
 
 core::MMaterials::MMaterials() { RE_LOG(Log, "Setting up the materials manager."); }
 
-uint32_t core::MMaterials::addMaterial(DMaterial* pDesc) noexcept {
+uint32_t core::MMaterials::addMaterial(RMaterialDescriptor* pDesc) noexcept {
   uint16_t index = 0;
 
   for (const auto& it : m_materials) {
@@ -52,8 +52,8 @@ uint32_t core::MMaterials::addMaterial(DMaterial* pDesc) noexcept {
 
   newMat.ambientColor = pDesc->material.ambientColor;
   newMat.data.x = pDesc->material.materialIntensity;
-  newMat.data.y = pDesc->material.specular_metalness;
-  newMat.data.z = pDesc->material.pow_roughness;
+  newMat.data.y = pDesc->material.metalness;
+  newMat.data.z = pDesc->material.roughness;
 
   // bump coefficient for shader needs to be reversed, so 2 times bump intensity
   // will equal 0.5 in the shader

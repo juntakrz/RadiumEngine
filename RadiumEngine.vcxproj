@@ -164,6 +164,7 @@
     <ClCompile Include="src\core\managers\materials.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\core\managers\materials_texture.cpp" />
     <ClCompile Include="src\core\managers\player.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
     </ClCompile>
