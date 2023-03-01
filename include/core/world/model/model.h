@@ -76,6 +76,9 @@ class WModel {
   std::vector<WPrimitive*> m_pLinearPrimitives;
   std::vector<WModel::Node*> m_pLinearNodes;
 
+  // stores indices for primitive binds in rendering manager
+  std::vector<uint32_t> m_primitiveBindsIndex;
+
  private:
   void parseNodeProperties(const tinygltf::Model& gltfModel,
                            const tinygltf::Node& gltfNode);
@@ -95,6 +98,7 @@ class WModel {
   const uint32_t& getVertexCount() { return m_vertexCount; }
   const uint32_t& getIndexCount() { return m_indexCount; }
   const std::vector<WPrimitive*>& getPrimitives();
+  std::vector<uint32_t>& getPrimitiveBindsIndex();
 
   // cleans all primitives and nodes within,
   // model itself won't get destroyed on its own

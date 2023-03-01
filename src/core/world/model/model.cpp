@@ -487,6 +487,10 @@ const std::vector<WPrimitive*>& WModel::getPrimitives() {
   return m_pLinearPrimitives;
 }
 
+std::vector<uint32_t>& WModel::getPrimitiveBindsIndex() {
+  return m_primitiveBindsIndex;
+}
+
 TResult WModel::clean() {
   if (m_pChildNodes.empty()) {
     RE_LOG(Warning,

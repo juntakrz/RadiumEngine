@@ -101,8 +101,21 @@ namespace core {
     TResult createSurface();
     void destroySurface();
 
-    // binds mesh to graphics pipeline
-    uint32_t bindMesh(WPrimitive* pMesh);
+    // binds primitive to graphics pipeline
+    uint32_t bindPrimitive(WPrimitive* pPrimitive);
+
+    // binds a vector of primitives and writes binding indices
+    void bindPrimitive(const std::vector<WPrimitive*>& inPrimitives,
+                       std::vector<uint32_t>& outIndices);
+
+    // unbind primitive by a single index
+    void unbindPrimitive(uint32_t index);
+
+    // unbind primitive by the vector of indices
+    void unbindPrimitive(const std::vector<uint32_t>& meshIndices);
+
+    // clear all primitive bindings
+    void clearPrimitiveBinds();
 
   private:
     TResult createDescriptorSetLayouts();

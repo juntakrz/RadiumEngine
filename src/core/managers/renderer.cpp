@@ -113,10 +113,7 @@ TResult core::MRenderer::initialize() {
   APawn* pPawn = core::actors.getPawn("plane0");
   pPawn->setModel(pModel);
 
-  auto primitives = pModel->getPrimitives();
-  for (const auto& it : primitives) {
-    bindMesh(it);
-  }
+  bindPrimitive(pModel->getPrimitives(), pModel->getPrimitiveBindsIndex());
   //
 
   if (chkResult <= RE_ERRORLIMIT) chkResult = createMVPBuffers();
@@ -192,15 +189,68 @@ void core::MRenderer::destroySurface() {
   vkDestroySurfaceKHR(APIInstance, surface, nullptr);
 }
 
-uint32_t core::MRenderer::bindMesh(WPrimitive* pMesh) {
-  if (!pMesh) {
-    RE_LOG(Error, "no mesh provided.");
+uint32_t core::MRenderer::bindPrimitive(WPrimitive* pPrimitive) {
+  if (!pPrimitive) {
+    RE_LOG(Error, "No primitive provided for binding.");
     return -1;
   }
 
-  system.meshes.emplace_back(pMesh);
+  system.meshes.emplace_back(pPrimitive);
   return (uint32_t)system.meshes.size() - 1;
 }
+
+void core::MRenderer::bindPrimitive(
+    const std::vector<WPrimitive*>& inPrimitives,
+    std::vector<uint32_t>& outIndices) {
+  outIndices.clear();
+
+  for (const auto& it : inPrimitives) {
+    system.meshes.emplace_back(it);
+    outIndices.emplace_back(static_cast<uint32_t>(system.meshes.size() - 1));
+  }
+}
+
+void core::MRenderer::unbindPrimitive(uint32_t index) {
+  if (index > system.meshes.size() - 1) {
+    RE_LOG(Error, "Failed to unbind primitive at %d. Index is out of bounds.",
+           index);
+    return;
+  }
+
+#ifndef NDEBUG
+  if (system.meshes[index] == nullptr) {
+    RE_LOG(Warning, "Failed to unbind primitive at %d. It's already unbound.",
+           index);
+    return;
+  }
+#endif
+
+  system.meshes[index] = nullptr;
+}
+
+void core::MRenderer::unbindPrimitive(const std::vector<uint32_t>& meshIndices) {
+  uint32_t bindsNum = static_cast<uint32_t>(system.meshes.size());
+
+  for (const auto& index : meshIndices) {
+    if (index > bindsNum - 1) {
+      RE_LOG(Error, "Failed to unbind primitive at %d. Index is out of bounds.",
+             index);
+      return;
+    }
+
+#ifndef NDEBUG
+    if (system.meshes[index] == nullptr) {
+      RE_LOG(Warning, "Failed to unbind primitive at %d. It's already unbound.",
+             index);
+      return;
+    }
+#endif
+
+    system.meshes[index] = nullptr;
+  }
+}
+
+void core::MRenderer::clearPrimitiveBinds() { system.meshes.clear(); }
 
 TResult core::MRenderer::createDescriptorSetLayouts() {
   // layout for model view projection matrices for vertex shader
