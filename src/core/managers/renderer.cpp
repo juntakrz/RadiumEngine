@@ -113,7 +113,12 @@ TResult core::MRenderer::initialize() {
   APawn* pPawn = core::actors.getPawn("plane0");
   pPawn->setModel(pModel);
 
-  bindPrimitive(pModel->getPrimitives(), pModel->getPrimitiveBindsIndex());
+  //bindPrimitive(pModel->getPrimitives(), pModel->getPrimitiveBindsIndex());
+
+  core::world.loadModelFromFile("content/models/test/scene.gltf", "mdlTest");
+
+  WModel* pTestModel = core::world.getModel("mdlTest");
+  bindPrimitive(pTestModel->getPrimitives(), pModel->getPrimitiveBindsIndex());
   //
 
   if (chkResult <= RE_ERRORLIMIT) chkResult = createMVPBuffers();

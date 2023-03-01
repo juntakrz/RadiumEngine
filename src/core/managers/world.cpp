@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "util/util.h"
+#include "core/managers/materials.h"
 #include "core/managers/world.h"
 #include "core/world/model/primitive_plane.h"
 #include "core/world/model/primitive_sphere.h"
@@ -10,6 +11,17 @@
 #define TINYGLTF_NO_STB_IMAGE
 #define TINYGLTF_NO_STB_IMAGE_WRITE
 #include "tinygltf/tiny_gltf.h"
+
+namespace core {
+namespace callback {
+bool loadImageData(tinygltf::Image* image, const int image_idx,
+                   std::string* err, std::string* warn, int req_width,
+                   int req_height, const unsigned char* bytes, int size,
+                   void* user_data) {
+  return true;
+}
+}  // namespace callback
+}  // namespace core
 
 core::MWorld::MWorld() { RE_LOG(Log, "Initializing world manager."); }
 
@@ -22,6 +34,8 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
   bool bIsBinary = false, bIsModelLoaded = false;
 
   RE_LOG(Log, "Loading model '%s' from '%s'.", name.c_str(), path.c_str());
+
+  gltfContext.SetImageLoader(core::callback::loadImageData, nullptr);
 
   size_t extensionLocation = path.rfind(".", path.length());
   if (extensionLocation == std::string::npos) {
@@ -38,7 +52,7 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
           : gltfContext.LoadASCIIFromFile(&gltfModel, &error, &warning, path);
 
   if (!bIsModelLoaded) {
-    RE_LOG(Error, "Failed loading model at '%s'. Warning: '%s', Error: '%s'.",
+    RE_LOG(Error, "Failed to load model at '%s'. Warning: '%s', Error: '%s'.",
            path.c_str(), warning.c_str(), error.c_str());
     return RE_ERROR;
   }
@@ -48,6 +62,8 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
     m_models.at(name) = std::make_unique<WModel>();
     pModel = m_models.at(name).get();
   }
+
+  pModel->m_name = name;
 
   uint32_t vertexCount = 0u, vertexPos = 0u, indexCount = 0u, indexPos = 0u;
   const tinygltf::Scene& gltfScene =

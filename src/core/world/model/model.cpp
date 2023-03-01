@@ -466,10 +466,11 @@ void WModel::destroyNode(std::unique_ptr<WModel::Node>& pNode) {
     pNode->pChildren.clear();
     pNode->pMesh->pPrimitives.clear();
     pNode->pMesh.reset();
-
-    vmaFreeMemory(core::renderer.memAlloc,
-                  pNode->uniformBufferData.uniformBuffer.allocation);
   }
+
+  vmaDestroyBuffer(core::renderer.memAlloc,
+                   pNode->uniformBufferData.uniformBuffer.buffer,
+                   pNode->uniformBufferData.uniformBuffer.allocation);
 
   pNode.reset();
 }

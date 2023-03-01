@@ -6,7 +6,6 @@ namespace core {
 
 class MMaterials {
  private:
-
   struct RMaterial {
     uint32_t id;
     std::string name;
@@ -33,7 +32,7 @@ class MMaterials {
     // from memory if unused by any other material
     bool manageTextures = false;
   };
-  
+
   /*
   struct DFTexture {
     std::string name;
@@ -51,17 +50,17 @@ class MMaterials {
   };*/
 
   std::vector<std::unique_ptr<RMaterial>> m_materials;
-  //std::unordered_map<std::string, DFTexture> m_DFTextures;
-  //std::unordered_map<std::string, DFShader> m_Shaders;
+  // std::unordered_map<std::string, DFTexture> m_DFTextures;
+  // std::unordered_map<std::string, DFShader> m_Shaders;
 
  public:
-
   struct DMaterial {
     std::string name;
     bool manageTextures = false;
 
     struct {
-      std::string vertex = "default.vert", pixel = "default.frag", geometry = "";
+      std::string vertex = "default.vert", pixel = "default.frag",
+                  geometry = "";
     } shaders;
 
     struct {
@@ -85,7 +84,7 @@ class MMaterials {
   MMaterials();
 
  public:
-  static MMaterials& get() {
+  static MMaterials &get() {
     static MMaterials _sInstance;
     return _sInstance;
   }
@@ -93,14 +92,13 @@ class MMaterials {
   // MATERIALS
 
   // add new material, returns material id
-  uint32_t addMaterial(DMaterial* pDesc) noexcept;
+  uint32_t addMaterial(DMaterial *pDesc) noexcept;
 
-  RMaterial* getMaterial(std::string name) noexcept;
-  RMaterial* getMaterial(uint32_t index) noexcept;
+  RMaterial *getMaterial(std::string name) noexcept;
+  RMaterial *getMaterial(uint32_t index) noexcept;
   uint32_t getMaterialIndex(std::string name) const noexcept;
   uint32_t getMaterialCount() const noexcept;
   void deleteMaterial(uint32_t index) noexcept;
   void deleteMaterial(std::string name) noexcept;
-
 };
 }  // namespace core
