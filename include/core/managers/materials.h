@@ -105,7 +105,7 @@ class MMaterials {
 
   // TEXTURES
 
-  // load textures using glTF model data
-  //void loadTexture(const tinygltf::Model &gltfModel);
+  // load texture from DDS or KTX file
+  void loadTexture(const std::string& filePath);
 };
 }  // namespace core

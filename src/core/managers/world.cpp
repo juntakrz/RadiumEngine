@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "util/util.h"
+#include "core/core.h"
 #include "core/managers/materials.h"
 #include "core/managers/world.h"
 #include "core/world/model/primitive_plane.h"
@@ -10,7 +11,7 @@
 #define TINYGLTF_IMPLEMENTATION
 #define TINYGLTF_NO_STB_IMAGE
 #define TINYGLTF_NO_STB_IMAGE_WRITE
-#include "tinygltf/tiny_gltf.h"
+#include <tiny_gltf.h>
 
 namespace core {
 namespace callback {
@@ -18,9 +19,7 @@ bool loadImageData(tinygltf::Image* image, const int image_idx,
                    std::string* err, std::string* warn, int req_width,
                    int req_height, const unsigned char* bytes, int size,
                    void* user_data) {
-
-  std::wstring texturePath = RE_PATH_TEXTURES + toWString(image->uri.c_str());
-
+  // empty callback - because only external textures are used
   return true;
 }
 }  // namespace callback
@@ -36,13 +35,13 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
   WModel* pModel = nullptr;
   bool bIsBinary = false, bIsModelLoaded = false;
 
-  RE_LOG(Log, "Loading model '%s' from '%s'.", name.c_str(), path.c_str());
+  RE_LOG(Log, "Loading model \"%s\" from \"%s\".", name.c_str(), path.c_str());
 
   gltfContext.SetImageLoader(core::callback::loadImageData, nullptr);
 
   size_t extensionLocation = path.rfind(".", path.length());
   if (extensionLocation == std::string::npos) {
-    RE_LOG(Error, "Failed to load model at '%s', incorrect path.",
+    RE_LOG(Error, "Failed to load model at \"%s\", incorrect path.",
            path.c_str());
     return RE_ERROR;
   }
@@ -55,17 +54,19 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
           : gltfContext.LoadASCIIFromFile(&gltfModel, &error, &warning, path);
 
   if (!bIsModelLoaded) {
-    RE_LOG(Error, "Failed to load model at '%s'. Warning: '%s', Error: '%s'.",
+    RE_LOG(Error,
+           "Failed to load model at \"%s\". Warning: \"%s\", Error: \"%s\".",
            path.c_str(), warning.c_str(), error.c_str());
     return RE_ERROR;
   }
 
   // create the model object
   if (!m_models.try_emplace(name).second) {
-    RE_LOG(Error,
-           "Failed to add model '%s' to the world - a model with the same name "
-           "already exists.",
-           name.c_str());
+    RE_LOG(
+        Error,
+        "Failed to add model \"%s\" to the world - a model with the same name "
+        "already exists.",
+        name.c_str());
     return RE_ERROR;
   }
 
@@ -79,17 +80,30 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
       gltfModel
           .scenes[gltfModel.defaultScene > -1 ? gltfModel.defaultScene : 0];
 
-  // texture samplers the model will use
+  // assign texture samplers for the current WModel
   pModel->setTextureSamplers(gltfModel);
 
-  // !!
+  // go through glTF model's texture records
   for (const tinygltf::Texture& tex : gltfModel.textures) {
-    const tinygltf::Image* pTexture = &gltfModel.images[tex.source];
-    if (tex.sampler == -1) {
-      RSampler textureSampler{};
-    } else {
-      // check Willems' example
+    const tinygltf::Image* pImage = &gltfModel.images[tex.source];
+
+    // get custom corresponding sampler data from WModel if present
+    RSampler textureSampler{};
+    if (tex.sampler != -1) {
+      textureSampler = pModel->m_textureSamplers[tex.sampler];
     }
+
+    // get texture name and load it though materials manager
+    if (pImage->uri == "") {
+      continue;
+    }
+
+    std::string texturePath = RE_PATH_TEXTURES + pImage->uri;
+#ifndef NDEBUG
+    RE_LOG(Log, "Loading texture \"%s\" for model \"%s\".", texturePath.c_str(),
+           pModel->m_name.c_str());
+#endif
+    core::materials.loadTexture(texturePath.c_str());
   }
 
   // parse node properties and get index/vertex counts
@@ -116,7 +130,7 @@ TResult core::MWorld::createModel(EWPrimitive type, std::string name,
                                   int32_t arg0, int32_t arg1) {
   auto fValidateNode = [&](WModel::Node* pNode) {
     if (pNode->pMesh == nullptr) {
-      RE_LOG(Error, "Node validation failed for '%s', model: '%s'.",
+      RE_LOG(Error, "Node validation failed for \"%s\", model: \"%s\".",
              pNode->name.c_str(), name.c_str());
       return RE_ERROR;
     }
@@ -125,7 +139,7 @@ TResult core::MWorld::createModel(EWPrimitive type, std::string name,
 
   if (!m_models.try_emplace(name).second) {
     RE_LOG(Warning,
-           "Failed to create model '%s'. Similarly named model probably "
+           "Failed to create model \"%s\". Similarly named model probably "
            "already exists.",
            name.c_str());
     return RE_WARNING;
@@ -135,11 +149,11 @@ TResult core::MWorld::createModel(EWPrimitive type, std::string name,
   WModel* pModel = m_models.at(name).get();
 
   if (!pModel) {
-    RE_LOG(Error, "Failed to create model '%s'.", name.c_str());
+    RE_LOG(Error, "Failed to create model \"%s\".", name.c_str());
     return RE_ERROR;
   }
 
-  RE_LOG(Log, "Creating a primitive-based model '%s' (%d, %d).", name.c_str(),
+  RE_LOG(Log, "Creating a primitive-based model \"%s\" (%d, %d).", name.c_str(),
          arg0, arg1);
 
   pModel->m_name = name;
@@ -182,7 +196,7 @@ WModel* core::MWorld::getModel(const char* name) {
     return m_models.at(name).get();
   }
 
-  RE_LOG(Error, "Failed to get model '%s'. It does not exist.", name);
+  RE_LOG(Error, "Failed to get model \"%s\". It does not exist.", name);
 
   return nullptr;
 }
@@ -195,7 +209,7 @@ void core::MWorld::destroyAllModels() {
     std::string name = pModel->m_name;
     pModel->clean();
     pModel.reset();
-    RE_LOG(Log, "Model '%s' was successfully destroyed.", name.c_str());
+    RE_LOG(Log, "Model \"%s\" was successfully destroyed.", name.c_str());
   }
 
   m_models.clear();

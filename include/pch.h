@@ -46,7 +46,7 @@
 #include <GLM/gtc/type_ptr.hpp>
 
 // external engine modules
-#include <json/json.hpp>
+#include <json.hpp>
 
 /* comments:
 * 

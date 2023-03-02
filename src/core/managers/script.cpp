@@ -13,7 +13,7 @@ core::MScript::MScript() { RE_LOG(Log, "Created script manager."); }
 
 TResult core::MScript::loadMap(const char* mapName) {
   // map structure constants
-  const std::wstring mapPath = RE_PATH_MAP + toWString(mapName) + TEXT(".map/");
+  const std::wstring mapPath = RE_PATH_MAP + util::toWString(mapName) + TEXT(".map/");
   const std::wstring initPath = mapPath + L"init.json";
   const std::wstring camPath = mapPath + L"cameras.json";
   const std::wstring matPath = mapPath + L"materials.json";
@@ -50,7 +50,7 @@ json* core::MScript::jsonLoad(const wchar_t* path, const char* name) noexcept {
 
   fStream >> *out_j;
   
-  std::string str = toString(path);
+  std::string str = util::toString(path);
   RE_LOG(Log, "Loaded '%s' from '%s'.", name, str.c_str());
   return &m_jsons.at(name);
 }

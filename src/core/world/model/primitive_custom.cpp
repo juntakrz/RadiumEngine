@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "core/world/model/primitive_custom.h"
 
 WPrimitive_Custom::WPrimitive_Custom(const std::vector<RVertex>& vertexData,

@@ -13,8 +13,8 @@
 #define TEXT(x) L ## x                // conflicts with WinAPI definitions in debug builds
 #endif
 
-#define RE_LOG(l, x, ...) processMessage(l, x, __VA_ARGS__)
-#define RE_CHECK(x) validate(x)
+#define RE_LOG(l, x, ...) util::processMessage(l, x, __VA_ARGS__)
+#define RE_CHECK(x) util::validate(x)
 #define ASSERT(x) \
   if (!(x)) __debugbreak();
 
@@ -29,7 +29,7 @@ constexpr bool bRequireValidationLayers = true;
 #define RE_PATH_CONFIG      TEXT("config/config.json")
 #define RE_PATH_DEVCONFIG   TEXT("development/devconfig.json")
 #define RE_PATH_MAP         TEXT("content/maps/")
-#define RE_PATH_TEXTURES    TEXT("content/textures/")
+#define RE_PATH_TEXTURES    "content/textures/"
 #define RE_PATH_SHDRC       "development\\compileShaders_Win_x64_DEBUG.bat"
 #define RE_MAXTEXTURES      6
 #define RE_NEARZ            0.01f

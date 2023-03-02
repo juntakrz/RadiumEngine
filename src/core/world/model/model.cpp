@@ -4,7 +4,7 @@
 #include "core/world/model/primitive_custom.h"
 #include "core/world/model/model.h"
 
-#include "tinygltf/tiny_gltf.h"
+#include "tiny_gltf.h"
 
 glm::mat4 WModel::Node::getLocalMatrix() {
   return glm::translate(glm::mat4(1.0f), translation) * glm::mat4(rotation) *
