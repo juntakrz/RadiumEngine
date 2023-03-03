@@ -14,14 +14,14 @@ WPrimitive::WPrimitive() {
 
 void WPrimitive::createVertexBuffer(const std::vector<RVertex>& vertexData) {
   VkDeviceSize size = vertexData.size() * sizeof(RVertex);
-  core::renderer.createBuffer(EBCMode::DGPU_VERTEX, size, vertexBuffer,
+  core::renderer.createBuffer(EBufferMode::DGPU_VERTEX, size, vertexBuffer,
                               (void*)vertexData.data());
   vertexCount = static_cast<uint32_t>(vertexData.size());
 }
 
 void WPrimitive::createIndexBuffer(const std::vector<uint32_t>& indexData) {
   VkDeviceSize size = indexData.size() * sizeof(indexData[0]);
-  core::renderer.createBuffer(EBCMode::DGPU_INDEX, size, indexBuffer,
+  core::renderer.createBuffer(EBufferMode::DGPU_INDEX, size, indexBuffer,
                               (void*)indexData.data());
   indexCount = static_cast<uint32_t>(indexData.size());
 }

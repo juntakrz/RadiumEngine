@@ -6,6 +6,7 @@
 // linked libraries
 #pragma comment(lib, "glfw3.lib")
 #pragma comment(lib, "vulkan-1.lib")
+#pragma comment(lib, "ktx_read.lib")
 
 // standard library headers
 #include <algorithm>
@@ -44,6 +45,7 @@
 #include <GLM/gtx/quaternion.hpp>
 #include <GLM/gtc/quaternion.hpp>
 #include <GLM/gtc/type_ptr.hpp>
+#include <ktxvulkan.h>
 
 // external engine modules
 #include <json.hpp>

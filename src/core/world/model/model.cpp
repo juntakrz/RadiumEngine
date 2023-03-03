@@ -25,7 +25,7 @@ WModel::Node::Node(WModel::Node* pParent, uint32_t index,
                    const std::string& name)
     : pParentNode(pParent), index(index), name(name) {
   // prepare buffer and memory to store node transformation matrix
-  core::renderer.createBuffer(EBCMode::CPU_UNIFORM,
+  core::renderer.createBuffer(EBufferMode::CPU_UNIFORM,
                               uniformBufferData.bufferSize,
                               uniformBufferData.uniformBuffer);
 }

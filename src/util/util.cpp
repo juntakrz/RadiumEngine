@@ -4,20 +4,20 @@
 #include "core/core.h"
 
 namespace util {
-std::vector<char> readFile(const wchar_t* filename) {
+std::vector<uint8_t> readFile(const wchar_t* filename) {
   std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
   if (!file.is_open()) {
     RE_LOG(Warning, "failed to open \"%s\".", filename);
 
-    return std::vector<char>{};
+    return std::vector<uint8_t>{};
   }
 
   size_t fileSize = file.tellg();
-  std::vector<char> buffer(fileSize);
+  std::vector<uint8_t> buffer(fileSize);
 
   file.seekg(0);
-  file.read(buffer.data(), fileSize);
+  file.read((char*)buffer.data(), fileSize);
   file.close();
 
 #ifndef NDEBUG
@@ -29,20 +29,20 @@ std::vector<char> readFile(const wchar_t* filename) {
   return buffer;
 }
 
-std::vector<char> readFile(const char* filename) {
+std::vector<uint8_t> readFile(const char* filename) {
   std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
   if (!file.is_open()) {
     RE_LOG(Warning, "failed to open \"%s\".", filename);
 
-    return std::vector<char>{};
+    return std::vector<uint8_t>{};
   }
 
   size_t fileSize = file.tellg();
-  std::vector<char> buffer(fileSize);
+  std::vector<uint8_t> buffer(fileSize);
 
   file.seekg(0);
-  file.read(buffer.data(), fileSize);
+  file.read((char*)buffer.data(), fileSize);
   file.close();
 
 #ifndef NDEBUG

@@ -230,6 +230,7 @@
   </ItemGroup>
   <ItemGroup>
     <Library Include="lib\glfw3.lib" />
+    <Library Include="lib\ktx_read.lib" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".gitignore" />

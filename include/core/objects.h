@@ -3,12 +3,13 @@
 #include "vk_mem_alloc.h"
 #include "config.h"
 
-enum class EBCMode {  // VkBuffer creation mode
+enum class EBufferMode {  // VkBuffer creation mode
   CPU_UNIFORM,        // create uniform buffer for GPU programs
   CPU_VERTEX,         // create vertex buffer for the iGPU (UNUSED)
   CPU_INDEX,          // create index buffer for the iGPU (UNUSED)
   DGPU_VERTEX,        // create dedicated GPU vertex buffer
-  DGPU_INDEX          // create dedicated GPU index buffer
+  DGPU_INDEX,         // create dedicated GPU index buffer
+  STAGING             // create staging buffer only
 };
 
 enum class EAType {  // actor type

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include "core/objects.h"
 
 namespace tinygltf {
 class Model;
@@ -39,8 +40,14 @@ class MMaterials {
   };
 
   struct RTexture {
-    std::string name;
-    std::string filePath;
+    std::string name = "";
+    std::string filePath = "";
+    uint32_t width = 0;
+    uint32_t height = 0;
+    size_t dataSize = 0;
+    uint32_t mipLevels = 1;
+    RBuffer buffer;
+    void* pData = nullptr;
   };
 
   /*

@@ -60,8 +60,8 @@ void core::MRenderer::destroyRenderPass() {
 TResult core::MRenderer::createGraphicsPipeline() {
   RE_LOG(Log, "Creating graphics pipeline.");
 
-  std::vector<char> vsCode = util::readFile(TEXT("content/shaders/vs_default.spv"));
-  std::vector<char> fsCode =
+  std::vector<uint8_t> vsCode = util::readFile(TEXT("content/shaders/vs_default.spv"));
+  std::vector<uint8_t> fsCode =
       util::readFile(TEXT("content/shaders/fs_default.spv"));
   VkShaderModule vsModule = createShaderModule(vsCode);
   VkShaderModule fsModule = createShaderModule(fsCode);

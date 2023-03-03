@@ -149,7 +149,7 @@ namespace core {
     defining inData makes the method copy data to an outgoing buffer internally,
     otherwise empty but allocated VkBuffer is the result e.g. for a later data copy.
     */
-    TResult createBuffer(EBCMode mode, VkDeviceSize size, RBuffer& outBuffer, void* inData = nullptr);
+    TResult createBuffer(EBufferMode mode, VkDeviceSize size, RBuffer& outBuffer, void* inData = nullptr);
 
     // copy buffer with SRC and DST bits
     TResult copyBuffer(VkBuffer srcBuffer, VkBuffer& dstBuffer,
@@ -248,7 +248,7 @@ namespace core {
   private:
     TResult createSwapChainImageViews();
     TResult createFramebuffers();
-    VkShaderModule createShaderModule(std::vector<char>& shaderCode);
+    VkShaderModule createShaderModule(std::vector<uint8_t>& shaderCode);
 
     // -----
 

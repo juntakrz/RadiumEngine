@@ -378,8 +378,8 @@ TResult core::MRenderer::createMVPBuffers() {
 
   for (int i = 0; i < view.modelViewProjectionBuffers.size();
        i += MAX_FRAMES_IN_FLIGHT) {
-    createBuffer(EBCMode::CPU_UNIFORM, uboMVPsize, view.modelViewProjectionBuffers[i], getMVPview());
-    createBuffer(EBCMode::CPU_UNIFORM, uboMVPsize, view.modelViewProjectionBuffers[i + 1], getMVPview());
+    createBuffer(EBufferMode::CPU_UNIFORM, uboMVPsize, view.modelViewProjectionBuffers[i], getMVPview());
+    createBuffer(EBufferMode::CPU_UNIFORM, uboMVPsize, view.modelViewProjectionBuffers[i + 1], getMVPview());
   }
 
   return RE_OK;
@@ -417,7 +417,8 @@ RSModelViewProjection* core::MRenderer::updateModelViewProjection(glm::mat4* pTr
   return &view.modelViewProjectionData;
 }
 
-VkShaderModule core::MRenderer::createShaderModule(std::vector<char>& shaderCode) {
+VkShaderModule core::MRenderer::createShaderModule(
+    std::vector<uint8_t>& shaderCode) {
   VkShaderModuleCreateInfo smInfo{};
   smInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
   smInfo.codeSize = shaderCode.size();
