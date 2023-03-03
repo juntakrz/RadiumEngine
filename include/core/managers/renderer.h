@@ -117,6 +117,9 @@ namespace core {
     // clear all primitive bindings
     void clearPrimitiveBinds();
 
+    // 0 - render, 1 - transfer
+    VkCommandPool getCommandPool(uint8_t poolType);
+
   private:
     TResult createDescriptorSetLayouts();
     void destroyDescriptorSetLayouts();
@@ -149,7 +152,7 @@ namespace core {
     defining inData makes the method copy data to an outgoing buffer internally,
     otherwise empty but allocated VkBuffer is the result e.g. for a later data copy.
     */
-    TResult createBuffer(EBufferMode mode, VkDeviceSize size, RBuffer& outBuffer, void* inData = nullptr);
+    TResult createBuffer(EBufferMode mode, VkDeviceSize size, RBuffer& outBuffer, void* inData);
 
     // copy buffer with SRC and DST bits
     TResult copyBuffer(VkBuffer srcBuffer, VkBuffer& dstBuffer,

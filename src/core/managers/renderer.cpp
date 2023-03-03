@@ -6,6 +6,7 @@
 #include "core/managers/debug.h"
 #include "core/managers/window.h"
 #include "core/managers/actors.h"
+#include "core/managers/materials.h"
 #include "core/managers/time.h"
 #include "core/managers/world.h"
 #include "core/world/actors/camera.h"
@@ -140,6 +141,7 @@ void core::MRenderer::deinitialize() {
   destroySurface();
   core::actors.destroyAllPawns();
   core::world.destroyAllModels();
+  core::materials.destroyAllTextures();
   destroyDescriptorPool();
   destroyMVPBuffers();
   destroyMemAlloc();
@@ -256,6 +258,17 @@ void core::MRenderer::unbindPrimitive(const std::vector<uint32_t>& meshIndices) 
 }
 
 void core::MRenderer::clearPrimitiveBinds() { system.meshes.clear(); }
+
+VkCommandPool core::MRenderer::getCommandPool(uint8_t poolType) {
+  switch (poolType) {
+    case 0:
+      return command.poolRender;
+    case 1:
+      return command.poolTransfer;
+    default:
+      return nullptr;
+  }
+}
 
 TResult core::MRenderer::createDescriptorSetLayouts() {
   // layout for model view projection matrices for vertex shader

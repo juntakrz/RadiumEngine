@@ -26,6 +26,29 @@ void core::MMaterials::loadTexture(const std::string& filePath) {
   std::string textureName(filePath, folderPosition + 1,
                           delimiterPosition - (folderPosition + 1));
 
+  ktxTexture* pKTXTexture = nullptr;
+  KTX_error_code ktxResult;
+  RVkLogicalDevice* logicalDevice = &core::renderer.logicalDevice;
+
+  ktxVulkanDeviceInfo* deviceInfo = ktxVulkanDeviceInfo_Create(
+      core::renderer.physicalDevice.device, logicalDevice->device,
+      logicalDevice->queues.transfer, core::renderer.getCommandPool(1),
+      nullptr);
+
+  if (!deviceInfo) {
+    RE_LOG(Error, "Failed to retrieve Vulkan device info.");
+    return;
+  }
+
+  ktxResult = ktxTexture_CreateFromNamedFile(
+      filePath.c_str(), KTX_TEXTURE_CREATE_NO_FLAGS, &pKTXTexture);
+
+  if (ktxResult != KTX_SUCCESS) {
+    RE_LOG(Error, "Failed reading texture. KTX error %d.", ktxResult);
+    return;
+  }
+
+  // create a texture record in the manager
   if (!m_textures.try_emplace(textureName).second) {
     // already loaded
 #ifndef NDEBUG
@@ -34,41 +57,27 @@ void core::MMaterials::loadTexture(const std::string& filePath) {
     return;
   }
 
-  std::vector<uint8_t> rawData = util::readFile(filePath.c_str());
-  size_t rawDataSize = rawData.size();
-
-  if (rawDataSize < 1) {
-    RE_LOG(Error, "Reading texture resulted in no data.", filePath.c_str());
-    revert(textureName.c_str());
-    return;
-  }
-
-
-  // create texture (must be of either KTX1 or KTX2 format)
-  ktxTexture* pKTXTexture = nullptr;
-  KTX_error_code ktxResult;
-
-  ktxResult = ktxTexture_CreateFromNamedFile(
-      filePath.c_str(), KTX_TEXTURE_CREATE_NO_FLAGS, &pKTXTexture);
-
-  /*ktxResult = ktxTexture_CreateFromMemory(
-      rawData.data(), rawDataSize, KTX_TEXTURE_CREATE_NO_FLAGS,
-      &newTexture);
-
-  if (ktxResult != KTX_SUCCESS || !newTexture->pData) {
-    RE_LOG(Error, "Failed reading texture. Possibly unknown format.");
-    return;
-  }
-
   // prepare freshly created texture structure
-  RTexture& newTextureData = m_textures.at(textureName);
-  newTextureData.name = textureName;
-  newTextureData.filePath = filePath;
-  newTextureData.width = newTexture->baseWidth;
-  newTextureData.height = newTexture->baseHeight;
-  newTextureData.dataSize = newTexture->dataSize;
-  newTextureData.mipLevels = newTexture->numLevels;
+  RTexture* newTexture = &m_textures.at(textureName);
+  newTexture->name = textureName;
+  newTexture->filePath = filePath;
 
+  ktxResult = ktxTexture_VkUploadEx(
+      pKTXTexture, deviceInfo, &newTexture->texture, VK_IMAGE_TILING_OPTIMAL,
+      VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+  if (ktxResult != KTX_SUCCESS) {
+    RE_LOG(Error, "Failed uploading texture to GPU. KTX error %d.", ktxResult);
+    revert(textureName.c_str());
+
+    return;
+  }
+
+  ktxTexture_Destroy(pKTXTexture);
+  ktxVulkanDeviceInfo_Destruct(deviceInfo);
+
+  RE_LOG(Log, "Successfully loaded texture \"%s\".", textureName.c_str());
+  /*
   // prepare data for loading texture into the graphics card memory
   // assume KTX1 uses sRGB format instead of linear (most tools use this)
   VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
@@ -86,18 +95,16 @@ void core::MMaterials::loadTexture(const std::string& filePath) {
                     VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT);
   }
 
-  uint8_t* pTextureData = newTexture->pData;
-
   VkMemoryAllocateInfo allocateInfo{};
   allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 
   VkMemoryRequirements memoryRequirements{};
-  
+
   if (useStagingBuffer) {
     RBuffer stagingBuffer{};
     if (core::renderer.createBuffer(EBufferMode::STAGING,
                                     newTextureData.dataSize, stagingBuffer,
-                                    pTextureData) != RE_OK) {
+                                    nullptr) != RE_OK) {
       RE_LOG(Error, "Failed to create staging buffer for the new texture.");
       revert(textureName.c_str());
     }
@@ -105,4 +112,11 @@ void core::MMaterials::loadTexture(const std::string& filePath) {
     vkGetBufferMemoryRequirements(core::renderer.logicalDevice.device,
                                   stagingBuffer.buffer, &memoryRequirements);
   }*/
+}
+
+void core::MMaterials::destroyAllTextures() { m_textures.clear(); }
+
+core::MMaterials::RTexture::~RTexture() {
+  ktxVulkanTexture_Destruct(&texture, core::renderer.logicalDevice.device,
+                            nullptr);
 }

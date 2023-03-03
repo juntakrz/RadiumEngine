@@ -42,12 +42,9 @@ class MMaterials {
   struct RTexture {
     std::string name = "";
     std::string filePath = "";
-    uint32_t width = 0;
-    uint32_t height = 0;
-    size_t dataSize = 0;
-    uint32_t mipLevels = 1;
-    RBuffer buffer;
-    void* pData = nullptr;
+    ktxVulkanTexture texture;
+
+    ~RTexture();
   };
 
   /*
@@ -114,5 +111,7 @@ class MMaterials {
 
   // load texture from DDS or KTX file
   void loadTexture(const std::string& filePath);
+
+  void destroyAllTextures();
 };
 }  // namespace core

@@ -27,7 +27,7 @@ WModel::Node::Node(WModel::Node* pParent, uint32_t index,
   // prepare buffer and memory to store node transformation matrix
   core::renderer.createBuffer(EBufferMode::CPU_UNIFORM,
                               uniformBufferData.bufferSize,
-                              uniformBufferData.uniformBuffer);
+                              uniformBufferData.uniformBuffer, nullptr);
 }
 
 void WModel::Node::update() {

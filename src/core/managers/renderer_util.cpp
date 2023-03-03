@@ -248,13 +248,15 @@ TResult core::MRenderer::createBuffer(EBufferMode mode, VkDeviceSize size, RBuff
       return RE_ERROR;
     }
 
-    void* pData = nullptr;
-    if (vmaMapMemory(memAlloc, outBuffer.allocation, &pData) != VK_SUCCESS) {
-      RE_LOG(Error, "Failed to map memory for staging buffer data.");
-      return RE_ERROR;
-    };
-    memcpy(pData, inData, size);
-    vmaUnmapMemory(memAlloc, outBuffer.allocation);
+    if (inData) {
+      void* pData = nullptr;
+      if (vmaMapMemory(memAlloc, outBuffer.allocation, &pData) != VK_SUCCESS) {
+        RE_LOG(Error, "Failed to map memory for staging buffer data.");
+        return RE_ERROR;
+      };
+      memcpy(pData, inData, size);
+      vmaUnmapMemory(memAlloc, outBuffer.allocation);
+    }
 
     return RE_OK;
   }
