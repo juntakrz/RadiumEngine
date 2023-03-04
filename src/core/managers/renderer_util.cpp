@@ -301,14 +301,55 @@ TResult core::MRenderer::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
                     cmdBufferId);
 }
 
-VkCommandPool core::MRenderer::getCommandPool(ECmdType poolType) {
-  switch (poolType) {
+TResult core::MRenderer::copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
+                                           uint32_t width, uint32_t height) {
+  if (!srcBuffer || !dstImage) {
+    RE_LOG(Error, "copyBufferToImage received nullptr as an argument.");
+    return RE_ERROR;
+  }
+
+  VkCommandBuffer cmdBuffer = beginSingleTimeCommandBuffer(ECmdType::Transfer);
+
+  VkBufferImageCopy imageCopy{};
+  imageCopy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  imageCopy.imageSubresource.mipLevel = 0;
+  imageCopy.imageSubresource.baseArrayLayer = 0;
+  imageCopy.imageSubresource.layerCount = 1;
+  imageCopy.imageExtent = {width, height, 1};
+  imageCopy.imageOffset = {0, 0, 0};
+  imageCopy.bufferOffset = 0;
+  imageCopy.bufferRowLength = 0;
+  imageCopy.bufferImageHeight = 0;
+
+  vkCmdCopyBufferToImage(cmdBuffer, srcBuffer, dstImage,
+                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+
+  endSingleTimeCommandBuffer(cmdBuffer, ECmdType::Transfer);
+
+  return RE_OK;
+}
+
+VkCommandPool core::MRenderer::getCommandPool(ECmdType type) {
+  switch (type) {
     case ECmdType::Graphics:
     return command.poolGraphics;
     case ECmdType::Compute:
     return command.poolCompute;
     case ECmdType::Transfer:
     return command.poolTransfer;
+    default:
+    return nullptr;
+  }
+}
+
+VkQueue core::MRenderer::getCommandQueue(ECmdType type) {
+  switch (type) {
+    case ECmdType::Graphics:
+    return logicalDevice.queues.graphics;
+    case ECmdType::Compute:
+    return logicalDevice.queues.compute;
+    case ECmdType::Transfer:
+    return logicalDevice.queues.transfer;
     default:
     return nullptr;
   }
@@ -336,9 +377,7 @@ VkCommandBuffer core::MRenderer::beginSingleTimeCommandBuffer(ECmdType type) {
 }
 
 void core::MRenderer::endSingleTimeCommandBuffer(VkCommandBuffer cmdBuffer,
-                                                 ECmdType poolType,
-                                                 VkQueue queue) {
-
+                                                 ECmdType type) {
   vkEndCommandBuffer(cmdBuffer);
 
   VkSubmitInfo submitInfo{};
@@ -346,12 +385,109 @@ void core::MRenderer::endSingleTimeCommandBuffer(VkCommandBuffer cmdBuffer,
   submitInfo.pCommandBuffers = &cmdBuffer;
   submitInfo.commandBufferCount = 1;
 
-  vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
-  vkQueueWaitIdle(queue);
+  VkQueue cmdQueue = getCommandQueue(type);
+  vkQueueSubmit(cmdQueue, 1, &submitInfo, VK_NULL_HANDLE);
+  vkQueueWaitIdle(cmdQueue);
 
-  vkFreeCommandBuffers(logicalDevice.device, getCommandPool(poolType),
-                                1, &cmdBuffer);
+  vkFreeCommandBuffers(logicalDevice.device, getCommandPool(type), 1,
+                       &cmdBuffer);
 }
+
+VkImageView core::MRenderer::createImageView(VkImage image, VkFormat format,
+                                             uint32_t levelCount,
+                                             uint32_t layerCount) {
+  VkImageView imageView = nullptr;
+
+  VkImageViewCreateInfo viewInfo{};
+  viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+  viewInfo.image = image;
+  viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+  viewInfo.format = format;
+
+  viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+  viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+  viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+  viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+  viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  viewInfo.subresourceRange.baseMipLevel = 0;
+  viewInfo.subresourceRange.levelCount = levelCount;
+  viewInfo.subresourceRange.baseArrayLayer = 0;
+  viewInfo.subresourceRange.layerCount = layerCount;
+
+  if (vkCreateImageView(logicalDevice.device, &viewInfo, nullptr, &imageView) !=
+      VK_SUCCESS) {
+    RE_LOG(Error, "failed to create image view with format id %d.", format);
+
+    return nullptr;
+  }
+
+  return imageView;
+}
+
+uint32_t core::MRenderer::bindPrimitive(WPrimitive* pPrimitive) {
+  if (!pPrimitive) {
+    RE_LOG(Error, "No primitive provided for binding.");
+    return -1;
+  }
+
+  system.meshes.emplace_back(pPrimitive);
+  return (uint32_t)system.meshes.size() - 1;
+}
+
+void core::MRenderer::bindPrimitive(
+    const std::vector<WPrimitive*>& inPrimitives,
+    std::vector<uint32_t>& outIndices) {
+  outIndices.clear();
+
+  for (const auto& it : inPrimitives) {
+    system.meshes.emplace_back(it);
+    outIndices.emplace_back(static_cast<uint32_t>(system.meshes.size() - 1));
+  }
+}
+
+void core::MRenderer::unbindPrimitive(uint32_t index) {
+  if (index > system.meshes.size() - 1) {
+    RE_LOG(Error, "Failed to unbind primitive at %d. Index is out of bounds.",
+           index);
+    return;
+  }
+
+#ifndef NDEBUG
+  if (system.meshes[index] == nullptr) {
+    RE_LOG(Warning, "Failed to unbind primitive at %d. It's already unbound.",
+           index);
+    return;
+  }
+#endif
+
+  system.meshes[index] = nullptr;
+}
+
+void core::MRenderer::unbindPrimitive(
+    const std::vector<uint32_t>& meshIndices) {
+  uint32_t bindsNum = static_cast<uint32_t>(system.meshes.size());
+
+  for (const auto& index : meshIndices) {
+    if (index > bindsNum - 1) {
+    RE_LOG(Error, "Failed to unbind primitive at %d. Index is out of bounds.",
+           index);
+    return;
+    }
+
+#ifndef NDEBUG
+    if (system.meshes[index] == nullptr) {
+    RE_LOG(Warning, "Failed to unbind primitive at %d. It's already unbound.",
+           index);
+    return;
+    }
+#endif
+
+    system.meshes[index] = nullptr;
+  }
+}
+
+void core::MRenderer::clearPrimitiveBinds() { system.meshes.clear(); }
 
 void core::MRenderer::setCamera(const char* name) {
   if (ACamera* pCamera = core::ref.getActor(name)->getAs<ACamera>()) {

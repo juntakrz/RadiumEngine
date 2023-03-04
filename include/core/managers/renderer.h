@@ -102,22 +102,6 @@ namespace core {
     TResult createSurface();
     void destroySurface();
 
-    // binds primitive to graphics pipeline
-    uint32_t bindPrimitive(WPrimitive* pPrimitive);
-
-    // binds a vector of primitives and writes binding indices
-    void bindPrimitive(const std::vector<WPrimitive*>& inPrimitives,
-                       std::vector<uint32_t>& outIndices);
-
-    // unbind primitive by a single index
-    void unbindPrimitive(uint32_t index);
-
-    // unbind primitive by the vector of indices
-    void unbindPrimitive(const std::vector<uint32_t>& meshIndices);
-
-    // clear all primitive bindings
-    void clearPrimitiveBinds();
-
   private:
     TResult createDescriptorSetLayouts();
     void destroyDescriptorSetLayouts();
@@ -158,14 +142,38 @@ namespace core {
     TResult copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
       VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
 
+    // expects 'optimal layout' image as a source
+    TResult copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
+                              uint32_t width, uint32_t height);
+
     VkCommandPool getCommandPool(ECmdType type);
+    VkQueue getCommandQueue(ECmdType type);
 
     // begin writing commands to a one-off buffer
     VkCommandBuffer beginSingleTimeCommandBuffer(ECmdType type);
 
     // end writing commands to the buffer and submit them to specific queue
     void endSingleTimeCommandBuffer(VkCommandBuffer cmdBuffer,
-                                    ECmdType type, VkQueue queue);
+                                    ECmdType type);
+
+    VkImageView createImageView(VkImage image, VkFormat format,
+                                uint32_t levelCount, uint32_t layerCount);
+
+    // binds primitive to graphics pipeline
+    uint32_t bindPrimitive(WPrimitive* pPrimitive);
+
+    // binds a vector of primitives and writes binding indices
+    void bindPrimitive(const std::vector<WPrimitive*>& inPrimitives,
+                       std::vector<uint32_t>& outIndices);
+
+    // unbind primitive by a single index
+    void unbindPrimitive(uint32_t index);
+
+    // unbind primitive by the vector of indices
+    void unbindPrimitive(const std::vector<uint32_t>& meshIndices);
+
+    // clear all primitive bindings
+    void clearPrimitiveBinds();
 
     // set camera from create cameras by name
     void setCamera(const char* name);

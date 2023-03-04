@@ -227,29 +227,8 @@ TResult core::MRenderer::createSwapChainImageViews() {
   swapchain.imageViews.resize(swapchain.images.size());
 
   for (size_t i = 0; i < swapchain.imageViews.size(); ++i) {
-    VkImageViewCreateInfo viewInfo{};
-    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewInfo.image = swapchain.images[i];
-    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format = swapchain.formatData.format;
-
-    viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-    viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-    viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-    viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-
-    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    viewInfo.subresourceRange.baseMipLevel = 0;
-    viewInfo.subresourceRange.levelCount = 1;
-    viewInfo.subresourceRange.layerCount = 1;
-    viewInfo.subresourceRange.baseArrayLayer = 0;
-
-    if (vkCreateImageView(logicalDevice.device, &viewInfo, nullptr,
-                          &swapchain.imageViews[i]) != VK_SUCCESS) {
-      RE_LOG(Error, "failed to create swapchain image view %d.", i);
-
-      return RE_ERROR;
-    }
+    swapchain.imageViews[i] =
+        createImageView(swapchain.images[i], swapchain.formatData.format, 1, 1);
   }
 
   return RE_OK;

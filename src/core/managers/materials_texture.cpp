@@ -7,7 +7,9 @@
 void core::MMaterials::transitionImageLayout(VkImage image, VkFormat format,
                                              VkImageLayout oldLayout,
                                              VkImageLayout newLayout) {
-  VkCommandBuffer cmdBuffer;
+
+  VkCommandBuffer cmdBuffer =
+      core::renderer.beginSingleTimeCommandBuffer(ECmdType::Transfer);
 
   VkImageMemoryBarrier imageBarrier{};
   imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -25,7 +27,29 @@ void core::MMaterials::transitionImageLayout(VkImage image, VkFormat format,
   VkPipelineStageFlags srcStageFlags;
   VkPipelineStageFlags dstStageFlags;
 
+  if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
+      newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+    imageBarrier.srcAccessMask = NULL;
+    imageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
+    srcStageFlags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    dstStageFlags = VK_PIPELINE_STAGE_TRANSFER_BIT;
+  } else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
+             newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+    imageBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    imageBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+    srcStageFlags = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    dstStageFlags = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+  } else {
+    RE_LOG(Error, "Unsupported layout transition was attempted.");
+    return;
+  }
+
+  vkCmdPipelineBarrier(cmdBuffer, srcStageFlags, dstStageFlags, NULL, NULL,
+                       nullptr, NULL, nullptr, 1, &imageBarrier);
+
+  core::renderer.endSingleTimeCommandBuffer(cmdBuffer, ECmdType::Transfer);
 }
 
 void core::MMaterials::loadTexture(const std::string& filePath) {
@@ -100,6 +124,10 @@ void core::MMaterials::loadTexture(const std::string& filePath) {
 
   ktxTexture_Destroy(pKTXTexture);
   ktxVulkanDeviceInfo_Destruct(deviceInfo);
+
+  if (newTexture->createTextureImageView() != RE_OK) {
+    return;
+  }
 
   RE_LOG(Log, "Successfully loaded texture \"%s\".", textureName.c_str());
   /*
@@ -190,11 +218,31 @@ void core::MMaterials::createTexture(const char* name, uint32_t width, uint32_t 
 
     return;
   }
-
-
+  
+  pTexture->texture.imageFormat = format;
+  /*pTexture->texture.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  
+  // transition image to layout optimal
+  transitionImageLayout(pTexture->texture.image, pTexture->texture.imageFormat,
+                        pTexture->texture.imageLayout,
+                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+                        */ 
 }
 
 void core::MMaterials::destroyAllTextures() { m_textures.clear(); }
+
+// RTEXTURE
+
+TResult core::MMaterials::RTexture::createTextureImageView() {
+  view = core::renderer.createImageView(texture.image, texture.imageFormat,
+                                        texture.levelCount, texture.layerCount);
+
+  if (!view) {
+    return RE_ERROR;
+  }
+
+  return RE_OK;
+}
 
 core::MMaterials::RTexture::~RTexture() {
   if (isKTX) {

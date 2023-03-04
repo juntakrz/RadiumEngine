@@ -45,10 +45,13 @@ class MMaterials {
     std::string name = "";
     std::string filePath = "";
     ktxVulkanTexture texture;
+    VkImageView view;
     VmaAllocation allocation;
     VmaAllocationInfo allocationInfo;
     bool isKTX = false;
 
+    // requires valid data contained in 'texture' struct
+    TResult createTextureImageView();
     ~RTexture();
   };
 
