@@ -295,32 +295,62 @@ TResult core::MRenderer::copyBuffer(VkBuffer srcBuffer, VkBuffer& dstBuffer,
 }
 
 TResult core::MRenderer::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
-                              VkBufferCopy* copyRegion, uint32_t cmdBufferId) {
-  if (cmdBufferId > MAX_TRANSFER_BUFFERS) {
-    RE_LOG(Warning, "Invalid index of transfer buffer, using default.");
-    cmdBufferId = 0;
+                                    VkBufferCopy* copyRegion,
+                                    uint32_t cmdBufferId) {
+  return copyBuffer(srcBuffer->buffer, dstBuffer->buffer, copyRegion,
+                    cmdBufferId);
+}
+
+VkCommandPool core::MRenderer::getCommandPool(ECmdType poolType) {
+  switch (poolType) {
+    case ECmdType::Graphics:
+    return command.poolGraphics;
+    case ECmdType::Compute:
+    return command.poolCompute;
+    case ECmdType::Transfer:
+    return command.poolTransfer;
+    default:
+    return nullptr;
   }
+}
 
-  VkCommandBufferBeginInfo cmdBufferBeginInfo{};
-  cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+VkCommandBuffer core::MRenderer::beginSingleTimeCommandBuffer(ECmdType type) {
 
-  vkBeginCommandBuffer(command.buffersTransfer[cmdBufferId], &cmdBufferBeginInfo);
+  VkCommandBuffer newCommandBuffer;
+  VkCommandBufferAllocateInfo allocateInfo{};
+  allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+  allocateInfo.commandPool = getCommandPool(type);
+  allocateInfo.commandBufferCount = 1;
+  allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 
-  vkCmdCopyBuffer(command.buffersTransfer[cmdBufferId], srcBuffer->buffer,
-                  dstBuffer->buffer, 1, copyRegion);
+  vkAllocateCommandBuffers(logicalDevice.device, &allocateInfo,
+                           &newCommandBuffer);
 
-  vkEndCommandBuffer(command.buffersTransfer[cmdBufferId]);
+  VkCommandBufferBeginInfo beginInfo{};
+  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+  vkBeginCommandBuffer(newCommandBuffer, &beginInfo);
+
+  return newCommandBuffer;
+}
+
+void core::MRenderer::endSingleTimeCommandBuffer(VkCommandBuffer cmdBuffer,
+                                                 ECmdType poolType,
+                                                 VkQueue queue) {
+
+  vkEndCommandBuffer(cmdBuffer);
 
   VkSubmitInfo submitInfo{};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  submitInfo.pCommandBuffers = &cmdBuffer;
   submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &command.buffersTransfer[cmdBufferId];
 
-  vkQueueSubmit(logicalDevice.queues.transfer, 1, &submitInfo, VK_NULL_HANDLE);
-  vkQueueWaitIdle(logicalDevice.queues.transfer);
+  vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
+  vkQueueWaitIdle(queue);
 
-  return RE_OK;
+  vkFreeCommandBuffers(logicalDevice.device, getCommandPool(poolType),
+                                1, &cmdBuffer);
 }
 
 void core::MRenderer::setCamera(const char* name) {

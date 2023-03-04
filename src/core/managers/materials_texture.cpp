@@ -4,6 +4,30 @@
 #include "core/managers/renderer.h"
 #include "core/managers/materials.h"
 
+void core::MMaterials::transitionImageLayout(VkImage image, VkFormat format,
+                                             VkImageLayout oldLayout,
+                                             VkImageLayout newLayout) {
+  VkCommandBuffer cmdBuffer;
+
+  VkImageMemoryBarrier imageBarrier{};
+  imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  imageBarrier.image = image;
+  imageBarrier.oldLayout = oldLayout;
+  imageBarrier.newLayout = newLayout;
+  imageBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  imageBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  imageBarrier.subresourceRange.baseMipLevel = 0;
+  imageBarrier.subresourceRange.levelCount = 1;
+  imageBarrier.subresourceRange.baseArrayLayer = 0;
+  imageBarrier.subresourceRange.layerCount = 1;
+
+  VkPipelineStageFlags srcStageFlags;
+  VkPipelineStageFlags dstStageFlags;
+
+
+}
+
 void core::MMaterials::loadTexture(const std::string& filePath) {
   auto revert = [&](const char* name) { m_textures.erase(name); };
 
@@ -32,8 +56,8 @@ void core::MMaterials::loadTexture(const std::string& filePath) {
 
   ktxVulkanDeviceInfo* deviceInfo = ktxVulkanDeviceInfo_Create(
       core::renderer.physicalDevice.device, logicalDevice->device,
-      logicalDevice->queues.transfer, core::renderer.getCommandPool(1),
-      nullptr);
+      logicalDevice->queues.transfer,
+      core::renderer.getCommandPool(ECmdType::Transfer), nullptr);
 
   if (!deviceInfo) {
     RE_LOG(Error, "Failed to retrieve Vulkan device info.");
@@ -52,7 +76,7 @@ void core::MMaterials::loadTexture(const std::string& filePath) {
   if (!m_textures.try_emplace(textureName).second) {
     // already loaded
 #ifndef NDEBUG
-    RE_LOG(Warning, "Texture \"%s\" already loaded.", textureName.c_str());
+    RE_LOG(Warning, "Texture \"%s\" already exists.", textureName.c_str());
 #endif
     return;
   }
@@ -61,6 +85,7 @@ void core::MMaterials::loadTexture(const std::string& filePath) {
   RTexture* newTexture = &m_textures.at(textureName);
   newTexture->name = textureName;
   newTexture->filePath = filePath;
+  newTexture->isKTX = true;
 
   ktxResult = ktxTexture_VkUploadEx(
       pKTXTexture, deviceInfo, &newTexture->texture, VK_IMAGE_TILING_OPTIMAL,
@@ -114,9 +139,69 @@ void core::MMaterials::loadTexture(const std::string& filePath) {
   }*/
 }
 
+void core::MMaterials::createTexture(const char* name, uint32_t width, uint32_t height,
+  VkFormat format, VkImageTiling tiling,
+  VkImageUsageFlags usage,
+  RTexture* pTexture, VkMemoryPropertyFlags* properties) {
+
+  auto revert = [&](const char* name) { m_textures.erase(name); };
+
+  if (name == "") {
+    // nothing to load
+    return;
+  }
+
+    // create a texture record in the manager
+  if (!m_textures.try_emplace(name).second) {
+    // already loaded
+#ifndef NDEBUG
+    RE_LOG(Warning, "Texture \"%s\" already exists.", name);
+#endif
+    return;
+  }
+
+  VkResult result;
+  VkDevice device = core::renderer.logicalDevice.device;
+
+  VkImageCreateInfo createInfo{};
+  createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+  createInfo.imageType = VK_IMAGE_TYPE_2D;
+  createInfo.format = format;
+  createInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  createInfo.extent = {width, height, 1};
+  createInfo.mipLevels = 1;
+  createInfo.arrayLayers = 1;
+  createInfo.tiling = tiling;
+  createInfo.usage = usage;
+  createInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+  createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+  if (properties) {
+    RE_LOG(Warning, "Image creation property flags are currently unused.");
+  }
+
+  result = vmaCreateImage(core::renderer.memAlloc, &createInfo, nullptr,
+                          &pTexture->texture.image, &pTexture->allocation,
+                          &pTexture->allocationInfo);
+
+  if (result != VK_SUCCESS) {
+    RE_LOG(Error, "Failed to create image for \"%s\"", name);
+    revert(name);
+
+    return;
+  }
+
+
+}
+
 void core::MMaterials::destroyAllTextures() { m_textures.clear(); }
 
 core::MMaterials::RTexture::~RTexture() {
-  ktxVulkanTexture_Destruct(&texture, core::renderer.logicalDevice.device,
-                            nullptr);
+  if (isKTX) {
+    ktxVulkanTexture_Destruct(&texture, core::renderer.logicalDevice.device,
+                              nullptr);
+    return;
+  }
+
+  vmaDestroyImage(core::renderer.memAlloc, texture.image, allocation);
 }

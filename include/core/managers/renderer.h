@@ -17,7 +17,7 @@ namespace core {
       VkSurfaceFormatKHR formatData;
       VkPresentModeKHR presentMode;
       VkExtent2D imageExtent;
-      VkViewport viewport;                      // not used in code, needs to be
+      VkViewport viewport;                                // not used in code, needs to be
       uint32_t imageCount = 0;
       std::vector<VkImage> images;
       std::vector<VkImageView> imageViews;
@@ -26,9 +26,11 @@ namespace core {
 
     // command buffers and pools data
     struct {
-      VkCommandPool poolRender;
+      VkCommandPool poolGraphics;
+      VkCommandPool poolCompute;
       VkCommandPool poolTransfer;
-      std::vector<VkCommandBuffer> bufferView;
+      std::vector<VkCommandBuffer> buffersGraphics;
+      std::vector<VkCommandBuffer> buffersCompute;        // no code for this yet
       std::vector<VkCommandBuffer> buffersTransfer;
     } command;
 
@@ -37,12 +39,11 @@ namespace core {
       VkRenderPass renderPass;
       VkPipelineLayout pipelineLayout;
       VkPipeline pipeline;
-      uint32_t idIFFrame = 0;                                       // in flight frame index
+      uint32_t idIFFrame = 0;                             // in flight frame index
       VkDescriptorPool descriptorPool;
       std::vector<VkDescriptorSet> descriptorSets;
-      //std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
       VkDescriptorSetLayout descriptorSetLayout;
-      std::vector<WPrimitive*> meshes;                                   // meshes rendered during the current frame
+      std::vector<WPrimitive*> meshes;                    // meshes rendered during the current frame
     } system;
 
     // multi-threaded synchronization objects
@@ -117,9 +118,6 @@ namespace core {
     // clear all primitive bindings
     void clearPrimitiveBinds();
 
-    // 0 - render, 1 - transfer
-    VkCommandPool getCommandPool(uint8_t poolType);
-
   private:
     TResult createDescriptorSetLayouts();
     void destroyDescriptorSetLayouts();
@@ -154,11 +152,20 @@ namespace core {
     */
     TResult createBuffer(EBufferMode mode, VkDeviceSize size, RBuffer& outBuffer, void* inData);
 
-    // copy buffer with SRC and DST bits
+    // copy buffer with SRC and DST bits, uses transfer command buffer and pool
     TResult copyBuffer(VkBuffer srcBuffer, VkBuffer& dstBuffer,
       VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
     TResult copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
       VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
+
+    VkCommandPool getCommandPool(ECmdType type);
+
+    // begin writing commands to a one-off buffer
+    VkCommandBuffer beginSingleTimeCommandBuffer(ECmdType type);
+
+    // end writing commands to the buffer and submit them to specific queue
+    void endSingleTimeCommandBuffer(VkCommandBuffer cmdBuffer,
+                                    ECmdType type, VkQueue queue);
 
     // set camera from create cameras by name
     void setCamera(const char* name);

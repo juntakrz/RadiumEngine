@@ -39,10 +39,15 @@ class MMaterials {
     bool manageTextures = false;
   };
 
+  // if texture is loaded using KTX library - VMA allocations are not used
+  // however KTX structure will be used to store data when creating an image
   struct RTexture {
     std::string name = "";
     std::string filePath = "";
     ktxVulkanTexture texture;
+    VmaAllocation allocation;
+    VmaAllocationInfo allocationInfo;
+    bool isKTX = false;
 
     ~RTexture();
   };
@@ -89,6 +94,9 @@ class MMaterials {
  private:
   MMaterials();
 
+  void transitionImageLayout(VkImage image, VkFormat format,
+                             VkImageLayout oldLayout, VkImageLayout newLayout);
+
  public:
   static MMaterials &get() {
     static MMaterials _sInstance;
@@ -111,6 +119,12 @@ class MMaterials {
 
   // load texture from DDS or KTX file
   void loadTexture(const std::string& filePath);
+
+  // create new texture with specific parameters
+  void createTexture(const char *name, uint32_t width, uint32_t height,
+                     VkFormat format, VkImageTiling tiling,
+                     VkImageUsageFlags usage, RTexture *pTexture,
+                     VkMemoryPropertyFlags* properties = nullptr);
 
   void destroyAllTextures();
 };

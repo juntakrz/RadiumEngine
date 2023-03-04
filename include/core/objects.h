@@ -12,6 +12,13 @@ enum class EBufferMode {  // VkBuffer creation mode
   STAGING             // create staging buffer only
 };
 
+enum class ECmdType {
+  Graphics,
+  Compute,
+  Transfer,
+  Present
+};
+
 enum class EAType {  // actor type
   Base,
   Camera,

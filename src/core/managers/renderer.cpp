@@ -259,17 +259,6 @@ void core::MRenderer::unbindPrimitive(const std::vector<uint32_t>& meshIndices) 
 
 void core::MRenderer::clearPrimitiveBinds() { system.meshes.clear(); }
 
-VkCommandPool core::MRenderer::getCommandPool(uint8_t poolType) {
-  switch (poolType) {
-    case 0:
-      return command.poolRender;
-    case 1:
-      return command.poolTransfer;
-    default:
-      return nullptr;
-  }
-}
-
 TResult core::MRenderer::createDescriptorSetLayouts() {
   // layout for model view projection matrices for vertex shader
   VkDescriptorSetLayoutBinding uboMVPLayout{};
