@@ -75,6 +75,13 @@ struct RBuffer {
   VmaAllocationInfo allocInfo;
 };
 
+// expanding KTX structure
+struct RVulkanTexture : public ktxVulkanTexture {
+  VkImageView view;
+  VkSampler sampler;
+  VkDescriptorImageInfo descriptor;
+};
+
 struct RVertex {
   glm::vec3 pos;        // POSITION
   glm::vec2 tex0;       // TEXCOORD0
@@ -90,7 +97,8 @@ struct RVertex {
   static std::vector<VkVertexInputAttributeDescription> getAttributeDescs();
 };
 
-struct RSampler {
+// stored by WModel, used to create a valid sampler for a specific texture
+struct RSamplerInfo {
   VkFilter minFilter = VK_FILTER_LINEAR;
   VkFilter magFilter = VK_FILTER_LINEAR;
   VkSamplerAddressMode addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;

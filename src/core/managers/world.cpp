@@ -88,7 +88,7 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
     const tinygltf::Image* pImage = &gltfModel.images[tex.source];
 
     // get custom corresponding sampler data from WModel if present
-    RSampler textureSampler{};
+    RSamplerInfo textureSampler{};
     if (tex.sampler != -1) {
       textureSampler = pModel->m_textureSamplers[tex.sampler];
     }
@@ -103,7 +103,7 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
     RE_LOG(Log, "Loading texture \"%s\" for model \"%s\".", texturePath.c_str(),
            pModel->m_name.c_str());
 #endif
-    core::materials.loadTexture(texturePath.c_str());
+    core::materials.loadTexture(texturePath.c_str(), &textureSampler);
   }
 
   // parse node properties and get index/vertex counts

@@ -80,7 +80,7 @@ class WModel {
   std::vector<uint32_t> m_primitiveBindsIndex;
 
   // texture samplers used by this model
-  std::vector<RSampler> m_textureSamplers;
+  std::vector<RSamplerInfo> m_textureSamplers;
 
  private:
   void parseNodeProperties(const tinygltf::Model& gltfModel,

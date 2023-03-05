@@ -103,8 +103,8 @@ TResult core::MRenderer::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSetLayouts();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createGraphicsPipeline();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createFramebuffers();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createCommandPools();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createCommandBuffers();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandPools();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();
 
   // delete this code after model loading/creation code is finished
@@ -134,8 +134,8 @@ void core::MRenderer::deinitialize() {
 
   destroySwapChain();
   destroySyncObjects();
-  destroyCommandBuffers();
-  destroyCommandPools();
+  destroyCoreCommandBuffers();
+  destroyCoreCommandPools();
   destroyGraphicsPipeline();
   destroyRenderPass();
   destroySurface();

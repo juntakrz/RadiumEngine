@@ -236,7 +236,7 @@ void core::MRenderer::destroyGraphicsPipeline() {
   vkDestroyPipelineLayout(logicalDevice.device, system.pipelineLayout, nullptr);
 }
 
-TResult core::MRenderer::createCommandPools() {
+TResult core::MRenderer::createCoreCommandPools() {
   RE_LOG(Log, "Creating command pool.");
 
   VkCommandPoolCreateInfo cmdPoolRenderInfo{};
@@ -278,50 +278,47 @@ TResult core::MRenderer::createCommandPools() {
   return RE_OK;
 }
 
-void core::MRenderer::destroyCommandPools() {
+void core::MRenderer::destroyCoreCommandPools() {
   RE_LOG(Log, "Destroying command pools.");
   vkDestroyCommandPool(logicalDevice.device, command.poolGraphics, nullptr);
   vkDestroyCommandPool(logicalDevice.device, command.poolTransfer, nullptr);
   vkDestroyCommandPool(logicalDevice.device, command.poolCompute, nullptr);
 }
 
-TResult core::MRenderer::createCommandBuffers() {
-  RE_LOG(Log, "Creating rendering command buffers for %d frames.",
+TResult core::MRenderer::createCoreCommandBuffers() {
+  RE_LOG(Log, "Creating graphics command buffers for %d frames.",
          MAX_FRAMES_IN_FLIGHT);
 
   command.buffersGraphics.resize(MAX_FRAMES_IN_FLIGHT);
 
-  VkCommandBufferAllocateInfo cmdBufferInfo{};
-  cmdBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-  cmdBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  cmdBufferInfo.commandPool = command.poolGraphics;
-  cmdBufferInfo.commandBufferCount =
-      (uint32_t)command.buffersGraphics.size();
+  for (uint8_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+    command.buffersGraphics[i] = createCommandBuffer(
+        ECmdType::Graphics, VK_COMMAND_BUFFER_LEVEL_PRIMARY, false);
 
-  if (vkAllocateCommandBuffers(logicalDevice.device, &cmdBufferInfo,
-                               command.buffersGraphics.data()) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to allocate rendering command buffers.");
-    return RE_CRITICAL;
+    if (command.buffersGraphics[i] == nullptr) {
+      RE_LOG(Critical, "Failed to allocate graphics command buffers.");
+      return RE_CRITICAL;
+    }
   }
 
   RE_LOG(Log, "Creating %d transfer command buffers.", MAX_TRANSFER_BUFFERS);
 
   command.buffersTransfer.resize(MAX_TRANSFER_BUFFERS);
 
-  cmdBufferInfo.commandPool = command.poolTransfer;
-  cmdBufferInfo.commandBufferCount =
-      (uint32_t)command.buffersTransfer.size();
+  for (uint8_t j = 0; j < MAX_TRANSFER_BUFFERS; ++j) {
+    command.buffersTransfer[j] = createCommandBuffer(
+        ECmdType::Transfer, VK_COMMAND_BUFFER_LEVEL_PRIMARY, false);
 
-  if (vkAllocateCommandBuffers(logicalDevice.device, &cmdBufferInfo,
-                               command.buffersTransfer.data()) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to allocate transfer command buffers.");
-    return RE_CRITICAL;
+    if (command.buffersTransfer[j] == nullptr) {
+      RE_LOG(Critical, "Failed to allocate transfer command buffers.");
+      return RE_CRITICAL;
+    }
   }
 
   return RE_OK;
 }
 
-void core::MRenderer::destroyCommandBuffers() {
+void core::MRenderer::destroyCoreCommandBuffers() {
   RE_LOG(Log, "Freeing %d graphics command buffers.",
          command.buffersGraphics.size());
   vkFreeCommandBuffers(logicalDevice.device, command.poolGraphics,
@@ -341,7 +338,7 @@ void core::MRenderer::destroyCommandBuffers() {
                        command.buffersTransfer.data());
 }
 
-TResult core::MRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer,
+TResult core::MRenderer::recordFrameCommandBuffer(VkCommandBuffer commandBuffer,
                                      uint32_t imageIndex) {
   VkCommandBufferBeginInfo beginInfo{};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -512,8 +509,8 @@ TResult core::MRenderer::drawFrame() {
 
   vkResetCommandBuffer(command.buffersGraphics[system.idIFFrame], NULL);
 
-  // generate frame data
-  recordCommandBuffer(command.buffersGraphics[system.idIFFrame], imageIndex);
+  // generate selected frame data and record it to command buffer
+  recordFrameCommandBuffer(command.buffersGraphics[system.idIFFrame], imageIndex);
 
   // wait until image to write color data to is acquired
   VkSemaphore waitSems[] = {sync.semImgAvailable[system.idIFFrame]};

@@ -3,7 +3,7 @@
 
 core::MMaterials::MMaterials() { RE_LOG(Log, "Setting up the materials manager."); }
 
-uint32_t core::MMaterials::addMaterial(RMaterialDescriptor* pDesc) noexcept {
+uint32_t core::MMaterials::addMaterial(RMaterialInfo* pDesc) noexcept {
   uint16_t index = 0;
 
   for (const auto& it : m_materials) {

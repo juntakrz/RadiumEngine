@@ -308,7 +308,8 @@ TResult core::MRenderer::copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
     return RE_ERROR;
   }
 
-  VkCommandBuffer cmdBuffer = beginSingleTimeCommandBuffer(ECmdType::Transfer);
+  VkCommandBuffer cmdBuffer = createCommandBuffer(
+      ECmdType::Transfer, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
 
   VkBufferImageCopy imageCopy{};
   imageCopy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -324,7 +325,7 @@ TResult core::MRenderer::copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
   vkCmdCopyBufferToImage(cmdBuffer, srcBuffer, dstImage,
                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
 
-  endSingleTimeCommandBuffer(cmdBuffer, ECmdType::Transfer);
+  flushCommandBuffer(cmdBuffer, ECmdType::Transfer);
 
   return RE_OK;
 }
@@ -355,29 +356,41 @@ VkQueue core::MRenderer::getCommandQueue(ECmdType type) {
   }
 }
 
-VkCommandBuffer core::MRenderer::beginSingleTimeCommandBuffer(ECmdType type) {
-
+VkCommandBuffer core::MRenderer::createCommandBuffer(ECmdType type,
+                                                     VkCommandBufferLevel level,
+                                                     bool begin) {
   VkCommandBuffer newCommandBuffer;
   VkCommandBufferAllocateInfo allocateInfo{};
   allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
   allocateInfo.commandPool = getCommandPool(type);
   allocateInfo.commandBufferCount = 1;
-  allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+  allocateInfo.level = level;
 
   vkAllocateCommandBuffers(logicalDevice.device, &allocateInfo,
                            &newCommandBuffer);
 
-  VkCommandBufferBeginInfo beginInfo{};
-  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+  if (begin) {
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-  vkBeginCommandBuffer(newCommandBuffer, &beginInfo);
+    vkBeginCommandBuffer(newCommandBuffer, &beginInfo);
+  }
 
   return newCommandBuffer;
 }
 
-void core::MRenderer::endSingleTimeCommandBuffer(VkCommandBuffer cmdBuffer,
-                                                 ECmdType type) {
+void core::MRenderer::beginCommandBuffer(VkCommandBuffer cmdBuffer) {
+  VkCommandBufferBeginInfo beginInfo{};
+  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+  vkBeginCommandBuffer(cmdBuffer, &beginInfo);
+}
+
+void core::MRenderer::flushCommandBuffer(VkCommandBuffer cmdBuffer,
+                                         ECmdType type, bool free,
+                                         bool useFence) {
   vkEndCommandBuffer(cmdBuffer);
 
   VkSubmitInfo submitInfo{};
@@ -386,11 +399,33 @@ void core::MRenderer::endSingleTimeCommandBuffer(VkCommandBuffer cmdBuffer,
   submitInfo.commandBufferCount = 1;
 
   VkQueue cmdQueue = getCommandQueue(type);
-  vkQueueSubmit(cmdQueue, 1, &submitInfo, VK_NULL_HANDLE);
-  vkQueueWaitIdle(cmdQueue);
+  VkFence fence = VK_NULL_HANDLE;
 
-  vkFreeCommandBuffers(logicalDevice.device, getCommandPool(type), 1,
-                       &cmdBuffer);
+  if (useFence) {
+    VkFenceCreateInfo fenceInfo{};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceInfo.flags = NULL;  // unsignaled
+    vkCreateFence(logicalDevice.device, &fenceInfo, nullptr, &fence);
+  }
+
+  vkQueueSubmit(cmdQueue, 1, &submitInfo, fence);
+
+  switch (useFence) {
+    case false: {
+    vkQueueWaitIdle(cmdQueue);
+    break;
+    }
+    case true: {
+    // fence timeout is 1 second
+    vkWaitForFences(logicalDevice.device, 1, &fence, VK_TRUE, 1000000000uLL);
+    break;
+    }
+  }
+
+  if (free) {
+    vkFreeCommandBuffers(logicalDevice.device, getCommandPool(type), 1,
+                         &cmdBuffer);
+  }
 }
 
 VkImageView core::MRenderer::createImageView(VkImage image, VkFormat format,

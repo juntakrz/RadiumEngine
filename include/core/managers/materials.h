@@ -40,18 +40,17 @@ class MMaterials {
   };
 
   // if texture is loaded using KTX library - VMA allocations are not used
-  // however KTX structure will be used to store data when creating an image
   struct RTexture {
     std::string name = "";
     std::string filePath = "";
-    ktxVulkanTexture texture;
-    VkImageView view;
+    RVulkanTexture texture;
     VmaAllocation allocation;
     VmaAllocationInfo allocationInfo;
     bool isKTX = false;
 
-    // requires valid data contained in 'texture' struct
-    TResult createTextureImageView();
+    TResult createImageView();
+    TResult createSampler(const RSamplerInfo* pSamplerInfo);
+    TResult createDescriptor();
     ~RTexture();
   };
 
@@ -68,7 +67,7 @@ class MMaterials {
   // std::unordered_map<std::string, DFShader> m_Shaders;
 
  public:
-  struct RMaterialDescriptor {
+  struct RMaterialInfo {
     std::string name;
     bool manageTextures = false;
 
@@ -109,7 +108,7 @@ class MMaterials {
   // MATERIALS
 
   // add new material, returns material id
-  uint32_t addMaterial(RMaterialDescriptor *pDesc) noexcept;
+  uint32_t addMaterial(RMaterialInfo *pDesc) noexcept;
 
   RMaterial *getMaterial(std::string name) noexcept;
   RMaterial *getMaterial(uint32_t index) noexcept;
@@ -120,8 +119,10 @@ class MMaterials {
 
   // TEXTURES
 
-  // load texture from DDS or KTX file
-  void loadTexture(const std::string& filePath);
+  // load texture from KTX file (versions 1 and 2 are supported)
+  // won't create sampler if no sampler info is provided
+  void loadTexture(const std::string &filePath,
+                   const RSamplerInfo *pSamplerInfo);
 
   // create new texture with specific parameters
   void createTexture(const char *name, uint32_t width, uint32_t height,

@@ -8,8 +8,8 @@ void core::MMaterials::transitionImageLayout(VkImage image, VkFormat format,
                                              VkImageLayout oldLayout,
                                              VkImageLayout newLayout) {
 
-  VkCommandBuffer cmdBuffer =
-      core::renderer.beginSingleTimeCommandBuffer(ECmdType::Transfer);
+  VkCommandBuffer cmdBuffer = core::renderer.createCommandBuffer(
+      ECmdType::Transfer, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
 
   VkImageMemoryBarrier imageBarrier{};
   imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -42,17 +42,18 @@ void core::MMaterials::transitionImageLayout(VkImage image, VkFormat format,
     srcStageFlags = VK_PIPELINE_STAGE_TRANSFER_BIT;
     dstStageFlags = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
   } else {
-    RE_LOG(Error, "Unsupported layout transition was attempted.");
+    RE_LOG(Error, "Unsupported layout transition.");
     return;
   }
 
   vkCmdPipelineBarrier(cmdBuffer, srcStageFlags, dstStageFlags, NULL, NULL,
                        nullptr, NULL, nullptr, 1, &imageBarrier);
 
-  core::renderer.endSingleTimeCommandBuffer(cmdBuffer, ECmdType::Transfer);
+  core::renderer.flushCommandBuffer(cmdBuffer, ECmdType::Transfer, true);
 }
 
-void core::MMaterials::loadTexture(const std::string& filePath) {
+void core::MMaterials::loadTexture(const std::string& filePath,
+                                   const RSamplerInfo* pSamplerInfo) {
   auto revert = [&](const char* name) { m_textures.erase(name); };
 
   if (filePath == "") {
@@ -125,8 +126,18 @@ void core::MMaterials::loadTexture(const std::string& filePath) {
   ktxTexture_Destroy(pKTXTexture);
   ktxVulkanDeviceInfo_Destruct(deviceInfo);
 
-  if (newTexture->createTextureImageView() != RE_OK) {
+  if (newTexture->createImageView() != RE_OK) {
     return;
+  }
+
+  if (newTexture->createSampler(pSamplerInfo) != RE_OK) {
+    return;
+  }
+
+  if (pSamplerInfo) {
+    if (newTexture->createDescriptor() != RE_OK) {
+      return;
+    }
   }
 
   RE_LOG(Log, "Successfully loaded texture \"%s\".", textureName.c_str());
@@ -233,21 +244,71 @@ void core::MMaterials::destroyAllTextures() { m_textures.clear(); }
 
 // RTEXTURE
 
-TResult core::MMaterials::RTexture::createTextureImageView() {
-  view = core::renderer.createImageView(texture.image, texture.imageFormat,
-                                        texture.levelCount, texture.layerCount);
+TResult core::MMaterials::RTexture::createImageView() {
+  texture.view =
+      core::renderer.createImageView(texture.image, texture.imageFormat,
+                                     texture.levelCount, texture.layerCount);
 
-  if (!view) {
+  if (!texture.view) {
+    RE_LOG(Error, "Failed to create view for texture \"%s\"", name.c_str());
     return RE_ERROR;
   }
 
   return RE_OK;
 }
 
+TResult core::MMaterials::RTexture::createSampler(const RSamplerInfo* pSamplerInfo) {
+  if (!pSamplerInfo) {
+    RE_LOG(Warning, "Sampler info is missing, skipping sampler creation.");
+    return RE_WARNING;
+  }
+
+  VkSamplerCreateInfo createInfo{};
+  createInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+  createInfo.addressModeU = pSamplerInfo->addressModeU;
+  createInfo.addressModeV = pSamplerInfo->addressModeV;
+  createInfo.addressModeW = pSamplerInfo->addressModeW;
+  createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+  createInfo.minFilter = pSamplerInfo->minFilter;
+  createInfo.magFilter = pSamplerInfo->magFilter;
+  createInfo.anisotropyEnable = VK_TRUE;
+  createInfo.maxAnisotropy = 16.0f;
+  createInfo.compareOp = VK_COMPARE_OP_NEVER;
+  createInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+  createInfo.maxLod = (float)texture.levelCount;
+
+  if (vkCreateSampler(core::renderer.logicalDevice.device, &createInfo, nullptr,
+                      &texture.sampler) != VK_SUCCESS) {
+    RE_LOG(Error, "Failed to create sampler for texture \"%s\"", name.c_str());
+    return RE_ERROR;
+  };
+
+  return RE_OK;
+}
+
+TResult core::MMaterials::RTexture::createDescriptor() {
+  if (texture.imageLayout == VK_IMAGE_LAYOUT_UNDEFINED || !texture.view ||
+      !texture.sampler) {
+    RE_LOG(Error,
+           "Failed to create image descriptor. Make sure image layout is valid "
+           "and both image view and sampler were created.");
+    return RE_ERROR;
+  }
+
+  texture.descriptor.imageLayout = texture.imageLayout;
+  texture.descriptor.imageView = texture.view;
+  texture.descriptor.sampler = texture.sampler;
+
+  return RE_OK;
+}
+
 core::MMaterials::RTexture::~RTexture() {
+  VkDevice device = core::renderer.logicalDevice.device;
+  vkDestroyImageView(device, texture.view, nullptr);
+  vkDestroySampler(device, texture.sampler, nullptr);
+
   if (isKTX) {
-    ktxVulkanTexture_Destruct(&texture, core::renderer.logicalDevice.device,
-                              nullptr);
+    ktxVulkanTexture_Destruct(&texture, device, nullptr);
     return;
   }
 

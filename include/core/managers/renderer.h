@@ -134,7 +134,8 @@ namespace core {
     defining inData makes the method copy data to an outgoing buffer internally,
     otherwise empty but allocated VkBuffer is the result e.g. for a later data copy.
     */
-    TResult createBuffer(EBufferMode mode, VkDeviceSize size, RBuffer& outBuffer, void* inData);
+   TResult createBuffer(EBufferMode mode, VkDeviceSize size, RBuffer& outBuffer,
+                        void* inData);
 
     // copy buffer with SRC and DST bits, uses transfer command buffer and pool
     TResult copyBuffer(VkBuffer srcBuffer, VkBuffer& dstBuffer,
@@ -149,12 +150,17 @@ namespace core {
     VkCommandPool getCommandPool(ECmdType type);
     VkQueue getCommandQueue(ECmdType type);
 
-    // begin writing commands to a one-off buffer
-    VkCommandBuffer beginSingleTimeCommandBuffer(ECmdType type);
+    // creates a command buffer, if 'begin' is true - sets a "one time submit" mode
+    VkCommandBuffer createCommandBuffer(ECmdType type,
+                                        VkCommandBufferLevel level, bool begin);
 
-    // end writing commands to the buffer and submit them to specific queue
-    void endSingleTimeCommandBuffer(VkCommandBuffer cmdBuffer,
-                                    ECmdType type);
+    // begins command buffer in a "one time submit" mode
+    void beginCommandBuffer(VkCommandBuffer cmdBuffer);
+
+    // end writing to the buffer and submit commands to specific queue,
+    // optionally free the buffer and/or use fence
+    void flushCommandBuffer(VkCommandBuffer cmdBuffer, ECmdType type,
+                            bool free = false, bool useFence = false);
 
     VkImageView createImageView(VkImage image, VkFormat format,
                                 uint32_t levelCount, uint32_t layerCount);
@@ -281,12 +287,13 @@ namespace core {
     TResult createGraphicsPipeline();
     void destroyGraphicsPipeline();
 
-    TResult createCommandPools();
-    void destroyCommandPools();
+    TResult createCoreCommandPools();
+    void destroyCoreCommandPools();
 
-    TResult createCommandBuffers();
-    void destroyCommandBuffers();
-    TResult recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+    TResult createCoreCommandBuffers();
+    void destroyCoreCommandBuffers();
+
+    TResult recordFrameCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
     TResult createSyncObjects();
     void destroySyncObjects();
