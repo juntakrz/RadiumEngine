@@ -198,23 +198,79 @@ void core::MRenderer::destroySurface() {
 
 TResult core::MRenderer::createDescriptorSetLayouts() {
   // layout for model view projection matrices for vertex shader
-  VkDescriptorSetLayoutBinding uboMVPLayout{};
-  uboMVPLayout.binding = 0;                                         // binding location in a shader
-  uboMVPLayout.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;  // type of binding
-  uboMVPLayout.descriptorCount = 1;                                 // binding can be an array of UBOs, but MVP is a single UBO
-  uboMVPLayout.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;             // will be bound to vertex shader
-  uboMVPLayout.pImmutableSamplers = nullptr;                        // for image samplers
+  {
+    VkDescriptorSetLayoutBinding setLayoutBinding{};
+    setLayoutBinding.binding = 0;
+    setLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    setLayoutBinding.descriptorCount = 1;
+    setLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    setLayoutBinding.pImmutableSamplers = nullptr;
 
-  VkDescriptorSetLayoutCreateInfo uboMVPInfo{};
-  uboMVPInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-  uboMVPInfo.bindingCount = 1;
-  uboMVPInfo.pBindings = &uboMVPLayout;
+    VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
+    setLayoutCreateInfo.sType =
+        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    setLayoutCreateInfo.bindingCount = 1;
+    setLayoutCreateInfo.pBindings = &setLayoutBinding;
 
-  if (vkCreateDescriptorSetLayout(logicalDevice.device, &uboMVPInfo, nullptr,
-                                  &system.descriptorSetLayout) !=
-      VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create MVP matrix descriptor set layout.");
-    return RE_CRITICAL;
+    if (vkCreateDescriptorSetLayout(
+            logicalDevice.device, &setLayoutCreateInfo, nullptr,
+            &system.descriptorSetLayouts.MVP) != VK_SUCCESS) {
+      RE_LOG(Critical, "Failed to create MVP matrix descriptor set layout.");
+      return RE_CRITICAL;
+    }
+  }
+
+  // layout for a standard set of 6 textures
+  {
+    std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
+        {0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
+         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+        {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
+         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+        {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
+         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+        {3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
+         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+        {4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
+         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+        {5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
+         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}};
+
+    VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
+    setLayoutCreateInfo.sType =
+        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    setLayoutCreateInfo.pBindings = setLayoutBindings.data();
+    setLayoutCreateInfo.bindingCount =
+        static_cast<uint32_t>(setLayoutBindings.size());
+
+    if (vkCreateDescriptorSetLayout(
+            logicalDevice.device, &setLayoutCreateInfo, nullptr,
+            &system.descriptorSetLayouts.material) != VK_SUCCESS) {
+      RE_LOG(Critical, "Failed to create material descriptor set layout.");
+      return RE_CRITICAL;
+    }
+  }
+
+  // layout for model node
+  {
+    std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
+        {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT,
+         nullptr},
+    };
+
+    VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
+    setLayoutCreateInfo.sType =
+        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    setLayoutCreateInfo.pBindings = setLayoutBindings.data();
+    setLayoutCreateInfo.bindingCount =
+        static_cast<uint32_t>(setLayoutBindings.size());
+
+    if (vkCreateDescriptorSetLayout(
+            logicalDevice.device, &setLayoutCreateInfo, nullptr,
+            &system.descriptorSetLayouts.node) != VK_SUCCESS) {
+      RE_LOG(Critical, "Failed to create model node descriptor set layout.");
+      return RE_CRITICAL;
+    }
   }
 
   return RE_OK;
@@ -223,23 +279,43 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
 void core::MRenderer::destroyDescriptorSetLayouts(){
   RE_LOG(Log, "Removing descriptor set layouts.");
 
-  vkDestroyDescriptorSetLayout(logicalDevice.device, system.descriptorSetLayout,
-                               nullptr);
+  vkDestroyDescriptorSetLayout(logicalDevice.device,
+                               system.descriptorSetLayouts.MVP, nullptr);
+  vkDestroyDescriptorSetLayout(logicalDevice.device,
+                               system.descriptorSetLayouts.material, nullptr);
+  vkDestroyDescriptorSetLayout(logicalDevice.device,
+                               system.descriptorSetLayouts.node, nullptr);
 }
 
 TResult core::MRenderer::createDescriptorPool() {
   RE_LOG(Log, "Creating descriptor pool.");
 
-  // the number of descriptors in the given pool
-  VkDescriptorPoolSize poolSize{};
-  poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  poolSize.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+  // the number of descriptors in the given pool per set/layout type
+  std::vector<VkDescriptorPoolSize> poolSizes;
+  poolSizes.resize(3);
+
+  // model view projection matrix
+  poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+  // materials and textures
+  // TODO: rewrite so that descriptorCounts are calculated by objects/textures using map data
+  // e.g. max preloaded textures plus 256 for headroom
+  poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  poolSizes[1].descriptorCount = (1536 + 256) * MAX_FRAMES_IN_FLIGHT;
+
+  // model nodes
+  // TODO: rewrite so that descriptorCounts are calculated by objects/textures using map data
+  // e.g. max preloaded model nodes plus 256 for headroom
+  poolSizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  poolSizes[2].descriptorCount = (1024 + 256) * MAX_FRAMES_IN_FLIGHT;
 
   VkDescriptorPoolCreateInfo poolInfo{};
   poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-  poolInfo.poolSizeCount = 1;
-  poolInfo.pPoolSizes = &poolSize;
-  poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+  poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+  poolInfo.pPoolSizes = poolSizes.data();
+  poolInfo.maxSets =
+      static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) * poolSizes.size() * 10;    // need to calculate better number
   poolInfo.flags = 0;
 
   if (vkCreateDescriptorPool(logicalDevice.device, &poolInfo, nullptr,
@@ -261,7 +337,7 @@ TResult core::MRenderer::createDescriptorSets() {
   RE_LOG(Log, "Creating descriptor sets.");
 
   std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT,
-                                             system.descriptorSetLayout);
+                                             system.descriptorSetLayouts.MVP);
 
   VkDescriptorSetAllocateInfo setAllocInfo{};
   setAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;

@@ -1,7 +1,11 @@
 #include "pch.h"
+#include "core/core.h"
+#include "core/managers/renderer.h"
 #include "core/managers/materials.h"
 
-core::MMaterials::MMaterials() { RE_LOG(Log, "Setting up the materials manager."); }
+core::MMaterials::MMaterials() {
+  RE_LOG(Log, "Setting up the materials manager.");
+}
 
 uint32_t core::MMaterials::createMaterial(RMaterialInfo* pDesc) noexcept {
   // find current free material index
@@ -32,12 +36,30 @@ uint32_t core::MMaterials::createMaterial(RMaterialInfo* pDesc) noexcept {
   newMat.pEmissive = getTexture(pDesc->textures.emissive.c_str());
   newMat.pExtra = getTexture(pDesc->textures.extra.c_str());
 
-  newMat.baseColorFactor = pDesc->baseColorFactor;
-  newMat.emissiveFactor = pDesc->emissiveFactor;
-  newMat.alphaMode = pDesc->alphaMode;
-  newMat.alphaCutoff = pDesc->alphaCutoff;
+  newMat.pushConstantBlock.baseColorFactor = pDesc->baseColorFactor;
+  newMat.pushConstantBlock.emissiveFactor = pDesc->emissiveFactor;
+  newMat.pushConstantBlock.alphaMode = static_cast<float>(pDesc->alphaMode);
+  newMat.pushConstantBlock.alphaCutoff = pDesc->alphaCutoff;
 
-  // OBSOLETE
+  newMat.pushConstantBlock.baseColorTextureSet =
+      newMat.pBaseColor ? pDesc->texCoordSets.baseColor : -1;
+  newMat.pushConstantBlock.normalTextureSet =
+      newMat.pNormal ? pDesc->texCoordSets.normal : -1;
+  newMat.pushConstantBlock.metallicRoughnessTextureSet =
+      newMat.pMetalRoughness ? pDesc->texCoordSets.metalRoughness : -1;
+  newMat.pushConstantBlock.occlusionTextureSet =
+      newMat.pOcclusion ? pDesc->texCoordSets.occlusion : -1;
+  newMat.pushConstantBlock.emissiveTextureSet =
+      newMat.pEmissive ? pDesc->texCoordSets.emissive : -1;
+  newMat.pushConstantBlock.extraTextureSet =
+      newMat.pExtra ? pDesc->texCoordSets.extra : -1;
+
+  newMat.pushConstantBlock.bumpIntensity = pDesc->bumpIntensity;
+  newMat.pushConstantBlock.materialIntensity = pDesc->materialIntensity;
+
+  // create descriptor set for Vulkan API
+
+  /* OBSOLETE
   newMat.data.x = pDesc->materialIntensity;
   newMat.data.y = pDesc->metalnessFactor;
   newMat.data.z = pDesc->roughnessFactor;
@@ -51,7 +73,7 @@ uint32_t core::MMaterials::createMaterial(RMaterialInfo* pDesc) noexcept {
   newMat.F0 = pDesc->F0;
   newMat.manageTextures = pDesc->manageTextures;
   newMat.effectFlags = pDesc->effectFlags;
-  // OBSOLETE ^
+  // OBSOLETE ^ */
 
   m_materials.emplace_back(
       std::make_unique<RMaterial>(std::move(newMat)));

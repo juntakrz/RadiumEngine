@@ -30,6 +30,7 @@ class MMaterials {
   struct RMaterial {
     uint32_t id;
     std::string name;
+    bool doubleSided = false;
 
     std::string shaderVertex, shaderPixel, shaderGeometry;
     RTexture* pBaseColor        = nullptr;
@@ -39,27 +40,10 @@ class MMaterials {
     RTexture* pEmissive         = nullptr;
     RTexture* pExtra            = nullptr;
 
-    struct {
-      uint8_t baseColor = 0;
-      uint8_t normal = 0;
-      uint8_t metalRoughness = 0;
-      uint8_t occlusion = 0;
-      uint8_t emissive = 0;
-      uint8_t extra = 0;
-    } texCoordSets;
-
-    // refactor this to push constant
-    glm::vec4 baseColorFactor;
-    glm::vec4 emissiveFactor;
-
-    /* Material Data Structure
-    *
-    x = material intensity
-    y = metalness
-    z = roughness
-    w = bumpmapping intensity
-    */
-    glm::vec4 data;
+    RPushConstantBlock_Material pushConstantBlock;
+    VkDescriptorSet descriptorSet;
+    
+    // OBSOLETE
     glm::vec4 F0;
 
     // add effects using bitwise ops
@@ -69,10 +53,6 @@ class MMaterials {
     // from memory if unused by any other material
     // !requires sharedPtr code, currently unused!
     bool manageTextures = false;
-
-    bool doubleSided = false;
-    ERAlphaMode alphaMode = ERAlphaMode::Opaque;
-    float alphaCutoff;
   };
 
   std::vector<std::unique_ptr<RMaterial>> m_materials;
@@ -92,7 +72,7 @@ class MMaterials {
 
   // MATERIALS
 
-  // add new material, returns material id
+  // create new material, returns material's index
   uint32_t createMaterial(RMaterialInfo *pDesc) noexcept;
 
   RMaterial* getMaterial(std::string name) noexcept;

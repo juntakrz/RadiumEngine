@@ -42,7 +42,7 @@ namespace core {
       uint32_t idIFFrame = 0;                             // in flight frame index
       VkDescriptorPool descriptorPool;
       std::vector<VkDescriptorSet> descriptorSets;
-      VkDescriptorSetLayout descriptorSetLayout;
+      RDescriptorSetLayouts descriptorSetLayouts;
       std::vector<WPrimitive*> meshes;                    // meshes rendered during the current frame
     } system;
 
@@ -106,6 +106,7 @@ namespace core {
     TResult createDescriptorSetLayouts();
     void destroyDescriptorSetLayouts();
 
+    // TODO: improve pool size calculations using loaded map data
     TResult createDescriptorPool();
     void destroyDescriptorPool();
 

@@ -1,16 +1,12 @@
 #pragma once
 
+#include "core/objects.h"
+
 /*
  * Base class for manipulated engine objects like models, cameras and lights
  * contains common variables and methods either used as is or overloaded by the
  * inheriting classes
  */
-
-enum EActorType {
-  Base,
-  Camera,
-  Pawn
-};
 
 class ACamera;
 
@@ -85,5 +81,5 @@ class ABase {
   void setRotationModifier(const float& newModifier);
   void setScalingModifier(const float& newModifier);
 
-  const uint32_t typeId();
+  const EActorType& typeId();
 };

@@ -81,4 +81,4 @@ void ABase::setScalingModifier(const float& newModifier) {
   m_scalingModifier = newModifier;
 }
 
-const uint32_t ABase::typeId() { return m_typeId; }
+const EActorType& ABase::typeId() { return m_typeId; }

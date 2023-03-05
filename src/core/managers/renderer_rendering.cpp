@@ -185,7 +185,7 @@ TResult core::MRenderer::createGraphicsPipeline() {
   VkPipelineLayoutCreateInfo layoutInfo{};
   layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
   layoutInfo.setLayoutCount = 1;
-  layoutInfo.pSetLayouts = &system.descriptorSetLayout;
+  layoutInfo.pSetLayouts = &system.descriptorSetLayouts.MVP;
   layoutInfo.pushConstantRangeCount = 0;
   layoutInfo.pPushConstantRanges = nullptr;
 

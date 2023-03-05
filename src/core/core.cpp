@@ -36,8 +36,6 @@ void core::run() {
 
   RE_LOG(Log, "Creating renderer.");
   RE_CHECK(core::create());
-  core::input.initialize(core::window.getWindow());
-  core::player.initialize();
 
   RE_LOG(Log, "Successfully initialized engine core.");
 
@@ -95,6 +93,9 @@ TResult core::create() {
   RE_CHECK(chkResult);
 
   RE_LOG(Log, "Rendering module successfully initialized.");
+
+  core::input.initialize(core::window.getWindow());
+  core::player.initialize();
 
   return chkResult;
 }

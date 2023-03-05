@@ -19,7 +19,7 @@ enum class ECmdType {
   Present
 };
 
-enum class EAType {  // actor type
+enum class EActorType {  // actor type
   Base,
   Camera,
   Pawn
@@ -62,6 +62,14 @@ struct RVkPhysicalDevice {
   RVkQueueFamilyIndices queueFamilyIndices;
   RVkSwapChainInfo swapChainInfo;
   bool bIsValid = false;
+};
+
+// used by renderer
+struct RDescriptorSetLayouts {
+  VkDescriptorSetLayout scene;
+  VkDescriptorSetLayout material;
+  VkDescriptorSetLayout node;
+  VkDescriptorSetLayout MVP;
 };
 
 struct RVkLogicalDevice {
@@ -151,6 +159,24 @@ struct RMaterialInfo {
   float materialIntensity = 1.0f;
 
   uint32_t effectFlags = 0;
+};
+
+// push constant block used by RMaterial
+struct RPushConstantBlock_Material {
+  glm::vec4 baseColorFactor;
+  glm::vec4 emissiveFactor;
+  int32_t baseColorTextureSet;
+  int32_t normalTextureSet;
+  int32_t metallicRoughnessTextureSet;
+  int32_t occlusionTextureSet;
+  int32_t emissiveTextureSet;
+  int32_t extraTextureSet;
+  float metallicFactor;
+  float roughnessFactor;
+  float alphaMode;
+  float alphaCutoff;
+  float bumpIntensity;
+  float materialIntensity;
 };
 
 struct RCameraSettings {
