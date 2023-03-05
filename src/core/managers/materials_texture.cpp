@@ -52,28 +52,16 @@ void core::MMaterials::transitionImageLayout(VkImage image, VkFormat format,
   core::renderer.flushCommandBuffer(cmdBuffer, ECmdType::Transfer, true);
 }
 
-void core::MMaterials::loadTexture(const std::string& filePath,
+TResult core::MMaterials::loadTexture(const std::string& filePath,
                                    const RSamplerInfo* pSamplerInfo) {
   auto revert = [&](const char* name) { m_textures.erase(name); };
 
   if (filePath == "") {
     // nothing to load
-    return;
+    return RE_WARNING;
   }
 
-  // generate texture name from path - no texture file can be named the same
-  // size_t with npos will overflow to 0 when 1 is added, which is good
-  size_t folderPosition = filePath.find_last_of("/\\");
-  size_t delimiterPosition = filePath.rfind('.');
-
-  if (delimiterPosition == std::string::npos) {
-    RE_LOG(Warning, "Delimiter is missing in file path \"%s\".",
-           filePath.c_str());
-    delimiterPosition = filePath.size() - 1;
-  }
-
-  std::string textureName(filePath, folderPosition + 1,
-                          delimiterPosition - (folderPosition + 1));
+  std::string fullPath = RE_PATH_TEXTURES + filePath;
 
   ktxTexture* pKTXTexture = nullptr;
   KTX_error_code ktxResult;
@@ -86,30 +74,29 @@ void core::MMaterials::loadTexture(const std::string& filePath,
 
   if (!deviceInfo) {
     RE_LOG(Error, "Failed to retrieve Vulkan device info.");
-    return;
+    return RE_ERROR;
   }
 
   ktxResult = ktxTexture_CreateFromNamedFile(
-      filePath.c_str(), KTX_TEXTURE_CREATE_NO_FLAGS, &pKTXTexture);
+      fullPath.c_str(), KTX_TEXTURE_CREATE_NO_FLAGS, &pKTXTexture);
 
   if (ktxResult != KTX_SUCCESS) {
     RE_LOG(Error, "Failed reading texture. KTX error %d.", ktxResult);
-    return;
+    return RE_ERROR;
   }
 
   // create a texture record in the manager
-  if (!m_textures.try_emplace(textureName).second) {
+  if (!m_textures.try_emplace(filePath).second) {
     // already loaded
 #ifndef NDEBUG
-    RE_LOG(Warning, "Texture \"%s\" already exists.", textureName.c_str());
+    RE_LOG(Warning, "Texture \"%s\" already exists.", filePath.c_str());
 #endif
-    return;
+    return RE_WARNING;
   }
 
   // prepare freshly created texture structure
-  RTexture* newTexture = &m_textures.at(textureName);
-  newTexture->name = textureName;
-  newTexture->filePath = filePath;
+  RTexture* newTexture = &m_textures.at(filePath);
+  newTexture->name = filePath;
   newTexture->isKTX = true;
 
   ktxResult = ktxTexture_VkUploadEx(
@@ -118,29 +105,34 @@ void core::MMaterials::loadTexture(const std::string& filePath,
 
   if (ktxResult != KTX_SUCCESS) {
     RE_LOG(Error, "Failed uploading texture to GPU. KTX error %d.", ktxResult);
-    revert(textureName.c_str());
+    revert(filePath.c_str());
 
-    return;
+    return RE_ERROR;
   }
 
   ktxTexture_Destroy(pKTXTexture);
   ktxVulkanDeviceInfo_Destruct(deviceInfo);
 
   if (newTexture->createImageView() != RE_OK) {
-    return;
+    revert(filePath.c_str());
+    return RE_ERROR;
   }
 
   if (newTexture->createSampler(pSamplerInfo) != RE_OK) {
-    return;
+    revert(filePath.c_str());
+    return RE_ERROR;
   }
 
   if (pSamplerInfo) {
     if (newTexture->createDescriptor() != RE_OK) {
-      return;
+      revert(filePath.c_str());
+      return RE_ERROR;
     }
   }
 
-  RE_LOG(Log, "Successfully loaded texture \"%s\".", textureName.c_str());
+  RE_LOG(Log, "Successfully loaded texture \"%s\".", filePath.c_str());
+
+  return RE_OK;
   /*
   // prepare data for loading texture into the graphics card memory
   // assume KTX1 uses sRGB format instead of linear (most tools use this)
@@ -238,6 +230,15 @@ void core::MMaterials::createTexture(const char* name, uint32_t width, uint32_t 
                         pTexture->texture.imageLayout,
                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
                         */ 
+}
+
+core::MMaterials::RTexture* core::MMaterials::getTexture(
+    const char* name) noexcept {
+  if (m_textures.contains(name)) {
+    return &m_textures.at(name);
+  }
+
+  return nullptr;
 }
 
 void core::MMaterials::destroyAllTextures() { m_textures.clear(); }

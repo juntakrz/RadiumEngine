@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "core/core.h"
 #include "core/managers/renderer.h"
+#include "core/managers/materials.h"
 #include "core/world/model/primitive_custom.h"
 #include "core/world/model/model.h"
 
@@ -464,6 +465,95 @@ void WModel::setTextureSamplers(const tinygltf::Model& gltfModel) {
     sampler.addressModeU = getVkAddressMode(it.wrapS);
     sampler.addressModeV = getVkAddressMode(it.wrapT);
     sampler.addressModeW = sampler.addressModeV;
+  }
+}
+
+void WModel::parseMaterials(const tinygltf::Model& gltfModel,
+                            const std::vector<std::string>& texturePaths) {
+  for (const tinygltf::Material& mat : gltfModel.materials) {
+    RMaterialInfo materialInfo{};
+
+    materialInfo.doubleSided = mat.doubleSided;
+
+    if (mat.values.contains("baseColorTexture")) {
+      materialInfo.textures.baseColor =
+          texturePaths[mat.values.at("baseColorTexture").TextureIndex()];
+      materialInfo.texCoordSets.baseColor =
+          mat.values.at("baseColorTexture").TextureTexCoord();
+    }
+
+    if (mat.additionalValues.contains("normalTexture")) {
+      materialInfo.textures.normal =
+          texturePaths[mat.additionalValues.at("normalTexture").TextureIndex()];
+      materialInfo.texCoordSets.normal =
+          mat.additionalValues.at("normalTexture").TextureTexCoord();
+    }
+
+    if (mat.values.contains("metallicRoughnessTexture")) {
+      materialInfo.textures.metalRoughness =
+          texturePaths[mat.values.at("metallicRoughnessTexture")
+                           .TextureIndex()];
+      materialInfo.texCoordSets.metalRoughness =
+          mat.values.at("metallicRoughnessTexture").TextureTexCoord();
+    }
+
+    if (mat.additionalValues.contains("occlusionTexture")) {
+      materialInfo.textures.occlusion =
+          texturePaths[mat.additionalValues.at("occlusionTexture")
+                           .TextureIndex()];
+      materialInfo.texCoordSets.occlusion =
+          mat.additionalValues.at("occlusionTexture").TextureTexCoord();
+    }
+    if (mat.additionalValues.contains("emissiveTexture")) {
+      materialInfo.textures.emissive =
+          texturePaths[mat.additionalValues.at("emissiveTexture")
+                           .TextureIndex()];
+      materialInfo.texCoordSets.emissive =
+          mat.additionalValues.at("emissiveTexture").TextureTexCoord();
+    }
+
+    if (mat.values.contains("baseColorFactor")) {
+      materialInfo.baseColorFactor =
+          glm::make_vec4(mat.values.at("baseColorFactor").ColorFactor().data());
+    }
+
+    if (mat.values.contains("metallicFactor")) {
+      materialInfo.metalnessFactor =
+          static_cast<float>(mat.values.at("metallicFactor").Factor());
+    }
+
+    if (mat.values.contains("roughnessFactor")) {
+      materialInfo.roughnessFactor =
+          static_cast<float>(mat.values.at("roughnessFactor").Factor());
+    }
+
+    if (mat.additionalValues.contains("emissiveFactor")) {
+      materialInfo.emissiveFactor = glm::vec4(
+          glm::make_vec3(
+              mat.additionalValues.at("emissiveFactor").ColorFactor().data()),
+          1.0);
+    }
+
+    if (mat.additionalValues.contains("alphaMode")) {
+      tinygltf::Parameter param = mat.additionalValues.at("alphaMode");
+
+      if (param.string_value == "BLEND") {
+        materialInfo.alphaMode = ERAlphaMode::Blend;
+      }
+
+      if (param.string_value == "MASK") {
+        materialInfo.alphaCutoff = 0.5f;
+        materialInfo.alphaMode = ERAlphaMode::Mask;
+      }
+    }
+
+    if (mat.additionalValues.contains("alphaCutoff")) {
+      materialInfo.alphaCutoff =
+          static_cast<float>(mat.additionalValues.at("alphaCutoff").Factor());
+    }
+
+    // create new material
+    core::materials.createMaterial(&materialInfo);
   }
 }
 

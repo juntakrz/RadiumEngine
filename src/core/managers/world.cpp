@@ -80,6 +80,9 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
       gltfModel
           .scenes[gltfModel.defaultScene > -1 ? gltfModel.defaultScene : 0];
 
+  // index of texture paths used by this model, required by the material setup later
+  std::vector<std::string> texturePaths;
+
   // assign texture samplers for the current WModel
   pModel->setTextureSamplers(gltfModel);
 
@@ -93,18 +96,26 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
       textureSampler = pModel->m_textureSamplers[tex.sampler];
     }
 
+    // add empty path, should be changed later
+    texturePaths.emplace_back("");
+
     // get texture name and load it though materials manager
     if (pImage->uri == "") {
       continue;
     }
 
-    std::string texturePath = RE_PATH_TEXTURES + pImage->uri;
 #ifndef NDEBUG
-    RE_LOG(Log, "Loading texture \"%s\" for model \"%s\".", texturePath.c_str(),
+    RE_LOG(Log, "Loading texture \"%s\" for model \"%s\".", pImage->uri.c_str(),
            pModel->m_name.c_str());
 #endif
-    core::materials.loadTexture(texturePath.c_str(), &textureSampler);
+    if (core::materials.loadTexture(pImage->uri.c_str(), &textureSampler) <
+        RE_ERROR) {
+      texturePaths.back() = pImage->uri;
+    };
   }
+
+  // get glTF materials and convert them to RMaterial
+  pModel->parseMaterials(gltfModel, texturePaths);
 
   // parse node properties and get index/vertex counts
   for (size_t i = 0; i < gltfScene.nodes.size(); ++i) {

@@ -88,6 +88,8 @@ class WModel {
   void createNode(WModel::Node* pParentNode, const tinygltf::Model& gltfModel,
                   const tinygltf::Node& gltfNode, uint32_t gltfNodeIndex);
   void setTextureSamplers(const tinygltf::Model& gltfModel);
+  void parseMaterials(const tinygltf::Model& gltfModel,
+                      const std::vector<std::string>& texturePaths);
 
   // create simple node with a single empty mesh
   WModel::Node* createNode(WModel::Node* pParentNode, uint32_t nodeIndex,

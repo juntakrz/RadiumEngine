@@ -32,6 +32,12 @@ enum class EWPrimitive {
   Cube
 };
 
+enum class ERAlphaMode {
+  Blend,
+  Mask,
+  Opaque
+};
+
 struct RVkQueueFamilyIndices {
   std::vector<int32_t> graphics;
   std::vector<int32_t> compute;
@@ -104,6 +110,47 @@ struct RSamplerInfo {
   VkSamplerAddressMode addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
   VkSamplerAddressMode addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
   VkSamplerAddressMode addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+};
+
+// used for RMaterial creation in materials manager
+struct RMaterialInfo {
+  std::string name;
+  bool manageTextures = false;
+  bool doubleSided = false;
+  ERAlphaMode alphaMode = ERAlphaMode::Opaque;
+  float alphaCutoff = 1.0f;
+
+  struct {
+    std::string vertex = "default.vert", pixel = "default.frag", geometry = "";
+  } shaders;
+
+  struct {
+    std::string baseColor = "default//default.ktx2";
+    std::string normal = "";
+    std::string metalRoughness = "";
+    std::string occlusion = "";
+    std::string emissive = "";
+    std::string extra = "";
+  } textures;
+
+  struct {
+    uint8_t baseColor = 0;
+    uint8_t normal = 0;
+    uint8_t metalRoughness = 0;
+    uint8_t occlusion = 0;
+    uint8_t emissive = 0;
+    uint8_t extra = 0;
+  } texCoordSets;
+
+  glm::vec4 F0 = {0.4f, 0.4f, 0.4f, 0.0f};  // basic metal
+  glm::vec4 baseColorFactor = {0.0f, 0.0f, 0.0f, 1.0f};
+  glm::vec4 emissiveFactor = {0.0f, 0.0f, 0.0f, 1.0f};
+  float metalnessFactor = 1.0f;
+  float roughnessFactor = 1.0f;
+  float bumpIntensity = 1.0f;
+  float materialIntensity = 1.0f;
+
+  uint32_t effectFlags = 0;
 };
 
 struct RCameraSettings {
