@@ -189,8 +189,18 @@ struct RCameraSettings {
 // uniform buffer objects
 // 
 // view matrix UBO for vertex shader (model * view * projection)
-struct RSModelViewProjection {
+struct RModelViewProjectionUBO {
   alignas(16) glm::mat4 model = glm::mat4(1.0f);
   alignas(16) glm::mat4 view = glm::mat4(1.0f);
   alignas(16) glm::mat4 projection = glm::mat4(1.0f);
+};
+
+struct RLightingUBO {
+  glm::vec4 lightDir;
+  float exposure = 4.5f;
+  float gamma = 2.2f;
+  float prefilteredCubeMipLevels;
+  float scaleIBLAmbient = 1.0f;
+  float debugViewInputs = 0;
+  float debugViewEquation = 0;
 };

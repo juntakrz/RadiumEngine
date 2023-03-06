@@ -124,7 +124,7 @@ TResult core::MRenderer::initialize() {
   bindPrimitive(pTestModel->getPrimitives(), pModel->getPrimitiveBindsIndex());
   //
 
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createMVPBuffers();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createUniformBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorPool();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSets();
 
@@ -145,7 +145,7 @@ void core::MRenderer::deinitialize() {
   core::world.destroyAllModels();
   core::materials.destroyAllTextures();
   destroyDescriptorPool();
-  destroyMVPBuffers();
+  destroyUniformBuffers();
   destroyMemAlloc();
   if(bRequireValidationLayers) MDebug::get().destroy(APIInstance);
   destroyLogicalDevice();
@@ -321,6 +321,8 @@ void core::MRenderer::destroyDescriptorSetLayouts(){
   vkDestroyDescriptorSetLayout(logicalDevice.device,
                                system.descriptorSetLayouts.MVP, nullptr);
   vkDestroyDescriptorSetLayout(logicalDevice.device,
+                               system.descriptorSetLayouts.scene, nullptr);
+  vkDestroyDescriptorSetLayout(logicalDevice.device,
                                system.descriptorSetLayouts.material, nullptr);
   vkDestroyDescriptorSetLayout(logicalDevice.device,
                                system.descriptorSetLayouts.node, nullptr);
@@ -354,7 +356,8 @@ TResult core::MRenderer::createDescriptorPool() {
   poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
   poolInfo.pPoolSizes = poolSizes.data();
   poolInfo.maxSets =
-      static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) * poolSizes.size() * 10;    // need to calculate better number
+      static_cast<uint32_t>(poolSizes.size()) *
+      (MAX_FRAMES_IN_FLIGHT) * 10;  // need to calculate better number
   poolInfo.flags = 0;
 
   if (vkCreateDescriptorPool(logicalDevice.device, &poolInfo, nullptr,
@@ -373,16 +376,16 @@ void core::MRenderer::destroyDescriptorPool() {
 
 TResult core::MRenderer::createDescriptorSets() {
 
-  RE_LOG(Log, "Creating descriptor sets.");
+  RE_LOG(Log, "Creating renderer descriptor sets.");
 
-  std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT,
-                                             system.descriptorSetLayouts.MVP);
+  std::vector<VkDescriptorSetLayout> setLayouts(MAX_FRAMES_IN_FLIGHT,
+                                             system.descriptorSetLayouts.scene);  // --MVP
 
   VkDescriptorSetAllocateInfo setAllocInfo{};
   setAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
   setAllocInfo.descriptorPool = system.descriptorPool;
   setAllocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-  setAllocInfo.pSetLayouts = layouts.data();
+  setAllocInfo.pSetLayouts = setLayouts.data();
 
   system.descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
 
@@ -396,51 +399,101 @@ TResult core::MRenderer::createDescriptorSets() {
 
   for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
     
-    uint32_t descriptorCount = 1u;
+    uint32_t descriptorCount = 2u;
 
-    // data for descriptor set
-    VkDescriptorBufferInfo descriptorBufferInfo;
-    descriptorBufferInfo.buffer = view.modelViewProjectionBuffers[i].buffer;
-    descriptorBufferInfo.offset = 0;
-    descriptorBufferInfo.range = sizeof(RSModelViewProjection);
+    // model*view*projection data for descriptor set
+    VkDescriptorBufferInfo descriptorBufferInfoMVP;
+    descriptorBufferInfoMVP.buffer = view.modelViewProjectionBuffers[i].buffer;
+    descriptorBufferInfoMVP.offset = 0;
+    descriptorBufferInfoMVP.range = sizeof(RModelViewProjectionUBO);
 
-    // settings used for writing to descriptor sets
-    VkWriteDescriptorSet writeDescriptorSet;
-    writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeDescriptorSet.dstSet = system.descriptorSets[i];
-    writeDescriptorSet.dstBinding = 0;
-    writeDescriptorSet.dstArrayElement = 0;
-    writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    writeDescriptorSet.descriptorCount = descriptorCount;
-    writeDescriptorSet.pBufferInfo = &descriptorBufferInfo;
-    writeDescriptorSet.pImageInfo = nullptr;
-    writeDescriptorSet.pTexelBufferView = nullptr;
-    writeDescriptorSet.pNext = nullptr;
+    // lighting data for descriptor set
+    VkDescriptorBufferInfo descriptorBufferInfoLighting;
+    descriptorBufferInfoLighting.buffer = view.lightingBuffers[i].buffer;
+    descriptorBufferInfoLighting.offset = 0;
+    descriptorBufferInfoLighting.range = sizeof(RLightingUBO);
 
+    // settings used for writing to MVP descriptor set
+    std::vector<VkWriteDescriptorSet> writeDescriptorSets(descriptorCount);
+    writeDescriptorSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeDescriptorSets[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    writeDescriptorSets[0].dstSet = system.descriptorSets[i];
+    writeDescriptorSets[0].dstBinding = 0;
+    writeDescriptorSets[0].dstArrayElement = 0;
+    writeDescriptorSets[0].descriptorCount = 1;
+    writeDescriptorSets[0].pBufferInfo = &descriptorBufferInfoMVP;
+    writeDescriptorSets[0].pImageInfo = nullptr;
+    writeDescriptorSets[0].pTexelBufferView = nullptr;
+    writeDescriptorSets[0].pNext = nullptr;
+ 
+    writeDescriptorSets[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeDescriptorSets[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    writeDescriptorSets[1].descriptorCount = 1;
+    writeDescriptorSets[1].dstSet = system.descriptorSets[i];
+    writeDescriptorSets[1].dstBinding = 1;
+    writeDescriptorSets[1].pBufferInfo = &descriptorBufferInfoLighting;
+    /*
+    // environment image data
+    writeDescriptorSets[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeDescriptorSets[2].descriptorType =
+        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    writeDescriptorSets[2].descriptorCount = 1;
+    writeDescriptorSets[2].dstSet = system.descriptorSets[i];
+    writeDescriptorSets[2].dstBinding = 2;
+    writeDescriptorSets[2].pImageInfo = &textures.irradianceCube.descriptor;
+
+    writeDescriptorSets[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeDescriptorSets[3].descriptorType =
+        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    writeDescriptorSets[3].descriptorCount = 1;
+    writeDescriptorSets[3].dstSet = system.descriptorSets[i];
+    writeDescriptorSets[3].dstBinding = 3;
+    writeDescriptorSets[3].pImageInfo = &textures.prefilteredCube.descriptor;
+
+    writeDescriptorSets[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeDescriptorSets[4].descriptorType =
+        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    writeDescriptorSets[4].descriptorCount = 1;
+    writeDescriptorSets[4].dstSet = system.descriptorSets[i];
+    writeDescriptorSets[4].dstBinding = 4;
+    writeDescriptorSets[4].pImageInfo = &textures.lutBrdf.descriptor;
+    */
     vkUpdateDescriptorSets(logicalDevice.device, descriptorCount,
-                           &writeDescriptorSet, 0, nullptr);
+                           writeDescriptorSets.data(), 0, nullptr);
   }
 
   return RE_OK;
 }
 
-TResult core::MRenderer::createMVPBuffers() {
+TResult core::MRenderer::createUniformBuffers() {
   // each frame will require a separate buffer, so 2 frames in flight would require buffers * 2
   view.modelViewProjectionBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+  view.lightingBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
-  VkDeviceSize uboMVPsize = sizeof(RSModelViewProjection);
+  VkDeviceSize uboMVPSize = sizeof(RModelViewProjectionUBO);
+  VkDeviceSize uboLightingSize = sizeof(RLightingUBO);
 
   for (int i = 0; i < view.modelViewProjectionBuffers.size();
        i += MAX_FRAMES_IN_FLIGHT) {
-    createBuffer(EBufferMode::CPU_UNIFORM, uboMVPsize, view.modelViewProjectionBuffers[i], getMVPview());
-    createBuffer(EBufferMode::CPU_UNIFORM, uboMVPsize, view.modelViewProjectionBuffers[i + 1], getMVPview());
+    createBuffer(EBufferMode::CPU_UNIFORM, uboMVPSize,
+                 view.modelViewProjectionBuffers[i], getMVPview());
+    createBuffer(EBufferMode::CPU_UNIFORM, uboMVPSize,
+                 view.modelViewProjectionBuffers[i + 1], getMVPview());
+    createBuffer(EBufferMode::CPU_UNIFORM, uboLightingSize,
+                 view.lightingBuffers[i], &view.lightingData);
+    createBuffer(EBufferMode::CPU_UNIFORM, uboLightingSize,
+                 view.lightingBuffers[i + 1], &view.lightingData);
   }
 
   return RE_OK;
 }
 
-void core::MRenderer::destroyMVPBuffers() {
+void core::MRenderer::destroyUniformBuffers() {
   for (auto& it : view.modelViewProjectionBuffers) {
+    vmaDestroyBuffer(memAlloc, it.buffer, it.allocation);
+  }
+
+  for (auto& it : view.lightingBuffers) {
     vmaDestroyBuffer(memAlloc, it.buffer, it.allocation);
   }
 }
@@ -457,14 +510,14 @@ void core::MRenderer::updateModelViewProjectionBuffers(uint32_t currentImage) {
   view.modelViewProjectionData.projection = view.pActiveCamera->getProjection();
 
   memcpy(view.modelViewProjectionBuffers[currentImage].allocInfo.pMappedData,
-         &view.modelViewProjectionData, sizeof(RSModelViewProjection));
+         &view.modelViewProjectionData, sizeof(RModelViewProjectionUBO));
 }
 
-RSModelViewProjection* core::MRenderer::getMVPview() {
+RModelViewProjectionUBO* core::MRenderer::getMVPview() {
   return &view.modelViewProjectionData;
 }
 
-RSModelViewProjection* core::MRenderer::updateModelViewProjection(glm::mat4* pTransform) {
+RModelViewProjectionUBO* core::MRenderer::updateModelViewProjection(glm::mat4* pTransform) {
   view.modelViewProjectionData = {glm::mat4(1.0f), view.pActiveCamera->getView(),
           view.pActiveCamera->getProjection()};
 
