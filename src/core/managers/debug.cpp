@@ -100,11 +100,11 @@ void core::MDebug::initializeRenderDoc() {
 #endif
 }
 
+#ifndef NDEBUG
 core::MDebug::DebugRenderDoc& core::MDebug::getRenderDoc() {
-  #ifndef NDEBUG
   return m_renderdoc;
-  #endif
 }
+#endif
 
 void core::MDebug::enableRenderDocOverlay(bool bEnable) {
   #ifndef NDEBUG

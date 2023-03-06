@@ -102,6 +102,9 @@ namespace core {
     TResult createSurface();
     void destroySurface();
 
+    const RDescriptorSetLayouts* getDescriptorSetLayouts() const;
+    const VkDescriptorPool getDescriptorPool();
+
   private:
     TResult createDescriptorSetLayouts();
     void destroyDescriptorSetLayouts();
@@ -122,7 +125,6 @@ namespace core {
     // creates MVP matrices using currently active camera and model transform
     RSModelViewProjection* updateModelViewProjection(glm::mat4* pTransform);
 
-  private:
     TResult checkInstanceValidationLayers();
     std::vector<const char*> getRequiredInstanceExtensions();
     std::vector<VkExtensionProperties> getInstanceExtensions();

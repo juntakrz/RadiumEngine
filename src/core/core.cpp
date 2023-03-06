@@ -94,6 +94,7 @@ TResult core::create() {
 
   RE_LOG(Log, "Rendering module successfully initialized.");
 
+  //core::materials.initialize();
   core::input.initialize(core::window.getWindow());
   core::player.initialize();
 

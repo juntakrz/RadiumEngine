@@ -108,6 +108,8 @@ TResult core::MRenderer::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();
 
   // delete this code after model loading/creation code is finished
+  core::materials.initialize(); // this should go into core::create after renderer is initialized
+
   core::actors.createPawn("plane0");
   core::world.createModel(EWPrimitive::Sphere, "mdlPlane", 16, 0);
   WModel* pModel = core::world.getModel("mdlPlane");
@@ -196,6 +198,14 @@ void core::MRenderer::destroySurface() {
   vkDestroySurfaceKHR(APIInstance, surface, nullptr);
 }
 
+const RDescriptorSetLayouts* core::MRenderer::getDescriptorSetLayouts() const {
+  return &system.descriptorSetLayouts;
+}
+
+const VkDescriptorPool core::MRenderer::getDescriptorPool() { return system.descriptorPool; }
+
+// PRIVATE
+
 TResult core::MRenderer::createDescriptorSetLayouts() {
   // layout for model view projection matrices for vertex shader
   {
@@ -216,6 +226,35 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
             logicalDevice.device, &setLayoutCreateInfo, nullptr,
             &system.descriptorSetLayouts.MVP) != VK_SUCCESS) {
       RE_LOG(Critical, "Failed to create MVP matrix descriptor set layout.");
+      return RE_CRITICAL;
+    }
+  }
+
+  // layout for scene matrices and environmental maps
+  {
+    std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
+        {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1,
+         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+        {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT,
+         nullptr},
+        {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
+         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+        {3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
+         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+        {4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
+         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+    };
+    VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
+    setLayoutCreateInfo.sType =
+        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    setLayoutCreateInfo.pBindings = setLayoutBindings.data();
+    setLayoutCreateInfo.bindingCount =
+        static_cast<uint32_t>(setLayoutBindings.size());
+
+    if (vkCreateDescriptorSetLayout(
+            logicalDevice.device, &setLayoutCreateInfo, nullptr,
+            &system.descriptorSetLayouts.scene) != VK_SUCCESS) {
+      RE_LOG(Critical, "Failed to create scene descriptor set layout.");
       return RE_CRITICAL;
     }
   }

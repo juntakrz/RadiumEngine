@@ -475,6 +475,15 @@ void WModel::parseMaterials(const tinygltf::Model& gltfModel,
 
     materialInfo.doubleSided = mat.doubleSided;
 
+    if (mat.name == "") {
+      RE_LOG(
+          Error,
+          "Failed to retrieve material from the model, material name is empty");
+      return;
+    }
+
+    materialInfo.name = m_name + "_" + mat.name;
+
     if (mat.values.contains("baseColorTexture")) {
       materialInfo.textures.baseColor =
           texturePaths[mat.values.at("baseColorTexture").TextureIndex()];

@@ -43,7 +43,10 @@ namespace core {
     // RenderDoc (methods will not execute if NDEBUG is set)
     void initializeRenderDoc();
     void enableRenderDocOverlay(bool bEnable);
+
+#ifndef NDEBUG
     DebugRenderDoc& getRenderDoc();
+#endif
 
   private:
     static VKAPI_ATTR VkBool32 VKAPI_CALL

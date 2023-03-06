@@ -21,6 +21,10 @@ class MMaterials {
     VmaAllocationInfo allocationInfo;
     bool isKTX = false;
 
+    // trying to track how many times texture is assigned to material
+    // to see if it should be deleted if owning material is deleted
+    uint32_t references = 0;
+
     TResult createImageView();
     TResult createSampler(const RSamplerInfo *pSamplerInfo);
     TResult createDescriptor();
@@ -28,7 +32,6 @@ class MMaterials {
   };
 
   struct RMaterial {
-    uint32_t id;
     std::string name;
     bool doubleSided = false;
 
@@ -53,9 +56,11 @@ class MMaterials {
     // from memory if unused by any other material
     // !requires sharedPtr code, currently unused!
     bool manageTextures = false;
+
+    void createDescriptorSet();
   };
 
-  std::vector<std::unique_ptr<RMaterial>> m_materials;
+  std::unordered_map<std::string, std::unique_ptr<RMaterial>> m_materials;
   std::unordered_map<std::string, RTexture> m_textures;
 
  private:
@@ -70,17 +75,16 @@ class MMaterials {
     return _sInstance;
   }
 
+  void initialize();
+
   // MATERIALS
 
-  // create new material, returns material's index
-  uint32_t createMaterial(RMaterialInfo *pDesc) noexcept;
+  // create new material, returns pointer to the new material
+  RMaterial* createMaterial(RMaterialInfo *pDesc) noexcept;
 
-  RMaterial* getMaterial(std::string name) noexcept;
-  RMaterial* getMaterial(uint32_t index) noexcept;
-  uint32_t getMaterialIndex(std::string name) const noexcept;
+  RMaterial* getMaterial(const char* name) noexcept;
   uint32_t getMaterialCount() const noexcept;
-  void deleteMaterial(uint32_t index) noexcept;
-  void deleteMaterial(std::string name) noexcept;
+  TResult deleteMaterial(const char* name) noexcept;
 
   // TEXTURES
 
@@ -95,7 +99,15 @@ class MMaterials {
                      VkImageUsageFlags usage, RTexture* pTexture,
                      VkMemoryPropertyFlags* properties = nullptr);
 
+  // unconditional destruction of texture object if 'force' is true
+  bool destroyTexture(const char* name, bool force = false) noexcept;
+
+  // should be used only for changing settings within texture object
+  // for assigning texture to material use assignTexture() instead
   RTexture* getTexture(const char* name) noexcept;
+
+  // retrieve texture to be assigned in material instance
+  RTexture* const assignTexture(const char* name) noexcept;
 
   void destroyAllTextures();
 };

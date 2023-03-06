@@ -241,6 +241,17 @@ core::MMaterials::RTexture* core::MMaterials::getTexture(
   return nullptr;
 }
 
+core::MMaterials::RTexture* const core::MMaterials::assignTexture(
+    const char* name) noexcept {
+  if (m_textures.contains(name)) {
+    RTexture* pTexture = &m_textures.at(name);
+    ++pTexture->references;
+    return pTexture;
+  }
+
+  return nullptr;
+}
+
 void core::MMaterials::destroyAllTextures() { m_textures.clear(); }
 
 // RTEXTURE
