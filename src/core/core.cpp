@@ -42,13 +42,13 @@ void core::run() {
   core::script.loadMap("default");
 
   // remove this after loadMap improvements
-  core::actors.createPawn("plane0");
-  core::world.createModel(EWPrimitive::Sphere, "mdlPlane", 16, 0);
-  WModel* pModel = core::world.getModel("mdlPlane");
-  APawn* pPawn = core::actors.getPawn("plane0");
+  core::actors.createPawn("sphere0");
+  core::world.createModel(EWPrimitive::Sphere, "mdlSphere", 16, 0);
+  WModel* pModel = core::world.getModel("mdlSphere");
+  APawn* pPawn = core::actors.getPawn("sphere0");
   pPawn->setModel(pModel);
 
-  // bindPrimitive(pModel->getPrimitives(), pModel->getPrimitiveBindsIndex());
+  //core::renderer.bindPrimitive(pModel->getPrimitives(), pModel->getPrimitiveBindsIndex());
 
   core::world.loadModelFromFile("content/models/test/scene.gltf", "mdlTest");
 

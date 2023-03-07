@@ -3,6 +3,8 @@
 #include "common.h"
 #include "core/objects.h"
 
+class WPrimitive;
+
 namespace tinygltf {
 class Model;
 class Node;
@@ -11,6 +13,8 @@ class Node;
 namespace core {
 
 class MMaterials {
+  friend class ::WPrimitive;
+
  private:
 
   // if texture is loaded using KTX library - VMA allocations are not used
@@ -65,9 +69,6 @@ class MMaterials {
 
  private:
   MMaterials();
-
-  void transitionImageLayout(VkImage image, VkFormat format,
-                             VkImageLayout oldLayout, VkImageLayout newLayout);
 
  public:
   static MMaterials &get() {

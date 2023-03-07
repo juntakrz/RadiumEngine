@@ -21,22 +21,46 @@ TResult core::MRenderer::createRenderPass() {
   colorAttachmentRef.attachment = 0;                                    // index of an attachment in attachmentdesc array (also vertex shader output index)
   colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; // the layout will be an image
 
+  VkAttachmentDescription depthAttachment{};
+  depthAttachment.format = images.depth.format;
+  depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+  depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; 
+  depthAttachment.finalLayout =
+      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+  VkAttachmentReference depthAttachmentRef{};
+  depthAttachmentRef.attachment = 0;
+  depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
   VkSubpassDescription subpassDesc{};
+  subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
   subpassDesc.colorAttachmentCount = 1;
   subpassDesc.pColorAttachments = &colorAttachmentRef;
+  subpassDesc.pDepthStencilAttachment = &depthAttachmentRef;
 
-  VkSubpassDependency dependency{};                                  // makes subpass wait for color attachment-type image to be acquired
+  VkSubpassDependency dependency{};                                           // makes subpass wait for color attachment-type image to be acquired
   dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
   dependency.dstSubpass = 0;
-  dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;   // wait for external subpass to be of color attachment
+  dependency.srcStageMask =
+      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+      VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;                             // wait for external subpass to be of color attachment
   dependency.srcAccessMask = NULL;
-  dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;   // wait until we can write to color attachment
-  dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+  dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+                            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;       // wait until we can write to color attachment
+  dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+                             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+  std::vector<VkAttachmentDescription> attachments = {colorAttachment,
+                                                      depthAttachment};
 
   VkRenderPassCreateInfo renderPassInfo{};
   renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-  renderPassInfo.attachmentCount = 1;
-  renderPassInfo.pAttachments = &colorAttachment;
+  renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+  renderPassInfo.pAttachments = attachments.data();
   renderPassInfo.subpassCount = 1;
   renderPassInfo.pSubpasses = &subpassDesc;
   renderPassInfo.dependencyCount = 1;
@@ -126,6 +150,9 @@ TResult core::MRenderer::createGraphicsPipelines() {
   depthStencilInfo.front = depthStencilInfo.back;
   depthStencilInfo.back.compareOp = VK_COMPARE_OP_ALWAYS;
   depthStencilInfo.stencilTestEnable = VK_FALSE;
+  depthStencilInfo.depthBoundsTestEnable = VK_FALSE;
+  depthStencilInfo.minDepthBounds = 0.0f;
+  depthStencilInfo.maxDepthBounds = 1.0f;
 
   VkPipelineColorBlendAttachmentState colorBlendAttachment{};
   colorBlendAttachment.colorWriteMask =
@@ -202,12 +229,13 @@ TResult core::MRenderer::createGraphicsPipelines() {
       static_cast<uint32_t>(attributeDescs.size());
   vertexInputInfo.pVertexAttributeDescriptions = attributeDescs.data();
 
-  // PBR pipeline
+  // 'PBR' pipeline
   RE_LOG(Log, "Setting up PBR pipeline.");
 
   std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {
       loadShader("vs_default.spv", VK_SHADER_STAGE_VERTEX_BIT),
-      loadShader("fs_default.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
+      loadShader("fs_default.spv", VK_SHADER_STAGE_FRAGMENT_BIT)
+  };
 
   VkGraphicsPipelineCreateInfo graphicsPipelineInfo{};
   graphicsPipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -230,10 +258,23 @@ TResult core::MRenderer::createGraphicsPipelines() {
   if (vkCreateGraphicsPipelines(logicalDevice.device, VK_NULL_HANDLE, 1,
                                 &graphicsPipelineInfo, nullptr,
                                 &system.pipelines.PBR) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create graphics pipeline.");
+    RE_LOG(Critical, "Failed to create PBR graphics pipeline.");
 
     return RE_CRITICAL;
   }
+
+  
+  // 'PBR doublesided' pipeline
+  rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
+
+  if (vkCreateGraphicsPipelines(logicalDevice.device, VK_NULL_HANDLE, 1,
+                                &graphicsPipelineInfo, nullptr,
+                                &system.pipelines.PBR_DS) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to create PBR doublesided graphics pipeline.");
+
+    return RE_CRITICAL;
+  }
+
 
   for (auto stage : shaderStages) {
     vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
@@ -246,7 +287,7 @@ void core::MRenderer::destroyGraphicsPipelines() {
   RE_LOG(Log, "Shutting down graphics pipeline.");
   destroyDescriptorSetLayouts();
   vkDestroyPipeline(logicalDevice.device, system.pipelines.PBR, nullptr);
-  //vkDestroyPipeline(logicalDevice.device, system.pipelines.PBR_DS, nullptr);
+  vkDestroyPipeline(logicalDevice.device, system.pipelines.PBR_DS, nullptr);
   //vkDestroyPipeline(logicalDevice.device, system.pipelines.skybox, nullptr);
   vkDestroyPipelineLayout(logicalDevice.device, system.pipelines.layout, nullptr);
 }
@@ -366,7 +407,9 @@ TResult core::MRenderer::recordFrameCommandBuffer(VkCommandBuffer commandBuffer,
     return RE_ERROR;
   }
 
-  VkClearValue clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
+  std::array<VkClearValue, 2> clearColors;
+  clearColors[0].color = {0.0f, 0.0f, 0.0f, 1.0f};
+  clearColors[1].depthStencil = {1.0f, 0};
 
   VkRenderPassBeginInfo renderPassInfo{};
   renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -374,8 +417,8 @@ TResult core::MRenderer::recordFrameCommandBuffer(VkCommandBuffer commandBuffer,
   renderPassInfo.framebuffer = swapchain.framebuffers[imageIndex];
   renderPassInfo.renderArea.offset = {0, 0};
   renderPassInfo.renderArea.extent = swapchain.imageExtent;
-  renderPassInfo.pClearValues = &clearColor;
-  renderPassInfo.clearValueCount = 1;
+  renderPassInfo.pClearValues = clearColors.data();
+  renderPassInfo.clearValueCount = static_cast<uint32_t>(clearColors.size());
 
   vkCmdBeginRenderPass(commandBuffer, &renderPassInfo,
                        VK_SUBPASS_CONTENTS_INLINE);
@@ -393,20 +436,11 @@ TResult core::MRenderer::recordFrameCommandBuffer(VkCommandBuffer commandBuffer,
   scissor.extent = swapchain.imageExtent;
   
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-  // TODO - needs improvement, currently reads only a single primitive
-  VkBuffer vertexBuffers[] = {system.primitives[0]->vertexBuffer.buffer};
-  VkDeviceSize offsets[] = {0};
-  uint32_t numVertices = system.primitives[0]->vertexCount;
-  uint32_t numIndices = system.primitives[0]->indexCount;
-
-  vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-
-  vkCmdBindIndexBuffer(commandBuffer, system.primitives[0]->indexBuffer.buffer, 0,
-                       VK_INDEX_TYPE_UINT32);
-
-  vkCmdDrawIndexed(commandBuffer, numIndices, 1, 0, 0, 0);
-  //
+  
+  // TODO - needs improvement, sort by depth and transparency
+  for (const auto it : system.primitives) {
+    it->drawPrimitive(commandBuffer);
+  }
 
   vkCmdEndRenderPass(commandBuffer);
 

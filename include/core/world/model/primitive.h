@@ -1,14 +1,19 @@
 #pragma once
 
 #include "core/objects.h"
+#include "core/managers/materials.h"
 #include "core/world/primitivegen/primitivegen_include.h"
 
 class WPrimitive {
+  using RMaterial = core::MMaterials::RMaterial;
+
  public:
   RBuffer vertexBuffer;
   RBuffer indexBuffer;
   uint32_t vertexCount = 0u;
   uint32_t indexCount = 0u;
+
+  RMaterial* pMaterial = nullptr;
 
   struct {
     glm::vec3 min = glm::vec3(0.0f);
@@ -36,4 +41,6 @@ class WPrimitive {
 
   // check return value first, has to be true for a valid bounding box extent
   const bool& getBoundingBoxExtent(glm::vec3& outMin, glm::vec3& outMax) const;
+
+  void drawPrimitive(VkCommandBuffer cmdBuffer);
 };

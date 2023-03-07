@@ -99,12 +99,13 @@ TResult core::MRenderer::initialize() {
     initSwapChain(core::vulkan::format, core::vulkan::colorSpace,
                       core::vulkan::presentMode);
   updateAspectRatio();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandPools();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandBuffers();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createDepthResources();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createRenderPass();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSetLayouts();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createGraphicsPipelines();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createFramebuffers();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandPools();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createUniformBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorPool();
@@ -379,7 +380,7 @@ TResult core::MRenderer::createDescriptorSets() {
 
     // lighting data for descriptor set
     VkDescriptorBufferInfo descriptorBufferInfoLighting;
-    descriptorBufferInfoLighting.buffer = view.lightingBuffers[i].buffer;
+    descriptorBufferInfoLighting.buffer = lighting.buffers[i].buffer;
     descriptorBufferInfoLighting.offset = 0;
     descriptorBufferInfoLighting.range = sizeof(RLightingUBO);
 
@@ -437,10 +438,54 @@ TResult core::MRenderer::createDescriptorSets() {
   return RE_OK;
 }
 
+TResult core::MRenderer::createDepthResources() { 
+  RE_LOG(Log, "Creating depth/stencil resources.");
+
+  // may not be supported by every GPU, maybe write a format checker?
+  images.depth.format = VK_FORMAT_D32_SFLOAT_S8_UINT;
+
+  VkImageCreateInfo imageCreateInfo{};
+  imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+  imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+  imageCreateInfo.extent = {swapchain.imageExtent.width,
+                       swapchain.imageExtent.height, 1};
+  imageCreateInfo.format = images.depth.format;
+  imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+  imageCreateInfo.mipLevels = 1;
+  imageCreateInfo.arrayLayers = 1;
+  imageCreateInfo.usage = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
+                          VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+  VmaAllocationCreateInfo depthAllocationInfo{};
+  depthAllocationInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+  depthAllocationInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+  
+  if (vmaCreateImage(memAlloc, &imageCreateInfo, &depthAllocationInfo,
+                     &images.depth.image, &images.depth.allocation,
+                     &images.depth.allocInfo) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to create depth/stencil image.");
+    return RE_CRITICAL;
+  }
+  
+  images.depth.view = createImageView(images.depth.image, images.depth.format, 1, 1);
+
+  if (!images.depth.view) {
+    RE_LOG(Critical, "Failed to create depth/stencil image view.");
+    return RE_CRITICAL;
+  }
+
+  transitionImageLayout(images.depth.image, images.depth.format,
+                        VK_IMAGE_LAYOUT_UNDEFINED,
+                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
+  return RE_OK;
+}
+
 TResult core::MRenderer::createUniformBuffers() {
   // each frame will require a separate buffer, so 2 frames in flight would require buffers * 2
   view.modelViewProjectionBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-  view.lightingBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+  lighting.buffers.resize(MAX_FRAMES_IN_FLIGHT);
 
   VkDeviceSize uboMVPSize = sizeof(RModelViewProjectionUBO);
   VkDeviceSize uboLightingSize = sizeof(RLightingUBO);
@@ -449,7 +494,7 @@ TResult core::MRenderer::createUniformBuffers() {
     createBuffer(EBufferMode::CPU_UNIFORM, uboMVPSize,
                  view.modelViewProjectionBuffers[i], getMVPview());
     createBuffer(EBufferMode::CPU_UNIFORM, uboLightingSize,
-                 view.lightingBuffers[i], &view.lightingData);
+                 lighting.buffers[i], &lighting.data);
   }
 
   return RE_OK;
@@ -460,7 +505,7 @@ void core::MRenderer::destroyUniformBuffers() {
     vmaDestroyBuffer(memAlloc, it.buffer, it.allocation);
   }
 
-  for (auto& it : view.lightingBuffers) {
+  for (auto& it : lighting.buffers) {
     vmaDestroyBuffer(memAlloc, it.buffer, it.allocation);
   }
 }
@@ -470,8 +515,8 @@ void core::MRenderer::updateModelViewProjectionBuffers(uint32_t currentImage) {
 
   // rewrite this and UpdateMVP method to use data from the current/provided camera
   glm::mat4 t = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.2f));
-  view.modelViewProjectionData.model =
-      glm::rotate(t, glm::mod(time * glm::radians(90.0f), math::twoPI), glm::vec3(0.0f, 0.3f, 1.0f));
+  view.modelViewProjectionData.model = glm::mat4(1.0f);
+      //glm::rotate(t, glm::mod(time * glm::radians(30.0f), math::twoPI), glm::vec3(0.0f, 0.3f, 1.0f));
 
   view.modelViewProjectionData.view = view.pActiveCamera->getView();
   view.modelViewProjectionData.projection = view.pActiveCamera->getProjection();

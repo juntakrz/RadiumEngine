@@ -3,10 +3,6 @@
 #include "core/objects.h"
 #include "core/world/model/primitive.h"
 
-namespace core {
-class MWorld;
-}
-
 namespace tinygltf {
 class Model;
 class Node;
@@ -35,10 +31,12 @@ class WModel {
     std::string name = "$NONAMENODE$";
     uint32_t index = 0u;
     int32_t skinIndex = -1;
-
+    
+    // node hierarchy
     Node* pParentNode = nullptr;
     std::vector<std::unique_ptr<Node>> pChildren;
 
+    // node contents
     std::unique_ptr<Mesh> pMesh;
 
     glm::mat4 nodeMatrix = glm::mat4(1.0f);
@@ -71,6 +69,7 @@ class WModel {
   std::string m_name = "$NONAMEMODEL$";
   uint32_t m_vertexCount = 0u;
   uint32_t m_indexCount = 0u;
+
   std::vector<std::unique_ptr<Node>> m_pChildNodes;
 
   std::vector<WPrimitive*> m_pLinearPrimitives;
@@ -82,18 +81,24 @@ class WModel {
   // texture samplers used by this model
   std::vector<RSamplerInfo> m_textureSamplers;
 
+  std::vector<std::string> m_materialList;
+
  private:
   void parseNodeProperties(const tinygltf::Model& gltfModel,
                            const tinygltf::Node& gltfNode);
+
   void createNode(WModel::Node* pParentNode, const tinygltf::Model& gltfModel,
                   const tinygltf::Node& gltfNode, uint32_t gltfNodeIndex);
-  void setTextureSamplers(const tinygltf::Model& gltfModel);
-  void parseMaterials(const tinygltf::Model& gltfModel,
-                      const std::vector<std::string>& texturePaths);
 
   // create simple node with a single empty mesh
   WModel::Node* createNode(WModel::Node* pParentNode, uint32_t nodeIndex,
                            std::string nodeName);
+
+  void setTextureSamplers(const tinygltf::Model& gltfModel);
+
+  // returned vector index corresponds to primitive material index of glTF
+  void parseMaterials(const tinygltf::Model& gltfModel,
+                      const std::vector<std::string>& texturePaths);
 
   // will destroy this node and its children incl. mesh and primitive contents
   void destroyNode(std::unique_ptr<WModel::Node>& pNode);

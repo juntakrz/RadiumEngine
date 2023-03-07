@@ -88,6 +88,14 @@ struct RBuffer {
   VmaAllocationInfo allocInfo;
 };
 
+struct RImage {
+  VkImage image;
+  VkImageView view;
+  VkFormat format;
+  VmaAllocation allocation;
+  VmaAllocationInfo allocInfo;
+};
+
 // expanding KTX structure
 struct RVulkanTexture : public ktxVulkanTexture {
   VkImageView view;

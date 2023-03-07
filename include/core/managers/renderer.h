@@ -59,10 +59,17 @@ namespace core {
 
       ACamera* pActiveCamera = nullptr;
       std::vector<RBuffer> modelViewProjectionBuffers;
-      std::vector<RBuffer> lightingBuffers;
       RModelViewProjectionUBO modelViewProjectionData;
-      RLightingUBO lightingData;
     } view;
+
+    struct {
+      std::vector<RBuffer> buffers;
+      RLightingUBO data;
+    } lighting;
+
+    struct {
+      RImage depth;
+    } images;
 
   public:
     VkInstance APIInstance = VK_NULL_HANDLE;
@@ -117,6 +124,8 @@ namespace core {
 
     TResult createDescriptorSets();
 
+    TResult createDepthResources();
+
     TResult createUniformBuffers();
     void destroyUniformBuffers();
     void updateModelViewProjectionBuffers(uint32_t currentImage);
@@ -155,6 +164,10 @@ namespace core {
     // expects 'optimal layout' image as a source
     TResult copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
                               uint32_t width, uint32_t height);
+
+    void transitionImageLayout(VkImage image, VkFormat format,
+                               VkImageLayout oldLayout,
+                               VkImageLayout newLayout);
 
     VkCommandPool getCommandPool(ECmdType type);
     VkQueue getCommandQueue(ECmdType type);

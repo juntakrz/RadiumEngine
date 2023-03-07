@@ -240,11 +240,14 @@ TResult core::MRenderer::createFramebuffers() {
   swapchain.framebuffers.resize(swapchain.imageViews.size());
 
   for (size_t i = 0; i < swapchain.framebuffers.size(); ++i) {
+    std::vector<VkImageView> attachments = {swapchain.imageViews[i],
+                                            images.depth.view};
+
     VkFramebufferCreateInfo framebufferInfo{};
     framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     framebufferInfo.renderPass = system.renderPass;
-    framebufferInfo.attachmentCount = 1;
-    framebufferInfo.pAttachments = &swapchain.imageViews[i];
+    framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+    framebufferInfo.pAttachments = attachments.data();
     framebufferInfo.width = swapchain.imageExtent.width;
     framebufferInfo.height = swapchain.imageExtent.height;
     framebufferInfo.layers = 1;

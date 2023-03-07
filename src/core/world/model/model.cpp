@@ -400,6 +400,8 @@ void WModel::createNode(WModel::Node* pParentNode,
           std::make_unique<WPrimitive_Custom>(vertices, indices));
       WPrimitive* pPrimitive = pMesh->pPrimitives.back().get();
       pPrimitive->setBoundingBoxExtent(posMin, posMax);
+      pPrimitive->pMaterial = core::materials.getMaterial(
+          m_materialList[gltfPrimitive.material].c_str());
     }
 
     // calculate bounding box extent for the whole mesh based on created
@@ -418,6 +420,34 @@ void WModel::createNode(WModel::Node* pParentNode,
 
   // add a node for linear access
   m_pLinearNodes.emplace_back(pNode);
+}
+
+WModel::Node* WModel::createNode(WModel::Node* pParentNode, uint32_t nodeIndex,
+                                 std::string nodeName) {
+  WModel::Node* pNode = nullptr;
+
+  if (pParentNode == nullptr) {
+    m_pChildNodes.emplace_back(
+        std::make_unique<WModel::Node>(pParentNode, nodeIndex, nodeName));
+    pNode = m_pChildNodes.back().get();
+  } else {
+    pParentNode->pChildren.emplace_back(
+        std::make_unique<WModel::Node>(pParentNode, nodeIndex, nodeName));
+    pNode = pParentNode->pChildren.back().get();
+  }
+
+  if (!pNode) {
+    RE_LOG(Error, "Trying to create the node '%s', but got nullptr.",
+           nodeName.c_str());
+    return nullptr;
+  }
+
+  pNode->name = nodeName;
+  pNode->nodeMatrix = glm::mat4(1.0f);
+
+  pNode->pMesh = std::make_unique<WModel::Mesh>();
+
+  return pNode;
 }
 
 void WModel::setTextureSamplers(const tinygltf::Model& gltfModel) {
@@ -470,6 +500,7 @@ void WModel::setTextureSamplers(const tinygltf::Model& gltfModel) {
 
 void WModel::parseMaterials(const tinygltf::Model& gltfModel,
                             const std::vector<std::string>& texturePaths) {
+
   for (const tinygltf::Material& mat : gltfModel.materials) {
     RMaterialInfo materialInfo{};
 
@@ -563,35 +594,8 @@ void WModel::parseMaterials(const tinygltf::Model& gltfModel,
 
     // create new material
     core::materials.createMaterial(&materialInfo);
+    m_materialList.emplace_back(materialInfo.name);
   }
-}
-
-WModel::Node* WModel::createNode(WModel::Node* pParentNode, uint32_t nodeIndex,
-                                 std::string nodeName) {
-  WModel::Node* pNode = nullptr;
-
-  if (pParentNode == nullptr) {
-    m_pChildNodes.emplace_back(std::make_unique<WModel::Node>(
-        pParentNode, nodeIndex, nodeName));
-    pNode = m_pChildNodes.back().get();
-  } else {
-    pParentNode->pChildren.emplace_back(std::make_unique<WModel::Node>(
-        pParentNode, nodeIndex, nodeName));
-    pNode = pParentNode->pChildren.back().get();
-  }
-
-  if (!pNode) {
-    RE_LOG(Error, "Trying to create the node '%s', but got nullptr.",
-           nodeName.c_str());
-    return nullptr;
-  }
-
-  pNode->name = nodeName;
-  pNode->nodeMatrix = glm::mat4(1.0f);
-
-  pNode->pMesh = std::make_unique<WModel::Mesh>();
-
-  return pNode;
 }
 
 void WModel::destroyNode(std::unique_ptr<WModel::Node>& pNode) {

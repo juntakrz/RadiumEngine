@@ -53,3 +53,13 @@ const bool& WPrimitive::getBoundingBoxExtent(glm::vec3& outMin, glm::vec3& outMa
   }
   return extent.isValid;
 }
+
+void WPrimitive::drawPrimitive(VkCommandBuffer cmdBuffer) {
+  VkDeviceSize offset = 0;
+  vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &vertexBuffer.buffer, &offset);
+
+  vkCmdBindIndexBuffer(cmdBuffer, indexBuffer.buffer,
+                       0, VK_INDEX_TYPE_UINT32);
+
+  vkCmdDrawIndexed(cmdBuffer, indexCount, 1, 0, 0, 0);
+}
