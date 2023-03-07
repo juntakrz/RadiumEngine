@@ -466,8 +466,8 @@ uint32_t core::MRenderer::bindPrimitive(WPrimitive* pPrimitive) {
     return -1;
   }
 
-  system.meshes.emplace_back(pPrimitive);
-  return (uint32_t)system.meshes.size() - 1;
+  system.primitives.emplace_back(pPrimitive);
+  return (uint32_t)system.primitives.size() - 1;
 }
 
 void core::MRenderer::bindPrimitive(
@@ -476,32 +476,32 @@ void core::MRenderer::bindPrimitive(
   outIndices.clear();
 
   for (const auto& it : inPrimitives) {
-    system.meshes.emplace_back(it);
-    outIndices.emplace_back(static_cast<uint32_t>(system.meshes.size() - 1));
+    system.primitives.emplace_back(it);
+    outIndices.emplace_back(static_cast<uint32_t>(system.primitives.size() - 1));
   }
 }
 
 void core::MRenderer::unbindPrimitive(uint32_t index) {
-  if (index > system.meshes.size() - 1) {
+  if (index > system.primitives.size() - 1) {
     RE_LOG(Error, "Failed to unbind primitive at %d. Index is out of bounds.",
            index);
     return;
   }
 
 #ifndef NDEBUG
-  if (system.meshes[index] == nullptr) {
+  if (system.primitives[index] == nullptr) {
     RE_LOG(Warning, "Failed to unbind primitive at %d. It's already unbound.",
            index);
     return;
   }
 #endif
 
-  system.meshes[index] = nullptr;
+  system.primitives[index] = nullptr;
 }
 
 void core::MRenderer::unbindPrimitive(
     const std::vector<uint32_t>& meshIndices) {
-  uint32_t bindsNum = static_cast<uint32_t>(system.meshes.size());
+  uint32_t bindsNum = static_cast<uint32_t>(system.primitives.size());
 
   for (const auto& index : meshIndices) {
     if (index > bindsNum - 1) {
@@ -511,18 +511,18 @@ void core::MRenderer::unbindPrimitive(
     }
 
 #ifndef NDEBUG
-    if (system.meshes[index] == nullptr) {
+    if (system.primitives[index] == nullptr) {
     RE_LOG(Warning, "Failed to unbind primitive at %d. It's already unbound.",
            index);
     return;
     }
 #endif
 
-    system.meshes[index] = nullptr;
+    system.primitives[index] = nullptr;
   }
 }
 
-void core::MRenderer::clearPrimitiveBinds() { system.meshes.clear(); }
+void core::MRenderer::clearPrimitiveBinds() { system.primitives.clear(); }
 
 void core::MRenderer::setCamera(const char* name) {
   if (ACamera* pCamera = core::ref.getActor(name)->getAs<ACamera>()) {

@@ -101,7 +101,7 @@ TResult core::MRenderer::initialize() {
   updateAspectRatio();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createRenderPass();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSetLayouts();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createGraphicsPipeline();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createGraphicsPipelines();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createFramebuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandPools();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandBuffers();
@@ -120,7 +120,7 @@ void core::MRenderer::deinitialize() {
   destroySyncObjects();
   destroyCoreCommandBuffers();
   destroyCoreCommandPools();
-  destroyGraphicsPipeline();
+  destroyGraphicsPipelines();
   destroyRenderPass();
   destroySurface();
   core::actors.destroyAllPawns();
@@ -480,15 +480,19 @@ void core::MRenderer::updateModelViewProjectionBuffers(uint32_t currentImage) {
          &view.modelViewProjectionData, sizeof(RModelViewProjectionUBO));
 }
 
-RModelViewProjectionUBO* core::MRenderer::getMVPview() {
-  return &view.modelViewProjectionData;
-}
+VkPipelineShaderStageCreateInfo core::MRenderer::loadShader(
+    const char* path, VkShaderStageFlagBits stage) {
 
-RModelViewProjectionUBO* core::MRenderer::updateModelViewProjection(glm::mat4* pTransform) {
-  view.modelViewProjectionData = {glm::mat4(1.0f), view.pActiveCamera->getView(),
-          view.pActiveCamera->getProjection()};
+  std::string fullPath = RE_PATH_SHADERS + std::string(path);
+  std::vector<uint8_t> shaderCode = util::readFile(fullPath.c_str());
 
-  return &view.modelViewProjectionData;
+  VkPipelineShaderStageCreateInfo stageCreateInfo{};
+  stageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  stageCreateInfo.stage = stage;
+  stageCreateInfo.module = createShaderModule(shaderCode);
+  stageCreateInfo.pName = "main";
+
+  return stageCreateInfo;
 }
 
 VkShaderModule core::MRenderer::createShaderModule(
@@ -506,6 +510,17 @@ VkShaderModule core::MRenderer::createShaderModule(
   };
 
   return shaderModule;
+}
+
+RModelViewProjectionUBO* core::MRenderer::getMVPview() {
+  return &view.modelViewProjectionData;
+}
+
+RModelViewProjectionUBO* core::MRenderer::updateModelViewProjection(glm::mat4* pTransform) {
+  view.modelViewProjectionData = {glm::mat4(1.0f), view.pActiveCamera->getView(),
+          view.pActiveCamera->getProjection()};
+
+  return &view.modelViewProjectionData;
 }
 
 TResult core::MRenderer::checkInstanceValidationLayers() {

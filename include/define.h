@@ -31,6 +31,7 @@ constexpr bool bRequireValidationLayers = true;
 #define RE_PATH_MAP         TEXT("content/maps/")
 #define RE_PATH_TEXTURES    "content/textures/"
 #define RE_PATH_NULLTEXTURE "null/null.ktx"
+#define RE_PATH_SHADERS     "content/shaders/"
 #define RE_PATH_SHDRC       "development\\compileShaders_Win_x64_DEBUG.bat"
 #define RE_MAXTEXTURES      6
 #define RE_NEARZ            0.01f

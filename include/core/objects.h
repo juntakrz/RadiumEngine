@@ -95,6 +95,14 @@ struct RVulkanTexture : public ktxVulkanTexture {
   VkDescriptorImageInfo descriptor;
 };
 
+// pipelines used by the 3D world
+struct RWorldPipelineSet {
+  VkPipeline PBR;           // standard PBR pipeline
+  VkPipeline PBR_DS;        // double sided PBR pipeline
+  VkPipeline skybox;        // depth independent skybox/sphere
+  VkPipelineLayout layout;  // general 3D world pipeline layout
+};
+
 struct RVertex {
   glm::vec3 pos;        // POSITION
   glm::vec2 tex0;       // TEXCOORD0

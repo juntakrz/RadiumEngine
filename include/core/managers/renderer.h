@@ -37,13 +37,13 @@ namespace core {
     // render system data - passes, pipelines, mesh data to render
     struct {
       VkRenderPass renderPass;
-      VkPipelineLayout pipelineLayout;
-      VkPipeline pipeline;
+      VkPipeline boundPipeline;
+      RWorldPipelineSet pipelines;
       uint32_t idIFFrame = 0;                             // in flight frame index
       VkDescriptorPool descriptorPool;
       std::vector<VkDescriptorSet> descriptorSets;
       RDescriptorSetLayouts descriptorSetLayouts;
-      std::vector<WPrimitive*> meshes;                    // meshes rendered during the current frame
+      std::vector<WPrimitive*> primitives;                // meshes rendered during the current frame
     } system;
 
     // multi-threaded synchronization objects
@@ -120,6 +120,10 @@ namespace core {
     TResult createUniformBuffers();
     void destroyUniformBuffers();
     void updateModelViewProjectionBuffers(uint32_t currentImage);
+
+    VkPipelineShaderStageCreateInfo loadShader(const char* path,
+                                               VkShaderStageFlagBits stage);
+    VkShaderModule createShaderModule(std::vector<uint8_t>& shaderCode);
 
     // creates identity MVP matrices
     RModelViewProjectionUBO* getMVPview();
@@ -277,7 +281,6 @@ namespace core {
   private:
     TResult createSwapChainImageViews();
     TResult createFramebuffers();
-    VkShaderModule createShaderModule(std::vector<uint8_t>& shaderCode);
 
     // -----
 
@@ -289,8 +292,8 @@ namespace core {
     TResult createRenderPass();
     void destroyRenderPass();
 
-    TResult createGraphicsPipeline();
-    void destroyGraphicsPipeline();
+    TResult createGraphicsPipelines();
+    void destroyGraphicsPipelines();
 
     TResult createCoreCommandPools();
     void destroyCoreCommandPools();
