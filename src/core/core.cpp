@@ -41,6 +41,22 @@ void core::run() {
 
   core::script.loadMap("default");
 
+  // remove this after loadMap improvements
+  core::actors.createPawn("plane0");
+  core::world.createModel(EWPrimitive::Sphere, "mdlPlane", 16, 0);
+  WModel* pModel = core::world.getModel("mdlPlane");
+  APawn* pPawn = core::actors.getPawn("plane0");
+  pPawn->setModel(pModel);
+
+  // bindPrimitive(pModel->getPrimitives(), pModel->getPrimitiveBindsIndex());
+
+  core::world.loadModelFromFile("content/models/test/scene.gltf", "mdlTest");
+
+  WModel* pTestModel = core::world.getModel("mdlTest");
+  core::renderer.bindPrimitive(pTestModel->getPrimitives(),
+                               pModel->getPrimitiveBindsIndex());
+  // ----------------------------
+
   RE_LOG(Log, "Launching main event loop.");
 
   mainEventLoop();
@@ -94,7 +110,7 @@ TResult core::create() {
 
   RE_LOG(Log, "Rendering module successfully initialized.");
 
-  //core::materials.initialize();
+  core::materials.initialize();
   core::input.initialize(core::window.getWindow());
   core::player.initialize();
 

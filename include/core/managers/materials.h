@@ -44,7 +44,7 @@ class MMaterials {
     RTexture* pExtra            = nullptr;
 
     RPushConstantBlock_Material pushConstantBlock;
-    VkDescriptorSet descriptorSet;
+    VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
     
     // OBSOLETE
     glm::vec4 F0;

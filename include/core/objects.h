@@ -69,7 +69,6 @@ struct RDescriptorSetLayouts {
   VkDescriptorSetLayout scene;
   VkDescriptorSetLayout material;
   VkDescriptorSetLayout node;
-  VkDescriptorSetLayout MVP;
 };
 
 struct RVkLogicalDevice {

@@ -106,24 +106,6 @@ TResult core::MRenderer::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandPools();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();
-
-  // delete this code after model loading/creation code is finished
-  core::materials.initialize(); // this should go into core::create after renderer is initialized
-
-  core::actors.createPawn("plane0");
-  core::world.createModel(EWPrimitive::Sphere, "mdlPlane", 16, 0);
-  WModel* pModel = core::world.getModel("mdlPlane");
-  APawn* pPawn = core::actors.getPawn("plane0");
-  pPawn->setModel(pModel);
-
-  //bindPrimitive(pModel->getPrimitives(), pModel->getPrimitiveBindsIndex());
-
-  core::world.loadModelFromFile("content/models/test/scene.gltf", "mdlTest");
-
-  WModel* pTestModel = core::world.getModel("mdlTest");
-  bindPrimitive(pTestModel->getPrimitives(), pModel->getPrimitiveBindsIndex());
-  //
-
   if (chkResult <= RE_ERRORLIMIT) chkResult = createUniformBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorPool();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSets();
@@ -207,30 +189,14 @@ const VkDescriptorPool core::MRenderer::getDescriptorPool() { return system.desc
 // PRIVATE
 
 TResult core::MRenderer::createDescriptorSetLayouts() {
-  // layout for model view projection matrices for vertex shader
-  {
-    VkDescriptorSetLayoutBinding setLayoutBinding{};
-    setLayoutBinding.binding = 0;
-    setLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    setLayoutBinding.descriptorCount = 1;
-    setLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    setLayoutBinding.pImmutableSamplers = nullptr;
+  // layout: shader binding / descriptor type / count / shader stage / immutable samplers
 
-    VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
-    setLayoutCreateInfo.sType =
-        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    setLayoutCreateInfo.bindingCount = 1;
-    setLayoutCreateInfo.pBindings = &setLayoutBinding;
-
-    if (vkCreateDescriptorSetLayout(
-            logicalDevice.device, &setLayoutCreateInfo, nullptr,
-            &system.descriptorSetLayouts.MVP) != VK_SUCCESS) {
-      RE_LOG(Critical, "Failed to create MVP matrix descriptor set layout.");
-      return RE_CRITICAL;
-    }
-  }
-
-  // layout for scene matrices and environmental maps
+  // scene matrices and environmental maps
+  // 0 - MVP matrix
+  // 1 - lighting variables
+  // 2 - TODO
+  // 3 - TODO
+  // 4 - TODO
   {
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
         {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1,
@@ -259,7 +225,13 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
     }
   }
 
-  // layout for a standard set of 6 textures
+  // standard set of 6 texture maps
+  // 0 - baseColor
+  // 1 - normal
+  // 2 - metalness / roughness
+  // 3 - ambient occlusion
+  // 4 - emissive
+  // 5 - extra
   {
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
         {0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
@@ -290,7 +262,7 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
     }
   }
 
-  // layout for model node
+  // model node matrices
   {
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
         {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT,
@@ -318,8 +290,6 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
 void core::MRenderer::destroyDescriptorSetLayouts(){
   RE_LOG(Log, "Removing descriptor set layouts.");
 
-  vkDestroyDescriptorSetLayout(logicalDevice.device,
-                               system.descriptorSetLayouts.MVP, nullptr);
   vkDestroyDescriptorSetLayout(logicalDevice.device,
                                system.descriptorSetLayouts.scene, nullptr);
   vkDestroyDescriptorSetLayout(logicalDevice.device,
@@ -379,7 +349,7 @@ TResult core::MRenderer::createDescriptorSets() {
   RE_LOG(Log, "Creating renderer descriptor sets.");
 
   std::vector<VkDescriptorSetLayout> setLayouts(MAX_FRAMES_IN_FLIGHT,
-                                             system.descriptorSetLayouts.scene);  // --MVP
+                                             system.descriptorSetLayouts.scene);
 
   VkDescriptorSetAllocateInfo setAllocInfo{};
   setAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -397,9 +367,9 @@ TResult core::MRenderer::createDescriptorSets() {
 
   RE_LOG(Log, "Populating descriptor sets.");
 
+  uint32_t descriptorCount = 2u;
+
   for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-    
-    uint32_t descriptorCount = 2u;
 
     // model*view*projection data for descriptor set
     VkDescriptorBufferInfo descriptorBufferInfoMVP;
@@ -413,8 +383,9 @@ TResult core::MRenderer::createDescriptorSets() {
     descriptorBufferInfoLighting.offset = 0;
     descriptorBufferInfoLighting.range = sizeof(RLightingUBO);
 
-    // settings used for writing to MVP descriptor set
     std::vector<VkWriteDescriptorSet> writeDescriptorSets(descriptorCount);
+
+    // settings used for writing to MVP descriptor set
     writeDescriptorSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     writeDescriptorSets[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     writeDescriptorSets[0].dstSet = system.descriptorSets[i];
@@ -426,6 +397,7 @@ TResult core::MRenderer::createDescriptorSets() {
     writeDescriptorSets[0].pTexelBufferView = nullptr;
     writeDescriptorSets[0].pNext = nullptr;
  
+    // settings used for writing to lighting descriptor set
     writeDescriptorSets[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     writeDescriptorSets[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     writeDescriptorSets[1].descriptorCount = 1;
@@ -473,16 +445,11 @@ TResult core::MRenderer::createUniformBuffers() {
   VkDeviceSize uboMVPSize = sizeof(RModelViewProjectionUBO);
   VkDeviceSize uboLightingSize = sizeof(RLightingUBO);
 
-  for (int i = 0; i < view.modelViewProjectionBuffers.size();
-       i += MAX_FRAMES_IN_FLIGHT) {
+  for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
     createBuffer(EBufferMode::CPU_UNIFORM, uboMVPSize,
                  view.modelViewProjectionBuffers[i], getMVPview());
-    createBuffer(EBufferMode::CPU_UNIFORM, uboMVPSize,
-                 view.modelViewProjectionBuffers[i + 1], getMVPview());
     createBuffer(EBufferMode::CPU_UNIFORM, uboLightingSize,
                  view.lightingBuffers[i], &view.lightingData);
-    createBuffer(EBufferMode::CPU_UNIFORM, uboLightingSize,
-                 view.lightingBuffers[i + 1], &view.lightingData);
   }
 
   return RE_OK;

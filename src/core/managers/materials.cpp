@@ -79,6 +79,7 @@ core::MMaterials::RMaterial* core::MMaterials::createMaterial(
 
   RE_LOG(Log, "Creating material \"%s\".", newMat.name.c_str());
   m_materials.at(pDesc->name) = std::make_unique<RMaterial>(std::move(newMat));
+  m_materials.at(pDesc->name)->createDescriptorSet();
   return m_materials.at(pDesc->name).get();
 }
 
@@ -149,6 +150,7 @@ void core::MMaterials::RMaterial::createDescriptorSet() {
       pExtra ? pExtra->texture.descriptor : pNullTexture->texture.descriptor,
   };
 
+  // write retrieved data to newly allocated descriptor set
   std::vector<VkWriteDescriptorSet> writeDescriptorSets;
   uint32_t writeSize = static_cast<uint32_t>(imageDescriptors.size());
   writeDescriptorSets.resize(writeSize);
