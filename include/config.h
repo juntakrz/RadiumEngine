@@ -15,6 +15,7 @@ extern uint32_t renderHeight;
 extern float viewDistance;                      // aka FarZ
 extern float FOV;
 extern bool bDevMode;
+extern float pitchLimit;                        // camera pitch limit
 
 float getAspectRatio();
 };  // namespace config

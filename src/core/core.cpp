@@ -50,7 +50,8 @@ void core::run() {
 
   //core::renderer.bindPrimitive(pModel->getPrimitives(), pModel->getPrimitiveBindsIndex());
 
-  core::world.loadModelFromFile("content/models/test/scene.gltf", "mdlTest");
+  core::world.loadModelFromFile("content/models/box/BoxTextured.gltf",
+                                     "mdlTest");
 
   WModel* pTestModel = core::world.getModel("mdlTest");
   core::renderer.bindPrimitive(pTestModel->getPrimitives(),

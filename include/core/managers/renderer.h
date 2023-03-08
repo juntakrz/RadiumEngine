@@ -148,6 +148,9 @@ namespace core {
     //
     // MRenderer_util
     //
+  private:
+    TResult setDepthStencilFormat();
+
   public:
     /* create buffer for CPU/iGPU or dedicated GPU use:
     defining inData makes the method copy data to an outgoing buffer internally,

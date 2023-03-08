@@ -443,7 +443,9 @@ TResult core::MRenderer::createDepthResources() {
   RE_LOG(Log, "Creating depth/stencil resources.");
 
   // may not be supported by every GPU, maybe write a format checker?
-  images.depth.format = VK_FORMAT_D32_SFLOAT_S8_UINT;
+  if (TResult result = setDepthStencilFormat() != RE_OK) {
+    return result;
+  };
 
   VkImageCreateInfo imageCreateInfo{};
   imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;

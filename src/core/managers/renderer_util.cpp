@@ -6,6 +6,35 @@
 #include "core/managers/actors.h"
 #include "core/world/actors/camera.h"
 
+// PRIVATE
+
+TResult core::MRenderer::setDepthStencilFormat() {
+  std::vector<VkFormat> depthFormats = {
+      VK_FORMAT_D32_SFLOAT_S8_UINT,
+      VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_D16_UNORM_S8_UINT
+  };
+  VkBool32 validDepthFormat = false;
+  for (auto& format : depthFormats) {
+    VkFormatProperties formatProps;
+    vkGetPhysicalDeviceFormatProperties(physicalDevice.device, format, &formatProps);
+    if (formatProps.optimalTilingFeatures &
+        VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+      images.depth.format = format;
+      validDepthFormat = true;
+      break;
+    }
+  }
+
+  if (!validDepthFormat) {
+    RE_LOG(Critical, "Failed to find an appropriate depth/stencil format.");
+    return RE_CRITICAL;
+  }
+
+  return RE_OK;
+}
+
+// PUBLIC
+
 TResult core::MRenderer::createBuffer(EBufferMode mode, VkDeviceSize size, RBuffer& outBuffer, void* inData)
 {
   switch ((uint8_t)mode) {

@@ -34,44 +34,32 @@ void ACamera::translate(const glm::vec3& delta) noexcept {
       moveDirection * m_translationModifier * core::time.getDeltaTime();
 }
 
-void ACamera::rotate(const glm::vec3& delta) noexcept {
-  m_transformationData.rotation =
-      m_transformationData.rotation *
-      (glm::quat(glm::mod(delta, math::twoPI)) * m_rotationModifier *
-       core::time.getDeltaTime());
-
-  switch (m_viewData.bAnchorFocusPoint) {
-    case true: {
-      // code for when the camera should be rotated around its focus point
-      break;
-    }
-    case false: {
-      m_viewData.focusPoint = glm::rotate(m_transformationData.rotation,
-                                          m_transformationData.frontVector);
-    }
-  }
-}
-
 void ACamera::rotate(const glm::vec3& vector, float angle) noexcept {
-  m_transformationData.rotation *= glm::angleAxis(
-      angle * m_rotationModifier * core::time.getDeltaTime(), vector);
+  // when rotating around an axis similar to camera's up vector a pre-multiplication must be done
+  // e.g. rotation = modifier * rotation
+  uint8_t direction = vector.x > 0.0f ? 0 : vector.y > 0.0f ? 1 : 2;
+  float realAngle = angle * m_rotationModifier * core::time.getDeltaTime();
 
-  switch (m_viewData.bAnchorFocusPoint) {
-    case true: {
-      // code for when the camera should be rotated around its focus point
+  switch (direction) {
+    case 1: {
+      m_transformationData.rotation =
+          glm::angleAxis(realAngle, vector) * m_transformationData.rotation;
       break;
     }
-    case false: {
-      m_viewData.focusPoint = glm::rotate(m_transformationData.rotation,
-                                          m_transformationData.frontVector);
+    case 0: {
+      float newPitch = glm::pitch(m_transformationData.rotation) + realAngle;
+      if (newPitch > config::pitchLimit) {
+        break;
+      }
+      if (newPitch < -config::pitchLimit) {
+        break;
+      }
+    }
+    default: {
+      m_transformationData.rotation *= glm::angleAxis(realAngle, vector);
+      break;
     }
   }
-}
-
-void ACamera::rotate(const glm::quat& delta) noexcept {
-  m_transformationData.rotation *= delta;
-  //m_transformationData.rotation *=
-    //  delta * m_rotationModifier * core::time.getDeltaTime();
 
   switch (m_viewData.bAnchorFocusPoint) {
     case true: {
