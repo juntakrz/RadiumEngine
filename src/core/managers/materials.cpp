@@ -12,7 +12,11 @@ void core::MMaterials::initialize() {
 
   // create null texture
   RSamplerInfo samplerInfo{};
-  if (loadTexture(RE_PATH_NULLTEXTURE, &samplerInfo) != RE_OK) {
+  if (loadTexture(RE_DEFAULTTEXTURE, &samplerInfo) != RE_OK) {
+    RE_LOG(Error, "Failed to load default texture.");
+  }
+
+  if (loadTexture(RE_NULLTEXTURE, &samplerInfo) != RE_OK) {
     RE_LOG(Error, "Failed to load null texture.");
   }
 }
@@ -127,7 +131,7 @@ void core::MMaterials::RMaterial::createDescriptorSet() {
     return;
   };
 
-  RTexture* pNullTexture = core::materials.getTexture(RE_PATH_NULLTEXTURE);
+  RTexture* pNullTexture = core::materials.getTexture(RE_NULLTEXTURE);
 
   if (!pNullTexture) {
     RE_LOG(Error,
@@ -160,6 +164,7 @@ void core::MMaterials::RMaterial::createDescriptorSet() {
     writeDescriptorSets[i].dstBinding = i;
     writeDescriptorSets[i].descriptorType =
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    writeDescriptorSets[i].descriptorCount = 1;
     writeDescriptorSets[i].pImageInfo = &imageDescriptors[i];
   }
 

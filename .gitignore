@@ -4,3 +4,4 @@ content/shaders/*.spv
 content/models/*
 content/textures/*
 *.exe
+!content/textures/default

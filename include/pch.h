@@ -45,6 +45,7 @@
 #include <GLM/gtx/quaternion.hpp>
 #include <GLM/gtc/quaternion.hpp>
 #include <GLM/gtc/type_ptr.hpp>
+#include <GLM/gtx/euler_angles.hpp>
 #include <ktxvulkan.h>
 
 // external engine modules

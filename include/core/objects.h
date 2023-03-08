@@ -148,12 +148,12 @@ struct RMaterialInfo {
   } shaders;
 
   struct {
-    std::string baseColor = "default//default.ktx2";
-    std::string normal = "";
-    std::string metalRoughness = "";
-    std::string occlusion = "";
-    std::string emissive = "";
-    std::string extra = "";
+    std::string baseColor = RE_DEFAULTTEXTURE;
+    std::string normal = RE_NULLTEXTURE;
+    std::string metalRoughness = RE_NULLTEXTURE;
+    std::string occlusion = RE_NULLTEXTURE;
+    std::string emissive = RE_NULLTEXTURE;
+    std::string extra = RE_NULLTEXTURE;
   } textures;
 
   struct {

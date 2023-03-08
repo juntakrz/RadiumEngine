@@ -47,11 +47,16 @@ void ACamera::rotate(const glm::vec3& vector, float angle) noexcept {
       break;
     }
     case 0: {
-      float newPitch = glm::pitch(m_transformationData.rotation) + realAngle;
-      if (newPitch > config::pitchLimit) {
+      float pitch = glm::pitch(m_transformationData.rotation) + realAngle;
+      RE_LOG(Log, "raw pitch %.3f", pitch);
+      pitch = pitch + glm::pi<float>();
+      pitch = glm::mod(pitch, glm::pi<float>());
+      RE_LOG(Log, "corrected = %.3f", pitch);
+
+      if (pitch > config::pitchLimit) {
         break;
       }
-      if (newPitch < -config::pitchLimit) {
+      if (pitch < -config::pitchLimit) {
         break;
       }
     }
