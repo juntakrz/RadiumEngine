@@ -114,6 +114,11 @@ namespace core {
     const RDescriptorSetLayouts* getDescriptorSetLayouts() const;
     const VkDescriptorPool getDescriptorPool();
 
+    // returns descriptor set used by the current frame in flight by default
+    const VkDescriptorSet getDescriptorSet(uint32_t frameInFlight = -1);
+
+    const uint32_t& getFrameInFlightIndex();
+
   private:
     TResult createDescriptorSetLayouts();
     void destroyDescriptorSetLayouts();
@@ -311,6 +316,9 @@ namespace core {
 
     TResult createGraphicsPipelines();
     void destroyGraphicsPipelines();
+    VkPipelineLayout getWorldPipelineLayout();
+    RWorldPipelineSet getWorldPipelineSet();
+    VkPipeline getBoundPipeline();
 
     TResult createCoreCommandPools();
     void destroyCoreCommandPools();

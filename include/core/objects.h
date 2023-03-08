@@ -168,7 +168,7 @@ struct RMaterialInfo {
   glm::vec4 F0 = {0.4f, 0.4f, 0.4f, 0.0f};  // basic metal
   glm::vec4 baseColorFactor = {0.0f, 0.0f, 0.0f, 1.0f};
   glm::vec4 emissiveFactor = {0.0f, 0.0f, 0.0f, 1.0f};
-  float metalnessFactor = 1.0f;
+  float metallicFactor = 1.0f;
   float roughnessFactor = 1.0f;
   float bumpIntensity = 1.0f;
   float materialIntensity = 1.0f;

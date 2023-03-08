@@ -40,6 +40,8 @@ core::MMaterials::RMaterial* core::MMaterials::createMaterial(
 
   newMat.pushConstantBlock.baseColorFactor = pDesc->baseColorFactor;
   newMat.pushConstantBlock.emissiveFactor = pDesc->emissiveFactor;
+  newMat.pushConstantBlock.metallicFactor = pDesc->metallicFactor;
+  newMat.pushConstantBlock.roughnessFactor = pDesc->roughnessFactor;
   newMat.pushConstantBlock.alphaMode = static_cast<float>(pDesc->alphaMode);
   newMat.pushConstantBlock.alphaCutoff = pDesc->alphaCutoff;
 
@@ -62,9 +64,6 @@ core::MMaterials::RMaterial* core::MMaterials::createMaterial(
   // create descriptor set for Vulkan API
 
   /* OBSOLETE
-  newMat.data.x = pDesc->materialIntensity;
-  newMat.data.y = pDesc->metalnessFactor;
-  newMat.data.z = pDesc->roughnessFactor;
 
   // bump coefficient for shader needs to be reversed, so 2 times bump intensity
   // will equal 0.5 in the shader

@@ -292,6 +292,16 @@ void core::MRenderer::destroyGraphicsPipelines() {
   vkDestroyPipelineLayout(logicalDevice.device, system.pipelines.layout, nullptr);
 }
 
+VkPipelineLayout core::MRenderer::getWorldPipelineLayout() {
+  return system.pipelines.layout;
+}
+
+RWorldPipelineSet core::MRenderer::getWorldPipelineSet() {
+  return system.pipelines;
+}
+
+VkPipeline core::MRenderer::getBoundPipeline() { return system.boundPipeline; }
+
 TResult core::MRenderer::createCoreCommandPools() {
   RE_LOG(Log, "Creating command pool.");
 

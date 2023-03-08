@@ -186,7 +186,19 @@ const RDescriptorSetLayouts* core::MRenderer::getDescriptorSetLayouts() const {
   return &system.descriptorSetLayouts;
 }
 
-const VkDescriptorPool core::MRenderer::getDescriptorPool() { return system.descriptorPool; }
+const VkDescriptorPool core::MRenderer::getDescriptorPool() {
+  return system.descriptorPool;
+}
+
+const VkDescriptorSet core::MRenderer::getDescriptorSet(
+    uint32_t frameInFlight) {
+  return frameInFlight == -1 ? system.descriptorSets[system.idIFFrame]
+                             : system.descriptorSets[frameInFlight];
+}
+
+const uint32_t& core::MRenderer::getFrameInFlightIndex() {
+  return system.idIFFrame;
+}
 
 // PRIVATE
 

@@ -558,7 +558,7 @@ void WModel::parseMaterials(const tinygltf::Model& gltfModel,
     }
 
     if (mat.values.contains("metallicFactor")) {
-      materialInfo.metalnessFactor =
+      materialInfo.metallicFactor =
           static_cast<float>(mat.values.at("metallicFactor").Factor());
     }
 
