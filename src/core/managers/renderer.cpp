@@ -123,6 +123,7 @@ void core::MRenderer::deinitialize() {
   destroyCoreCommandPools();
   destroyGraphicsPipelines();
   destroyRenderPass();
+  destroyDepthResources();
   destroySurface();
   core::actors.destroyAllPawns();
   core::world.destroyAllModels();
@@ -475,11 +476,16 @@ TResult core::MRenderer::createDepthResources() {
     return RE_CRITICAL;
   }
 
-  transitionImageLayout(images.depth.image, images.depth.format,
-                        VK_IMAGE_LAYOUT_UNDEFINED,
-                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+  transitionImageLayout(
+      images.depth.image, images.depth.format, VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, ECmdType::Graphics);
 
   return RE_OK;
+}
+
+void core::MRenderer::destroyDepthResources() {
+  vkDestroyImageView(logicalDevice.device, images.depth.view, nullptr);
+  vmaDestroyImage(memAlloc, images.depth.image, images.depth.allocation);
 }
 
 TResult core::MRenderer::createUniformBuffers() {

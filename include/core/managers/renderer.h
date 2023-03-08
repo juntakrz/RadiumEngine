@@ -125,6 +125,7 @@ namespace core {
     TResult createDescriptorSets();
 
     TResult createDepthResources();
+    void destroyDepthResources();
 
     TResult createUniformBuffers();
     void destroyUniformBuffers();
@@ -166,8 +167,8 @@ namespace core {
                               uint32_t width, uint32_t height);
 
     void transitionImageLayout(VkImage image, VkFormat format,
-                               VkImageLayout oldLayout,
-                               VkImageLayout newLayout);
+                               VkImageLayout oldLayout, VkImageLayout newLayout,
+                               ECmdType cmdType = ECmdType::Transfer);
 
     VkCommandPool getCommandPool(ECmdType type);
     VkQueue getCommandQueue(ECmdType type);

@@ -332,9 +332,9 @@ TResult core::MRenderer::copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
 
 void core::MRenderer::transitionImageLayout(VkImage image, VkFormat format,
                                              VkImageLayout oldLayout,
-                                             VkImageLayout newLayout) {
-  VkCommandBuffer cmdBuffer = createCommandBuffer(
-      ECmdType::Transfer, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
+                                             VkImageLayout newLayout, ECmdType cmdType) {
+  VkCommandBuffer cmdBuffer =
+      createCommandBuffer(cmdType, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
 
   VkImageMemoryBarrier imageBarrier{};
   imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -388,7 +388,7 @@ void core::MRenderer::transitionImageLayout(VkImage image, VkFormat format,
   vkCmdPipelineBarrier(cmdBuffer, srcStageFlags, dstStageFlags, NULL, NULL,
                        nullptr, NULL, nullptr, 1, &imageBarrier);
 
-  core::renderer.flushCommandBuffer(cmdBuffer, ECmdType::Transfer, true);
+  core::renderer.flushCommandBuffer(cmdBuffer, cmdType, true);
 }
 
 VkCommandPool core::MRenderer::getCommandPool(ECmdType type) {
@@ -422,7 +422,7 @@ VkCommandBuffer core::MRenderer::createCommandBuffer(ECmdType type,
                                                      bool begin) {
   VkCommandBuffer newCommandBuffer;
   VkCommandBufferAllocateInfo allocateInfo{};
-  VkResult result;
+
   allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
   allocateInfo.commandPool = getCommandPool(type);
   allocateInfo.commandBufferCount = 1;
@@ -511,6 +511,12 @@ VkImageView core::MRenderer::createImageView(VkImage image, VkFormat format,
   viewInfo.subresourceRange.levelCount = levelCount;
   viewInfo.subresourceRange.baseArrayLayer = 0;
   viewInfo.subresourceRange.layerCount = layerCount;
+
+  if (format == VK_FORMAT_D32_SFLOAT_S8_UINT ||
+      format == VK_FORMAT_D24_UNORM_S8_UINT) {
+    viewInfo.subresourceRange.aspectMask =
+        VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+  }
 
   if (vkCreateImageView(logicalDevice.device, &viewInfo, nullptr, &imageView) !=
       VK_SUCCESS) {

@@ -212,8 +212,10 @@ TResult core::MRenderer::recreateSwapChain() {
   vkDeviceWaitIdle(logicalDevice.device);
 
   destroySwapChain();
+  destroyDepthResources();
 
   chkResult = createSwapChain();
+  if (chkResult = createDepthResources() > finalResult) finalResult = chkResult;
   if (chkResult = createFramebuffers() > finalResult) finalResult = chkResult;
 
   return finalResult;
