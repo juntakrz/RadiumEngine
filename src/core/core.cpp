@@ -57,8 +57,7 @@ void core::run() {
                                 "mdlTest");
 
   WModel* pTestModel = core::world.getModel("mdlTest");
-  core::renderer.bindPrimitive(pTestModel->getPrimitives(),
-                               pModel->getPrimitiveBindsIndex());
+  core::renderer.bindModel(pTestModel);
   // ----------------------------
 
   RE_LOG(Log, "Launching main event loop.");

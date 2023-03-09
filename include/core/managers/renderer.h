@@ -5,7 +5,7 @@
 #include "common.h"
 #include "core/world/actors/camera.h"
 
-class WPrimitive;
+class WModel;
 
 namespace core {
 
@@ -43,7 +43,7 @@ namespace core {
       VkDescriptorPool descriptorPool;
       std::vector<VkDescriptorSet> descriptorSets;
       RDescriptorSetLayouts descriptorSetLayouts;
-      std::vector<WPrimitive*> primitives;                // meshes rendered during the current frame
+      std::vector<WModel*> models;                        // meshes rendered during the current frame
     } system;
 
     // multi-threaded synchronization objects
@@ -196,21 +196,21 @@ namespace core {
     VkImageView createImageView(VkImage image, VkFormat format,
                                 uint32_t levelCount, uint32_t layerCount);
 
-    // binds primitive to graphics pipeline
-    uint32_t bindPrimitive(WPrimitive* pPrimitive);
+    // binds model to graphics pipeline
+    uint32_t bindModel(WModel* pModel);
 
     // binds a vector of primitives and writes binding indices
-    void bindPrimitive(const std::vector<WPrimitive*>& inPrimitives,
+    void bindModel(const std::vector<WModel*>& inModels,
                        std::vector<uint32_t>& outIndices);
 
     // unbind primitive by a single index
-    void unbindPrimitive(uint32_t index);
+    void unbindModel(uint32_t index);
 
     // unbind primitive by the vector of indices
-    void unbindPrimitive(const std::vector<uint32_t>& meshIndices);
+    void unbindModel(const std::vector<uint32_t>& modelIndices);
 
     // clear all primitive bindings
-    void clearPrimitiveBinds();
+    void clearModelBinds();
 
     // set camera from create cameras by name
     void setCamera(const char* name);
@@ -309,6 +309,9 @@ namespace core {
     //
     // MRenderer_rendering
     //
+  private:
+    // draw bound models
+    void drawBoundModels(VkCommandBuffer cmdBuffer);
 
   public:
     TResult createRenderPass();
@@ -317,7 +320,7 @@ namespace core {
     TResult createGraphicsPipelines();
     void destroyGraphicsPipelines();
     VkPipelineLayout getWorldPipelineLayout();
-    RWorldPipelineSet getWorldPipelineSet();
+    RWorldPipelineSet getGraphicsPipelineSet();
     VkPipeline getBoundPipeline();
 
     TResult createCoreCommandPools();

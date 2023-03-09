@@ -140,10 +140,13 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
     }
     // Initial pose
     if (node->pMesh) {
-      node->update();
+      node->updateNode();
     }
+
+    // no need to update children, they are accessed anyway
+    node->setNodeDescriptorSet(false);
   }
-  
+
   return RE_OK;
 }
 

@@ -3,6 +3,12 @@
 #include "vk_mem_alloc.h"
 #include "config.h"
 
+enum EAlphaMode {
+  Opaque,
+  Mask,
+  Blend
+};
+
 enum class EBufferMode {  // VkBuffer creation mode
   CPU_UNIFORM,        // create uniform buffer for GPU programs
   CPU_VERTEX,         // create vertex buffer for the iGPU (UNUSED)
@@ -30,12 +36,6 @@ enum class EWPrimitive {
   Plane,
   Sphere,
   Cube
-};
-
-enum class ERAlphaMode {
-  Blend,
-  Mask,
-  Opaque
 };
 
 struct RVkQueueFamilyIndices {
@@ -138,7 +138,7 @@ struct RMaterialInfo {
   std::string name;
   bool manageTextures = false;
   bool doubleSided = false;
-  ERAlphaMode alphaMode = ERAlphaMode::Opaque;
+  EAlphaMode alphaMode = EAlphaMode::Opaque;
   float alphaCutoff = 1.0f;
 
   struct {

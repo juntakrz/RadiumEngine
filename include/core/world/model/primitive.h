@@ -40,7 +40,5 @@ class WPrimitive {
   void setBoundingBoxExtent(const glm::vec3& min, const glm::vec3& max);
 
   // check return value first, has to be true for a valid bounding box extent
-  const bool& getBoundingBoxExtent(glm::vec3& outMin, glm::vec3& outMax) const;
-
-  void drawPrimitive(VkCommandBuffer cmdBuffer);
+  bool getBoundingBoxExtent(glm::vec3& outMin, glm::vec3& outMax) const;
 };

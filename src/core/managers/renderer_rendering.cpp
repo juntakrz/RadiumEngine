@@ -1,8 +1,26 @@
 #include "pch.h"
 #include "core/core.h"
-#include "core/managers/renderer.h"
 #include "core/managers/time.h"
-#include "core/world/model/primitive.h"
+#include "core/world/model/model.h"
+#include "core/managers/renderer.h"
+
+void core::MRenderer::drawBoundModels(VkCommandBuffer cmdBuffer) {
+  // go through bound models and generate draw calls for each
+  for (const auto& model : system.models) {
+
+    for (const auto& node : model->getRootNodes()) {
+      node->renderNode(cmdBuffer, EAlphaMode::Opaque);
+    }
+
+    for (const auto& node : model->getRootNodes()) {
+      node->renderNode(cmdBuffer, EAlphaMode::Mask);
+    }
+
+    for (const auto& node : model->getRootNodes()) {
+      node->renderNode(cmdBuffer, EAlphaMode::Blend);
+    }
+  }
+}
 
 TResult core::MRenderer::createRenderPass() {
   RE_LOG(Log, "Creating render pass");
@@ -296,7 +314,7 @@ VkPipelineLayout core::MRenderer::getWorldPipelineLayout() {
   return system.pipelines.layout;
 }
 
-RWorldPipelineSet core::MRenderer::getWorldPipelineSet() {
+RWorldPipelineSet core::MRenderer::getGraphicsPipelineSet() {
   return system.pipelines;
 }
 
@@ -447,10 +465,7 @@ TResult core::MRenderer::recordFrameCommandBuffer(VkCommandBuffer commandBuffer,
   
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
   
-  // TODO - needs improvement, sort by depth and transparency
-  for (const auto it : system.primitives) {
-    it->drawPrimitive(commandBuffer);
-  }
+  drawBoundModels(commandBuffer);
 
   vkCmdEndRenderPass(commandBuffer);
 

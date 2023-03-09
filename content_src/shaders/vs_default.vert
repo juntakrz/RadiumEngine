@@ -1,11 +1,18 @@
 #version 450
+#define RE_MAXJOINTS 128
 
-layout(binding = 0) uniform MVP{
+layout(binding = 0) uniform UBOView {
 	mat4 model;
 	mat4 view;
 	mat4 projection;
 	vec3 cameraPos;
 } ubo;
+
+layout (set = 2, binding = 0) uniform UBONode {
+	mat4 matrix;
+	mat4 jointMatrix[RE_MAXJOINTS];
+	float jointCount;
+} node;
 
 layout(location = 0) in vec3 inPos;
 layout(location = 1) in vec2 inTexCoord0;
@@ -27,11 +34,11 @@ void main(){
 	vec4 locPos;
 	if (node.jointCount > 0.0) {
 		// Mesh is skinned
-		mat4 skinMat = 
-			inWeight0.x * node.jointMatrix[int(inJoint.x)] +
-			inWeight0.y * node.jointMatrix[int(inJoint.y)] +
-			inWeight0.z * node.jointMatrix[int(inJoint.z)] +
-			inWeight0.w * node.jointMatrix[int(inJoint.w)];
+		mat4 skinMatrix = 
+			inWeight.x * node.jointMatrix[int(inJoint.x)] +
+			inWeight.y * node.jointMatrix[int(inJoint.y)] +
+			inWeight.z * node.jointMatrix[int(inJoint.z)] +
+			inWeight.w * node.jointMatrix[int(inJoint.w)];
 
 		locPos = ubo.model * node.matrix * skinMatrix * vec4(inPos, 1.0);
 		outNormal = normalize(transpose(inverse(mat3(ubo.model * node.matrix * skinMatrix))) * inNormal);

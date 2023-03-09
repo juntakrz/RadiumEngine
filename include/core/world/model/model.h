@@ -98,8 +98,13 @@ class WModel {
     TResult allocateMeshBuffer();
     void destroyMeshBuffer();
 
+    void setNodeDescriptorSet(bool updateChildren = false);
+
     // update transform matrices of this node and its children
-    void update();
+    void updateNode();
+
+    // try to render node and its children by material's alpha mode
+    void renderNode(VkCommandBuffer cmdBuffer, EAlphaMode alphaMode);
   };
 
   std::string m_name = "$NONAMEMODEL$";
@@ -153,10 +158,12 @@ class WModel {
   void loadSkins(const tinygltf::Model& gltfModel);
 
  public:
+  const char* getName();
   uint32_t getVertexCount() { return m_vertexCount; }
   uint32_t getIndexCount() { return m_indexCount; }
   const std::vector<WPrimitive*>& getPrimitives();
   std::vector<uint32_t>& getPrimitiveBindsIndex();
+  const std::vector<std::unique_ptr<Node>>& getRootNodes() noexcept;
 
   // cleans all primitives and nodes within,
   // model itself won't get destroyed on its own

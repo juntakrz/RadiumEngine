@@ -46,6 +46,7 @@ core::MMaterials::RMaterial* core::MMaterials::createMaterial(
   newMat.pushConstantBlock.emissiveFactor = pDesc->emissiveFactor;
   newMat.pushConstantBlock.metallicFactor = pDesc->metallicFactor;
   newMat.pushConstantBlock.roughnessFactor = pDesc->roughnessFactor;
+  newMat.alphaMode = pDesc->alphaMode;
   newMat.pushConstantBlock.alphaMode = static_cast<float>(pDesc->alphaMode);
   newMat.pushConstantBlock.alphaCutoff = pDesc->alphaCutoff;
 
@@ -64,21 +65,6 @@ core::MMaterials::RMaterial* core::MMaterials::createMaterial(
 
   newMat.pushConstantBlock.bumpIntensity = pDesc->bumpIntensity;
   newMat.pushConstantBlock.materialIntensity = pDesc->materialIntensity;
-
-  // create descriptor set for Vulkan API
-
-  /* OBSOLETE
-
-  // bump coefficient for shader needs to be reversed, so 2 times bump intensity
-  // will equal 0.5 in the shader
-  float bumpCoef = 1.0f - ((pDesc->bumpIntensity - 1.0f) * 0.5f);
-  newMat.data.w =
-      std::max(0.05f, bumpCoef);  // safeguard against zero or negative values
-
-  newMat.F0 = pDesc->F0;
-  newMat.manageTextures = pDesc->manageTextures;
-  newMat.effectFlags = pDesc->effectFlags;
-  // OBSOLETE ^ */
 
   RE_LOG(Log, "Creating material \"%s\".", newMat.name.c_str());
   m_materials.at(pDesc->name) = std::make_unique<RMaterial>(std::move(newMat));

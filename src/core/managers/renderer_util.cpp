@@ -4,6 +4,7 @@
 #include "core/managers/ref.h"
 #include "core/managers/renderer.h"
 #include "core/managers/actors.h"
+#include "core/world/model/model.h"
 #include "core/world/actors/camera.h"
 
 // PRIVATE
@@ -557,69 +558,76 @@ VkImageView core::MRenderer::createImageView(VkImage image, VkFormat format,
   return imageView;
 }
 
-uint32_t core::MRenderer::bindPrimitive(WPrimitive* pPrimitive) {
-  if (!pPrimitive) {
-    RE_LOG(Error, "No primitive provided for binding.");
+uint32_t core::MRenderer::bindModel(WModel* pModel) {
+  if (!pModel) {
+    RE_LOG(Error, "No model provided for binding.");
     return -1;
   }
 
-  system.primitives.emplace_back(pPrimitive);
-  return (uint32_t)system.primitives.size() - 1;
+  #ifndef NDEBUG
+  RE_LOG(Log, "Bound model \"%s\" to graphics pipeline.", pModel->getName());
+  #endif
+
+  system.models.emplace_back(pModel);
+  return (uint32_t)system.models.size() - 1;
 }
 
-void core::MRenderer::bindPrimitive(
-    const std::vector<WPrimitive*>& inPrimitives,
-    std::vector<uint32_t>& outIndices) {
+void core::MRenderer::bindModel(const std::vector<WModel*>& inModels,
+                                std::vector<uint32_t>& outIndices) {
   outIndices.clear();
 
-  for (const auto& it : inPrimitives) {
-    system.primitives.emplace_back(it);
-    outIndices.emplace_back(static_cast<uint32_t>(system.primitives.size() - 1));
+  for (const auto& it : inModels) {
+    system.models.emplace_back(it);
+    outIndices.emplace_back(static_cast<uint32_t>(system.models.size() - 1));
+
+#ifndef NDEBUG
+    RE_LOG(Log, "Bound model \"%s\" to graphics pipeline.", it->getName());
+#endif
   }
 }
 
-void core::MRenderer::unbindPrimitive(uint32_t index) {
-  if (index > system.primitives.size() - 1) {
-    RE_LOG(Error, "Failed to unbind primitive at %d. Index is out of bounds.",
+void core::MRenderer::unbindModel(uint32_t index) {
+  if (index > system.models.size() - 1) {
+    RE_LOG(Error, "Failed to unbind model at %d. Index is out of bounds.",
            index);
     return;
   }
 
 #ifndef NDEBUG
-  if (system.primitives[index] == nullptr) {
-    RE_LOG(Warning, "Failed to unbind primitive at %d. It's already unbound.",
+  if (system.models[index] == nullptr) {
+    RE_LOG(Warning, "Failed to unbind model at %d. It's already unbound.",
            index);
     return;
   }
 #endif
 
-  system.primitives[index] = nullptr;
+  system.models[index] = nullptr;
 }
 
-void core::MRenderer::unbindPrimitive(
-    const std::vector<uint32_t>& meshIndices) {
-  uint32_t bindsNum = static_cast<uint32_t>(system.primitives.size());
+void core::MRenderer::unbindModel(
+    const std::vector<uint32_t>& modelIndices) {
+  uint32_t bindsNum = static_cast<uint32_t>(system.models.size());
 
-  for (const auto& index : meshIndices) {
+  for (const auto& index : modelIndices) {
     if (index > bindsNum - 1) {
-    RE_LOG(Error, "Failed to unbind primitive at %d. Index is out of bounds.",
+    RE_LOG(Error, "Failed to unbind model at %d. Index is out of bounds.",
            index);
     return;
     }
 
 #ifndef NDEBUG
-    if (system.primitives[index] == nullptr) {
-    RE_LOG(Warning, "Failed to unbind primitive at %d. It's already unbound.",
+    if (system.models[index] == nullptr) {
+    RE_LOG(Warning, "Failed to unbind model at %d. It's already unbound.",
            index);
     return;
     }
 #endif
 
-    system.primitives[index] = nullptr;
+    system.models[index] = nullptr;
   }
 }
 
-void core::MRenderer::clearPrimitiveBinds() { system.primitives.clear(); }
+void core::MRenderer::clearModelBinds() { system.models.clear(); }
 
 void core::MRenderer::setCamera(const char* name) {
   if (ACamera* pCamera = core::ref.getActor(name)->getAs<ACamera>()) {

@@ -17,9 +17,11 @@ TResult WModel::Node::allocateMeshBuffer() {
   }
 
   // prepare buffer and memory to store node transformation matrix
-  VkDeviceSize bufferSize = sizeof(RMeshUBO);
+  VkDeviceSize bufferSize = sizeof(pMesh->uniformBlock);
   core::renderer.createBuffer(EBufferMode::CPU_UNIFORM, bufferSize,
                               pMesh->uniformBufferData.uniformBuffer, nullptr);
+  pMesh->uniformBufferData.descriptorBufferInfo = {
+      pMesh->uniformBufferData.uniformBuffer.buffer, 0, bufferSize};
 
   return RE_OK;
 }
@@ -34,7 +36,47 @@ void WModel::Node::destroyMeshBuffer() {
                    pMesh->uniformBufferData.uniformBuffer.allocation);
 }
 
-void WModel::Node::update() {
+void WModel::Node::setNodeDescriptorSet(bool updateChildren) {
+  if (!pMesh) {
+    // most likely a joint node
+    return;
+  }
+
+  VkDevice device = core::renderer.logicalDevice.device;
+
+  VkDescriptorSetAllocateInfo descriptorSetAllocInfo{};
+  descriptorSetAllocInfo.sType =
+      VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+  descriptorSetAllocInfo.descriptorPool = core::renderer.getDescriptorPool();
+  descriptorSetAllocInfo.pSetLayouts =
+      &core::renderer.getDescriptorSetLayouts()->node;
+  descriptorSetAllocInfo.descriptorSetCount = 1;
+
+  if (vkAllocateDescriptorSets(
+         device, &descriptorSetAllocInfo,
+          &pMesh->uniformBufferData.descriptorSet) != VK_SUCCESS) {
+    RE_LOG(Error, "Failed to create node descriptor set.");
+    return;
+  }
+
+  VkWriteDescriptorSet writeDescriptorSet{};
+  writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+  writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  writeDescriptorSet.descriptorCount = 1;
+  writeDescriptorSet.dstSet = pMesh->uniformBufferData.descriptorSet;
+  writeDescriptorSet.dstBinding = 0;
+  writeDescriptorSet.pBufferInfo = &pMesh->uniformBufferData.descriptorBufferInfo;
+
+  vkUpdateDescriptorSets(device, 1, &writeDescriptorSet, 0, nullptr);
+
+  if (updateChildren) {
+    for (auto& child : pChildren) {
+      child->setNodeDescriptorSet(updateChildren);
+    }
+  }
+}
+
+void WModel::Node::updateNode() {
   if (pMesh) {
     glm::mat4 matrix = getMatrix();
 
@@ -60,7 +102,68 @@ void WModel::Node::update() {
   }
 
   for (auto& pChild : pChildren) {
-    pChild->update();
+    pChild->updateNode();
+  }
+}
+
+void WModel::Node::renderNode(VkCommandBuffer cmdBuffer, EAlphaMode alphaMode) {
+  if (pMesh) {
+    uint32_t idFrameInFlight = core::renderer.getFrameInFlightIndex();
+
+    for (const auto& primitive : pMesh->pPrimitives) {
+      if (primitive->pMaterial->alphaMode == alphaMode) {
+        VkPipeline pipeline = VK_NULL_HANDLE;
+        switch (alphaMode) {
+          case EAlphaMode::Opaque:
+          case EAlphaMode::Mask: {
+            pipeline = primitive->pMaterial->doubleSided
+                           ? core::renderer.getGraphicsPipelineSet().PBR_DS
+                           : core::renderer.getGraphicsPipelineSet().PBR;
+            break;
+          }
+          case EAlphaMode::Blend: {
+            pipeline = core::renderer.getGraphicsPipelineSet()
+                           .PBR;  // replace with 'alpha'-enabled set
+            break;
+          }
+        }
+
+        if (pipeline != core::renderer.getBoundPipeline()) {
+          vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            pipeline);
+        }
+
+        const std::vector<VkDescriptorSet> descriptorSets = {
+            core::renderer.getDescriptorSet(idFrameInFlight),
+            primitive->pMaterial->descriptorSet,
+            pMesh->uniformBufferData.descriptorSet
+        };
+
+        VkDeviceSize offset = 0;
+        vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &primitive->vertexBuffer.buffer,
+                               &offset);
+
+        vkCmdBindIndexBuffer(cmdBuffer, primitive->indexBuffer.buffer, 0,
+                             VK_INDEX_TYPE_UINT32);
+
+        vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                core::renderer.getWorldPipelineLayout(), 0,
+                                static_cast<uint32_t>(descriptorSets.size()),
+                                descriptorSets.data(), 0, nullptr);
+
+        vkCmdPushConstants(cmdBuffer, core::renderer.getWorldPipelineLayout(),
+                           VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                           sizeof(RPushConstantBlock_Material),
+                           &primitive->pMaterial->pushConstantBlock);
+
+        vkCmdDrawIndexed(cmdBuffer, primitive->indexCount, 1, 0, 0, 0);
+      }
+    }
+  }
+
+  // try rendering node children
+  for (const auto& child : pChildren) {
+    child->renderNode(cmdBuffer, alphaMode);
   }
 }
 

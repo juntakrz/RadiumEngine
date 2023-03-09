@@ -38,6 +38,7 @@ class MMaterials {
   struct RMaterial {
     std::string name;
     bool doubleSided = false;
+    EAlphaMode alphaMode;
 
     std::string shaderVertex, shaderPixel, shaderGeometry;
     RTexture* pBaseColor        = nullptr;

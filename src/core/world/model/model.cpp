@@ -133,12 +133,12 @@ void WModel::parseMaterials(const tinygltf::Model& gltfModel,
       tinygltf::Parameter param = mat.additionalValues.at("alphaMode");
 
       if (param.string_value == "BLEND") {
-        materialInfo.alphaMode = ERAlphaMode::Blend;
+        materialInfo.alphaMode = EAlphaMode::Blend;
       }
 
       if (param.string_value == "MASK") {
         materialInfo.alphaCutoff = 0.5f;
-        materialInfo.alphaMode = ERAlphaMode::Mask;
+        materialInfo.alphaMode = EAlphaMode::Mask;
       }
     }
 
@@ -303,6 +303,8 @@ void WModel::loadSkins(const tinygltf::Model& gltfModel) {
   }
 }
 
+const char* WModel::getName() { return m_name.c_str(); }
+
 bool WModel::Mesh::validateBoundingBoxExtent() {
   if (extent.min == extent.max) {
     extent.isValid = false;
@@ -318,6 +320,10 @@ const std::vector<WPrimitive*>& WModel::getPrimitives() {
 
 std::vector<uint32_t>& WModel::getPrimitiveBindsIndex() {
   return m_primitiveBindsIndex;
+}
+
+const std::vector<std::unique_ptr<WModel::Node>>& WModel::getRootNodes() noexcept {
+  return m_pChildNodes;
 }
 
 TResult WModel::clean() {
