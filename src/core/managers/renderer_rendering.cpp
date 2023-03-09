@@ -453,6 +453,7 @@ TResult core::MRenderer::recordFrameCommandBuffer(VkCommandBuffer commandBuffer,
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                     system.pipelines.PBR);
 
+  // bind frame scope descriptor sets
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           system.pipelines.layout, 0, 1,
                           &system.descriptorSets[system.idIFFrame], 0, nullptr);
@@ -564,7 +565,7 @@ TResult core::MRenderer::drawFrame() {
   core::time.tickTimer();
 
   // update MVP buffers
-  updateModelViewProjectionUBOBuffers(system.idIFFrame);
+  updateModelViewProjectionUBO(system.idIFFrame);
 
   // reset fences if we will do any work this frame e.g. no swap chain
   // recreation

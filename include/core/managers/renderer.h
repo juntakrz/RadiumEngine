@@ -134,7 +134,7 @@ namespace core {
 
     TResult createUniformBuffers();
     void destroyUniformBuffers();
-    void updateModelViewProjectionUBOBuffers(uint32_t currentImage);
+    void updateModelViewProjectionUBO(uint32_t currentImage);
 
     VkPipelineShaderStageCreateInfo loadShader(const char* path,
                                                VkShaderStageFlagBits stage);

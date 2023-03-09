@@ -530,16 +530,19 @@ void core::MRenderer::destroyUniformBuffers() {
   }
 }
 
-void core::MRenderer::updateModelViewProjectionUBOBuffers(uint32_t currentImage) {
+void core::MRenderer::updateModelViewProjectionUBO(uint32_t currentImage) {
   float time = core::time.getTimeSinceInitialization();
 
   // rewrite this and UpdateMVP method to use data from the current/provided camera
-  glm::mat4 t = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.2f));
   view.modelViewProjectionData.model = glm::mat4(1.0f);
-      //glm::rotate(t, glm::mod(time * glm::radians(30.0f), math::twoPI), glm::vec3(0.0f, 0.3f, 1.0f));
-
   view.modelViewProjectionData.view = view.pActiveCamera->getView();
   view.modelViewProjectionData.projection = view.pActiveCamera->getProjection();
+  view.modelViewProjectionData.cameraPosition =
+      view.pActiveCamera->getLocation();
+
+  view.modelViewProjectionData.model[0][0] = 0.5f;
+  view.modelViewProjectionData.model[1][1] = 0.5f;
+  view.modelViewProjectionData.model[2][2] = 0.5f;
 
   memcpy(view.modelViewProjectionBuffers[currentImage].allocInfo.pMappedData,
          &view.modelViewProjectionData, sizeof(RModelViewProjectionUBO));
