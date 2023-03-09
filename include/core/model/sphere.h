@@ -20,7 +20,7 @@ class WPrimitiveGen_Sphere {
     float dX, dY, dZ, dXZ;
 
     for (uint16_t i = 0; i <= latSegments; i++) {
-      v = 1 - (float)i / (float)latSegments;
+      v = 1.0f - (float)i / (float)latSegments;
 
       latAngle =
           (i * static_cast<float>(M_PI) / latSegments - static_cast<float>(M_PI_2));
@@ -73,12 +73,12 @@ class WPrimitiveGen_Sphere {
   }
 
   template <class V>
-  static WPrimitiveData<V> create(const uint16_t divisions) {
-    return Create<V>(divisions, false);
+  static WPrimitiveData<V> create(uint16_t divisions) {
+    return create<V>(divisions, false);
   }
 
   template <class V>
   static WPrimitiveData<V> create() {
-    return Create<V>(32, false);
+    return create<V>(32, false);
   }
 };

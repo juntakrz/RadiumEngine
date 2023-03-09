@@ -36,6 +36,7 @@ class ACamera : public ABase {
   // sets camera projection matrix as perspective
   void setPerspective(float FOV, float aspectRatio, float nearZ,
                       float farZ) noexcept;
+  const glm::vec4& getPerspective() noexcept;
 
   // get view matrix for current camera position and rotation
   glm::mat4& getView();
@@ -51,6 +52,13 @@ class ACamera : public ABase {
 
   virtual void translate(const glm::vec3& delta) noexcept override;
 
+  // set rotation in degrees
+  virtual void setRotation(float x, float y, float z) noexcept override;
   virtual void setRotation(const glm::vec3& newRotation) noexcept override;
+  virtual void setRotation(const glm::quat& newRotation) noexcept override;
+
   virtual void rotate(const glm::vec3& vector, float angle) noexcept override;
+
+  virtual void setFOV(float FOV) noexcept;
+  virtual void setAspectRatio(float ratio) noexcept;
 };

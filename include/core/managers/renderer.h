@@ -6,337 +6,406 @@
 #include "core/world/actors/camera.h"
 
 class WPrimitive;
+struct RTexture;
 
 namespace core {
 
-  class MRenderer {
-  private:
+class MRenderer {
+ private:
+  // command buffers and pools data
+  struct {
+    VkCommandPool poolGraphics;
+    VkCommandPool poolCompute;
+    VkCommandPool poolTransfer;
+    std::vector<VkCommandBuffer> buffersGraphics;
+    std::vector<VkCommandBuffer> buffersCompute;  // no code for this yet
+    std::vector<VkCommandBuffer> buffersTransfer;
+  } command;
 
-    // swapchain data
-    struct {
-      VkSurfaceFormatKHR formatData;
-      VkPresentModeKHR presentMode;
-      VkExtent2D imageExtent;
-      VkViewport viewport;                                // not used in code, needs to be
-      uint32_t imageCount = 0;
-      std::vector<VkImage> images;
-      std::vector<VkImageView> imageViews;
-      std::vector<VkFramebuffer> framebuffers;
-    } swapchain;
+  struct REnvironmentInfo {
+    REnvironmentPCB envPushBlock;
+    std::vector<VkDescriptorSet> envDescriptorSets;
+    VkDescriptorSet LUTDescriptorSet;
 
-    // command buffers and pools data
-    struct {
-      VkCommandPool poolGraphics;
-      VkCommandPool poolCompute;
-      VkCommandPool poolTransfer;
-      std::vector<VkCommandBuffer> buffersGraphics;
-      std::vector<VkCommandBuffer> buffersCompute;        // no code for this yet
-      std::vector<VkCommandBuffer> buffersTransfer;
-    } command;
+    std::vector<RBuffer> transformBuffers;
+    VkDeviceSize transformOffset = 0u;
+  } environment;
 
-    // render system data - passes, pipelines, mesh data to render
-    struct {
-      VkRenderPass renderPass;
-      VkPipeline boundPipeline;
-      RWorldPipelineSet pipelines;
-      uint32_t idIFFrame = 0;                             // in flight frame index
-      VkDescriptorPool descriptorPool;
-      std::vector<VkDescriptorSet> descriptorSets;
-      RDescriptorSetLayouts descriptorSetLayouts;
-      std::vector<WPrimitive*> primitives;                // meshes rendered during the current frame
-    } system;
+  struct {
+    std::vector<RBuffer> buffers;
+    RLightingUBO data;
+  } lighting;
 
-    // multi-threaded synchronization objects
-    struct {
-      std::vector<VkSemaphore> semImgAvailable;
-      std::vector<VkSemaphore> semRenderFinished;
-      std::vector<VkFence> fenceInFlight;
-    } sync;
+  struct RSceneBuffers {
+    RBuffer vertexBuffer;
+    RBuffer indexBuffer;
+    uint32_t currentVertexOffset = 0u;
+    uint32_t currentIndexOffset = 0u;
+  } scene;
 
-    // current camera view data
-    struct {
-      RCameraSettings cameraSettings;
+  // swapchain data
+  struct {
+    VkSurfaceFormatKHR formatData;
+    VkPresentModeKHR presentMode;
+    VkExtent2D imageExtent;
+    uint32_t imageCount = 0;
+    std::vector<VkImage> images;
+    std::vector<VkImageView> imageViews;
+    std::vector<VkFramebuffer> framebuffers;
+  } swapchain;
 
-      ACamera* pActiveCamera = nullptr;
-      std::vector<RBuffer> modelViewProjectionBuffers;
-      RModelViewProjectionUBO modelViewProjectionData;
-    } view;
+  // multi-threaded synchronization objects
+  struct {
+    std::vector<VkSemaphore> semImgAvailable;
+    std::vector<VkSemaphore> semRenderFinished;
+    std::vector<VkFence> fenceInFlight;
+    RAsync asyncUpdateEntities;
+  } sync;
 
-    struct {
-      std::vector<RBuffer> buffers;
-      RLightingUBO data;
-    } lighting;
+  // render system data - passes, pipelines, mesh data to render
+  struct {
+    std::unordered_map<EPipelineLayout, VkPipelineLayout> layouts;
+    std::unordered_map<EPipeline, VkPipeline> pipelines;
+    std::unordered_map<ERenderPass, RRenderPass> renderPasses;
+    VkRenderPassBeginInfo renderPassBeginInfo;
+    std::unordered_map<std::string, VkFramebuffer> framebuffers;   // general purpose, swapchain uses its own set
+    std::array<VkClearValue, 2> clearColors;
 
-    struct {
-      RImage depth;
-    } images;
+    VkDescriptorPool descriptorPool;
+    std::vector<VkDescriptorSet> descriptorSets;
+    std::unordered_map<EDescriptorSetLayout, VkDescriptorSetLayout>
+        descriptorSetLayouts;
 
-  public:
-    VkInstance APIInstance = VK_NULL_HANDLE;
-    VkSwapchainKHR swapChain = VK_NULL_HANDLE;
-    VkSurfaceKHR surface = VK_NULL_HANDLE;
-    std::vector<RVkPhysicalDevice> availablePhysicalDevices;
-    RVkPhysicalDevice physicalDevice;
-    RVkLogicalDevice logicalDevice;
-    VmaAllocator memAlloc = nullptr;
-    uint32_t frameviewed = 0;
-    bool bFramebufferResized = false;
+    std::vector<REntityBindInfo> bindings;                            // entities rendered during the current frame
+    std::unordered_map<EPipeline, std::vector<WPrimitive*>> primitivesByPipeline;   // TODO
+  } system;
 
-  private:
-    MRenderer();
+  // current camera view data
+  struct {
+    RCameraInfo cameraSettings;
+    ACamera* pActiveCamera = nullptr;
+    std::vector<RBuffer> modelViewProjectionBuffers;
+    RSceneUBO worldViewProjectionData;
+  } view;
 
-  public:
-    static MRenderer& get() {
-      static MRenderer _sInstance;
-      return _sInstance;
+ public:
+  VkInstance APIInstance = VK_NULL_HANDLE;
+  VkSwapchainKHR swapChain = VK_NULL_HANDLE;
+  VkSurfaceKHR surface = VK_NULL_HANDLE;
+  std::vector<RVkPhysicalDevice> availablePhysicalDevices;
+  RVkPhysicalDevice physicalDevice;
+  RVkLogicalDevice logicalDevice;
+  VmaAllocator memAlloc = nullptr;
+  bool framebufferResized = false;
+
+  // data for easy access by any other object
+  struct {
+    void* pCurrentMesh = nullptr;
+    void* pCurrentMaterial = nullptr;
+    void* pCurrentPipeline = nullptr;
+
+    RRenderPass* pCurrentRenderPass = nullptr;
+    uint32_t frameInFlight = 0;
+    uint32_t framesRendered = 0;
+    bool doEnvironmentPass = false;           // queue environment cubemaps (re)generation
+
+    void refresh() {
+      pCurrentMesh = nullptr;
+      pCurrentMaterial = nullptr;
+      pCurrentPipeline = nullptr;
     }
-    MRenderer(const MRenderer&) = delete;
-    MRenderer& operator=(const MRenderer&) = delete;
+  } renderView;
 
-    TResult createInstance();
-    TResult createInstance(VkApplicationInfo* appInfo);
-    TResult destroyInstance();
+ private:
+  MRenderer();
 
-    TResult initialize();
-    void deinitialize();
+  TResult createInstance();
+  TResult createInstance(VkApplicationInfo* appInfo);
+  TResult destroyInstance();
 
-    // initialize Vulkan memory allocator
-    TResult createMemAlloc();
-    void destroyMemAlloc();
+  // initialize Vulkan memory allocator
+  TResult createMemAlloc();
+  void destroyMemAlloc();
 
-    // wait until all queues and device are idle
-    void waitForSystemIdle();
+  // create Vulkan surface in the main window
+  TResult createSurface();
+  void destroySurface();
 
-    // create Vulkan surface in the main window
-    TResult createSurface();
-    void destroySurface();
+  TResult createSceneBuffers();
+  void destroySceneBuffers();
 
-    const RDescriptorSetLayouts* getDescriptorSetLayouts() const;
-    const VkDescriptorPool getDescriptorPool();
+  // TODO: improve pool size calculations using loaded map data
+  TResult createDescriptorPool();
+  void destroyDescriptorPool();
 
-    // returns descriptor set used by the current frame in flight by default
-    const VkDescriptorSet getDescriptorSet(uint32_t frameInFlight = -1);
+  TResult createUniformBuffers();
+  void destroyUniformBuffers();
 
-    const uint32_t& getFrameInFlightIndex();
+  TResult createImageTargets();
+  TResult createDepthTarget();
+  TResult createRendererDefaults();
 
-  private:
-    TResult createDescriptorSetLayouts();
-    void destroyDescriptorSetLayouts();
+  TResult createCoreCommandPools();
+  void destroyCoreCommandPools();
 
-    // TODO: improve pool size calculations using loaded map data
-    TResult createDescriptorPool();
-    void destroyDescriptorPool();
+  TResult createCoreCommandBuffers();
+  void destroyCoreCommandBuffers();
 
-    TResult createDescriptorSets();
+  TResult createSyncObjects();
+  void destroySyncObjects();
 
-    TResult createDepthResources();
-    void destroyDepthResources();
+  void setEnvironmentUBO();
+  void updateSceneUBO(uint32_t currentImage);
 
-    TResult createUniformBuffers();
-    void destroyUniformBuffers();
-    void updateModelViewProjectionBuffers(uint32_t currentImage);
+  // wait until all queues and device are idle
+  void waitForSystemIdle();
 
-    VkPipelineShaderStageCreateInfo loadShader(const char* path,
-                                               VkShaderStageFlagBits stage);
-    VkShaderModule createShaderModule(std::vector<uint8_t>& shaderCode);
+ public:
+  static MRenderer& get() {
+    static MRenderer _sInstance;
+    return _sInstance;
+  }
+  MRenderer(const MRenderer&) = delete;
+  MRenderer& operator=(const MRenderer&) = delete;
 
-    // creates identity MVP matrices
-    RModelViewProjectionUBO* getMVPview();
+  TResult initialize();
+  void deinitialize();
 
-    // creates MVP matrices using currently active camera and model transform
-    RModelViewProjectionUBO* updateModelViewProjection(glm::mat4* pTransform);
+ public:
+  const VkDescriptorSetLayout getDescriptorSetLayout(EDescriptorSetLayout type) const;
+  const VkDescriptorPool getDescriptorPool();
 
-    TResult checkInstanceValidationLayers();
-    std::vector<const char*> getRequiredInstanceExtensions();
-    std::vector<VkExtensionProperties> getInstanceExtensions();
+  // returns descriptor set used by the current frame in flight by default
+  const VkDescriptorSet getDescriptorSet(uint32_t frameInFlight = -1);
 
-    //
-    // MRenderer_util
-    //
-  private:
-    TResult setDepthStencilFormat();
+  RSceneBuffers* getSceneBuffers();
 
-  public:
-    /* create buffer for CPU/iGPU or dedicated GPU use:
-    defining inData makes the method copy data to an outgoing buffer internally,
-    otherwise empty but allocated VkBuffer is the result e.g. for a later data copy.
-    */
-   TResult createBuffer(EBufferMode mode, VkDeviceSize size, RBuffer& outBuffer,
-                        void* inData);
+  RSceneUBO* getSceneUBO();
 
-    // copy buffer with SRC and DST bits, uses transfer command buffer and pool
-    TResult copyBuffer(VkBuffer srcBuffer, VkBuffer& dstBuffer,
-      VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
-    TResult copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
-      VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
+  //
+  // ***PIPELINE
+  //
 
-    // expects 'optimal layout' image as a source
-    TResult copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
-                              uint32_t width, uint32_t height);
+  TResult createDescriptorSetLayouts();
+  void destroyDescriptorSetLayouts();
 
-    void transitionImageLayout(VkImage image, VkFormat format,
-                               VkImageLayout oldLayout, VkImageLayout newLayout,
-                               ECmdType cmdType = ECmdType::Transfer);
+  TResult createDescriptorSets();
 
-    VkCommandPool getCommandPool(ECmdType type);
-    VkQueue getCommandQueue(ECmdType type);
+  TResult createDefaultFramebuffers();
+  TResult createFramebuffer(ERenderPass renderPass,
+                            const char* targetTextureName,
+                            const char* framebufferName);
 
-    // creates a command buffer, if 'begin' is true - sets a "one time submit" mode
-    VkCommandBuffer createCommandBuffer(ECmdType type,
-                                        VkCommandBufferLevel level, bool begin);
+  TResult createRenderPasses();
+  void destroyRenderPasses();
+  RRenderPass* getRenderPass(ERenderPass type);
+  VkRenderPass& getVkRenderPass(ERenderPass type);
 
-    // begins command buffer in a "one time submit" mode
-    void beginCommandBuffer(VkCommandBuffer cmdBuffer);
+  TResult createGraphicsPipelines();
+  void destroyGraphicsPipelines();
+  VkPipelineLayout& getPipelineLayout(EPipelineLayout type);
+  VkPipeline& getPipeline(EPipeline type);
 
-    // end writing to the buffer and submit commands to specific queue,
-    // optionally free the buffer and/or use fence
-    void flushCommandBuffer(VkCommandBuffer cmdBuffer, ECmdType type,
-                            bool free = false, bool useFence = false);
+  // check if pipeline flag is present in the flag array
+  bool checkPipeline(uint32_t pipelineFlags, EPipeline pipelineFlag);
 
-    VkImageView createImageView(VkImage image, VkFormat format,
-                                uint32_t levelCount, uint32_t layerCount);
+  TResult configureRenderPasses();
 
-    // binds primitive to graphics pipeline
-    uint32_t bindPrimitive(WPrimitive* pPrimitive);
+  //
+  // ***UTIL
+  //
 
-    // binds a vector of primitives and writes binding indices
-    void bindPrimitive(const std::vector<WPrimitive*>& inPrimitives,
-                       std::vector<uint32_t>& outIndices);
+ private:
+  TResult setDepthStencilFormat();
 
-    // unbind primitive by a single index
-    void unbindPrimitive(uint32_t index);
+  VkPipelineShaderStageCreateInfo loadShader(const char* path,
+                                             VkShaderStageFlagBits stage);
+  VkShaderModule createShaderModule(std::vector<uint8_t>& shaderCode);
 
-    // unbind primitive by the vector of indices
-    void unbindPrimitive(const std::vector<uint32_t>& meshIndices);
+  TResult checkInstanceValidationLayers();
+  std::vector<const char*> getRequiredInstanceExtensions();
+  std::vector<VkExtensionProperties> getInstanceExtensions();
 
-    // clear all primitive bindings
-    void clearPrimitiveBinds();
+ public:
+  /* create buffer for CPU/iGPU or dedicated GPU use:
+  defining inData makes the method copy data to an outgoing buffer internally,
+  otherwise empty but allocated VkBuffer is the result e.g. for a later data
+  copy.
+  */
+  TResult createBuffer(EBufferMode mode, VkDeviceSize size, RBuffer& outBuffer,
+                       void* inData);
 
-    // set camera from create cameras by name
-    void setCamera(const char* name);
-    void setCamera(ACamera* pCamera);
+  // copy buffer with SRC and DST bits, uses transfer command buffer and pool
+  TResult copyBuffer(VkBuffer srcBuffer, VkBuffer& dstBuffer,
+                     VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
+  TResult copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
+                     VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
 
-    ACamera* getCamera();
+  // expects 'optimal layout' image as a source
+  TResult copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
+                            uint32_t width, uint32_t height,
+                            uint32_t layerCount);
 
-    //
-    // MRenderer_physicaldevice
-    //
-  public:
-    // find all available physical devices and store them in graphics manager
-    TResult enumPhysicalDevices();
+  void setImageLayout(VkCommandBuffer cmdBuffer, RTexture* pTexture,
+                      VkImageLayout newLayout,
+                      VkImageSubresourceRange subresourceRange);
 
-    // automatically use the first valid physical device
-    TResult initPhysicalDevice();
+  void setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
+                      VkImageLayout oldLayout, VkImageLayout newLayout,
+                      VkImageSubresourceRange subresourceRange);
 
-    // try to use this physical device if valid
-    TResult initPhysicalDevice(const RVkPhysicalDevice& physicalDeviceData);
+  VkCommandPool getCommandPool(ECmdType type);
+  VkQueue getCommandQueue(ECmdType type);
 
-    // setup physical device database, validate all devices as per usage requirements
-    TResult setPhysicalDeviceData(VkPhysicalDevice device,
-      RVkPhysicalDevice& outDeviceData);
+  // creates a command buffer, if 'begin' is true - sets a "one time submit"
+  // mode
+  VkCommandBuffer createCommandBuffer(ECmdType type, VkCommandBufferLevel level,
+                                      bool begin);
 
-    // access currently detected devices
-    std::vector<RVkPhysicalDevice>& physicalDevices();
-    RVkPhysicalDevice* physicalDevices(uint32_t id = 0);
+  // begins command buffer in a "one time submit" mode
+  void beginCommandBuffer(VkCommandBuffer cmdBuffer);
 
-    // provides surface and presentation data for Vulkan swapchain
-    TResult queryPhysicalDeviceSwapChainInfo(const RVkPhysicalDevice& deviceData,
-      RVkSwapChainInfo& swapChainInfo);
+  // end writing to the buffer and submit commands to specific queue,
+  // optionally free the buffer and/or use fence
+  void flushCommandBuffer(VkCommandBuffer cmdBuffer, ECmdType type,
+                          bool free = false, bool useFence = false);
 
-    // find suitable memory type for the required operation on an active physical device
-    uint32_t findPhysicalDeviceMemoryType(uint32_t typeFilter,
-      VkMemoryPropertyFlags properties);
+  VkImageView createImageView(VkImage image, VkFormat format,
+                              uint32_t levelCount, uint32_t layerCount);
 
-  private:
-    TResult checkPhysicalDeviceExtensionSupport(
+  // binds model to graphics pipeline
+  uint32_t bindEntity(AEntity* pEntity);
+
+  // unbind primitive by a single index
+  void unbindEntity(uint32_t index);
+
+  // clear all primitive bindings
+  void clearBoundEntities();
+
+  // set camera from create cameras by name
+  void setCamera(const char* name);
+  void setCamera(ACamera* pCamera);
+
+  ACamera* getCamera();
+
+  //
+  // ***PHYSICAL DEVICE
+  //
+
+ public:
+  // find all available physical devices and store them in graphics manager
+  TResult enumPhysicalDevices();
+
+  // automatically use the first valid physical device
+  TResult initPhysicalDevice();
+
+  // try to use this physical device if valid
+  TResult initPhysicalDevice(const RVkPhysicalDevice& physicalDeviceData);
+
+  // setup physical device database, validate all devices as per usage
+  // requirements
+  TResult setPhysicalDeviceData(VkPhysicalDevice device,
+                                RVkPhysicalDevice& outDeviceData);
+
+  // access currently detected devices
+  std::vector<RVkPhysicalDevice>& physicalDevices();
+  RVkPhysicalDevice* physicalDevices(uint32_t id = 0);
+
+  // provides surface and presentation data for Vulkan swapchain
+  TResult queryPhysicalDeviceSwapChainInfo(const RVkPhysicalDevice& deviceData,
+                                           RVkSwapChainInfo& swapChainInfo);
+
+  // find suitable memory type for the required operation on an active physical
+  // device
+  uint32_t findPhysicalDeviceMemoryType(uint32_t typeFilter,
+                                        VkMemoryPropertyFlags properties);
+
+ private:
+  TResult checkPhysicalDeviceExtensionSupport(
       const RVkPhysicalDevice& deviceData);
 
-    std::vector<VkExtensionProperties> getPhysicalDeviceExtensions(
+  std::vector<VkExtensionProperties> getPhysicalDeviceExtensions(
       const RVkPhysicalDevice& deviceData);
 
-    // retrieve queue capabilities for the device, use only first valid indices
-    TResult setPhysicalDeviceQueueFamilies(RVkPhysicalDevice& deviceData);
+  // retrieve queue capabilities for the device, use only first valid indices
+  TResult setPhysicalDeviceQueueFamilies(RVkPhysicalDevice& deviceData);
 
-    // -----
+  //
+  // ***LOGICAL DEVICE
+  //
 
-    //
-    // MRenderer_logicaldevice
-    //
+ public:
+  // creates logical device from the currently active physical one
+  TResult initLogicalDevice();
 
-  public:
-    // creates logical device from the currently active physical one
-    TResult initLogicalDevice();
+  // create a logical device to communicate with a physical device
+  TResult initLogicalDevice(const RVkPhysicalDevice& deviceData);
+  void destroyLogicalDevice(VkDevice device = nullptr,
+                            const VkAllocationCallbacks* pAllocator = nullptr);
 
-    // create a logical device to communicate with a physical device
-    TResult initLogicalDevice(const RVkPhysicalDevice& deviceData);
-    void destroyLogicalDevice(VkDevice device = nullptr,
-      const VkAllocationCallbacks* pAllocator = nullptr);
+  //
+  // ***SWAPCHAIN
+  //
 
-    // -----
+  // try to initialize swap chain with the desired format and active physical
+  // device
+  TResult initSwapChain(VkFormat format, VkColorSpaceKHR colorSpace,
+                        VkPresentModeKHR presentMode,
+                        RVkPhysicalDevice* device = nullptr);
 
-    //
-    // MRenderer_swapchain
-    //
+  TResult setSwapChainFormat(const RVkPhysicalDevice& deviceData,
+                             const VkFormat& format,
+                             const VkColorSpaceKHR& colorSpace);
 
-    // try to initialize swap chain with the desired format and active physical
-    // device
-    TResult initSwapChain(VkFormat format, VkColorSpaceKHR colorSpace,
-      VkPresentModeKHR presentMode,
-      RVkPhysicalDevice* device = nullptr);
+  TResult setSwapChainPresentMode(const RVkPhysicalDevice& deviceData,
+                                  VkPresentModeKHR presentMode);
 
-    TResult setSwapChainFormat(const RVkPhysicalDevice& deviceData,
-      const VkFormat& format,
-      const VkColorSpaceKHR& colorSpace);
+  TResult setSwapChainExtent(const RVkPhysicalDevice& deviceData);
 
-    TResult setSwapChainPresentMode(const RVkPhysicalDevice& deviceData,
-      VkPresentModeKHR presentMode);
+  TResult setSwapChainImageCount(const RVkPhysicalDevice& deviceData);
 
-    TResult setSwapChainExtent(const RVkPhysicalDevice& deviceData);
+  // requires valid variables provided by swap chain data gathering methods /
+  // initSwapChain
+  TResult createSwapChain();
+  void destroySwapChain();
+  TResult recreateSwapChain();
 
-    TResult setSwapChainImageCount(const RVkPhysicalDevice& deviceData);
+ private:
+  TResult createSwapChainImageViews();
 
-    // requires valid variables provided by swap chain data gathering methods / initSwapChain
-    TResult createSwapChain();
-    void destroySwapChain();
-    TResult recreateSwapChain();
+  //
+  // ***RENDERING
+  //
 
-  private:
-    TResult createSwapChainImageViews();
-    TResult createFramebuffers();
+ private:
+  void updateBoundEntities();
 
-    // -----
+  // draw bound entities using render pass pipelines
+  void drawBoundEntities(VkCommandBuffer cmdBuffer);
 
-    //
-    // MRenderer_rendering
-    //
+  // draw bound entities using specific pipeline
+  void drawBoundEntities(VkCommandBuffer, EPipeline forcedPipeline);
 
-  public:
-    TResult createRenderPass();
-    void destroyRenderPass();
+  void renderPrimitive(VkCommandBuffer cmdBuffer, WPrimitive* pPrimitive,
+                       EPipeline pipelineFlag, REntityBindInfo* pBindInfo);
 
-    TResult createGraphicsPipelines();
-    void destroyGraphicsPipelines();
-    VkPipelineLayout getWorldPipelineLayout();
-    RWorldPipelineSet getWorldPipelineSet();
-    VkPipeline getBoundPipeline();
+  // renders Environment passes and generates PBR cubemaps for future use
+  void renderEnvironmentMaps(VkCommandBuffer commandBuffer);
 
-    TResult createCoreCommandPools();
-    void destroyCoreCommandPools();
+  // generates BRDF LUT map
+  void generateLUTMap();
 
-    TResult createCoreCommandBuffers();
-    void destroyCoreCommandBuffers();
+ public:
+  void doRenderPass(VkCommandBuffer commandBuffer,
+                    std::vector<VkDescriptorSet>& sets, uint32_t imageIndex);
 
-    TResult recordFrameCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+  void renderFrame();
+  void renderInitFrame();
 
-    TResult createSyncObjects();
-    void destroySyncObjects();
+  void updateAspectRatio();
+  void setFOV(float FOV);
+  void setViewDistance(float farZ);
+  void setViewDistance(float nearZ, float farZ);
+};
 
-    TResult drawFrame();
-
-    void updateAspectRatio();
-    void setFOV(float FOV);
-    void setViewDistance(float farZ);
-    void setViewDistance(float nearZ, float farZ);
-  };
-
-}
+}  // namespace core

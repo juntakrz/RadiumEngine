@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/world/model/model.h"
+#include "core/model/model.h"
 
 namespace core {
 
@@ -20,7 +20,7 @@ class MWorld {
   TResult loadModelFromFile(const std::string& path, std::string name);
 
   // create a simple model using a chosen primitive and arguments
-  TResult createModel(EWPrimitive type, std::string name, int32_t arg0,
+  TResult createModel(EPrimitiveType type, std::string name, int32_t arg0,
                       int32_t arg1);
 
   WModel* getModel(const char* name);

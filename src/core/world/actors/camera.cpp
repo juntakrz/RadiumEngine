@@ -7,8 +7,15 @@
 #include "util/math.h"
 
 void ACamera::setPerspective(float FOV, float aspectRatio, float nearZ,
-                               float farZ) noexcept {
-  m_projection = glm::perspective(FOV, aspectRatio, nearZ, farZ);
+                             float farZ) noexcept {
+  m_viewData.perspectiveData = {FOV, aspectRatio, nearZ, farZ};
+  m_projection = glm::perspective(
+      glm::radians(m_viewData.perspectiveData.x), m_viewData.perspectiveData.y,
+      m_viewData.perspectiveData.z, m_viewData.perspectiveData.w);
+}
+
+const glm::vec4& ACamera::getPerspective() noexcept {
+  return m_viewData.perspectiveData;
 }
 
 glm::mat4& ACamera::getView() {
@@ -34,6 +41,10 @@ void ACamera::translate(const glm::vec3& delta) noexcept {
       moveDirection * m_translationModifier * core::time.getDeltaTime();
 }
 
+void ACamera::setRotation(float x, float y, float z) noexcept {
+  setRotation({glm::radians(x), glm::radians(y), glm::radians(z)});
+}
+
 void ACamera::setRotation(const glm::vec3& newRotation) noexcept {
   m_pitch = newRotation.x < -config::pitchLimit  ? -config::pitchLimit
             : newRotation.x > config::pitchLimit ? config::pitchLimit
@@ -42,6 +53,32 @@ void ACamera::setRotation(const glm::vec3& newRotation) noexcept {
   m_transformationData.initial.rotation =
       glm::quat(glm::vec3(m_pitch, newRotation.y, newRotation.z));
   m_transformationData.rotation = m_transformationData.initial.rotation;
+
+  switch (m_viewData.bAnchorFocusPoint) {
+    case true: {
+      // code for when the camera should be rotated around its focus point
+      break;
+    }
+    case false: {
+      m_viewData.focusPoint = glm::rotate(m_transformationData.rotation,
+                                          m_transformationData.frontVector);
+    }
+  }
+}
+
+void ACamera::setRotation(const glm::quat& newRotation) noexcept {
+  m_transformationData.rotation = newRotation;
+
+  switch (m_viewData.bAnchorFocusPoint) {
+    case true: {
+      // code for when the camera should be rotated around its focus point
+      break;
+    }
+    case false: {
+      m_viewData.focusPoint = glm::rotate(m_transformationData.rotation,
+                                          m_transformationData.frontVector);
+    }
+  }
 }
 
 void ACamera::rotate(const glm::vec3& vector, float angle) noexcept {
@@ -85,4 +122,18 @@ void ACamera::rotate(const glm::vec3& vector, float angle) noexcept {
                                           m_transformationData.frontVector);
     }
   }
+}
+
+void ACamera::setFOV(float FOV) noexcept {
+  m_viewData.perspectiveData.x = FOV;
+  m_projection = glm::perspective(
+      glm::radians(m_viewData.perspectiveData.x), m_viewData.perspectiveData.y,
+      m_viewData.perspectiveData.z, m_viewData.perspectiveData.w);
+}
+
+void ACamera::setAspectRatio(float ratio) noexcept {
+  m_viewData.perspectiveData.y = ratio;
+  m_projection = glm::perspective(
+      glm::radians(m_viewData.perspectiveData.x), m_viewData.perspectiveData.y,
+      m_viewData.perspectiveData.z, m_viewData.perspectiveData.w);
 }

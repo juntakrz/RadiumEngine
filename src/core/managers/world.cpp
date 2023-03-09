@@ -1,12 +1,9 @@
 #include "pch.h"
 #include "util/util.h"
 #include "core/core.h"
-#include "core/managers/materials.h"
+#include "core/managers/resources.h"
 #include "core/managers/world.h"
-#include "core/world/model/primitive_plane.h"
-#include "core/world/model/primitive_sphere.h"
-//#include "core/world/model/primitive_cube.h"
-#include "core/world/model/model.h"
+#include "core/model/model.h"
 
 #define TINYGLTF_IMPLEMENTATION
 #define TINYGLTF_NO_STB_IMAGE
@@ -34,6 +31,7 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
   std::string error, warning;
   WModel* pModel = nullptr;
   bool bIsBinary = false, bIsModelLoaded = false;
+  TResult result;
 
   RE_LOG(Log, "Loading model \"%s\" from \"%s\".", name.c_str(), path.c_str());
 
@@ -73,72 +71,14 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
   m_models.at(name) = std::make_unique<WModel>();
   pModel = m_models.at(name).get();
 
-  pModel->m_name = name;
+  result = pModel->createModel(name.c_str(), &gltfModel);
 
-  uint32_t vertexCount = 0u, vertexPos = 0u, indexCount = 0u, indexPos = 0u;
-  const tinygltf::Scene& gltfScene =
-      gltfModel
-          .scenes[gltfModel.defaultScene > -1 ? gltfModel.defaultScene : 0];
-
-  // index of texture paths used by this model, required by the material setup later
-  std::vector<std::string> texturePaths;
-
-  // assign texture samplers for the current WModel
-  pModel->setTextureSamplers(gltfModel);
-
-  // go through glTF model's texture records
-  for (const tinygltf::Texture& tex : gltfModel.textures) {
-    const tinygltf::Image* pImage = &gltfModel.images[tex.source];
-
-    // get custom corresponding sampler data from WModel if present
-    RSamplerInfo textureSampler{};
-    if (tex.sampler != -1) {
-      textureSampler = pModel->m_textureSamplers[tex.sampler];
-    }
-
-    // add empty path, should be changed later
-    texturePaths.emplace_back("");
-
-    // get texture name and load it though materials manager
-    if (pImage->uri == "") {
-      continue;
-    }
-
-#ifndef NDEBUG
-    RE_LOG(Log, "Loading texture \"%s\" for model \"%s\".", pImage->uri.c_str(),
-           pModel->m_name.c_str());
-#endif
-    if (core::materials.loadTexture(pImage->uri.c_str(), &textureSampler) <
-        RE_ERROR) {
-      texturePaths.back() = pImage->uri;
-    };
-  }
-
-  // get glTF materials and convert them to RMaterial
-  pModel->parseMaterials(gltfModel, texturePaths);
-
-  // parse node properties and get index/vertex counts
-  for (size_t i = 0; i < gltfScene.nodes.size(); ++i) {
-    pModel->parseNodeProperties(gltfModel, gltfModel.nodes[gltfScene.nodes[i]]);
-  }
-
-  // create nodes using data from glTF model
-  for (size_t n = 0; n < gltfScene.nodes.size(); ++n) {
-    tinygltf::Node& gltfNode = gltfModel.nodes[gltfScene.nodes[n]];
-    pModel->createNode(nullptr, gltfModel, gltfNode, gltfScene.nodes[n]);
-  }
-
-  /*
-  if (gltfModel.animations.size() > 0) {
-    loadAnimations(gltfModel);
-  }
-  loadSkins(gltfModel);*/
-
-  return RE_OK;
+  return result;
 }
 
-TResult core::MWorld::createModel(EWPrimitive type, std::string name,
+TResult core::MWorld::createModel(EPrimitiveType type, std::string name,
                                   int32_t arg0, int32_t arg1) {
+
   auto fValidateNode = [&](WModel::Node* pNode) {
     if (pNode->pMesh == nullptr) {
       RE_LOG(Error, "Node validation failed for \"%s\", model: \"%s\".",
@@ -168,29 +108,38 @@ TResult core::MWorld::createModel(EWPrimitive type, std::string name,
          arg0, arg1);
 
   pModel->m_name = name;
+  WModel::Node* pNode = pModel->createNode(nullptr, 0, "node_" + name);
+  RE_CHECK(fValidateNode(pNode));
+  pModel->m_pLinearNodes.emplace_back(pNode);
+
+  RPrimitiveInfo primitiveInfo{};
+  primitiveInfo.vertexOffset = pModel->staging.currentVertexOffset;
+  primitiveInfo.indexOffset = pModel->staging.currentIndexOffset;
+  primitiveInfo.createTangentSpaceData = true;
+  primitiveInfo.pOwnerNode = pNode;
+
+  pNode->pMesh->pPrimitives.emplace_back(
+      std::make_unique<WPrimitive>(&primitiveInfo));
+
+  std::vector<RVertex> vertices;
+  std::vector<uint32_t> indices;
 
   switch (type) {
-    case EWPrimitive::Plane: {
-      WModel::Node* pNode = pModel->createNode(nullptr, 0, "node_" + name);
-      RE_CHECK(fValidateNode(pNode));
-      pModel->m_pLinearNodes.emplace_back(pNode);
-      pNode->pMesh->pPrimitives.emplace_back(
-          std::make_unique<WPrimitive_Plane>());
-      pNode->pMesh->pPrimitives.back()->create(arg0, arg1);
-      pModel->m_pLinearPrimitives.emplace_back(
-          pNode->pMesh->pPrimitives.back().get());
+    case EPrimitiveType::Plane: {
+      pNode->pMesh->pPrimitives.back()->generatePlane(arg0, arg1, vertices,
+                                                      indices);
       break;
     }
 
-    case EWPrimitive::Sphere: {
-      WModel::Node* pNode = pModel->createNode(nullptr, 0, "node_" + name);
-      RE_CHECK(fValidateNode(pNode));
-      pModel->m_pLinearNodes.emplace_back(pNode);
-      pNode->pMesh->pPrimitives.emplace_back(
-          std::make_unique<WPrimitive_Sphere>());
-      pNode->pMesh->pPrimitives.back()->create(arg0, arg1);
-      pModel->m_pLinearPrimitives.emplace_back(
-          pNode->pMesh->pPrimitives.back().get());
+    case EPrimitiveType::Sphere: {
+      pNode->pMesh->pPrimitives.back()->generateSphere(arg0, arg1, vertices,
+                                                       indices);
+      break;
+    }
+
+    case EPrimitiveType::Cube: {
+      pNode->pMesh->pPrimitives.back()->generateCube(arg0, arg1, vertices,
+                                                     indices);
       break;
     }
 
@@ -199,7 +148,45 @@ TResult core::MWorld::createModel(EWPrimitive type, std::string name,
     }
   }
 
-  return RE_OK;
+  // copy vertex and index data to local staging buffers and adjust offsets
+  pModel->staging.vertices.insert(pModel->staging.vertices.begin(), vertices.begin(), vertices.end());
+  pModel->staging.indices.insert(pModel->staging.indices.begin(), indices.begin(), indices.end());
+
+  pModel->staging.currentVertexOffset += static_cast<uint32_t>(vertices.size());
+  pModel->staging.currentIndexOffset += static_cast<uint32_t>(indices.size());
+  pModel->m_vertexCount += pModel->staging.currentVertexOffset;
+  pModel->m_indexCount += pModel->staging.currentIndexOffset;
+
+  pModel->m_pLinearPrimitives.emplace_back(pNode->pMesh->pPrimitives.back().get());
+
+  // assign default material to the model
+  RMaterialInfo defaultMaterialInfo{};
+  RMaterial* pDefaultMaterial =
+      core::resources.createMaterial(&defaultMaterialInfo);
+
+  for (auto& primitive : pModel->getPrimitives()) {
+    primitive->pMaterial = pDefaultMaterial;
+  }
+
+  for (auto& node : pModel->getRootNodes()) {
+    node->setNodeDescriptorSet(true);
+    node->updateNode(glm::mat4(1.0f));
+  }
+
+  // calculate bounding box extent for the whole mesh based on created primitives
+  /*
+  glm::vec3 minExtent{0.0f}, maxExtent{0.0f};
+  for (const auto& primitive : pNode->pMesh->pPrimitives) {
+    if (primitive->getBoundingBoxExtent(minExtent, maxExtent)) {
+      pNode->pMesh->extent.min = glm::min(pNode->pMesh->extent.min, minExtent);
+      pNode->pMesh->extent.max = glm::max(pNode->pMesh->extent.max, maxExtent);
+      pNode->pMesh->extent.isValid = true;
+
+      pModel->m_pLinearPrimitives.emplace_back(primitive.get());
+    }
+  }*/
+
+  return pModel->createStagingBuffers();
 }
 
 WModel* core::MWorld::getModel(const char* name) {

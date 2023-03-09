@@ -1,3 +1,5 @@
+#include "pch.h"
+#include "core/objects.h"
 #include "config.h"
 
 const char* config::appTitle = "Radium Engine";
@@ -10,3 +12,13 @@ bool config::bDevMode = false;
 float config::pitchLimit = glm::radians(88.0f);
 
 float config::getAspectRatio() { return renderWidth / (float)renderHeight; }
+
+size_t config::scene::getVertexBufferSize() {
+  return sizeof(RVertex) * vertexBudget;
+}
+
+size_t config::scene::getIndexBufferSize() {
+  return sizeof(uint32_t) * indexBudget;
+}
+
+VkFormat core::vulkan::formatDepth;

@@ -5,7 +5,7 @@
 
 core::MWindow::MWindow() { RE_LOG(Log, "Creating window manager."); }
 
-TResult core::MWindow::createWindow(const uint32_t& width, const uint32_t& height,
+TResult core::MWindow::createWindow(uint32_t width, uint32_t height,
                               const char* title, GLFWmonitor* monitor,
                               GLFWwindow* share) {
   RE_LOG(Log, "Initializing window subsystem.");
@@ -46,5 +46,5 @@ TResult core::MWindow::destroyWindow(GLFWwindow* pOtherWindow) {
 GLFWwindow* core::MWindow::getWindow() { return pWindow.get(); }
 
 void core::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
-  core::renderer.bFramebufferResized = true;
+  core::renderer.framebufferResized = true;
 }
