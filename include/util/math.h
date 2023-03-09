@@ -3,6 +3,11 @@
 namespace math {
 // precise enough definition of PI as a 64 bit float
 constexpr double PI64 = 3.1415926535897932384626433832795028841971693993751;
+constexpr float PI = static_cast<float>(PI64);
+constexpr double twoPI64 = PI64 * 2.0;
+constexpr float twoPI = static_cast<float>(PI64 * 2.0f);
+constexpr double halfPI64 = PI64 / 2.0;
+constexpr float halfPI =  static_cast<float>(PI64 / 2.0f);
 
 template <typename T>
 inline T wrapAngle(

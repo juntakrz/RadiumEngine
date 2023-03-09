@@ -12,5 +12,5 @@ int wmain()
     return EXIT_FAILURE;
   };
 
-  EXIT_SUCCESS;
+  return EXIT_SUCCESS;
 }

@@ -1,22 +1,28 @@
 #include "pch.h"
 #include "core/core.h"
-#include "core/managers/mwindow.h"
-#include "core/managers/MRenderer.h"
-#include "core/managers/mdebug.h"
-#include "core/managers/minput.h"
-#include "core/managers/mactors.h"
-#include "core/managers/mscript.h"
-#include "core/managers/mref.h"
-#include "core/managers/mtime.h"
+#include "core/managers/window.h"
+#include "core/managers/renderer.h"
+#include "core/managers/debug.h"
+#include "core/managers/input.h"
+#include "core/managers/actors.h"
+#include "core/managers/player.h"
+#include "core/managers/script.h"
+#include "core/managers/ref.h"
+#include "core/managers/time.h"
+#include "core/managers/materials.h"
+#include "core/managers/world.h"
 
 class core::MRenderer& core::renderer = MRenderer::get();
 class core::MWindow& core::window = MWindow::get();
 class core::MInput& core::input = MInput::get();
 class core::MScript& core::script = MScript::get();
 class core::MActors& core::actors = MActors::get();
-class core::MRef& core::ref = MRef::get();
 class core::MDebug& core::debug = MDebug::get();
+class core::MMaterials& core::materials = MMaterials::get();
+class core::MPlayer& core::player = MPlayer::get();
+class core::MRef& core::ref = MRef::get();
 class core::MTime& core::time = MTime::get();
+class core::MWorld& core::world = MWorld::get();
 
 void core::run() {
 
@@ -24,17 +30,36 @@ void core::run() {
 
   #ifndef NDEBUG
   loadDevelopmentConfig();
-  compileShaders_Debug();
+  core::debug.compileDebugShaders();
   core::debug.initializeRenderDoc();
   #endif
 
   RE_LOG(Log, "Creating renderer.");
   RE_CHECK(core::create());
-  core::input.initialize(core::window.getWindow());
 
   RE_LOG(Log, "Successfully initialized engine core.");
 
   core::script.loadMap("default");
+
+  // remove this after loadMap improvements
+  core::actors.createPawn("sphere0");
+  core::world.createModel(EWPrimitive::Sphere, "mdlSphere", 16, 0);
+  WModel* pModel = core::world.getModel("mdlSphere");
+  APawn* pPawn = core::actors.getPawn("sphere0");
+  pPawn->setModel(pModel);
+
+  //core::renderer.bindPrimitive(pModel->getPrimitives(), pModel->getPrimitiveBindsIndex());
+
+  //core::world.loadModelFromFile("content/models/box/BoxTextured.gltf",
+    //                                 "mdlTest");
+
+  core::world.loadModelFromFile("content/models/test/scene.gltf",
+                                "mdlTest");
+
+  WModel* pTestModel = core::world.getModel("mdlTest");
+  core::renderer.bindPrimitive(pTestModel->getPrimitives(),
+                               pModel->getPrimitiveBindsIndex());
+  // ----------------------------
 
   RE_LOG(Log, "Launching main event loop.");
 
@@ -46,6 +71,7 @@ void core::run() {
 void core::mainEventLoop() {
   while (!glfwWindowShouldClose(core::window.getWindow())) {
     glfwPollEvents();
+    core::input.scanInput();
     core::drawFrame();
   }
 }
@@ -55,6 +81,8 @@ void core::stop(TResult cause) {
     RE_LOG(Log, "Shutting down on call.");
 
     core::destroy();
+
+    RE_LOG(Log, "Exiting program normally.");
   }
   else {
     RE_LOG(
@@ -86,6 +114,10 @@ TResult core::create() {
 
   RE_LOG(Log, "Rendering module successfully initialized.");
 
+  core::materials.initialize();
+  core::input.initialize(core::window.getWindow());
+  core::player.initialize();
+
   return chkResult;
 }
 
@@ -111,8 +143,11 @@ void core::loadCoreConfig(const wchar_t* path) {
 
   json* data = core::script.jsonLoad(path, cfgName);
 
+  RE_LOG(Log, "Reading base application settings.");
+
   if (data->contains("core")) {
     const auto& coreData = data->at("core");
+
     if (coreData.contains("resolution")) {
       coreData.at("resolution").get_to(resolution);
       config::renderWidth = resolution[0];
@@ -128,16 +163,45 @@ void core::loadCoreConfig(const wchar_t* path) {
     --requirements;
   }
 
+  RE_LOG(Log, "Applying graphics settings.");
+
+  if (data->contains("graphics")) {
+    const auto& graphicsData = data->at("graphics");
+
+    if (graphicsData.contains("viewDistance")) {
+      graphicsData.at("viewDistance").get_to(config::viewDistance);
+    }
+
+    if (graphicsData.contains("FOV")) {
+      graphicsData.at("FOV").get_to(config::FOV);
+    }
+  }
+
+  RE_LOG(Log, "Parsing input bindings.");
+
+  if (data->contains("keyboard")) {
+    const auto& keySet = data->at("keyboard");
+    
+    for (const auto& it : keySet.items()) {
+      std::string bindInput;
+      it.value().get_to(bindInput);
+      core::input.setInputBinding(it.key(), bindInput);
+    }
+  }
+
+  if (data->contains("mouse")) {
+    const auto& mouseSet = data->at("mouse");
+
+    for (const auto& it : mouseSet.items()) {
+      // read mouse axes here
+    }
+  }
+
   if (!requirements) {
     return;
   }
 
   RE_LOG(Error, "Core configuration file seems to be corrupted.");
-}
-
-void core::compileShaders_Debug() {
-  RE_LOG(Log, "Compiling shaders with the debugging data attached.");
-  system(RE_PATH_SHDRC);
 }
 
 void core::loadDevelopmentConfig(const wchar_t* path) {

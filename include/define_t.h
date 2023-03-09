@@ -11,6 +11,7 @@ template <typename C>
 class OFuncPtr : public OFuncPtr_Base {
   C* owner = nullptr;
   void (C::*func)() = nullptr;
+  void (C::*funcWithParameter)(float) = nullptr;
 
  public:
   OFuncPtr(C* pOwner, void (C::*pFunc)()) : owner(pOwner), func(pFunc){};

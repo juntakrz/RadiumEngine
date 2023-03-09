@@ -1,19 +1,41 @@
 #pragma once
 
 #include "vk_mem_alloc.h"
+#include "config.h"
 
-enum class EBCMode {  // VkBuffer creation mode
-  CPU_UNIFORM = 0,    // create uniform buffer for GPU programs
+enum class EBufferMode {  // VkBuffer creation mode
+  CPU_UNIFORM,        // create uniform buffer for GPU programs
   CPU_VERTEX,         // create vertex buffer for the iGPU (UNUSED)
   CPU_INDEX,          // create index buffer for the iGPU (UNUSED)
   DGPU_VERTEX,        // create dedicated GPU vertex buffer
-  DGPU_INDEX          // create dedicated GPU index buffer
+  DGPU_INDEX,         // create dedicated GPU index buffer
+  STAGING             // create staging buffer only
 };
 
-enum class EAType {  // actor type
-  BASE = 0,
-  CAMERA,
-  MODEL
+enum class ECmdType {
+  Graphics,
+  Compute,
+  Transfer,
+  Present
+};
+
+enum class EActorType {  // actor type
+  Base,
+  Camera,
+  Pawn
+};
+
+enum class EWPrimitive {
+  Null,
+  Plane,
+  Sphere,
+  Cube
+};
+
+enum class ERAlphaMode {
+  Blend,
+  Mask,
+  Opaque
 };
 
 struct RVkQueueFamilyIndices {
@@ -42,6 +64,13 @@ struct RVkPhysicalDevice {
   bool bIsValid = false;
 };
 
+// used by renderer
+struct RDescriptorSetLayouts {
+  VkDescriptorSetLayout scene;
+  VkDescriptorSetLayout material;
+  VkDescriptorSetLayout node;
+};
+
 struct RVkLogicalDevice {
   VkDevice device;
 
@@ -59,47 +88,134 @@ struct RBuffer {
   VmaAllocationInfo allocInfo;
 };
 
+struct RImage {
+  VkImage image;
+  VkImageView view;
+  VkFormat format;
+  VmaAllocation allocation;
+  VmaAllocationInfo allocInfo;
+};
+
+// expanding KTX structure
+struct RVulkanTexture : public ktxVulkanTexture {
+  VkImageView view;
+  VkSampler sampler;
+  VkDescriptorImageInfo descriptor;
+};
+
+// pipelines used by the 3D world
+struct RWorldPipelineSet {
+  VkPipeline PBR;           // standard PBR pipeline
+  VkPipeline PBR_DS;        // double sided PBR pipeline
+  VkPipeline skybox;        // depth independent skybox/sphere
+  VkPipelineLayout layout;  // general 3D world pipeline layout
+};
+
 struct RVertex {
-  glm::vec3 pos;
-  glm::vec3 color;
+  glm::vec3 pos;        // POSITION
+  glm::vec2 tex0;       // TEXCOORD0
+  glm::vec2 tex1;       // TEXCOORD1
+  glm::vec3 normal;     // NORMAL
+  glm::vec3 tangent;    // TANGENT
+  glm::vec3 binormal;   // BINORMAL
+  glm::vec4 color;      // COLOR
+  glm::vec4 joint;      // JOINT
+  glm::vec4 weight;     // WEIGHT
 
   static VkVertexInputBindingDescription getBindingDesc();
   static std::vector<VkVertexInputAttributeDescription> getAttributeDescs();
 };
 
-struct NextVertex {
-  glm::vec3 pos;        // POSITION
-  glm::vec2 tex;        // TEXCOORD
-  glm::vec3 normal;     // NORMAL
-  glm::vec3 tangent;    // TANGENT
-  glm::vec3 binormal;   // BINORMAL
+// stored by WModel, used to create a valid sampler for a specific texture
+struct RSamplerInfo {
+  VkFilter minFilter = VK_FILTER_LINEAR;
+  VkFilter magFilter = VK_FILTER_LINEAR;
+  VkSamplerAddressMode addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  VkSamplerAddressMode addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  VkSamplerAddressMode addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+};
+
+// used for RMaterial creation in materials manager
+struct RMaterialInfo {
+  std::string name;
+  bool manageTextures = false;
+  bool doubleSided = false;
+  ERAlphaMode alphaMode = ERAlphaMode::Opaque;
+  float alphaCutoff = 1.0f;
+
+  struct {
+    std::string vertex = "default.vert", pixel = "default.frag", geometry = "";
+  } shaders;
+
+  struct {
+    std::string baseColor = RE_DEFAULTTEXTURE;
+    std::string normal = RE_NULLTEXTURE;
+    std::string metalRoughness = RE_NULLTEXTURE;
+    std::string occlusion = RE_NULLTEXTURE;
+    std::string emissive = RE_NULLTEXTURE;
+    std::string extra = RE_NULLTEXTURE;
+  } textures;
+
+  struct {
+    uint8_t baseColor = 0;
+    uint8_t normal = 0;
+    uint8_t metalRoughness = 0;
+    uint8_t occlusion = 0;
+    uint8_t emissive = 0;
+    uint8_t extra = 0;
+  } texCoordSets;
+
+  glm::vec4 F0 = {0.4f, 0.4f, 0.4f, 0.0f};  // basic metal
+  glm::vec4 baseColorFactor = {0.0f, 0.0f, 0.0f, 1.0f};
+  glm::vec4 emissiveFactor = {0.0f, 0.0f, 0.0f, 1.0f};
+  float metallicFactor = 1.0f;
+  float roughnessFactor = 1.0f;
+  float bumpIntensity = 1.0f;
+  float materialIntensity = 1.0f;
+
+  uint32_t effectFlags = 0;
+};
+
+// push constant block used by RMaterial
+struct RPushConstantBlock_Material {
+  glm::vec4 baseColorFactor;
+  glm::vec4 emissiveFactor;
+  int32_t baseColorTextureSet;
+  int32_t normalTextureSet;
+  int32_t metallicRoughnessTextureSet;
+  int32_t occlusionTextureSet;
+  int32_t emissiveTextureSet;
+  int32_t extraTextureSet;
+  float metallicFactor;
+  float roughnessFactor;
+  float alphaMode;
+  float alphaCutoff;
+  float bumpIntensity;
+  float materialIntensity;
 };
 
 struct RCameraSettings {
-  float aspectRatio = 16.0f / 9.0f;
-  float FOV = 90.0f;
-  float nearZ = 0.1f;
-  float farZ = 1000.0f;
-};
-
-struct WMeshData {
-  uint32_t id;
-  std::string name;
-  std::string material;
-  std::unique_ptr<class WMesh> pMesh;       // visible main mesh
-  std::unique_ptr<class WMesh> pAuxMesh;    // simpler mesh used for occlusion testing/collision etc.
-};
-
-struct WActorPtr {
-  class ABase* ptr = nullptr;
-  EAType type = EAType::BASE;
+  float aspectRatio = config::getAspectRatio();
+  float FOV = config::FOV;
+  float nearZ = RE_NEARZ;
+  float farZ = config::viewDistance;
 };
 
 // uniform buffer objects
 // 
 // view matrix UBO for vertex shader (model * view * projection)
-struct RSModelViewProjection {
+struct RModelViewProjectionUBO {
   alignas(16) glm::mat4 model = glm::mat4(1.0f);
   alignas(16) glm::mat4 view = glm::mat4(1.0f);
   alignas(16) glm::mat4 projection = glm::mat4(1.0f);
+};
+
+struct RLightingUBO {
+  glm::vec4 lightDir;
+  float exposure = 4.5f;
+  float gamma = 2.2f;
+  float prefilteredCubeMipLevels;
+  float scaleIBLAmbient = 1.0f;
+  float debugViewInputs = 0;
+  float debugViewEquation = 0;
 };
