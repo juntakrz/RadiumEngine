@@ -24,39 +24,55 @@ glm::mat4 WModel::Node::getMatrix() {
 
 WModel::Node::Node(WModel::Node* pParent, uint32_t index,
                    const std::string& name)
-    : pParentNode(pParent), index(index), name(name) {
+    : pParentNode(pParent), index(index), name(name) {}
+
+TResult WModel::Node::allocateMeshBuffer() {
+  if (!pMesh) {
+    RE_LOG(Error, "Failed to allocate mesh buffer - mesh was not created yet.");
+    return RE_ERROR;
+  }
+
   // prepare buffer and memory to store node transformation matrix
-  core::renderer.createBuffer(EBufferMode::CPU_UNIFORM,
-                              uniformBufferData.bufferSize,
-                              uniformBufferData.uniformBuffer, nullptr);
+  VkDeviceSize bufferSize = sizeof(RMeshUBO);
+  core::renderer.createBuffer(EBufferMode::CPU_UNIFORM, bufferSize,
+                              pMesh->uniformBufferData.uniformBuffer, nullptr);
+
+  return RE_OK;
+}
+
+void WModel::Node::destroyMeshBuffer() {
+  if (!pMesh) {
+    return;
+  }
+
+  vmaDestroyBuffer(core::renderer.memAlloc,
+                   pMesh->uniformBufferData.uniformBuffer.buffer,
+                   pMesh->uniformBufferData.uniformBuffer.allocation);
 }
 
 void WModel::Node::update() {
-  if (!pMesh) {
+  if (pMesh) {
     glm::mat4 matrix = getMatrix();
-    /*if (skin) {
-      mesh->uniformBlock.matrix = m;
-      // Update join matrices
-      glm::mat4 inverseTransform = glm::inverse(m);
-      size_t numJoints =
-          std::min((uint32_t)skin->joints.size(), MAX_NUM_JOINTS);
-      for (size_t i = 0; i < numJoints; i++) {
-        vkglTF::Node* jointNode = skin->joints[i];
-        glm::mat4 jointMat =
-            jointNode->getMatrix() * skin->inverseBindMatrices[i];
-        jointMat = inverseTransform * jointMat;
-        mesh->uniformBlock.jointMatrix[i] = jointMat;
-      }
-      mesh->uniformBlock.jointcount = (float)numJoints;
-      memcpy(mesh->uniformBuffer.mapped, &mesh->uniformBlock,
-             sizeof(mesh->uniformBlock));
-    } else {
-      memcpy(mesh->uniformBuffer.mapped, &m, sizeof(glm::mat4));
-    }*/
 
-    // store node matrix into a uniform buffer
-    memcpy(uniformBufferData.uniformBuffer.allocInfo.pMappedData, &matrix,
-           sizeof(glm::mat4));
+    if (pSkin) {
+      pMesh->uniformBlock.meshMatrix = matrix;
+      // Update join matrices
+      glm::mat4 inverseTransform = glm::inverse(matrix);
+      size_t numJoints = std::min((uint32_t)pSkin->joints.size(), RE_MAXJOINTS);
+      for (size_t i = 0; i < numJoints; i++) {
+        Node* pJointNode = pSkin->joints[i];
+        glm::mat4 jointMatrix =
+            pJointNode->getMatrix() * pSkin->inverseBindMatrices[i];
+        jointMatrix = inverseTransform * jointMatrix;
+        pMesh->uniformBlock.jointMatrix[i] = jointMatrix;
+      }
+      pMesh->uniformBlock.jointCount = (float)numJoints;
+      memcpy(pMesh->uniformBufferData.uniformBuffer.allocInfo.pMappedData,
+             &pMesh->uniformBlock, sizeof(pMesh->uniformBlock));
+    } else {
+      memcpy(pMesh->uniformBufferData.uniformBuffer.allocInfo.pMappedData,
+             &matrix, sizeof(glm::mat4));
+    }
   }
 
   for (auto& pChild : pChildren) {
@@ -113,7 +129,7 @@ void WModel::createNode(WModel::Node* pParentNode,
            gltfNode.name.c_str());
     return;
   }
-  
+
   pNode->skinIndex = gltfNode.skin;
   pNode->nodeMatrix = glm::mat4(1.0f);
 
@@ -147,6 +163,8 @@ void WModel::createNode(WModel::Node* pParentNode,
   if (gltfNode.mesh > -1) {
     const tinygltf::Mesh& gltfMesh = gltfModel.meshes[gltfNode.mesh];
     pNode->pMesh = std::make_unique<WModel::Mesh>();
+    // allocate buffer for UBO used for writing mesh transformation data
+    pNode->allocateMeshBuffer();
     WModel::Mesh* pMesh = pNode->pMesh.get();
 
     for (size_t j = 0; j < gltfMesh.primitives.size(); ++j) {
@@ -446,6 +464,7 @@ WModel::Node* WModel::createNode(WModel::Node* pParentNode, uint32_t nodeIndex,
   pNode->nodeMatrix = glm::mat4(1.0f);
 
   pNode->pMesh = std::make_unique<WModel::Mesh>();
+  pNode->allocateMeshBuffer();
 
   return pNode;
 }
@@ -614,14 +633,11 @@ void WModel::destroyNode(std::unique_ptr<WModel::Node>& pNode) {
       }
     }
 
+    pNode->destroyMeshBuffer();
     pNode->pChildren.clear();
     pNode->pMesh->pPrimitives.clear();
     pNode->pMesh.reset();
   }
-
-  vmaDestroyBuffer(core::renderer.memAlloc,
-                   pNode->uniformBufferData.uniformBuffer.buffer,
-                   pNode->uniformBufferData.uniformBuffer.allocation);
 
   pNode.reset();
 }

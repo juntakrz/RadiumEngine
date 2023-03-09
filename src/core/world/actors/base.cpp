@@ -72,15 +72,15 @@ void ABase::scale(const glm::vec3& delta) noexcept {
   m_transformationData.scaling *= delta * m_scalingModifier * core::time.getDeltaTime();
 }
 
-void ABase::setTranslationModifier(const float& newModifier) {
+void ABase::setTranslationModifier(float newModifier) {
   m_translationModifier = newModifier;
 }
 
-void ABase::setRotationModifier(const float& newModifier) {
+void ABase::setRotationModifier(float newModifier) {
   m_rotationModifier = newModifier;
 }
 
-void ABase::setScalingModifier(const float& newModifier) {
+void ABase::setScalingModifier(float newModifier) {
   m_scalingModifier = newModifier;
 }
 

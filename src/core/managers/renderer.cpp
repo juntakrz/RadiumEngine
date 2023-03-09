@@ -196,7 +196,7 @@ const VkDescriptorSet core::MRenderer::getDescriptorSet(
                              : system.descriptorSets[frameInFlight];
 }
 
-const uint32_t& core::MRenderer::getFrameInFlightIndex() {
+uint32_t core::MRenderer::getFrameInFlightIndex() {
   return system.idIFFrame;
 }
 
@@ -530,7 +530,7 @@ void core::MRenderer::destroyUniformBuffers() {
   }
 }
 
-void core::MRenderer::updateModelViewProjectionBuffers(uint32_t currentImage) {
+void core::MRenderer::updateModelViewProjectionUBOBuffers(uint32_t currentImage) {
   float time = core::time.getTimeSinceInitialization();
 
   // rewrite this and UpdateMVP method to use data from the current/provided camera
@@ -581,9 +581,10 @@ RModelViewProjectionUBO* core::MRenderer::getMVPview() {
   return &view.modelViewProjectionData;
 }
 
-RModelViewProjectionUBO* core::MRenderer::updateModelViewProjection(glm::mat4* pTransform) {
-  view.modelViewProjectionData = {glm::mat4(1.0f), view.pActiveCamera->getView(),
-          view.pActiveCamera->getProjection()};
+RModelViewProjectionUBO* core::MRenderer::updateModelViewProjectionUBO(glm::mat4* pTransform) {
+  view.modelViewProjectionData = {
+      glm::mat4(1.0f), view.pActiveCamera->getView(),
+      view.pActiveCamera->getProjection(), view.pActiveCamera->getLocation()};
 
   return &view.modelViewProjectionData;
 }

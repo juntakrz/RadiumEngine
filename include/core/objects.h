@@ -116,8 +116,6 @@ struct RVertex {
   glm::vec2 tex0;       // TEXCOORD0
   glm::vec2 tex1;       // TEXCOORD1
   glm::vec3 normal;     // NORMAL
-  glm::vec3 tangent;    // TANGENT
-  glm::vec3 binormal;   // BINORMAL
   glm::vec4 color;      // COLOR
   glm::vec4 joint;      // JOINT
   glm::vec4 weight;     // WEIGHT
@@ -203,16 +201,25 @@ struct RCameraSettings {
 
 // uniform buffer objects
 // 
-// view matrix UBO for vertex shader (model * view * projection)
+// camera and view matrix UBO for vertex shader
 struct RModelViewProjectionUBO {
   alignas(16) glm::mat4 model = glm::mat4(1.0f);
   alignas(16) glm::mat4 view = glm::mat4(1.0f);
   alignas(16) glm::mat4 projection = glm::mat4(1.0f);
+  alignas(16) glm::vec3 cameraPosition = glm::vec3(0.0f);
 };
 
+// mesh and joints transformation uniform buffer object
+struct RMeshUBO {
+  glm::mat4 meshMatrix = glm::mat4(1.0f);
+  glm::mat4 jointMatrix[RE_MAXJOINTS]{};
+  float jointCount = 0.0f;
+};
+
+// lighting data uniform buffer object
 struct RLightingUBO {
   glm::vec4 lightDir;
-  float exposure = 4.5f;
+  float exposure = 1.0f;      // 4.5f
   float gamma = 2.2f;
   float prefilteredCubeMipLevels;
   float scaleIBLAmbient = 1.0f;

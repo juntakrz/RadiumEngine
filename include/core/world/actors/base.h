@@ -77,9 +77,9 @@ class ABase {
 
   virtual void scale(const glm::vec3& delta) noexcept;
 
-  void setTranslationModifier(const float& newModifier);
-  void setRotationModifier(const float& newModifier);
-  void setScalingModifier(const float& newModifier);
+  void setTranslationModifier(float newModifier);
+  void setRotationModifier(float newModifier);
+  void setScalingModifier(float newModifier);
 
   const EActorType& typeId();
 };

@@ -117,7 +117,7 @@ namespace core {
     // returns descriptor set used by the current frame in flight by default
     const VkDescriptorSet getDescriptorSet(uint32_t frameInFlight = -1);
 
-    const uint32_t& getFrameInFlightIndex();
+    uint32_t getFrameInFlightIndex();
 
   private:
     TResult createDescriptorSetLayouts();
@@ -134,7 +134,7 @@ namespace core {
 
     TResult createUniformBuffers();
     void destroyUniformBuffers();
-    void updateModelViewProjectionBuffers(uint32_t currentImage);
+    void updateModelViewProjectionUBOBuffers(uint32_t currentImage);
 
     VkPipelineShaderStageCreateInfo loadShader(const char* path,
                                                VkShaderStageFlagBits stage);
@@ -144,7 +144,7 @@ namespace core {
     RModelViewProjectionUBO* getMVPview();
 
     // creates MVP matrices using currently active camera and model transform
-    RModelViewProjectionUBO* updateModelViewProjection(glm::mat4* pTransform);
+    RModelViewProjectionUBO* updateModelViewProjectionUBO(glm::mat4* pTransform);
 
     TResult checkInstanceValidationLayers();
     std::vector<const char*> getRequiredInstanceExtensions();

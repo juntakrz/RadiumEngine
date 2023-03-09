@@ -73,12 +73,12 @@ class WPrimitiveGen_Sphere {
   }
 
   template <class V>
-  static WPrimitiveData<V> create(const uint16_t divisions) {
-    return Create<V>(divisions, false);
+  static WPrimitiveData<V> create(uint16_t divisions) {
+    return create<V>(divisions, false);
   }
 
   template <class V>
   static WPrimitiveData<V> create() {
-    return Create<V>(32, false);
+    return create<V>(32, false);
   }
 };

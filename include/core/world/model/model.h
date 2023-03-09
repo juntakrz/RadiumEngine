@@ -10,11 +10,27 @@ class Node;
 
 class WModel {
   friend class core::MWorld;
+  struct Node;
+
+  struct Skin {
+    std::string name;
+    Node* skeletonRoot = nullptr;
+    std::vector<glm::mat4> inverseBindMatrices;
+    std::vector<Node*> joints;
+  };
 
   struct Mesh {
-    glm::mat4 meshMatrix = glm::mat4(1.0f);
     std::vector<std::unique_ptr<WPrimitive>> pPrimitives;
     std::vector<std::unique_ptr<WPrimitive>> pBoundingBoxes;
+
+    // stores mesh and joints transformation matrices
+    RMeshUBO uniformBlock;
+
+    struct {
+      RBuffer uniformBuffer;
+      VkDescriptorBufferInfo descriptorBufferInfo{};
+      VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
+    } uniformBufferData;
 
     struct {
       glm::vec3 min = glm::vec3(0.0f);
@@ -38,21 +54,13 @@ class WModel {
 
     // node contents
     std::unique_ptr<Mesh> pMesh;
-
+    std::unique_ptr<Skin> pSkin;
+    
+    // node transformations
     glm::mat4 nodeMatrix = glm::mat4(1.0f);
-    glm::mat4 jointMatrix = glm::mat4(1.0f);
-    float jointCount = 0.0f;
-
     glm::vec3 translation = glm::vec3(0.0f);
     glm::quat rotation = glm::quat(glm::vec3(0.0f));
     glm::vec3 scale = glm::vec3(1.0f);
-
-    struct {
-      RBuffer uniformBuffer;
-      static const uint32_t bufferSize = sizeof(glm::mat4) * 2u + sizeof(float);
-      VkDescriptorBufferInfo descriptorBufferInfo{};
-      VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
-    } uniformBufferData;
 
     // transform matrix only for this node
     glm::mat4 getLocalMatrix();
@@ -61,6 +69,10 @@ class WModel {
     glm::mat4 getMatrix();
 
     Node(WModel::Node* pParentNode, uint32_t index, const std::string& name);
+
+    // allocate uniform buffer for writing transformation data
+    TResult allocateMeshBuffer();
+    void destroyMeshBuffer();
 
     // update transform matrices of this node and its children
     void update();
@@ -106,8 +118,8 @@ class WModel {
   // model creation / generation methods are accessible from the World manager
 
  public:
-  const uint32_t& getVertexCount() { return m_vertexCount; }
-  const uint32_t& getIndexCount() { return m_indexCount; }
+  uint32_t getVertexCount() { return m_vertexCount; }
+  uint32_t getIndexCount() { return m_indexCount; }
   const std::vector<WPrimitive*>& getPrimitives();
   std::vector<uint32_t>& getPrimitiveBindsIndex();
 

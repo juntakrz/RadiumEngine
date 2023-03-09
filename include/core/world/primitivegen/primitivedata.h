@@ -20,8 +20,8 @@ class WPrimitiveData {
       const DirectX::XMVECTOR pos = DirectX::XMLoadFloat3(&v.pos);
       DirectX::XMStoreFloat3(&v.pos, DirectX::XMVector3Transform(pos, matrix));
     }
-  }
-
+  }*/
+  /*
   void SetTangentBinormalNormal() noexcept {
     if (indices.size() % 3 != 0 || indices.size() < 3) {
       return;
@@ -86,8 +86,8 @@ class WPrimitiveData {
 
       SetNormals();
     }
-  }
-
+  }*/
+  /*
   void SetNormalsTri() noexcept {
     // ASSERT(indices.size() % 3 == 0 && indices.size() > 2);
     if (indices.size() % 3 != 0 || indices.size() < 3) {
@@ -112,13 +112,11 @@ class WPrimitiveData {
       DirectX::XMStoreFloat3(&vertex1.n, normal);
       DirectX::XMStoreFloat3(&vertex2.n, normal);
     }
-  }
+  }*/
 
-  void SetNormals() noexcept {
+  void setNormals() noexcept {
     for (auto& it : vertices) {
       it.n = it.pos;
     }
   }
-
-  */
 };

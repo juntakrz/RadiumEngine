@@ -25,9 +25,9 @@ namespace core {
     MWindow& operator=(const MWindow&) = delete;
 
     // create window with appropriate parameters
-    TResult createWindow(const uint32_t& width, const uint32_t& height,
-      const char* title, GLFWmonitor* pMonitor = nullptr,
-      GLFWwindow* pShare = nullptr);
+    TResult createWindow(uint32_t width, uint32_t height, const char* title,
+                         GLFWmonitor* pMonitor = nullptr,
+                         GLFWwindow* pShare = nullptr);
 
     // destroy provided window, destroy main one if no pointer is provided
     TResult destroyWindow(GLFWwindow* pOtherWindow = nullptr);
