@@ -26,14 +26,17 @@ void ABase::translate(const glm::vec3& delta) noexcept {
 
 void ABase::setRotation(const glm::vec3& delta) noexcept {
   m_transformationData.rotation = glm::quat(delta);
+  m_transformationData.initial.rotation = m_transformationData.rotation;
 }
 
 void ABase::setRotation(const glm::vec3& vector, float angle) noexcept {
   m_transformationData.rotation = glm::quat(angle, vector);
+  m_transformationData.initial.rotation = m_transformationData.rotation;
 }
 
 void ABase::setRotation(const glm::quat& newRotation) noexcept {
   m_transformationData.rotation = newRotation;
+  m_transformationData.initial.rotation = m_transformationData.rotation;
 }
 
 glm::quat& ABase::getRotation() noexcept {

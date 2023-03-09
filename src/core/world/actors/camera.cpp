@@ -34,6 +34,16 @@ void ACamera::translate(const glm::vec3& delta) noexcept {
       moveDirection * m_translationModifier * core::time.getDeltaTime();
 }
 
+void ACamera::setRotation(const glm::vec3& newRotation) noexcept {
+  m_pitch = newRotation.x < -config::pitchLimit  ? -config::pitchLimit
+            : newRotation.x > config::pitchLimit ? config::pitchLimit
+                                                 : newRotation.x;
+
+  m_transformationData.initial.rotation =
+      glm::quat(glm::vec3(m_pitch, newRotation.y, newRotation.z));
+  m_transformationData.rotation = m_transformationData.initial.rotation;
+}
+
 void ACamera::rotate(const glm::vec3& vector, float angle) noexcept {
   // when rotating around an axis similar to camera's up vector a pre-multiplication must be done
   // e.g. rotation = modifier * rotation
@@ -47,18 +57,17 @@ void ACamera::rotate(const glm::vec3& vector, float angle) noexcept {
       break;
     }
     case 0: {
-      float pitch = glm::pitch(m_transformationData.rotation) + realAngle;
-      RE_LOG(Log, "raw pitch %.3f", pitch);
-      pitch = pitch + glm::pi<float>();
-      pitch = glm::mod(pitch, glm::pi<float>());
-      RE_LOG(Log, "corrected = %.3f", pitch);
+      float newPitch = m_pitch + realAngle;
 
-      if (pitch > config::pitchLimit) {
+      if (newPitch < -config::pitchLimit) {
         break;
       }
-      if (pitch < -config::pitchLimit) {
+
+      if (newPitch > config::pitchLimit) {
         break;
       }
+
+      m_pitch = newPitch;
     }
     default: {
       m_transformationData.rotation *= glm::angleAxis(realAngle, vector);

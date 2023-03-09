@@ -17,8 +17,17 @@ class ACamera : public ABase {
 
   glm::mat4 m_view;        // view matrix
   glm::mat4 m_projection;  // projection matrix
+  float m_pitch = 0.0f;
+  float m_yaw = 0.0f;
 
-  // view mode - lookAt object or lookTo direction
+ private:
+   // uses pitch limit set in config.h
+   template<typename T>
+  T clampCameraPitch(T pitch) {
+    return pitch < -config::pitchLimit  ? -config::pitchLimit
+           : pitch > config::pitchLimit ? config::pitchLimit
+                                        : pitch;
+  }
 
  public:
   ACamera() noexcept {};
@@ -42,5 +51,6 @@ class ACamera : public ABase {
 
   virtual void translate(const glm::vec3& delta) noexcept override;
 
+  virtual void setRotation(const glm::vec3& newRotation) noexcept override;
   virtual void rotate(const glm::vec3& vector, float angle) noexcept override;
 };
