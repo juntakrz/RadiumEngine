@@ -53,7 +53,7 @@ void core::run() {
   //core::world.loadModelFromFile("content/models/box/BoxTextured.gltf",
     //                                 "mdlTest");
 
-  core::world.loadModelFromFile("content/models/drone/scene.gltf",
+  core::world.loadModelFromFile("content/models/wc3guy/scene.gltf",
                                 "mdlTest");
 
   WModel* pTestModel = core::world.getModel("mdlTest");

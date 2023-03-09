@@ -78,7 +78,7 @@ class WModel {
 
     // node contents
     std::unique_ptr<Mesh> pMesh;
-    std::unique_ptr<Skin> pSkin;
+    Skin* pSkin = nullptr;
     
     // node transformations
     glm::mat4 nodeMatrix = glm::mat4(1.0f);
@@ -124,7 +124,7 @@ class WModel {
   std::vector<Animation> m_animations;
 
   // stored skins
-  std::vector<std::unique_ptr<Skin>> m_skins;
+  std::vector<std::unique_ptr<Skin>> m_pSkins;
 
  private:
   void parseNodeProperties(const tinygltf::Model& gltfModel,

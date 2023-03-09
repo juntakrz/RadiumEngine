@@ -28,13 +28,13 @@ void main(){
 	if (node.jointCount > 0.0) {
 		// Mesh is skinned
 		mat4 skinMat = 
-			inWeight0.x * node.jointMatrix[int(inJoint0.x)] +
-			inWeight0.y * node.jointMatrix[int(inJoint0.y)] +
-			inWeight0.z * node.jointMatrix[int(inJoint0.z)] +
-			inWeight0.w * node.jointMatrix[int(inJoint0.w)];
+			inWeight0.x * node.jointMatrix[int(inJoint.x)] +
+			inWeight0.y * node.jointMatrix[int(inJoint.y)] +
+			inWeight0.z * node.jointMatrix[int(inJoint.z)] +
+			inWeight0.w * node.jointMatrix[int(inJoint.w)];
 
-		locPos = ubo.model * node.matrix * skinMat * vec4(inPos, 1.0);
-		outNormal = normalize(transpose(inverse(mat3(ubo.model * node.matrix * skinMat))) * inNormal);
+		locPos = ubo.model * node.matrix * skinMatrix * vec4(inPos, 1.0);
+		outNormal = normalize(transpose(inverse(mat3(ubo.model * node.matrix * skinMatrix))) * inNormal);
 	} else {
 		locPos = ubo.model * node.matrix * vec4(inPos, 1.0);
 		outNormal = normalize(transpose(inverse(mat3(ubo.model * node.matrix))) * inNormal);

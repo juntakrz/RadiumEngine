@@ -127,12 +127,23 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
     tinygltf::Node& gltfNode = gltfModel.nodes[gltfScene.nodes[n]];
     pModel->createNode(nullptr, gltfModel, gltfNode, gltfScene.nodes[n]);
   }
-
+  
   if (gltfModel.animations.size() > 0) {
     pModel->loadAnimations(gltfModel);
   }
   pModel->loadSkins(gltfModel);
 
+  for (auto node : pModel->m_pLinearNodes) {
+    // Assign skins
+    if (node->skinIndex > -1) {
+      node->pSkin = pModel->m_pSkins[node->skinIndex].get();
+    }
+    // Initial pose
+    if (node->pMesh) {
+      node->update();
+    }
+  }
+  
   return RE_OK;
 }
 

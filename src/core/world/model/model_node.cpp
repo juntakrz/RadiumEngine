@@ -452,54 +452,6 @@ WModel::Node* WModel::getNode(uint32_t index) noexcept {
   return nullptr;
 }
 
-void WModel::setTextureSamplers(const tinygltf::Model& gltfModel) {
-  auto getVkFilter = [](const int& filterMode) {
-    switch (filterMode) {
-      case -1:
-      case 9728:
-      case 9984:
-      case 9985:
-        return VK_FILTER_NEAREST;
-      case 9729:
-      case 9986:
-      case 9987:
-        return VK_FILTER_LINEAR;
-    }
-    RE_LOG(Warning,
-           "Unknown filter mode %d for getVkFilter. Using VK_FILTER_NEAREST.",
-           filterMode);
-    return VK_FILTER_NEAREST;
-  };
-
-  auto getVkAddressMode = [](const int& addressMode) {
-    switch (addressMode) {
-      case -1:
-      case 10497:
-        return VK_SAMPLER_ADDRESS_MODE_REPEAT;
-      case 33071:
-        return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-      case 33648:
-        return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
-    }
-
-    RE_LOG(Warning,
-           "Unknown wrap mode %d for getVkAddressMode. Using "
-           "VK_SAMPLER_ADDRESS_MODE_REPEAT.",
-           addressMode);
-    return VK_SAMPLER_ADDRESS_MODE_REPEAT;
-  };
-
-  for (const auto& it : gltfModel.samplers) {
-    m_textureSamplers.emplace_back();
-    auto& sampler = m_textureSamplers.back();
-    sampler.minFilter = getVkFilter(it.minFilter);
-    sampler.magFilter = getVkFilter(it.magFilter);
-    sampler.addressModeU = getVkAddressMode(it.wrapS);
-    sampler.addressModeV = getVkAddressMode(it.wrapT);
-    sampler.addressModeW = sampler.addressModeV;
-  }
-}
-
 void WModel::destroyNode(std::unique_ptr<WModel::Node>& pNode) {
   if (!pNode->pChildren.empty()) {
     for (auto& pChildNode : pNode->pChildren) {

@@ -5,6 +5,54 @@
 
 #include "tiny_gltf.h"
 
+void WModel::setTextureSamplers(const tinygltf::Model& gltfModel) {
+  auto getVkFilter = [](const int& filterMode) {
+    switch (filterMode) {
+      case -1:
+      case 9728:
+      case 9984:
+      case 9985:
+        return VK_FILTER_NEAREST;
+      case 9729:
+      case 9986:
+      case 9987:
+        return VK_FILTER_LINEAR;
+    }
+    RE_LOG(Warning,
+           "Unknown filter mode %d for getVkFilter. Using VK_FILTER_NEAREST.",
+           filterMode);
+    return VK_FILTER_NEAREST;
+  };
+
+  auto getVkAddressMode = [](const int& addressMode) {
+    switch (addressMode) {
+      case -1:
+      case 10497:
+        return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+      case 33071:
+        return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+      case 33648:
+        return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+    }
+
+    RE_LOG(Warning,
+           "Unknown wrap mode %d for getVkAddressMode. Using "
+           "VK_SAMPLER_ADDRESS_MODE_REPEAT.",
+           addressMode);
+    return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  };
+
+  for (const auto& it : gltfModel.samplers) {
+    m_textureSamplers.emplace_back();
+    auto& sampler = m_textureSamplers.back();
+    sampler.minFilter = getVkFilter(it.minFilter);
+    sampler.magFilter = getVkFilter(it.magFilter);
+    sampler.addressModeU = getVkAddressMode(it.wrapS);
+    sampler.addressModeV = getVkAddressMode(it.wrapT);
+    sampler.addressModeW = sampler.addressModeV;
+  }
+}
+
 void WModel::parseMaterials(const tinygltf::Model& gltfModel,
                             const std::vector<std::string>& texturePaths) {
 
@@ -223,8 +271,8 @@ void WModel::loadAnimations(const tinygltf::Model& gltfModel) {
 
 void WModel::loadSkins(const tinygltf::Model& gltfModel) {
   for (const tinygltf::Skin& source : gltfModel.skins) {
-    m_skins.emplace_back(std::make_unique<Skin>());
-    Skin* pSkin = m_skins.back().get();
+    m_pSkins.emplace_back(std::make_unique<Skin>());
+    Skin* pSkin = m_pSkins.back().get();
     pSkin->name = source.name;
 
     // Find skeleton root node
@@ -236,7 +284,7 @@ void WModel::loadSkins(const tinygltf::Model& gltfModel) {
     for (int jointIndex : source.joints) {
       Node* pNode = getNode(jointIndex);
       if (pNode) {
-        pSkin->joints.emplace_back(getNode(jointIndex));
+        pSkin->joints.emplace_back(pNode);
       }
     }
 
@@ -252,8 +300,6 @@ void WModel::loadSkins(const tinygltf::Model& gltfModel) {
              &buffer.data[accessor.byteOffset + bufferView.byteOffset],
              accessor.count * sizeof(glm::mat4));
     }
-
-    m_skins.emplace_back(pSkin);
   }
 }
 
@@ -287,6 +333,11 @@ TResult WModel::clean() {
   for (auto& node : m_pChildNodes) {
     destroyNode(node);
   }
+
+  for (auto& skin : m_pSkins) {
+    skin.reset();
+  }
+  m_pSkins.clear();
 
   m_pChildNodes.clear();
   m_pLinearNodes.clear();
