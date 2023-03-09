@@ -12,6 +12,30 @@ class WModel {
   friend class core::MWorld;
   struct Node;
 
+  // animation data structures
+  struct AnimationChannel {
+    enum PathType { TRANSLATION, ROTATION, SCALE };
+    PathType path;
+    Node* node;
+    uint32_t samplerIndex;
+  };
+
+  struct AnimationSampler {
+    enum InterpolationType { LINEAR, STEP, CUBICSPLINE };
+    InterpolationType interpolation;
+    std::vector<float> inputs;
+    std::vector<glm::vec4> outputsVec4;
+  };
+
+  struct Animation {
+    std::string name;
+    std::vector<AnimationSampler> samplers;
+    std::vector<AnimationChannel> channels;
+    float start = std::numeric_limits<float>::max();
+    float end = std::numeric_limits<float>::min();
+  };
+
+  // model data structures
   struct Skin {
     std::string name;
     Node* skeletonRoot = nullptr;
@@ -93,7 +117,14 @@ class WModel {
   // texture samplers used by this model
   std::vector<RSamplerInfo> m_textureSamplers;
 
+  // used materials, for glTF they have the same index as a model
   std::vector<std::string> m_materialList;
+
+  // stored animations (perhaps animations manager is needed?)
+  std::vector<Animation> m_animations;
+
+  // stored skins
+  std::vector<std::unique_ptr<Skin>> m_skins;
 
  private:
   void parseNodeProperties(const tinygltf::Model& gltfModel,
@@ -106,16 +137,20 @@ class WModel {
   WModel::Node* createNode(WModel::Node* pParentNode, uint32_t nodeIndex,
                            std::string nodeName);
 
+  WModel::Node* getNode(uint32_t index) noexcept;
+
+  // will destroy this node and its children incl. mesh and primitive contents
+  void destroyNode(std::unique_ptr<WModel::Node>& pNode);
+
   void setTextureSamplers(const tinygltf::Model& gltfModel);
 
   // returned vector index corresponds to primitive material index of glTF
   void parseMaterials(const tinygltf::Model& gltfModel,
                       const std::vector<std::string>& texturePaths);
 
-  // will destroy this node and its children incl. mesh and primitive contents
-  void destroyNode(std::unique_ptr<WModel::Node>& pNode);
+  void loadAnimations(const tinygltf::Model& gltfModel);
 
-  // model creation / generation methods are accessible from the World manager
+  void loadSkins(const tinygltf::Model& gltfModel);
 
  public:
   uint32_t getVertexCount() { return m_vertexCount; }

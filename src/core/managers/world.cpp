@@ -128,11 +128,10 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
     pModel->createNode(nullptr, gltfModel, gltfNode, gltfScene.nodes[n]);
   }
 
-  /*
   if (gltfModel.animations.size() > 0) {
-    loadAnimations(gltfModel);
+    pModel->loadAnimations(gltfModel);
   }
-  loadSkins(gltfModel);*/
+  pModel->loadSkins(gltfModel);
 
   return RE_OK;
 }
