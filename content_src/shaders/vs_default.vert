@@ -29,8 +29,6 @@ layout(location = 3) out vec2 outTexCoord1;
 layout(location = 4) out vec4 outColor0;
 
 void main(){
-	outColor0 = inColor0;
-
 	vec4 locPos;
 	if (node.jointCount > 0.0) {
 		// Mesh is skinned
@@ -47,9 +45,10 @@ void main(){
 		outNormal = normalize(transpose(inverse(mat3(ubo.model * node.matrix))) * inNormal);
 	}
 
-	locPos.y = -locPos.y;
+	//locPos.y = -locPos.y;
 	outWorldPos = locPos.xyz / locPos.w;
 	outTexCoord0 = inTexCoord0;
 	outTexCoord1 = inTexCoord1;
+	outColor0 = inColor0;
 	gl_Position =  ubo.projection * ubo.view * vec4(outWorldPos, 1.0);
 }

@@ -147,11 +147,11 @@ struct RMaterialInfo {
 
   struct {
     std::string baseColor = RE_DEFAULTTEXTURE;
-    std::string normal = RE_NULLTEXTURE;
-    std::string metalRoughness = RE_NULLTEXTURE;
-    std::string occlusion = RE_NULLTEXTURE;
-    std::string emissive = RE_NULLTEXTURE;
-    std::string extra = RE_NULLTEXTURE;
+    std::string normal = RE_WHITETEXTURE;
+    std::string metalRoughness = RE_WHITETEXTURE;
+    std::string occlusion = RE_WHITETEXTURE;
+    std::string emissive = RE_BLACKTEXTURE;
+    std::string extra = RE_BLACKTEXTURE;
   } textures;
 
   struct {
@@ -164,7 +164,7 @@ struct RMaterialInfo {
   } texCoordSets;
 
   glm::vec4 F0 = {0.4f, 0.4f, 0.4f, 0.0f};  // basic metal
-  glm::vec4 baseColorFactor = {0.0f, 0.0f, 0.0f, 1.0f};
+  glm::vec4 baseColorFactor = {1.0f, 1.0f, 1.0f, 1.0f};
   glm::vec4 emissiveFactor = {0.0f, 0.0f, 0.0f, 1.0f};
   float metallicFactor = 1.0f;
   float roughnessFactor = 1.0f;
@@ -219,7 +219,7 @@ struct RMeshUBO {
 // lighting data uniform buffer object
 struct RLightingUBO {
   glm::vec4 lightDir;
-  float exposure = 1.0f;      // 4.5f
+  float exposure = 4.5f;
   float gamma = 2.2f;
   float prefilteredCubeMipLevels;
   float scaleIBLAmbient = 1.0f;

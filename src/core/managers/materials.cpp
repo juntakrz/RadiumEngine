@@ -16,8 +16,12 @@ void core::MMaterials::initialize() {
     RE_LOG(Error, "Failed to load default texture.");
   }
 
-  if (loadTexture(RE_NULLTEXTURE, &samplerInfo) != RE_OK) {
-    RE_LOG(Error, "Failed to load null texture.");
+  if (loadTexture(RE_BLACKTEXTURE, &samplerInfo) != RE_OK) {
+    RE_LOG(Error, "Failed to load default black texture.");
+  }
+
+  if (loadTexture(RE_WHITETEXTURE, &samplerInfo) != RE_OK) {
+    RE_LOG(Error, "Failed to load default white texture.");
   }
 }
 
@@ -117,7 +121,7 @@ void core::MMaterials::RMaterial::createDescriptorSet() {
     return;
   };
 
-  RTexture* pNullTexture = core::materials.getTexture(RE_NULLTEXTURE);
+  RTexture* pNullTexture = core::materials.getTexture(RE_WHITETEXTURE);
 
   if (!pNullTexture) {
     RE_LOG(Error,
