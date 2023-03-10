@@ -389,7 +389,7 @@ TResult core::MRenderer::createDescriptorSets() {
     VkDescriptorBufferInfo descriptorBufferInfoMVP;
     descriptorBufferInfoMVP.buffer = view.modelViewProjectionBuffers[i].buffer;
     descriptorBufferInfoMVP.offset = 0;
-    descriptorBufferInfoMVP.range = sizeof(RModelViewProjectionUBO);
+    descriptorBufferInfoMVP.range = sizeof(RWorldViewProjectionUBO);
 
     // lighting data for descriptor set
     VkDescriptorBufferInfo descriptorBufferInfoLighting;
@@ -507,7 +507,7 @@ TResult core::MRenderer::createUniformBuffers() {
   view.modelViewProjectionBuffers.resize(MAX_FRAMES_IN_FLIGHT);
   lighting.buffers.resize(MAX_FRAMES_IN_FLIGHT);
 
-  VkDeviceSize uboMVPSize = sizeof(RModelViewProjectionUBO);
+  VkDeviceSize uboMVPSize = sizeof(RWorldViewProjectionUBO);
   VkDeviceSize uboLightingSize = sizeof(RLightingUBO);
 
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
@@ -530,22 +530,23 @@ void core::MRenderer::destroyUniformBuffers() {
   }
 }
 
-void core::MRenderer::updateModelViewProjectionUBO(uint32_t currentImage) {
+void core::MRenderer::updateWorldViewProjectionUBO(uint32_t currentImage) {
   float time = core::time.getTimeSinceInitialization();
 
   // rewrite this and UpdateMVP method to use data from the current/provided camera
-  view.modelViewProjectionData.model = glm::mat4(1.0f);
-  view.modelViewProjectionData.view = view.pActiveCamera->getView();
-  view.modelViewProjectionData.projection = view.pActiveCamera->getProjection();
-  view.modelViewProjectionData.cameraPosition =
+  view.worldViewProjectionData.world = glm::mat4(1.0f);
+  view.worldViewProjectionData.view = view.pActiveCamera->getView();
+  view.worldViewProjectionData.projection = view.pActiveCamera->getProjection();
+  view.worldViewProjectionData.cameraPosition =
       view.pActiveCamera->getLocation();
 
-  view.modelViewProjectionData.model[0][0] = 0.5f;
-  view.modelViewProjectionData.model[1][1] = 0.5f;
-  view.modelViewProjectionData.model[2][2] = 0.5f;
+  // scale every object instead of this
+  view.worldViewProjectionData.world[0][0] = 0.5f;
+  view.worldViewProjectionData.world[1][1] = 0.5f;
+  view.worldViewProjectionData.world[2][2] = 0.5f;
 
   memcpy(view.modelViewProjectionBuffers[currentImage].allocInfo.pMappedData,
-         &view.modelViewProjectionData, sizeof(RModelViewProjectionUBO));
+         &view.worldViewProjectionData, sizeof(RWorldViewProjectionUBO));
 }
 
 VkPipelineShaderStageCreateInfo core::MRenderer::loadShader(
@@ -580,16 +581,16 @@ VkShaderModule core::MRenderer::createShaderModule(
   return shaderModule;
 }
 
-RModelViewProjectionUBO* core::MRenderer::getMVPview() {
-  return &view.modelViewProjectionData;
+RWorldViewProjectionUBO* core::MRenderer::getMVPview() {
+  return &view.worldViewProjectionData;
 }
 
-RModelViewProjectionUBO* core::MRenderer::updateModelViewProjectionUBO(glm::mat4* pTransform) {
-  view.modelViewProjectionData = {
+RWorldViewProjectionUBO* core::MRenderer::updateWorldViewProjectionUBO(glm::mat4* pTransform) {
+  view.worldViewProjectionData = {
       glm::mat4(1.0f), view.pActiveCamera->getView(),
       view.pActiveCamera->getProjection(), view.pActiveCamera->getLocation()};
 
-  return &view.modelViewProjectionData;
+  return &view.worldViewProjectionData;
 }
 
 TResult core::MRenderer::checkInstanceValidationLayers() {

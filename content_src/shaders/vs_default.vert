@@ -2,11 +2,11 @@
 #define RE_MAXJOINTS 128
 
 layout(binding = 0) uniform UBOView {
-	mat4 model;
+	mat4 world;
 	mat4 view;
 	mat4 projection;
 	vec3 cameraPos;
-} ubo;
+} scene;
 
 layout (set = 2, binding = 0) uniform UBONode {
 	mat4 matrix;
@@ -29,26 +29,25 @@ layout(location = 3) out vec2 outTexCoord1;
 layout(location = 4) out vec4 outColor0;
 
 void main(){
-	vec4 locPos;
+	vec4 worldPos;
+
 	if (node.jointCount > 0.0) {
-		// Mesh is skinned
 		mat4 skinMatrix = 
 			inWeight.x * node.jointMatrix[int(inJoint.x)] +
 			inWeight.y * node.jointMatrix[int(inJoint.y)] +
 			inWeight.z * node.jointMatrix[int(inJoint.z)] +
 			inWeight.w * node.jointMatrix[int(inJoint.w)];
 
-		locPos = ubo.model * node.matrix * skinMatrix * vec4(inPos, 1.0);
-		outNormal = normalize(transpose(inverse(mat3(ubo.model * node.matrix * skinMatrix))) * inNormal);
+		worldPos = scene.world * node.matrix * skinMatrix * vec4(inPos, 1.0);
+		outNormal = normalize(transpose(inverse(mat3(scene.world * node.matrix * skinMatrix))) * inNormal);
 	} else {
-		locPos = ubo.model * node.matrix * vec4(inPos, 1.0);
-		outNormal = normalize(transpose(inverse(mat3(ubo.model * node.matrix))) * inNormal);
+		worldPos = scene.world * node.matrix * vec4(inPos, 1.0);
+		outNormal = normalize(transpose(inverse(mat3(scene.world * node.matrix))) * inNormal);
 	}
 
-	//locPos.y = -locPos.y;
-	outWorldPos = locPos.xyz / locPos.w;
+	outWorldPos = worldPos.xyz / worldPos.w;
 	outTexCoord0 = inTexCoord0;
 	outTexCoord1 = inTexCoord1;
 	outColor0 = inColor0;
-	gl_Position =  ubo.projection * ubo.view * vec4(outWorldPos, 1.0);
+	gl_Position =  scene.projection * scene.view * vec4(outWorldPos, 1.0);
 }

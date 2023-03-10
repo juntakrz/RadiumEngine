@@ -565,7 +565,7 @@ TResult core::MRenderer::drawFrame() {
   core::time.tickTimer();
 
   // update MVP buffers
-  updateModelViewProjectionUBO(system.idIFFrame);
+  updateWorldViewProjectionUBO(system.idIFFrame);
 
   // reset fences if we will do any work this frame e.g. no swap chain
   // recreation

@@ -202,8 +202,8 @@ struct RCameraSettings {
 // uniform buffer objects
 // 
 // camera and view matrix UBO for vertex shader
-struct RModelViewProjectionUBO {
-  alignas(16) glm::mat4 model = glm::mat4(1.0f);
+struct RWorldViewProjectionUBO {
+  alignas(16) glm::mat4 world = glm::mat4(1.0f);
   alignas(16) glm::mat4 view = glm::mat4(1.0f);
   alignas(16) glm::mat4 projection = glm::mat4(1.0f);
   alignas(16) glm::vec3 cameraPosition = glm::vec3(0.0f);
