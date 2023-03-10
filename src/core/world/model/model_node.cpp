@@ -153,7 +153,7 @@ void WModel::Node::renderNode(VkCommandBuffer cmdBuffer, EAlphaMode alphaMode) {
 
         vkCmdPushConstants(cmdBuffer, core::renderer.getWorldPipelineLayout(),
                            VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-                           sizeof(RPushConstantBlock_Material),
+                           sizeof(RMaterialPCB),
                            &primitive->pMaterial->pushConstantBlock);
 
         vkCmdDrawIndexed(cmdBuffer, primitive->indexCount, 1, 0, 0, 0);

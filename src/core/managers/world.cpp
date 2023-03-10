@@ -152,6 +152,7 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
 
 TResult core::MWorld::createModel(EWPrimitive type, std::string name,
                                   int32_t arg0, int32_t arg1) {
+  using RMaterial = core::MMaterials::RMaterial;
   auto fValidateNode = [&](WModel::Node* pNode) {
     if (pNode->pMesh == nullptr) {
       RE_LOG(Error, "Node validation failed for \"%s\", model: \"%s\".",
@@ -210,6 +211,20 @@ TResult core::MWorld::createModel(EWPrimitive type, std::string name,
     default: {
       break;
     }
+  }
+
+  // assign default material to the model
+  RMaterialInfo defaultMaterialInfo{};
+  RMaterial* pDefaultMaterial =
+      core::materials.createMaterial(&defaultMaterialInfo);
+
+  for (auto& primitive : pModel->getPrimitives()) {
+    primitive->pMaterial = pDefaultMaterial;
+  }
+
+  for (auto& node : pModel->getRootNodes()) {
+    node->setNodeDescriptorSet(true);
+    node->updateNode();
   }
 
   return RE_OK;

@@ -211,7 +211,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
   VkPushConstantRange materialPushConstRange{};
   materialPushConstRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
   materialPushConstRange.offset = 0;
-  materialPushConstRange.size = sizeof(RPushConstantBlock_Material);
+  materialPushConstRange.size = sizeof(RMaterialPCB);
 
   // pipeline layout for 3D world
   std::vector<VkDescriptorSetLayout> descriptorSetLayouts{

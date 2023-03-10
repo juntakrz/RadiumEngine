@@ -48,17 +48,17 @@ void core::run() {
   APawn* pPawn = core::actors.getPawn("sphere0");
   pPawn->setModel(pModel);
 
-  //core::renderer.bindPrimitive(pModel->getPrimitives(), pModel->getPrimitiveBindsIndex());
+  //core::renderer.bindModel(pModel);
 
   //core::world.loadModelFromFile("content/models/box/BoxTextured.gltf",
-    //                                 "mdlTest");
-
-  core::world.loadModelFromFile("content/models/test/scene.gltf",
+       //                            "mdlTest");
+  
+  core::world.loadModelFromFile("content/models/drone/scene.gltf",
                                 "mdlTest");
 
   WModel* pTestModel = core::world.getModel("mdlTest");
   core::renderer.bindModel(pTestModel);
-  // ----------------------------
+  // ---------------------------- */
 
   RE_LOG(Log, "Launching main event loop.");
 

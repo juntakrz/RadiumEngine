@@ -15,6 +15,9 @@ namespace core {
 class MMaterials {
   friend class ::WPrimitive;
 
+ public:
+  struct RMaterial;
+
  private:
 
   // if texture is loaded using KTX library - VMA allocations are not used
@@ -35,24 +38,25 @@ class MMaterials {
     ~RTexture();
   };
 
+  std::unordered_map<std::string, std::unique_ptr<RMaterial>> m_materials;
+  std::unordered_map<std::string, RTexture> m_textures;
+
+ public:
   struct RMaterial {
     std::string name;
     bool doubleSided = false;
     EAlphaMode alphaMode;
 
     std::string shaderVertex, shaderPixel, shaderGeometry;
-    RTexture* pBaseColor        = nullptr;
-    RTexture* pNormal           = nullptr;
-    RTexture* pMetalRoughness   = nullptr;
-    RTexture* pOcclusion        = nullptr;
-    RTexture* pEmissive         = nullptr;
-    RTexture* pExtra            = nullptr;
+    RTexture* pBaseColor = nullptr;
+    RTexture* pNormal = nullptr;
+    RTexture* pMetalRoughness = nullptr;
+    RTexture* pOcclusion = nullptr;
+    RTexture* pEmissive = nullptr;
+    RTexture* pExtra = nullptr;
 
-    RPushConstantBlock_Material pushConstantBlock;
+    RMaterialPCB pushConstantBlock;
     VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
-    
-    // OBSOLETE
-    glm::vec4 F0;
 
     // add effects using bitwise ops
     uint32_t effectFlags;
@@ -64,9 +68,6 @@ class MMaterials {
 
     void createDescriptorSet();
   };
-
-  std::unordered_map<std::string, std::unique_ptr<RMaterial>> m_materials;
-  std::unordered_map<std::string, RTexture> m_textures;
 
  private:
   MMaterials();

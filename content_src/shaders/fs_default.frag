@@ -13,6 +13,8 @@ layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inTexCoord0;
 layout(location = 3) in vec2 inTexCoord1;
 layout(location = 4) in vec4 inColor0;
+layout(location = 5) in vec3 inT;
+layout(location = 6) in vec3 inB;
 
 layout (set = 0, binding = 0) uniform UBOView {
 	mat4 projection;
@@ -22,18 +24,17 @@ layout (set = 0, binding = 0) uniform UBOView {
 } scene;
 
 layout (set = 0, binding = 1) uniform UBOLighting {
-	vec4 lightDir;
+	vec4 dirLightPos;
 	float exposure;
 	float gamma;
 	float prefilteredCubeMipLevels;
 	float scaleIBLAmbient;
-	float debugViewInputs;
-	float debugViewEquation;
 } lighting;
 
-layout (push_constant) uniform MaterialData {
+layout (push_constant) uniform materialData {
 	vec4 baseColorFactor;
 	vec4 emissiveFactor;
+	vec4 f0;
 	int baseColorTextureSet;
 	int physicalDescriptorTextureSet;
 	int normalTextureSet;	
@@ -74,7 +75,8 @@ vec4 tonemap(vec4 color) {
 // or from the interpolated mesh normal and tangent attributes.
 vec3 getNormal() {
 	// Perturb normal, see http://www.thetenthplanet.de/archives/1180
-	vec3 tangentNormal = texture(normalMap, material.normalTextureSet == 0 ? inTexCoord0 : inTexCoord1).xyz; // * 2.0 - 1.0;
+	//vec3 tangentNormal = texture(normalMap, material.normalTextureSet == 0 ? inTexCoord0 : inTexCoord1).xyz * 2.0 - 1.0;
+	vec3 tangentNormal = texture(normalMap, inTexCoord0).xyz * 2.0 - 1.0;
 
 	vec3 q1 = dFdx(inWorldPos);
 	vec3 q2 = dFdy(inWorldPos);
@@ -84,7 +86,8 @@ vec3 getNormal() {
 	vec3 N = normalize(inNormal);
 	vec3 T = normalize(q1 * st2.t - q2 * st1.t);
 	vec3 B = -normalize(cross(N, T));
-	mat3 TBN = mat3(T, B, N);
+
+	mat3 TBN = mat3(inT, inB, N);
 
 	return normalize(TBN * tangentNormal);
 }
@@ -119,15 +122,19 @@ float microfacetDistribution(float NdotH, float alphaRoughness) {
 	return r2 / (M_PI * f * f);
 }
 
+vec3 fresnelSchlick(float cosTheta, vec3 F0)
+{
+    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
 void main() {
 	float perceptualRoughness;
 	float metallic;
 	vec3 diffuseColor;
 	vec4 baseColor;
 
-	vec3 lightPos = vec3(8.0, 12.0, 20.0);		// replace with buffer light data
-
-	vec3 f0 = vec3(0.04);
+	const vec3 lightPos = vec3(-10.0, 0.0, 10.0);		// replace with buffer light data
+	const vec3 lightColor = vec3(1.0);
 
 	if (material.alphaMask == 1.0) {
 		if (material.baseColorTextureSet > -1) {
@@ -166,14 +173,14 @@ void main() {
 
 	baseColor *= inColor0;
 
-	diffuseColor = baseColor.rgb * (vec3(1.0) - f0);
+	diffuseColor = baseColor.rgb * (vec3(1.0) - material.f0.rgb);
 	diffuseColor *= 1.0 - metallic;
 	
 	// Roughness is authored as perceptual roughness; as is convention,
 	// convert to material roughness by squaring the perceptual roughness [2].	
 	float alphaRoughness = perceptualRoughness * perceptualRoughness;
 
-	vec3 specularColor = mix(f0, baseColor.rgb, metallic);
+	vec3 specularColor = mix(material.f0.rgb, baseColor.rgb, metallic);
 
 	// Compute reflectance.
 	float reflectance = max(max(specularColor.r, specularColor.g), specularColor.b);
@@ -186,11 +193,11 @@ void main() {
 
 	vec3 n = (material.normalTextureSet > -1) ? getNormal() : normalize(inNormal);
 	vec3 v = normalize(scene.camPos - inWorldPos);    // Vector from surface point to camera
-	//vec3 l = normalize(uboParams.lightDir.xyz);   // Vector from surface point to light
+	//vec3 l = normalize(lighting.dirLightPos.xyz);   // Vector from surface point to directional light
 	vec3 l = normalize(lightPos.xyz);
 	vec3 h = normalize(l+v);                        // Half vector between both l and v
-	vec3 reflection = -normalize(reflect(v, n));
-	reflection.y *= -1.0;
+	//vec3 reflection = -normalize(reflect(v, n));
+	//reflection.y *= -1.0;
 
 	float NdotL = clamp(dot(n, l), 0.001, 1.0);
 	float NdotV = clamp(abs(dot(n, v)), 0.001, 1.0);
@@ -199,11 +206,10 @@ void main() {
 	float VdotH = clamp(dot(v, h), 0.0, 1.0);
 
 	// Calculate the shading terms for the microfacet specular shading model
-	vec3 F = specularReflection(specularEnvironmentR0, specularEnvironmentR90, VdotH);
+	//vec3 F = specularReflection(specularEnvironmentR0, specularEnvironmentR90, VdotH);
+	vec3 F = fresnelSchlick(VdotH, specularColor);
 	float G = geometricOcclusion(NdotL, NdotV, alphaRoughness);
 	float D = microfacetDistribution(NdotH, alphaRoughness);
-
-	const vec3 lightColor = vec3(1.0);
 
 	// Calculation of analytical lighting contribution
 	vec3 diffuseContrib = (1.0 - F) * diffuse(diffuseColor);
@@ -230,4 +236,12 @@ void main() {
 	}
 	
 	outColor = vec4(color, baseColor.a);
+
+	/*// test phong shading
+	float L_DirIntensity = clamp(dot(inNormal, normalize(lightPos)), 0.0, 1.0) * 1.0;
+
+	vec4 baseTex = texture(baseColorMap, inTexCoord0);
+	outColor = baseTex * L_DirIntensity;
+	//*/
+
 }

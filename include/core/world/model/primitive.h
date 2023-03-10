@@ -8,8 +8,8 @@ class WPrimitive {
   using RMaterial = core::MMaterials::RMaterial;
 
  public:
-  RBuffer vertexBuffer;
-  RBuffer indexBuffer;
+  uint32_t vertexStart = 0u;    // vertex location in main model buffer
+  uint32_t indexStart = 0u;     // index location in main model buffer
   uint32_t vertexCount = 0u;
   uint32_t indexCount = 0u;
 
@@ -41,4 +41,8 @@ class WPrimitive {
 
   // check return value first, has to be true for a valid bounding box extent
   bool getBoundingBoxExtent(glm::vec3& outMin, glm::vec3& outMax) const;
+
+  void generateTangentsAndBinormals(std::vector<RVertex>& vertexData,
+                                    const std::vector<uint32_t>& inIndexData);
+  void setNormalsFromVertices(std::vector<RVertex>& vertexData);
 };

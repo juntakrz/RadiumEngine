@@ -108,6 +108,9 @@ class WModel {
   };
 
   std::string m_name = "$NONAMEMODEL$";
+
+  RBuffer m_vertexBuffer;
+  RBuffer m_indexBuffer;
   uint32_t m_vertexCount = 0u;
   uint32_t m_indexCount = 0u;
 
@@ -164,6 +167,7 @@ class WModel {
   const std::vector<WPrimitive*>& getPrimitives();
   std::vector<uint32_t>& getPrimitiveBindsIndex();
   const std::vector<std::unique_ptr<Node>>& getRootNodes() noexcept;
+  std::vector<WModel::Node*>& getAllNodes() noexcept;
 
   // cleans all primitives and nodes within,
   // model itself won't get destroyed on its own

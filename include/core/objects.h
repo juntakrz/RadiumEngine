@@ -3,6 +3,12 @@
 #include "vk_mem_alloc.h"
 #include "config.h"
 
+enum class EActorType {  // actor type
+  Base,
+  Camera,
+  Pawn
+};
+
 enum EAlphaMode {
   Opaque,
   Mask,
@@ -25,17 +31,12 @@ enum class ECmdType {
   Present
 };
 
-enum class EActorType {  // actor type
-  Base,
-  Camera,
-  Pawn
-};
-
 enum class EWPrimitive {
   Null,
   Plane,
   Sphere,
-  Cube
+  Cube,
+  Custom
 };
 
 struct RVkQueueFamilyIndices {
@@ -119,6 +120,8 @@ struct RVertex {
   glm::vec4 color;      // COLOR
   glm::vec4 joint;      // JOINT
   glm::vec4 weight;     // WEIGHT
+  glm::vec3 tangent;    // TANGENT
+  glm::vec3 binormal;   // BINORMAL
 
   static VkVertexInputBindingDescription getBindingDesc();
   static std::vector<VkVertexInputAttributeDescription> getAttributeDescs();
@@ -135,7 +138,7 @@ struct RSamplerInfo {
 
 // used for RMaterial creation in materials manager
 struct RMaterialInfo {
-  std::string name;
+  std::string name = "default";
   bool manageTextures = false;
   bool doubleSided = false;
   EAlphaMode alphaMode = EAlphaMode::Opaque;
@@ -163,7 +166,7 @@ struct RMaterialInfo {
     uint8_t extra = 0;
   } texCoordSets;
 
-  glm::vec4 F0 = {0.4f, 0.4f, 0.4f, 0.0f};  // basic metal
+  glm::vec4 F0 = {0.04f, 0.04f, 0.04f, 0.0f};
   glm::vec4 baseColorFactor = {1.0f, 1.0f, 1.0f, 1.0f};
   glm::vec4 emissiveFactor = {0.0f, 0.0f, 0.0f, 1.0f};
   float metallicFactor = 1.0f;
@@ -174,24 +177,6 @@ struct RMaterialInfo {
   uint32_t effectFlags = 0;
 };
 
-// push constant block used by RMaterial
-struct RPushConstantBlock_Material {
-  glm::vec4 baseColorFactor;
-  glm::vec4 emissiveFactor;
-  int32_t baseColorTextureSet;
-  int32_t normalTextureSet;
-  int32_t metallicRoughnessTextureSet;
-  int32_t occlusionTextureSet;
-  int32_t emissiveTextureSet;
-  int32_t extraTextureSet;
-  float metallicFactor;
-  float roughnessFactor;
-  float alphaMode;
-  float alphaCutoff;
-  float bumpIntensity;
-  float materialIntensity;
-};
-
 struct RCameraSettings {
   float aspectRatio = config::getAspectRatio();
   float FOV = config::FOV;
@@ -199,8 +184,10 @@ struct RCameraSettings {
   float farZ = config::viewDistance;
 };
 
-// uniform buffer objects
+//
+// uniform buffer objects and push contant blocks
 // 
+
 // camera and view matrix UBO for vertex shader
 struct RWorldViewProjectionUBO {
   alignas(16) glm::mat4 world = glm::mat4(1.0f);
@@ -223,6 +210,23 @@ struct RLightingUBO {
   float gamma = 2.2f;
   float prefilteredCubeMipLevels;
   float scaleIBLAmbient = 1.0f;
-  float debugViewInputs = 0;
-  float debugViewEquation = 0;
+};
+
+// push constant block used by RMaterial
+struct RMaterialPCB {
+  glm::vec4 baseColorFactor;
+  glm::vec4 emissiveFactor;
+  glm::vec4 f0;
+  int32_t baseColorTextureSet;
+  int32_t normalTextureSet;
+  int32_t metallicRoughnessTextureSet;
+  int32_t occlusionTextureSet;
+  int32_t emissiveTextureSet;
+  int32_t extraTextureSet;
+  float metallicFactor;
+  float roughnessFactor;
+  float alphaMode;
+  float alphaCutoff;
+  float bumpIntensity;
+  float materialIntensity;
 };

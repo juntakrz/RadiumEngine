@@ -29,7 +29,9 @@ core::MMaterials::RMaterial* core::MMaterials::createMaterial(
     RMaterialInfo* pDesc) noexcept {
 
   if (!m_materials.try_emplace(pDesc->name).second) {
+#ifndef NDEBUG
     RE_LOG(Warning, "Material with the name \"%s\" is already created.");
+#endif
     return m_materials.at(pDesc->name).get();
   }
 
@@ -69,6 +71,7 @@ core::MMaterials::RMaterial* core::MMaterials::createMaterial(
 
   newMat.pushConstantBlock.bumpIntensity = pDesc->bumpIntensity;
   newMat.pushConstantBlock.materialIntensity = pDesc->materialIntensity;
+  newMat.pushConstantBlock.f0 = pDesc->F0;
 
   RE_LOG(Log, "Creating material \"%s\".", newMat.name.c_str());
   m_materials.at(pDesc->name) = std::make_unique<RMaterial>(std::move(newMat));

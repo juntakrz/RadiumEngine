@@ -116,7 +116,13 @@ class WPrimitiveData {
 
   void setNormals() noexcept {
     for (auto& it : vertices) {
-      it.n = it.pos;
+      it.normal = it.pos;
+    }
+  }
+
+  void setColorForAllVertices(float r, float g, float b, float a) {
+    for (auto& it : vertices) {
+      it.color = {r,g,b,a};
     }
   }
 };

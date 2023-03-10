@@ -541,9 +541,9 @@ void core::MRenderer::updateWorldViewProjectionUBO(uint32_t currentImage) {
       view.pActiveCamera->getLocation();
 
   // scale every object instead of this
-  view.worldViewProjectionData.world[0][0] = 0.5f;
-  view.worldViewProjectionData.world[1][1] = 0.5f;
-  view.worldViewProjectionData.world[2][2] = 0.5f;
+  view.worldViewProjectionData.world[0][0] = 0.01f;
+  view.worldViewProjectionData.world[1][1] = 0.01f;
+  view.worldViewProjectionData.world[2][2] = 0.01f;
 
   memcpy(view.modelViewProjectionBuffers[currentImage].allocInfo.pMappedData,
          &view.worldViewProjectionData, sizeof(RWorldViewProjectionUBO));

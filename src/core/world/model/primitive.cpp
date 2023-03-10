@@ -53,3 +53,71 @@ bool WPrimitive::getBoundingBoxExtent(glm::vec3& outMin, glm::vec3& outMax) cons
   }
   return extent.isValid;
 }
+
+void WPrimitive::generateTangentsAndBinormals(
+    std::vector<RVertex>& vertexData,
+    const std::vector<uint32_t>& inIndexData) {
+  if (inIndexData.size() % 3 != 0 || inIndexData.size() < 3) {
+    return;
+  }
+
+  for (uint32_t i = 0; i < inIndexData.size(); i += 3) {
+    // load vertices
+    auto& vertex0 = vertexData[inIndexData[i]];
+    auto& vertex1 = vertexData[inIndexData[i + 1]];
+    auto& vertex2 = vertexData[inIndexData[i + 2]];
+
+    // geometry vectors
+    const glm::vec3 vec0 = vertex0.pos;
+    const glm::vec3 vec1 = vertex1.pos;
+    const glm::vec3 vec2 = vertex2.pos;
+
+    const glm::vec3 vecSide_1_0 = vec1 - vec0;
+    const glm::vec3 vecSide_2_0 = vec2 - vec0;
+
+    // texture vectors
+    const glm::vec2 xmU = {vertex1.tex0.x - vertex0.tex0.x,
+                                   vertex2.tex0.x - vertex0.tex0.x};
+    const glm::vec2 xmV = {vertex1.tex0.y - vertex0.tex0.y,
+                                   vertex2.tex0.y - vertex0.tex0.y};
+
+    // denominator of the tangent/binormal equation: 1.0 / cross(vecX, vecY)
+    const float den = 1.0f / (xmU.x * xmV.y - xmU.y * xmV.x);
+
+    // calculate tangent
+    glm::vec3 tangent;
+
+    tangent.x = (xmV.y * vecSide_1_0.x - xmV.x * vecSide_2_0.x) * den;
+    tangent.y = (xmV.y * vecSide_1_0.y - xmV.x * vecSide_2_0.y) * den;
+    tangent.z = (xmV.y * vecSide_1_0.z - xmV.x * vecSide_2_0.z) * den;
+
+    // calculate binormal
+    glm::vec3 binormal;
+
+    binormal.x = (xmU.x * vecSide_2_0.x - xmU.y * vecSide_1_0.x) * den;
+    binormal.y = (xmU.x * vecSide_2_0.y - xmU.y * vecSide_1_0.y) * den;
+    binormal.z = (xmU.x * vecSide_2_0.z - xmU.y * vecSide_1_0.z) * den;
+
+    // normalize binormal and tangent
+    tangent = glm::normalize(tangent);
+    binormal = glm::normalize(binormal);
+
+    // store new data to vertex
+    vertex0.tangent = tangent;
+    vertex0.binormal = -binormal;
+
+    vertex1.tangent = tangent;
+    vertex1.binormal = -binormal;
+
+    vertex2.tangent = tangent;
+    vertex2.binormal = -binormal;
+
+    // setNormals();
+  }
+}
+
+void WPrimitive::setNormalsFromVertices(std::vector<RVertex>& vertexData) {
+  for (auto& vertex : vertexData) {
+    vertex.normal = glm::normalize(vertex.pos);
+  }
+}

@@ -326,6 +326,10 @@ const std::vector<std::unique_ptr<WModel::Node>>& WModel::getRootNodes() noexcep
   return m_pChildNodes;
 }
 
+std::vector<WModel::Node*>& WModel::getAllNodes() noexcept {
+  return m_pLinearNodes;
+}
+
 TResult WModel::clean() {
   if (m_pChildNodes.empty()) {
     RE_LOG(Warning,

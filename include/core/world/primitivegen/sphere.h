@@ -20,7 +20,7 @@ class WPrimitiveGen_Sphere {
     float dX, dY, dZ, dXZ;
 
     for (uint16_t i = 0; i <= latSegments; i++) {
-      v = 1 - (float)i / (float)latSegments;
+      v = 1.0f - (float)i / (float)latSegments;
 
       latAngle =
           (i * static_cast<float>(M_PI) / latSegments - static_cast<float>(M_PI_2));

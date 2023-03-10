@@ -25,7 +25,7 @@ VkVertexInputBindingDescription RVertex::getBindingDesc() {
 }
 
 std::vector<VkVertexInputAttributeDescription> RVertex::getAttributeDescs() {
-  std::vector<VkVertexInputAttributeDescription> attrDescs(7);
+  std::vector<VkVertexInputAttributeDescription> attrDescs(9);
   
   // describes 'pos'
   attrDescs[0].binding = 0;                         // binding defined by binding description of RVertex
@@ -57,17 +57,29 @@ std::vector<VkVertexInputAttributeDescription> RVertex::getAttributeDescs() {
   attrDescs[4].location = 4;
   attrDescs[4].offset = offsetof(RVertex, color);
 
-    // describes 'joint'
+  // describes 'joint'
   attrDescs[5].binding = 0;
-  attrDescs[5].format = VK_FORMAT_R32G32B32_SFLOAT;
+  attrDescs[5].format = VK_FORMAT_R32G32B32A32_SFLOAT;
   attrDescs[5].location = 5;
   attrDescs[5].offset = offsetof(RVertex, joint);
 
-    // describes 'weight'
+  // describes 'weight'
   attrDescs[6].binding = 0;
-  attrDescs[6].format = VK_FORMAT_R32G32B32_SFLOAT;
+  attrDescs[6].format = VK_FORMAT_R32G32B32A32_SFLOAT;
   attrDescs[6].location = 6;
   attrDescs[6].offset = offsetof(RVertex, weight);
+
+  // describes 'tangent'
+  attrDescs[7].binding = 0;
+  attrDescs[7].format = VK_FORMAT_R32G32B32_SFLOAT;
+  attrDescs[7].location = 7;
+  attrDescs[7].offset = offsetof(RVertex, tangent);
+
+  // describes 'binormal'
+  attrDescs[8].binding = 0;
+  attrDescs[8].format = VK_FORMAT_R32G32B32_SFLOAT;
+  attrDescs[8].location = 8;
+  attrDescs[8].offset = offsetof(RVertex, binormal);
 
   return attrDescs;
 }

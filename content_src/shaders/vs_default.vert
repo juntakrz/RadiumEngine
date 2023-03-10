@@ -21,12 +21,16 @@ layout(location = 3) in vec3 inNormal;
 layout(location = 4) in vec4 inColor0;
 layout(location = 5) in vec4 inJoint;
 layout(location = 6) in vec4 inWeight;
+layout(location = 7) in vec3 inT;
+layout(location = 8) in vec3 inB;
 
 layout(location = 0) out vec3 outWorldPos;
 layout(location = 1) out vec3 outNormal;
 layout(location = 2) out vec2 outTexCoord0;
 layout(location = 3) out vec2 outTexCoord1;
 layout(location = 4) out vec4 outColor0;
+layout(location = 5) out vec3 outT;
+layout(location = 6) out vec3 outB;
 
 void main(){
 	vec4 worldPos;
@@ -44,10 +48,14 @@ void main(){
 		worldPos = scene.world * node.matrix * vec4(inPos, 1.0);
 		outNormal = normalize(transpose(inverse(mat3(scene.world * node.matrix))) * inNormal);
 	}
-
+	
 	outWorldPos = worldPos.xyz / worldPos.w;
 	outTexCoord0 = inTexCoord0;
 	outTexCoord1 = inTexCoord1;
 	outColor0 = inColor0;
+
+	outT = inT;
+	outB = inB;
+
 	gl_Position =  scene.projection * scene.view * vec4(outWorldPos, 1.0);
 }
