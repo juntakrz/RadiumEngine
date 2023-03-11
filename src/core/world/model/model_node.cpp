@@ -103,7 +103,8 @@ void WModel::Node::updateNode() {
   }
 }
 
-void WModel::Node::renderNode(VkCommandBuffer cmdBuffer, EAlphaMode alphaMode) {
+void WModel::Node::renderNode(VkCommandBuffer cmdBuffer, EAlphaMode alphaMode,
+                              RModelBindInfo* pModelInfo) {
   if (pMesh) {
     uint32_t idFrameInFlight = core::renderer.getFrameInFlightIndex();
 
@@ -133,37 +134,31 @@ void WModel::Node::renderNode(VkCommandBuffer cmdBuffer, EAlphaMode alphaMode) {
         const std::vector<VkDescriptorSet> descriptorSets = {
             core::renderer.getDescriptorSet(idFrameInFlight),
             primitive->pMaterial->descriptorSet,
-            pMesh->uniformBufferData.descriptorSet
-        };
-
-        // local model offset should be stored inside the primitive
-        // and in between model offset should probably be stored inside the model?
-        
-        //VkDeviceSize offset = 0;
-        //vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &primitive->vertexBuffer.buffer,
-          //                     &offset);
-
-        //vkCmdBindIndexBuffer(cmdBuffer, primitive->indexBuffer.buffer, 0,
-          //                   VK_INDEX_TYPE_UINT32);
+            pMesh->uniformBufferData.descriptorSet};
 
         vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                core::renderer.getWorldPipelineLayout(), 0,
+                                core::renderer.getGraphicsPipelineLayout(), 0,
                                 static_cast<uint32_t>(descriptorSets.size()),
                                 descriptorSets.data(), 0, nullptr);
 
-        vkCmdPushConstants(cmdBuffer, core::renderer.getWorldPipelineLayout(),
-                           VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-                           sizeof(RMaterialPCB),
-                           &primitive->pMaterial->pushConstantBlock);
+        vkCmdPushConstants(
+            cmdBuffer, core::renderer.getGraphicsPipelineLayout(),
+            VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(RMaterialPCB),
+            &primitive->pMaterial->pushConstantBlock);
 
-        vkCmdDrawIndexed(cmdBuffer, primitive->indexCount, 1, 0, 0, 0);
+        int32_t vertexOffset = (int32_t)pModelInfo->vertexOffset +
+                               (int32_t)primitive->vertexOffset;
+        uint32_t indexOffset = pModelInfo->indexOffset + primitive->indexOffset;
+
+        vkCmdDrawIndexed(cmdBuffer, primitive->indexCount, 1, indexOffset,
+                         vertexOffset, 0);
       }
     }
   }
 
   // try rendering node children
   for (const auto& child : pChildren) {
-    child->renderNode(cmdBuffer, alphaMode);
+    child->renderNode(cmdBuffer, alphaMode, pModelInfo);
   }
 }
 

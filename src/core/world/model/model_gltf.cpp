@@ -6,6 +6,122 @@
 
 #include "tiny_gltf.h"
 
+TResult WModel::createModel(const char* name, const tinygltf::Model* pInModel) {
+  if (!pInModel) {
+    RE_LOG(Error,
+           "Failed to create model, no glTF source was provided for \"%s\".",
+           name);
+  }
+
+  staging.pInModel = pInModel;
+  const tinygltf::Model& gltfModel = *pInModel;
+
+  m_name = name;
+
+  uint32_t vertexCount = 0u, vertexPos = 0u, indexCount = 0u, indexPos = 0u;
+  const tinygltf::Scene& gltfScene =
+      gltfModel
+          .scenes[gltfModel.defaultScene > -1 ? gltfModel.defaultScene : 0];
+
+  // index of texture paths used by this model, required by the material setup
+  // later
+  std::vector<std::string> texturePaths;
+
+  // assign texture samplers for the current WModel
+  setTextureSamplers();
+
+  // go through glTF model's texture records
+  for (const tinygltf::Texture& tex : gltfModel.textures) {
+    const tinygltf::Image* pImage = &gltfModel.images[tex.source];
+
+    // get custom corresponding sampler data from WModel if present
+    RSamplerInfo textureSampler{};
+    if (tex.sampler != -1) {
+      textureSampler = m_textureSamplers[tex.sampler];
+    }
+
+    // add empty path, should be changed later
+    texturePaths.emplace_back("");
+
+    // get texture name and load it though materials manager
+    if (pImage->uri == "") {
+      continue;
+    }
+
+#ifndef NDEBUG
+    RE_LOG(Log, "Loading texture \"%s\" for model \"%s\".", pImage->uri.c_str(),
+           m_name.c_str());
+#endif
+    if (core::materials.loadTexture(pImage->uri.c_str(), &textureSampler) <
+        RE_ERROR) {
+      texturePaths.back() = pImage->uri;
+    };
+  }
+
+  // get glTF materials and convert them to RMaterial
+  parseMaterials(texturePaths);
+
+  // parse node properties and get index/vertex counts
+  for (size_t i = 0; i < gltfScene.nodes.size(); ++i) {
+    parseNodeProperties(gltfModel.nodes[gltfScene.nodes[i]]);
+  }
+
+  // resize local staging buffers
+  prepareStagingData();
+
+  // create nodes using data from glTF model
+  for (size_t n = 0; n < gltfScene.nodes.size(); ++n) {
+    const tinygltf::Node& gltfNode = gltfModel.nodes[gltfScene.nodes[n]];
+    createNode(nullptr, gltfNode, gltfScene.nodes[n]);
+  }
+
+  // validate model staging buffers
+  if (validateStagingData() != RE_OK) {
+    RE_LOG(Error,
+           "Failed to create model \"%s\". Error when generating buffers.",
+           m_name.c_str());
+    return RE_ERROR;
+  }
+
+  if (gltfModel.animations.size() > 0) {
+    loadAnimations();
+  }
+  loadSkins();
+
+  for (auto node : m_pLinearNodes) {
+    // Assign skins
+    if (node->skinIndex > -1) {
+      node->pSkin = m_pSkins[node->skinIndex].get();
+    }
+    // Initial pose
+    if (node->pMesh) {
+      node->updateNode();
+    }
+
+    // no need to update children, they are accessed anyway
+    node->setNodeDescriptorSet(false);
+  }
+
+  // create staging buffers for later copy to scene buffer
+#ifndef NDEBUG
+  RE_LOG(Log, "Creating staging buffers for model.");
+#endif
+
+  VkDeviceSize vertexBufferSize = sizeof(RVertex) * staging.vertices.size();
+  VkDeviceSize indexBufferSize = sizeof(uint32_t) * staging.indices.size();
+
+  core::renderer.createBuffer(EBufferMode::STAGING, vertexBufferSize,
+                              staging.vertexBuffer, staging.vertices.data());
+  core::renderer.createBuffer(EBufferMode::STAGING, indexBufferSize,
+                             staging.indexBuffer, staging.indices.data());
+
+  // clear raw staging data
+  staging.pInModel = nullptr;
+  staging.vertices.clear();
+  staging.indices.clear();
+
+  return RE_OK;
+}
 
 void WModel::createNode(WModel::Node* pParentNode,
                         const tinygltf::Node& gltfNode,
@@ -689,102 +805,4 @@ void WModel::loadSkins() {
              accessor.count * sizeof(glm::mat4));
     }
   }
-}
-
-TResult WModel::createModel(const char* name, const tinygltf::Model* pInModel) {
-  if (!pInModel) {
-    RE_LOG(Error,
-           "Failed to create model, no glTF source was provided for \"%s\".",
-           name);
-  }
-
-  staging.pInModel = pInModel;
-  const tinygltf::Model& gltfModel = *pInModel;
-
-  m_name = name;
-
-  uint32_t vertexCount = 0u, vertexPos = 0u, indexCount = 0u, indexPos = 0u;
-  const tinygltf::Scene& gltfScene =
-      gltfModel.scenes[gltfModel.defaultScene > -1 ? gltfModel.defaultScene : 0];
-
-  // index of texture paths used by this model, required by the material setup
-  // later
-  std::vector<std::string> texturePaths;
-
-  // assign texture samplers for the current WModel
-  setTextureSamplers();
-
-  // go through glTF model's texture records
-  for (const tinygltf::Texture& tex : gltfModel.textures) {
-    const tinygltf::Image* pImage = &gltfModel.images[tex.source];
-
-    // get custom corresponding sampler data from WModel if present
-    RSamplerInfo textureSampler{};
-    if (tex.sampler != -1) {
-      textureSampler = m_textureSamplers[tex.sampler];
-    }
-
-    // add empty path, should be changed later
-    texturePaths.emplace_back("");
-
-    // get texture name and load it though materials manager
-    if (pImage->uri == "") {
-      continue;
-    }
-
-#ifndef NDEBUG
-    RE_LOG(Log, "Loading texture \"%s\" for model \"%s\".", pImage->uri.c_str(),
-           m_name.c_str());
-#endif
-    if (core::materials.loadTexture(pImage->uri.c_str(), &textureSampler) <
-        RE_ERROR) {
-      texturePaths.back() = pImage->uri;
-    };
-  }
-
-  // get glTF materials and convert them to RMaterial
-  parseMaterials(texturePaths);
-
-  // parse node properties and get index/vertex counts
-  for (size_t i = 0; i < gltfScene.nodes.size(); ++i) {
-    parseNodeProperties(gltfModel.nodes[gltfScene.nodes[i]]);
-  }
-
-  // resize local staging buffers
-  prepareStagingData();
-
-  // create nodes using data from glTF model
-  for (size_t n = 0; n < gltfScene.nodes.size(); ++n) {
-    const tinygltf::Node& gltfNode = gltfModel.nodes[gltfScene.nodes[n]];
-    createNode(nullptr, gltfNode, gltfScene.nodes[n]);
-  }
-
-  // validate model staging buffers
-  if (validateStagingData() != RE_OK) {
-    RE_LOG(Error,
-           "Failed to create model \"%s\". Error when generating buffers.",
-           m_name.c_str());
-    return RE_ERROR;
-  }
-
-  if (gltfModel.animations.size() > 0) {
-    loadAnimations();
-  }
-  loadSkins();
-
-  for (auto node : m_pLinearNodes) {
-    // Assign skins
-    if (node->skinIndex > -1) {
-      node->pSkin = m_pSkins[node->skinIndex].get();
-    }
-    // Initial pose
-    if (node->pMesh) {
-      node->updateNode();
-    }
-
-    // no need to update children, they are accessed anyway
-    node->setNodeDescriptorSet(false);
-  }
-
-  return RE_OK;
 }

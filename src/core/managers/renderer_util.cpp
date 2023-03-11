@@ -126,8 +126,8 @@ TResult core::MRenderer::createBuffer(EBufferMode mode, VkDeviceSize size, RBuff
   }
 
   case (uint8_t)EBufferMode::DGPU_VERTEX: {
-    // staging buffer
-    VkBuffer stagingBuffer;
+    // staging buffer (won't be allocated if no data for it is provided)
+    VkBuffer stagingBuffer = VK_NULL_HANDLE;
     VmaAllocation stagingAlloc{};
     VmaAllocationInfo stagingAllocInfo{};
 
@@ -139,59 +139,67 @@ TResult core::MRenderer::createBuffer(EBufferMode mode, VkDeviceSize size, RBuff
 
     std::vector<uint32_t> queueFamilyIndices = {
         (uint32_t)physicalDevice.queueFamilyIndices.graphics.at(0),
-        (uint32_t)physicalDevice.queueFamilyIndices.transfer.at(0) };
+        (uint32_t)physicalDevice.queueFamilyIndices.transfer.at(0)};
 
     bufferCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();
     bufferCreateInfo.queueFamilyIndexCount =
-      static_cast<uint32_t>(queueFamilyIndices.size());
+        static_cast<uint32_t>(queueFamilyIndices.size());
 
     VmaAllocationCreateInfo allocInfo{};
     allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
     allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
-    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo, &stagingBuffer,
-      &stagingAlloc, &stagingAllocInfo) != VK_SUCCESS) {
-      RE_LOG(Error, "Failed to create staging buffer for DGPU_VERTEX mode.");
-      return RE_ERROR;
-    }
+    if (inData) {
+      if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
+                          &stagingBuffer, &stagingAlloc,
+                          &stagingAllocInfo) != VK_SUCCESS) {
+        RE_LOG(Error, "Failed to create staging buffer for DGPU_VERTEX mode.");
+        return RE_ERROR;
+      }
 
-    void* pData = nullptr;
-    if (vmaMapMemory(memAlloc, stagingAlloc, &pData) != VK_SUCCESS) {
-      RE_LOG(Error, "Failed to map memory for DGPU_VERTEX buffer data.");
-      return RE_ERROR;
-    };
-    memcpy(pData, inData, size);
-    vmaUnmapMemory(memAlloc, stagingAlloc);
+      void* pData = nullptr;
+      if (vmaMapMemory(memAlloc, stagingAlloc, &pData) != VK_SUCCESS) {
+        RE_LOG(Error, "Failed to map memory for DGPU_VERTEX buffer data.");
+        return RE_ERROR;
+      };
+
+      memcpy(pData, inData, size);
+      vmaUnmapMemory(memAlloc, stagingAlloc);
+    }
 
     // destination buffer
     bufferCreateInfo.usage =
-      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
     allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
     allocInfo.flags = NULL;
     allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo, &outBuffer.buffer, &outBuffer.allocation,
-      &outBuffer.allocInfo) != VK_SUCCESS) {
+    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
+                        &outBuffer.buffer, &outBuffer.allocation,
+                        &outBuffer.allocInfo) != VK_SUCCESS) {
       RE_LOG(Error, "Failed to create DGPU_VERTEX buffer.");
       return RE_ERROR;
     };
 
-    VkBufferCopy copyInfo{};
-    copyInfo.srcOffset = 0;
-    copyInfo.dstOffset = 0;
-    copyInfo.size = size;
+    if (inData) {
+      VkBufferCopy copyInfo{};
+      copyInfo.srcOffset = 0;
+      copyInfo.dstOffset = 0;
+      copyInfo.size = size;
 
-    copyBuffer(stagingBuffer, outBuffer.buffer, &copyInfo);
+      copyBuffer(stagingBuffer, outBuffer.buffer, &copyInfo);
 
-    vmaDestroyBuffer(memAlloc, stagingBuffer, stagingAlloc);
+      vmaDestroyBuffer(memAlloc, stagingBuffer, stagingAlloc);
+    }
 
     return RE_OK;
   }
 
   case (uint8_t)EBufferMode::DGPU_INDEX: {
-    // staging buffer
-    VkBuffer stagingBuffer;
+
+    // staging buffer (won't be allocated if no data for it is provided)
+    VkBuffer stagingBuffer = VK_NULL_HANDLE;
     VmaAllocation stagingAlloc{};
     VmaAllocationInfo stagingAllocInfo{};
 
@@ -213,19 +221,22 @@ TResult core::MRenderer::createBuffer(EBufferMode mode, VkDeviceSize size, RBuff
     allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
     allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
-    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo, &stagingBuffer,
-      &stagingAlloc, &stagingAllocInfo) != VK_SUCCESS) {
-      RE_LOG(Error, "Failed to create staging buffer for DGPU_VERTEX mode.");
-      return RE_ERROR;
-    }
+    if (inData) {
+      if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
+                          &stagingBuffer, &stagingAlloc,
+                          &stagingAllocInfo) != VK_SUCCESS) {
+        RE_LOG(Error, "Failed to create staging buffer for DGPU_VERTEX mode.");
+        return RE_ERROR;
+      }
 
-    void* pData = nullptr;
-    if (vmaMapMemory(memAlloc, stagingAlloc, &pData) != VK_SUCCESS) {
-      RE_LOG(Error, "Failed to map memory for DGPU_INDEX buffer data.");
-      return RE_ERROR;
-    };
-    memcpy(pData, inData, size);
-    vmaUnmapMemory(memAlloc, stagingAlloc);
+      void* pData = nullptr;
+      if (vmaMapMemory(memAlloc, stagingAlloc, &pData) != VK_SUCCESS) {
+        RE_LOG(Error, "Failed to map memory for DGPU_INDEX buffer data.");
+        return RE_ERROR;
+      };
+      memcpy(pData, inData, size);
+      vmaUnmapMemory(memAlloc, stagingAlloc);
+    }
 
     // destination vertex buffer
     bufferCreateInfo.usage =
@@ -241,14 +252,16 @@ TResult core::MRenderer::createBuffer(EBufferMode mode, VkDeviceSize size, RBuff
       return RE_ERROR;
     };
 
-    VkBufferCopy copyInfo{};
-    copyInfo.srcOffset = 0;
-    copyInfo.dstOffset = 0;
-    copyInfo.size = size;
+    if (inData) {
+      VkBufferCopy copyInfo{};
+      copyInfo.srcOffset = 0;
+      copyInfo.dstOffset = 0;
+      copyInfo.size = size;
 
-    copyBuffer(stagingBuffer, outBuffer.buffer, &copyInfo);
+      copyBuffer(stagingBuffer, outBuffer.buffer, &copyInfo);
 
-    vmaDestroyBuffer(memAlloc, stagingBuffer, stagingAlloc);
+      vmaDestroyBuffer(memAlloc, stagingBuffer, stagingAlloc);
+    }
 
     return RE_OK;
   }
@@ -564,11 +577,48 @@ uint32_t core::MRenderer::bindModel(WModel* pModel) {
     return -1;
   }
 
-  #ifndef NDEBUG
-  RE_LOG(Log, "Bound model \"%s\" to graphics pipeline.", pModel->getName());
-  #endif
+  // check if model is already bound, it shouldn't have valid offsets stored
+  if (pModel->m_isBound) {
+    RE_LOG(Error, "Model is already bound.");
+    return -1;
+  }
 
-  system.models.emplace_back(pModel);
+  // copy vertex buffer
+  VkBufferCopy copyInfo{};
+  copyInfo.srcOffset = 0u;
+  copyInfo.dstOffset = scene.currentVertexOffset;
+  copyInfo.size = sizeof(RVertex) * pModel->m_vertexCount;
+
+  copyBuffer(&pModel->staging.vertexBuffer, &scene.vertexBuffer, &copyInfo);
+
+  // copy index buffer
+  copyInfo.dstOffset = scene.currentIndexOffset;
+  copyInfo.size = sizeof(uint32_t) * pModel->m_indexCount;
+
+  copyBuffer(&pModel->staging.indexBuffer, &scene.indexBuffer, &copyInfo);
+
+  // add model to rendering queue, store its offsets
+  RModelBindInfo bindInfo{};
+  bindInfo.pModel = pModel;
+  bindInfo.vertexOffset = scene.currentVertexOffset;
+  bindInfo.vertexCount = pModel->m_vertexCount;
+  bindInfo.indexOffset = scene.currentIndexOffset;
+  bindInfo.indexCount = pModel->m_indexCount;
+
+  system.models.emplace_back(bindInfo);
+
+  pModel->m_isBound = true;
+
+  // store new offsets into scene buffer data
+  scene.currentVertexOffset += pModel->m_vertexCount;
+  scene.currentIndexOffset += pModel->m_indexCount;
+
+  pModel->clearStagingData();
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Bound model \"%s\" to graphics pipeline.", pModel->getName());
+#endif
+
   return (uint32_t)system.models.size() - 1;
 }
 
@@ -594,14 +644,14 @@ void core::MRenderer::unbindModel(uint32_t index) {
   }
 
 #ifndef NDEBUG
-  if (system.models[index] == nullptr) {
+  if (system.models[index].pModel == nullptr) {
     RE_LOG(Warning, "Failed to unbind model at %d. It's already unbound.",
            index);
     return;
   }
 #endif
 
-  system.models[index] = nullptr;
+  system.models[index].pModel = nullptr;
 }
 
 void core::MRenderer::unbindModel(
@@ -616,14 +666,14 @@ void core::MRenderer::unbindModel(
     }
 
 #ifndef NDEBUG
-    if (system.models[index] == nullptr) {
+    if (system.models[index].pModel == nullptr) {
     RE_LOG(Warning, "Failed to unbind model at %d. It's already unbound.",
            index);
     return;
     }
 #endif
 
-    system.models[index] = nullptr;
+    system.models[index].pModel = nullptr;
   }
 }
 

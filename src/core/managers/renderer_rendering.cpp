@@ -6,18 +6,18 @@
 
 void core::MRenderer::drawBoundModels(VkCommandBuffer cmdBuffer) {
   // go through bound models and generate draw calls for each
-  for (const auto& model : system.models) {
+  for (auto& bindInfo : system.models) {
 
-    for (const auto& node : model->getRootNodes()) {
-      node->renderNode(cmdBuffer, EAlphaMode::Opaque);
+    for (const auto& node : bindInfo.pModel->getRootNodes()) {
+      node->renderNode(cmdBuffer, EAlphaMode::Opaque, &bindInfo);
     }
 
-    for (const auto& node : model->getRootNodes()) {
-      node->renderNode(cmdBuffer, EAlphaMode::Mask);
+    for (const auto& node : bindInfo.pModel->getRootNodes()) {
+      node->renderNode(cmdBuffer, EAlphaMode::Mask, &bindInfo);
     }
 
-    for (const auto& node : model->getRootNodes()) {
-      node->renderNode(cmdBuffer, EAlphaMode::Blend);
+    for (const auto& node : bindInfo.pModel->getRootNodes()) {
+      node->renderNode(cmdBuffer, EAlphaMode::Blend, &bindInfo);
     }
   }
 }
@@ -310,7 +310,7 @@ void core::MRenderer::destroyGraphicsPipelines() {
   vkDestroyPipelineLayout(logicalDevice.device, system.pipelines.layout, nullptr);
 }
 
-VkPipelineLayout core::MRenderer::getWorldPipelineLayout() {
+VkPipelineLayout core::MRenderer::getGraphicsPipelineLayout() {
   return system.pipelines.layout;
 }
 
@@ -465,6 +465,11 @@ TResult core::MRenderer::recordFrameCommandBuffer(VkCommandBuffer commandBuffer,
   scissor.extent = swapchain.imageExtent;
   
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+  VkDeviceSize offset = 0u;
+  vkCmdBindVertexBuffers(commandBuffer, 0, 1, &scene.vertexBuffer.buffer,
+                         &offset);
+  vkCmdBindIndexBuffer(commandBuffer, scene.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
   
   drawBoundModels(commandBuffer);
 

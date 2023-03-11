@@ -1,3 +1,4 @@
+#include "core/objects.h"
 #include "config.h"
 
 const char* config::appTitle = "Radium Engine";
@@ -10,3 +11,11 @@ bool config::bDevMode = false;
 float config::pitchLimit = glm::radians(88.0f);
 
 float config::getAspectRatio() { return renderWidth / (float)renderHeight; }
+
+size_t config::scene::getVertexBufferSize() {
+  return sizeof(RVertex) * uniqueVertexCount;
+}
+
+size_t config::scene::getIndexBufferSize() {
+  return sizeof(uint32_t) * uniqueIndexCount;
+}

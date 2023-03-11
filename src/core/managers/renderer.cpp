@@ -101,6 +101,7 @@ TResult core::MRenderer::initialize() {
   updateAspectRatio();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandPools();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandBuffers();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createSceneBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDepthResources();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createRenderPass();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSetLayouts();
@@ -124,13 +125,13 @@ void core::MRenderer::deinitialize() {
   destroyGraphicsPipelines();
   destroyRenderPass();
   destroyDepthResources();
+  destroySceneBuffers();
   destroySurface();
   core::actors.destroyAllPawns();
   core::world.destroyAllModels();
   core::materials.destroyAllTextures();
   destroyDescriptorPool();
   destroyUniformBuffers();
-  destroySceneBuffers();
   destroyMemAlloc();
   if(bRequireValidationLayers) MDebug::get().destroy(APIInstance);
   destroyLogicalDevice();
@@ -183,14 +184,6 @@ void core::MRenderer::destroySurface() {
   vkDestroySurfaceKHR(APIInstance, surface, nullptr);
 }
 
-void core::MRenderer::destroySceneBuffers() {
-  RE_LOG(Log, "Destroying scene buffers.");
-  vmaDestroyBuffer(memAlloc, scene.vertexBuffer.buffer,
-                   scene.vertexBuffer.allocation);
-  vmaDestroyBuffer(memAlloc, scene.indexBuffer.buffer,
-                   scene.indexBuffer.allocation);
-}
-
 const RDescriptorSetLayouts* core::MRenderer::getDescriptorSetLayouts() const {
   return &system.descriptorSetLayouts;
 }
@@ -205,10 +198,34 @@ const VkDescriptorSet core::MRenderer::getDescriptorSet(
                              : system.descriptorSets[frameInFlight];
 }
 
+TResult core::MRenderer::createSceneBuffers() {
+  RE_LOG(Log, "Allocating scene buffer for %d vertices.",
+         config::scene::uniqueVertexCount);
+  createBuffer(EBufferMode::DGPU_VERTEX, config::scene::getVertexBufferSize(),
+               scene.vertexBuffer, nullptr);
+
+  RE_LOG(Log, "Allocating scene buffer for %d indices.",
+         config::scene::uniqueIndexCount);
+  createBuffer(EBufferMode::DGPU_INDEX, config::scene::getIndexBufferSize(),
+               scene.indexBuffer, nullptr);
+
+  return RE_OK;
+}
+
+void core::MRenderer::destroySceneBuffers() {
+  RE_LOG(Log, "Destroying scene buffers.");
+  vmaDestroyBuffer(memAlloc, scene.vertexBuffer.buffer,
+                   scene.vertexBuffer.allocation);
+  vmaDestroyBuffer(memAlloc, scene.indexBuffer.buffer,
+                   scene.indexBuffer.allocation);
+}
+
+core::MRenderer::RSceneBuffers* core::MRenderer::getSceneBuffers() {
+  return &scene;
+}
+
 uint32_t core::MRenderer::getFrameInFlightIndex() {
   return system.idIFFrame; }
-
-core::MRenderer::RSceneBuffers* core::MRenderer::getSceneBuffers() { return &scene; }
 
 // PRIVATE
 

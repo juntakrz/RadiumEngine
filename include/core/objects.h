@@ -3,6 +3,8 @@
 #include "vk_mem_alloc.h"
 #include "config.h"
 
+class WModel;
+
 enum class EActorType {  // actor type
   Base,
   Camera,
@@ -173,6 +175,14 @@ struct RMaterialInfo {
   float materialIntensity = 1.0f;
 
   uint32_t effectFlags = 0;
+};
+
+struct RModelBindInfo {
+  WModel* pModel = nullptr;
+  uint32_t vertexOffset = 0u;
+  uint32_t indexOffset = 0u;
+  uint32_t vertexCount = 0u;
+  uint32_t indexCount = 0u;
 };
 
 struct RPrimitiveInfo {

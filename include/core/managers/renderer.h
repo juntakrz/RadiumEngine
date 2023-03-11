@@ -43,7 +43,7 @@ namespace core {
       VkDescriptorPool descriptorPool;
       std::vector<VkDescriptorSet> descriptorSets;
       RDescriptorSetLayouts descriptorSetLayouts;
-      std::vector<WModel*> models;                        // meshes rendered during the current frame
+      std::vector<RModelBindInfo> models;                 // models rendered during the current frame
     } system;
 
     // multi-threaded synchronization objects
@@ -74,6 +74,8 @@ namespace core {
     struct RSceneBuffers {
       RBuffer vertexBuffer;
       RBuffer indexBuffer;
+      uint32_t currentVertexOffset = 0u;
+      uint32_t currentIndexOffset = 0u;
     } scene;
 
   public:
@@ -116,17 +118,17 @@ namespace core {
     TResult createSurface();
     void destroySurface();
 
-    void destroySceneBuffers();
-
     const RDescriptorSetLayouts* getDescriptorSetLayouts() const;
     const VkDescriptorPool getDescriptorPool();
 
     // returns descriptor set used by the current frame in flight by default
     const VkDescriptorSet getDescriptorSet(uint32_t frameInFlight = -1);
 
-    uint32_t getFrameInFlightIndex();
-
+    TResult createSceneBuffers();
+    void destroySceneBuffers();
     RSceneBuffers* getSceneBuffers();
+
+    uint32_t getFrameInFlightIndex();
 
   private:
     TResult createDescriptorSetLayouts();
@@ -328,7 +330,7 @@ namespace core {
 
     TResult createGraphicsPipelines();
     void destroyGraphicsPipelines();
-    VkPipelineLayout getWorldPipelineLayout();
+    VkPipelineLayout getGraphicsPipelineLayout();
     RWorldPipelineSet getGraphicsPipelineSet();
     VkPipeline getBoundPipeline();
 

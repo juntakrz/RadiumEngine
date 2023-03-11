@@ -7,6 +7,8 @@
 #define MAX_FRAMES_IN_FLIGHT    2u
 #define MAX_TRANSFER_BUFFERS    2u
 
+struct RVertex;
+
 namespace config {
 extern const char* appTitle;
 extern const char* engineTitle;
@@ -16,6 +18,22 @@ extern float viewDistance;                      // aka FarZ
 extern float FOV;
 extern bool bDevMode;
 extern float pitchLimit;                        // camera pitch limit
+
+// scene buffer values
+namespace scene {
+  // expected unique vertices and indices
+  // that scene vertex and index buffers will be allocated for
+  // TODO: set these through map configuration
+  //
+  // TODO: if ever needed - allocate new scene vertex and index buffers when
+  // buffer overflow happens NOTE: a million of unique vertices and indices are
+  // ~150 MBs of memory together
+
+  const size_t uniqueVertexCount = 1000000u;
+  const size_t uniqueIndexCount = 10000000u;
+  size_t getVertexBufferSize();
+  size_t getIndexBufferSize();
+};
 
 float getAspectRatio();
 };  // namespace config
@@ -38,7 +56,6 @@ const VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 constexpr uint8_t maxFramesInFlight = MAX_FRAMES_IN_FLIGHT;
 
 constexpr bool bFlipViewPortY = true;    // for OpenGL / Direct3D vertex coordinate compatibility
-
 }
 }  // namespace core
 

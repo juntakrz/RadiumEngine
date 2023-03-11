@@ -9,6 +9,7 @@ class Node;
 }
 
 class WModel {
+  friend class core::MRenderer;
   friend class core::MWorld;
   struct Node;
 
@@ -104,7 +105,7 @@ class WModel {
     void updateNode();
 
     // try to render node and its children by material's alpha mode
-    void renderNode(VkCommandBuffer cmdBuffer, EAlphaMode alphaMode);
+    void renderNode(VkCommandBuffer cmdBuffer, EAlphaMode alphaMode, RModelBindInfo* pModelInfo);
   };
 
   struct {
@@ -113,12 +114,15 @@ class WModel {
     uint32_t currentIndexOffset = 0u;
     std::vector<RVertex> vertices;
     std::vector<uint32_t> indices;
+    RBuffer vertexBuffer;
+    RBuffer indexBuffer;
   } staging;
 
   std::string m_name = "$NONAMEMODEL$";
 
   uint32_t m_vertexCount = 0u;
   uint32_t m_indexCount = 0u;
+  bool m_isBound = false;
 
   std::vector<std::unique_ptr<Node>> m_pChildNodes;
 
@@ -145,7 +149,7 @@ class WModel {
    
   TResult validateStagingData();
   void clearStagingData();
-  
+
   // glTF
 
   TResult createModel(const char* name, const tinygltf::Model* pInModel);

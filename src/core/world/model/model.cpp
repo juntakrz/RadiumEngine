@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "core/core.h"
+#include "core/managers/renderer.h"
 #include "core/managers/materials.h"
 #include "core/world/model/model.h"
 
@@ -15,8 +16,19 @@ TResult WModel::validateStagingData() {
 
 void WModel::clearStagingData() {
   staging.pInModel = nullptr;
-  staging.vertices.clear();
-  staging.indices.clear();
+
+  if (!staging.vertices.empty()) {
+    staging.vertices.clear();
+  }
+
+  if (!staging.indices.empty()) {
+    staging.indices.clear();
+  }
+  
+  vmaDestroyBuffer(core::renderer.memAlloc, staging.vertexBuffer.buffer,
+                   staging.vertexBuffer.allocation);
+  vmaDestroyBuffer(core::renderer.memAlloc, staging.indexBuffer.buffer,
+                   staging.indexBuffer.allocation);
 }
 
 void WModel::prepareStagingData() {
