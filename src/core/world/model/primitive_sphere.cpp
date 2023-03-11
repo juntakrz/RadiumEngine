@@ -7,5 +7,5 @@ void WPrimitive_Sphere::create(int arg0, int arg1) {
   model.setNormals();
   model.setColorForAllVertices(1.0f, 1.0f, 1.0f, 1.0f);
 
-  createBuffers(model.vertices, model.indices);
+  //
 }

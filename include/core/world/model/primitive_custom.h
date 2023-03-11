@@ -4,9 +4,8 @@
 
 class WPrimitive_Custom : public WPrimitive {
  public:
-  WPrimitive_Custom(std::vector<RVertex>& vertexData,
-                    const std::vector<uint32_t>& indexData);
+  bool isCustom = true;
 
-  void create(std::vector<RVertex>& vertexData,
-              const std::vector<uint32_t>& indexData);
+ public:
+  WPrimitive_Custom(RPrimitiveInfo* pCreateInfo);
 };

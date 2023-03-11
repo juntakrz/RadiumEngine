@@ -55,7 +55,7 @@ namespace core {
 
     // current camera view data
     struct {
-      RCameraSettings cameraSettings;
+      RCameraInfo cameraSettings;
 
       ACamera* pActiveCamera = nullptr;
       std::vector<RBuffer> modelViewProjectionBuffers;
@@ -70,6 +70,11 @@ namespace core {
     struct {
       RImage depth;
     } images;
+
+    struct RSceneBuffers {
+      RBuffer vertexBuffer;
+      RBuffer indexBuffer;
+    } scene;
 
   public:
     VkInstance APIInstance = VK_NULL_HANDLE;
@@ -111,6 +116,8 @@ namespace core {
     TResult createSurface();
     void destroySurface();
 
+    void destroySceneBuffers();
+
     const RDescriptorSetLayouts* getDescriptorSetLayouts() const;
     const VkDescriptorPool getDescriptorPool();
 
@@ -118,6 +125,8 @@ namespace core {
     const VkDescriptorSet getDescriptorSet(uint32_t frameInFlight = -1);
 
     uint32_t getFrameInFlightIndex();
+
+    RSceneBuffers* getSceneBuffers();
 
   private:
     TResult createDescriptorSetLayouts();

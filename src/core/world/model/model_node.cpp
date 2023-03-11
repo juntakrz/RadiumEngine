@@ -139,12 +139,15 @@ void WModel::Node::renderNode(VkCommandBuffer cmdBuffer, EAlphaMode alphaMode) {
             pMesh->uniformBufferData.descriptorSet
         };
 
-        VkDeviceSize offset = 0;
-        vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &primitive->vertexBuffer.buffer,
-                               &offset);
+        // local model offset should be stored inside the primitive
+        // and in between model offset should probably be stored inside the model?
+        
+        //VkDeviceSize offset = 0;
+        //vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &primitive->vertexBuffer.buffer,
+          //                     &offset);
 
-        vkCmdBindIndexBuffer(cmdBuffer, primitive->indexBuffer.buffer, 0,
-                             VK_INDEX_TYPE_UINT32);
+        //vkCmdBindIndexBuffer(cmdBuffer, primitive->indexBuffer.buffer, 0,
+          //                   VK_INDEX_TYPE_UINT32);
 
         vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 core::renderer.getWorldPipelineLayout(), 0,
@@ -487,13 +490,31 @@ void WModel::createNode(WModel::Node* pParentNode,
         }
       }
 
-      // create new primitive for storing vertex and index data
+      RPrimitiveInfo primitiveInfo{};
+      primitiveInfo.vertexCount = m_currentVertexOffset;
+      primitiveInfo.indexOffset = m_currentIndexOffset;
+      primitiveInfo.vertexCount = static_cast<uint32_t>(vertices.size());
+      primitiveInfo.indexCount = static_cast<uint32_t>(indices.size());
+      
+      primitiveInfo.createTangentSpaceData = true;
+      primitiveInfo.pVertexData = &vertices;
+      primitiveInfo.pIndexData = &indices;
+
+      // create new primitive
       pMesh->pPrimitives.emplace_back(
-          std::make_unique<WPrimitive_Custom>(vertices, indices));
+          std::make_unique<WPrimitive_Custom>(&primitiveInfo));
       WPrimitive* pPrimitive = pMesh->pPrimitives.back().get();
       pPrimitive->setBoundingBoxExtent(posMin, posMax);
       pPrimitive->pMaterial = core::materials.getMaterial(
           m_materialList[gltfPrimitive.material].c_str());
+
+      // append vertex and index data to local staging buffers and adjust offsets
+      m_vertexStaging.insert(std::end(m_vertexStaging), std::begin(vertices),
+                             std::end(vertices));
+      m_indexStaging.insert(std::end(m_indexStaging), std::begin(indices),
+                            std::end(indices));
+      m_currentVertexOffset += primitiveInfo.vertexCount;
+      m_currentIndexOffset += primitiveInfo.indexCount;
     }
 
     // calculate bounding box extent for the whole mesh based on created
@@ -566,7 +587,6 @@ void WModel::destroyNode(std::unique_ptr<WModel::Node>& pNode) {
     auto& primitives = pNode->pMesh->pPrimitives;
     for (auto& primitive : primitives) {
       if (primitive) {
-        primitive->destroy();
         primitive.reset();
       }
     }

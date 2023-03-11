@@ -5,5 +5,5 @@
 void WPrimitive_Plane::create(int arg0, int arg1) {
   auto model = WPrimitiveGen_Plane::create<RVertex>(arg0, arg1);
 
-  createBuffers(model.vertices, model.indices);
+  //
 }

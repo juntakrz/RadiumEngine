@@ -122,10 +122,20 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
     pModel->parseNodeProperties(gltfModel, gltfModel.nodes[gltfScene.nodes[i]]);
   }
 
+  // resize local staging buffers
+  pModel->setLocalStagingBuffers();
+
   // create nodes using data from glTF model
   for (size_t n = 0; n < gltfScene.nodes.size(); ++n) {
     tinygltf::Node& gltfNode = gltfModel.nodes[gltfScene.nodes[n]];
     pModel->createNode(nullptr, gltfModel, gltfNode, gltfScene.nodes[n]);
+  }
+
+  // validate model staging buffers
+  if (pModel->validateStagingBuffers() != RE_OK) {
+    RE_LOG(Error,
+           "Failed to create model \"%s\". Error when generating buffers.");
+    return RE_ERROR;
   }
   
   if (gltfModel.animations.size() > 0) {
@@ -184,7 +194,7 @@ TResult core::MWorld::createModel(EWPrimitive type, std::string name,
   pModel->m_name = name;
 
   switch (type) {
-    case EWPrimitive::Plane: {
+    /*case EWPrimitive::Plane : {
       WModel::Node* pNode = pModel->createNode(nullptr, 0, "node_" + name);
       RE_CHECK(fValidateNode(pNode));
       pModel->m_pLinearNodes.emplace_back(pNode);
@@ -206,7 +216,7 @@ TResult core::MWorld::createModel(EWPrimitive type, std::string name,
       pModel->m_pLinearPrimitives.emplace_back(
           pNode->pMesh->pPrimitives.back().get());
       break;
-    }
+    }*/
 
     default: {
       break;

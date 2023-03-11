@@ -127,13 +127,11 @@ struct RVertex {
   static std::vector<VkVertexInputAttributeDescription> getAttributeDescs();
 };
 
-// stored by WModel, used to create a valid sampler for a specific texture
-struct RSamplerInfo {
-  VkFilter minFilter = VK_FILTER_LINEAR;
-  VkFilter magFilter = VK_FILTER_LINEAR;
-  VkSamplerAddressMode addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-  VkSamplerAddressMode addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-  VkSamplerAddressMode addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+struct RCameraInfo {
+  float aspectRatio = config::getAspectRatio();
+  float FOV = config::FOV;
+  float nearZ = RE_NEARZ;
+  float farZ = config::viewDistance;
 };
 
 // used for RMaterial creation in materials manager
@@ -177,11 +175,24 @@ struct RMaterialInfo {
   uint32_t effectFlags = 0;
 };
 
-struct RCameraSettings {
-  float aspectRatio = config::getAspectRatio();
-  float FOV = config::FOV;
-  float nearZ = RE_NEARZ;
-  float farZ = config::viewDistance;
+struct RPrimitiveInfo {
+  uint32_t vertexOffset = 0u;
+  uint32_t indexOffset = 0u;
+  uint32_t vertexCount = 0u;
+  uint32_t indexCount = 0u;
+
+  bool createTangentSpaceData = false;
+  std::vector<RVertex>* pVertexData = nullptr;
+  std::vector<uint32_t>* pIndexData = nullptr;
+};
+
+// stored by WModel, used to create a valid sampler for a specific texture
+struct RSamplerInfo {
+  VkFilter minFilter = VK_FILTER_LINEAR;
+  VkFilter magFilter = VK_FILTER_LINEAR;
+  VkSamplerAddressMode addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  VkSamplerAddressMode addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  VkSamplerAddressMode addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 };
 
 //

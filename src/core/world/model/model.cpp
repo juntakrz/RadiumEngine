@@ -330,6 +330,16 @@ std::vector<WModel::Node*>& WModel::getAllNodes() noexcept {
   return m_pLinearNodes;
 }
 
+TResult WModel::validateStagingBuffers() {
+  if (m_indexCount != m_currentIndexOffset ||
+      m_vertexCount != m_currentVertexOffset ||
+      m_indexStaging.size() != m_indexCount ||
+      m_vertexStaging.size() != m_vertexCount) {
+    return RE_ERROR;
+  }
+  return RE_OK;
+}
+
 TResult WModel::clean() {
   if (m_pChildNodes.empty()) {
     RE_LOG(Warning,
@@ -356,6 +366,18 @@ TResult WModel::clean() {
   RE_LOG(Log, "Model '%s' is prepared for deletion.", m_name.c_str());
 
   return RE_OK;
+}
+
+void WModel::setLocalStagingBuffers() {
+  if (m_vertexCount == 0 || m_indexCount == 0) {
+    RE_LOG(Error,
+           "Can't prepare local staging buffers for model \"%s\", nodes "
+           "weren't parsed yet.");
+    return;
+  }
+
+  m_vertexStaging.resize(m_vertexCount);
+  m_indexStaging.resize(m_indexCount);
 }
 
 void WModel::parseNodeProperties(const tinygltf::Model& gltfModel,

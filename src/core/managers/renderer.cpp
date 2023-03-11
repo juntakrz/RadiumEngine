@@ -130,6 +130,7 @@ void core::MRenderer::deinitialize() {
   core::materials.destroyAllTextures();
   destroyDescriptorPool();
   destroyUniformBuffers();
+  destroySceneBuffers();
   destroyMemAlloc();
   if(bRequireValidationLayers) MDebug::get().destroy(APIInstance);
   destroyLogicalDevice();
@@ -182,6 +183,14 @@ void core::MRenderer::destroySurface() {
   vkDestroySurfaceKHR(APIInstance, surface, nullptr);
 }
 
+void core::MRenderer::destroySceneBuffers() {
+  RE_LOG(Log, "Destroying scene buffers.");
+  vmaDestroyBuffer(memAlloc, scene.vertexBuffer.buffer,
+                   scene.vertexBuffer.allocation);
+  vmaDestroyBuffer(memAlloc, scene.indexBuffer.buffer,
+                   scene.indexBuffer.allocation);
+}
+
 const RDescriptorSetLayouts* core::MRenderer::getDescriptorSetLayouts() const {
   return &system.descriptorSetLayouts;
 }
@@ -197,8 +206,9 @@ const VkDescriptorSet core::MRenderer::getDescriptorSet(
 }
 
 uint32_t core::MRenderer::getFrameInFlightIndex() {
-  return system.idIFFrame;
-}
+  return system.idIFFrame; }
+
+core::MRenderer::RSceneBuffers* core::MRenderer::getSceneBuffers() { return &scene; }
 
 // PRIVATE
 

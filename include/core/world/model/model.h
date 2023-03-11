@@ -109,10 +109,16 @@ class WModel {
 
   std::string m_name = "$NONAMEMODEL$";
 
-  RBuffer m_vertexBuffer;
-  RBuffer m_indexBuffer;
   uint32_t m_vertexCount = 0u;
   uint32_t m_indexCount = 0u;
+
+  // used only during model creation for tracking and validation
+  uint32_t m_currentVertexOffset = 0u;
+  uint32_t m_currentIndexOffset = 0u;
+
+  // local staging buffers
+  std::vector<RVertex> m_vertexStaging;
+  std::vector<uint32_t> m_indexStaging;
 
   std::vector<std::unique_ptr<Node>> m_pChildNodes;
 
@@ -135,6 +141,8 @@ class WModel {
   std::vector<std::unique_ptr<Skin>> m_pSkins;
 
  private:
+  void setLocalStagingBuffers();
+
   void parseNodeProperties(const tinygltf::Model& gltfModel,
                            const tinygltf::Node& gltfNode);
 
@@ -168,6 +176,8 @@ class WModel {
   std::vector<uint32_t>& getPrimitiveBindsIndex();
   const std::vector<std::unique_ptr<Node>>& getRootNodes() noexcept;
   std::vector<WModel::Node*>& getAllNodes() noexcept;
+
+  TResult validateStagingBuffers();
 
   // cleans all primitives and nodes within,
   // model itself won't get destroyed on its own

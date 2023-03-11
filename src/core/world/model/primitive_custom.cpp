@@ -1,16 +1,28 @@
 #include "pch.h"
 #include "core/world/model/primitive_custom.h"
 
-WPrimitive_Custom::WPrimitive_Custom(std::vector<RVertex>& vertexData,
-                                     const std::vector<uint32_t>& indexData) {
-  generateTangentsAndBinormals(vertexData, indexData);
-  //setNormalsFromVertices(vertexData);
-  createBuffers(vertexData, indexData);
-}
+WPrimitive_Custom::WPrimitive_Custom(RPrimitiveInfo* pCreateInfo) {
+  if (pCreateInfo->vertexCount < 3 || pCreateInfo->indexCount < 3) {
+    RE_LOG(Error, "Invalid primitive creation data provided.");
+    return;
+  }
 
-void WPrimitive_Custom::create(std::vector<RVertex>& vertexData,
-                               const std::vector<uint32_t>& indexData) {
-  generateTangentsAndBinormals(vertexData, indexData);
-  //setNormalsFromVertices(vertexData);
-  createBuffers(vertexData, indexData);
+  vertexOffset = pCreateInfo->vertexOffset;
+  vertexCount = pCreateInfo->vertexCount;
+  indexOffset = pCreateInfo->indexOffset;
+  indexCount = pCreateInfo->indexCount;
+
+  isCustom = true;
+
+  if (pCreateInfo->createTangentSpaceData) {
+    if (!pCreateInfo->pVertexData || !pCreateInfo->pIndexData) {
+      RE_LOG(Error,
+             "Could not create tangent space data for vertex buffer - no "
+             "valid data was provided.");
+      return;
+    }
+
+    generateTangentsAndBinormals(*pCreateInfo->pVertexData,
+                                 *pCreateInfo->pIndexData);
+  }
 }

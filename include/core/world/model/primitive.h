@@ -8,8 +8,8 @@ class WPrimitive {
   using RMaterial = core::MMaterials::RMaterial;
 
  public:
-  uint32_t vertexStart = 0u;    // vertex location in main model buffer
-  uint32_t indexStart = 0u;     // index location in main model buffer
+  uint32_t vertexOffset = 0u;    // initial vertex location in owning model
+  uint32_t indexOffset = 0u;     // initial index location in owning model
   uint32_t vertexCount = 0u;
   uint32_t indexCount = 0u;
 
@@ -22,20 +22,17 @@ class WPrimitive {
   } extent;
 
  private:
+  // OBSOLETE
   void createVertexBuffer(const std::vector<RVertex>& vertexData);
   void createIndexBuffer(const std::vector<uint32_t>& indexData);
-
- protected:
-  // allocate memory and create vertex and index buffers
-  virtual void createBuffers(const std::vector<RVertex>& vertexData,
-                             const std::vector<uint32_t>& indexData);
+  // OBSOLETE
 
  public:
   WPrimitive();
+  WPrimitive(RPrimitiveInfo* pCreateInfo);
   virtual ~WPrimitive(){};
 
   virtual void create(int arg1 = 1, int arg2 = 1){};
-  virtual void destroy();
 
   void setBoundingBoxExtent(const glm::vec3& min, const glm::vec3& max);
 

@@ -30,7 +30,7 @@ class MActors {
   // CAMERA
 
   ACamera* createCamera(const char* name,
-                        RCameraSettings* cameraSettings = nullptr);
+                        RCameraInfo* cameraSettings = nullptr);
   TResult destroyCamera(const char* name);
   ACamera* getCamera(const char* name);
 

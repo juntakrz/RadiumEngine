@@ -5,38 +5,45 @@
 #include "core/world/model/primitive.h"
 
 WPrimitive::WPrimitive() {
-  vertexBuffer.buffer = VK_NULL_HANDLE;
-  vertexBuffer.allocation = VK_NULL_HANDLE;
+  RE_LOG(Error, "Failed to create primitive, do not use default constructor.");
+}
 
-  indexBuffer.buffer = VK_NULL_HANDLE;
-  indexBuffer.allocation = VK_NULL_HANDLE;
+WPrimitive::WPrimitive(RPrimitiveInfo* pCreateInfo) {
+  if (pCreateInfo->vertexCount < 3 || pCreateInfo->indexCount < 3) {
+    RE_LOG(Error, "Invalid primitive creation data provided.");
+    return;
+  }
+
+  vertexOffset = pCreateInfo->vertexOffset;
+  vertexCount = pCreateInfo->vertexCount;
+  indexOffset = pCreateInfo->indexOffset;
+  indexCount = pCreateInfo->indexCount;
+
+  if (pCreateInfo->createTangentSpaceData) {
+    if (!pCreateInfo->pVertexData || !pCreateInfo->pIndexData) {
+      RE_LOG(Error,
+             "Could not create tangent space data for vertex buffer - no "
+             "valid data was provided.");
+      return;
+    }
+
+    generateTangentsAndBinormals(*pCreateInfo->pVertexData,
+                                 *pCreateInfo->pIndexData);
+  }
 };
 
 void WPrimitive::createVertexBuffer(const std::vector<RVertex>& vertexData) {
-  VkDeviceSize size = vertexData.size() * sizeof(RVertex);
-  core::renderer.createBuffer(EBufferMode::DGPU_VERTEX, size, vertexBuffer,
+  /*VkDeviceSize size = vertexData.size() * sizeof(RVertex);
+   core::renderer.createBuffer(EBufferMode::DGPU_VERTEX, size, vertexBuffer,
                               (void*)vertexData.data());
-  vertexCount = static_cast<uint32_t>(vertexData.size());
+  vertexCount = static_cast<uint32_t>(vertexData.size());*/
 }
 
 void WPrimitive::createIndexBuffer(const std::vector<uint32_t>& indexData) {
-  VkDeviceSize size = indexData.size() * sizeof(indexData[0]);
+  /*VkDeviceSize size = indexData.size() * sizeof(indexData[0]);
   core::renderer.createBuffer(EBufferMode::DGPU_INDEX, size, indexBuffer,
                               (void*)indexData.data());
-  indexCount = static_cast<uint32_t>(indexData.size());
-}
-
-void WPrimitive::createBuffers(const std::vector<RVertex>& vertexData,
-                          const std::vector<uint32_t>& indexData) {
-  createVertexBuffer(vertexData);
-  createIndexBuffer(indexData);
-}
-
-void WPrimitive::destroy() {
-  vmaDestroyBuffer(core::renderer.memAlloc, vertexBuffer.buffer,
-                   vertexBuffer.allocation);
-  vmaDestroyBuffer(core::renderer.memAlloc, indexBuffer.buffer,
-                   indexBuffer.allocation);
+  indexCount = static_cast<uint32_t>(indexData.size());*/
 }
 
 void WPrimitive::setBoundingBoxExtent(const glm::vec3& min,

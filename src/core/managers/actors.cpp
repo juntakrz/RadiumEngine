@@ -10,7 +10,7 @@ core::MActors::MActors() {
 }
 
 ACamera* core::MActors::createCamera(const char* name,
-                                     RCameraSettings* cameraSettings) {
+                                     RCameraInfo* cameraSettings) {
   if (m_actors.cameras.try_emplace(name).second) {
     m_actors.cameras.at(name) = std::make_unique<ACamera>();
 
