@@ -4,10 +4,6 @@
 #include "core/managers/renderer.h"
 #include "core/world/model/primitive.h"
 
-WPrimitive::WPrimitive() {
-  RE_LOG(Error, "Failed to create primitive, do not use default constructor.");
-}
-
 WPrimitive::WPrimitive(RPrimitiveInfo* pCreateInfo) {
   if (pCreateInfo->vertexCount < 3 || pCreateInfo->indexCount < 3) {
     RE_LOG(Error, "Invalid primitive creation data provided.");

@@ -14,15 +14,15 @@ class WModel {
 
   // animation data structures
   struct AnimationChannel {
-    enum PathType { TRANSLATION, ROTATION, SCALE };
-    PathType path;
+    enum EPathType { TRANSLATION, ROTATION, SCALE };
+    EPathType path;
     Node* node;
     uint32_t samplerIndex;
   };
 
   struct AnimationSampler {
-    enum InterpolationType { LINEAR, STEP, CUBICSPLINE };
-    InterpolationType interpolation;
+    enum EInterpolationType { LINEAR, STEP, CUBICSPLINE };
+    EInterpolationType interpolation;
     std::vector<float> inputs;
     std::vector<glm::vec4> outputsVec4;
   };
@@ -107,18 +107,18 @@ class WModel {
     void renderNode(VkCommandBuffer cmdBuffer, EAlphaMode alphaMode);
   };
 
+  struct {
+    const tinygltf::Model* pInModel = nullptr;
+    uint32_t currentVertexOffset = 0u;
+    uint32_t currentIndexOffset = 0u;
+    std::vector<RVertex> vertices;
+    std::vector<uint32_t> indices;
+  } staging;
+
   std::string m_name = "$NONAMEMODEL$";
 
   uint32_t m_vertexCount = 0u;
   uint32_t m_indexCount = 0u;
-
-  // used only during model creation for tracking and validation
-  uint32_t m_currentVertexOffset = 0u;
-  uint32_t m_currentIndexOffset = 0u;
-
-  // local staging buffers
-  std::vector<RVertex> m_vertexStaging;
-  std::vector<uint32_t> m_indexStaging;
 
   std::vector<std::unique_ptr<Node>> m_pChildNodes;
 
@@ -141,32 +141,41 @@ class WModel {
   std::vector<std::unique_ptr<Skin>> m_pSkins;
 
  private:
-  void setLocalStagingBuffers();
+   // common
+   
+  TResult validateStagingData();
+  void clearStagingData();
+  
+  // glTF
 
-  void parseNodeProperties(const tinygltf::Model& gltfModel,
-                           const tinygltf::Node& gltfNode);
+  TResult createModel(const char* name, const tinygltf::Model* pInModel);
 
-  void createNode(WModel::Node* pParentNode, const tinygltf::Model& gltfModel,
-                  const tinygltf::Node& gltfNode, uint32_t gltfNodeIndex);
+  void prepareStagingData();
+
+  void parseNodeProperties(const tinygltf::Node& gltfNode);
+
+  void createNode(WModel::Node* pParentNode, const tinygltf::Node& gltfNode,
+                  uint32_t gltfNodeIndex);
+
+  // will destroy this node and its children incl. mesh and primitive contents
+  void destroyNode(std::unique_ptr<WModel::Node>& pNode);
+
+  void setTextureSamplers();
+
+  // returned vector index corresponds to primitive material index of glTF
+  void parseMaterials(const std::vector<std::string>& texturePaths);
+
+  void loadAnimations();
+
+  void loadSkins();
+
+  // Node
 
   // create simple node with a single empty mesh
   WModel::Node* createNode(WModel::Node* pParentNode, uint32_t nodeIndex,
                            std::string nodeName);
 
   WModel::Node* getNode(uint32_t index) noexcept;
-
-  // will destroy this node and its children incl. mesh and primitive contents
-  void destroyNode(std::unique_ptr<WModel::Node>& pNode);
-
-  void setTextureSamplers(const tinygltf::Model& gltfModel);
-
-  // returned vector index corresponds to primitive material index of glTF
-  void parseMaterials(const tinygltf::Model& gltfModel,
-                      const std::vector<std::string>& texturePaths);
-
-  void loadAnimations(const tinygltf::Model& gltfModel);
-
-  void loadSkins(const tinygltf::Model& gltfModel);
 
  public:
   const char* getName();
@@ -176,8 +185,6 @@ class WModel {
   std::vector<uint32_t>& getPrimitiveBindsIndex();
   const std::vector<std::unique_ptr<Node>>& getRootNodes() noexcept;
   std::vector<WModel::Node*>& getAllNodes() noexcept;
-
-  TResult validateStagingBuffers();
 
   // cleans all primitives and nodes within,
   // model itself won't get destroyed on its own

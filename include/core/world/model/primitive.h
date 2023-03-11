@@ -28,7 +28,7 @@ class WPrimitive {
   // OBSOLETE
 
  public:
-  WPrimitive();
+  WPrimitive() = default;
   WPrimitive(RPrimitiveInfo* pCreateInfo);
   virtual ~WPrimitive(){};
 
