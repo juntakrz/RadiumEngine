@@ -235,7 +235,7 @@ void main() {
 		color += emissive;
 	}
 	
-	outColor = vec4(color, baseColor.a);
+	outColor = vec4(color + vec3(0.004), baseColor.a);
 
 	/*// test phong shading
 	float L_DirIntensity = clamp(dot(inNormal, normalize(lightPos)), 0.0, 1.0) * 1.0;

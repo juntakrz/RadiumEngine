@@ -171,7 +171,7 @@ TResult core::MRenderer::createBuffer(EBufferMode mode, VkDeviceSize size, RBuff
     bufferCreateInfo.usage =
         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
-    allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
     allocInfo.flags = NULL;
     allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
@@ -242,7 +242,7 @@ TResult core::MRenderer::createBuffer(EBufferMode mode, VkDeviceSize size, RBuff
     bufferCreateInfo.usage =
       VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
-    allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
     allocInfo.flags = NULL;
     allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 

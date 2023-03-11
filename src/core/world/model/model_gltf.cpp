@@ -429,7 +429,7 @@ void WModel::createNode(WModel::Node* pParentNode,
       }
 
       RPrimitiveInfo primitiveInfo{};
-      primitiveInfo.vertexCount = staging.currentVertexOffset;
+      primitiveInfo.vertexOffset = staging.currentVertexOffset;
       primitiveInfo.indexOffset = staging.currentIndexOffset;
       primitiveInfo.vertexCount = static_cast<uint32_t>(vertices.size());
       primitiveInfo.indexCount = static_cast<uint32_t>(indices.size());
