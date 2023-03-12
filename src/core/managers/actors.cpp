@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "core/core.h"
 #include "core/managers/input.h"
-#include "core/world/model/primitive_plane.h"
 #include "core/world/actors/camera.h"
 #include "core/managers/actors.h"
 

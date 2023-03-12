@@ -104,65 +104,44 @@ void WModel::Node::updateNode() {
 }
 
 void WModel::Node::renderNode(VkCommandBuffer cmdBuffer, EAlphaMode alphaMode,
-                              RModelBindInfo* pModelInfo) {
+                              bool doubleSided, RModelBindInfo* pModelInfo) {
   if (pMesh) {
     uint32_t idFrameInFlight = core::renderer.getFrameInFlightIndex();
 
     for (const auto& primitive : pMesh->pPrimitives) {
-      if (primitive->pMaterial->alphaMode != alphaMode) {
+      if (primitive->pMaterial->alphaMode != alphaMode ||
+          primitive->pMaterial->doubleSided != doubleSided) {
         // does not belong to the current pipeline
         return;
       }
-      /*if (primitive->pMaterial->alphaMode == alphaMode) {
-        VkPipeline pipeline = VK_NULL_HANDLE;
-        switch (alphaMode) {
-          case EAlphaMode::Opaque:
-          case EAlphaMode::Mask: {
-            pipeline = primitive->pMaterial->doubleSided
-                           ? core::renderer.getGraphicsPipelineSet().PBR_DS
-                           : core::renderer.getGraphicsPipelineSet().PBR;
-            break;
-          }
-          case EAlphaMode::Blend: {
-            pipeline = core::renderer.getGraphicsPipelineSet()
-                           .PBR;  // replace with 'alpha'-enabled set
-            break;
-          }
-        }
 
-        if (pipeline != core::renderer.getBoundPipeline()) {
-          vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            pipeline);
-        }*/
-         
-        // per primitive sets, will be bound at 1, because per frame set is bound at 0
-        const std::vector<VkDescriptorSet> descriptorSets = {
-            primitive->pMaterial->descriptorSet,
-            pMesh->uniformBufferData.descriptorSet};
+      // per primitive sets, will be bound at 1, because per frame set is bound
+      // at 0
+      const std::vector<VkDescriptorSet> descriptorSets = {
+          primitive->pMaterial->descriptorSet,
+          pMesh->uniformBufferData.descriptorSet};
 
-        vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                core::renderer.getGraphicsPipelineLayout(), 1,
-                                static_cast<uint32_t>(descriptorSets.size()),
-                                descriptorSets.data(), 0, nullptr);
+      vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                              core::renderer.getGraphicsPipelineLayout(), 1,
+                              static_cast<uint32_t>(descriptorSets.size()),
+                              descriptorSets.data(), 0, nullptr);
 
-        vkCmdPushConstants(
-            cmdBuffer, core::renderer.getGraphicsPipelineLayout(),
-            VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(RMaterialPCB),
-            &primitive->pMaterial->pushConstantBlock);
+      vkCmdPushConstants(cmdBuffer, core::renderer.getGraphicsPipelineLayout(),
+                         VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(RMaterialPCB),
+                         &primitive->pMaterial->pushConstantBlock);
 
-        int32_t vertexOffset = (int32_t)pModelInfo->vertexOffset +
-                               (int32_t)primitive->vertexOffset;
-        uint32_t indexOffset = pModelInfo->indexOffset + primitive->indexOffset;
+      int32_t vertexOffset =
+          (int32_t)pModelInfo->vertexOffset + (int32_t)primitive->vertexOffset;
+      uint32_t indexOffset = pModelInfo->indexOffset + primitive->indexOffset;
 
-        vkCmdDrawIndexed(cmdBuffer, primitive->indexCount, 1, indexOffset,
-                         vertexOffset, 0);
-      //}
+      vkCmdDrawIndexed(cmdBuffer, primitive->indexCount, 1, indexOffset,
+                       vertexOffset, 0);
     }
   }
 
   // try rendering node children
   for (const auto& child : pChildren) {
-    child->renderNode(cmdBuffer, alphaMode, pModelInfo);
+    child->renderNode(cmdBuffer, alphaMode, doubleSided, pModelInfo);
   }
 }
 

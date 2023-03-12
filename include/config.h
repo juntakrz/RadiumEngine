@@ -29,8 +29,8 @@ namespace scene {
   // buffer overflow happens NOTE: a million of unique vertices and indices are
   // ~150 MBs of memory together
 
-  const size_t uniqueVertexCount = 1000000u;
-  const size_t uniqueIndexCount = 10000000u;
+  const size_t vertexBudget = 5000000u;    // ~640 MBs for vertex data
+  const size_t indexBudget = 100000000u;   // ~400 MBs for index data
   size_t getVertexBufferSize();
   size_t getIndexBufferSize();
 };

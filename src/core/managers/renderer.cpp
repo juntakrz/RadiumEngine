@@ -200,12 +200,12 @@ const VkDescriptorSet core::MRenderer::getDescriptorSet(
 
 TResult core::MRenderer::createSceneBuffers() {
   RE_LOG(Log, "Allocating scene buffer for %d vertices.",
-         config::scene::uniqueVertexCount);
+         config::scene::vertexBudget);
   createBuffer(EBufferMode::DGPU_VERTEX, config::scene::getVertexBufferSize(),
                scene.vertexBuffer, nullptr);
 
   RE_LOG(Log, "Allocating scene buffer for %d indices.",
-         config::scene::uniqueIndexCount);
+         config::scene::indexBudget);
   createBuffer(EBufferMode::DGPU_INDEX, config::scene::getIndexBufferSize(),
                scene.indexBuffer, nullptr);
 

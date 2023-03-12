@@ -57,5 +57,5 @@ void main(){
 	outT = inT;
 	outB = inB;
 
-	gl_Position =  scene.projection * scene.view * vec4(outWorldPos, 1.0);
+	gl_Position = scene.projection * scene.view * vec4(outWorldPos, 1.0);
 }

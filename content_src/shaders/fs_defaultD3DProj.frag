@@ -54,6 +54,23 @@ layout(location = 0) out vec4 outColor;
 const float M_PI = 3.141592653589793;
 const float minRoughness = 0.04;
 
+vec3 tonemapSet(vec3 color) {
+	float A = 0.15;
+	float B = 0.50;
+	float C = 0.10;
+	float D = 0.20;
+	float E = 0.02;
+	float F = 0.30;
+	float W = 11.2;
+	return ((color*(A*color+C*B)+D*E)/(color*(A*color+B)+D*F))-E/F;
+}
+
+vec4 tonemap(vec4 color) {
+	vec3 outColor = tonemapSet(color.rgb * lighting.exposure);
+	outColor = outColor * (1.0 / tonemapSet(vec3(11.2)));	
+	return vec4(pow(outColor, vec3(1.0 / lighting.gamma)), color.a);
+}
+
 //PBS functions
 float distributionGGX(float NdotH, float roughness)
 {
@@ -68,7 +85,7 @@ float distributionGGX(float NdotH, float roughness)
 
     return nom / denom;
 }
-
+// ----------------------------------------------------------------------------
 float geometrySchlickGGX(float NdotV, float roughness)
 {
     float r = (roughness + 1.0);
@@ -92,7 +109,6 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
 {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
-// ----------------------------------------------------------------------------
 
 void main() {
     vec3 dirLightPos = vec3(-10.0, 0.0, 10.0);
@@ -138,26 +154,14 @@ void main() {
     float G = geometrySmith(NdotV, NdotL, roughness);
     vec3 F = fresnelSchlick(HdotV, F0);
     
-    vec3 specular = NDF * G * F / 4.0 * NdotV * NdotL;
+    vec3 numerator = NDF * G * F;
+    float denominator = 4.0 * NdotV * NdotL;
+    vec3 specular = numerator / denominator;
         
     //conservation of energy, must not reflect more light than receives
     vec3 Kd = (1.0 - F) * (1.0 - metallic);
     
     Lo += (Kd * albedo / M_PI + specular) * radiance * NdotL;
-
-    // mix test
-    N = normalize(normal.x * inT + normal.y * inB + normal.z * inNormal);
-    NdotV = max(dot(N, V), 0.0001);               //prevent divide by zero
-    NdotL = max(dot(N, L), 0.0001);
-    NdotH = max(dot(N, H), 0.0);
-        
-    NDF = distributionGGX(NdotH, roughness);
-    G = geometrySmith(NdotV, NdotL, roughness);
-    
-    specular = NDF * G * F / 4.0 * NdotV * NdotL;
-
-    Lo += specular * NdotL;
-    //
     
     vec3 globalAmbient = vec3(0.2, 0.05, 0.4);
     vec3 ambient = 0.03 * albedo * globalAmbient * ao;

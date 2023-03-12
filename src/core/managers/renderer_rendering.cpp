@@ -8,22 +8,32 @@ void core::MRenderer::drawBoundModels(VkCommandBuffer cmdBuffer) {
   // go through bound models and generate draw calls for each
   for (auto& bindInfo : system.models) {
 
-    vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, system.pipelines.PBR);
+    // single-sided opaque pipeline
+    vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                      system.pipelines.PBR);
 
     for (const auto& node : bindInfo.pModel->getRootNodes()) {
-      node->renderNode(cmdBuffer, EAlphaMode::Opaque, &bindInfo);
+      node->renderNode(cmdBuffer, EAlphaMode::Opaque, false, &bindInfo);
+    }
+
+    // double-sided opaque pipeline
+    vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                      system.pipelines.PBR_DS);
+
+    for (const auto& node : bindInfo.pModel->getRootNodes()) {
+      node->renderNode(cmdBuffer, EAlphaMode::Opaque, false, &bindInfo);
     }
 
     // another future pipeline
 
     for (const auto& node : bindInfo.pModel->getRootNodes()) {
-      node->renderNode(cmdBuffer, EAlphaMode::Mask, &bindInfo);
+      node->renderNode(cmdBuffer, EAlphaMode::Mask, false, &bindInfo);
     }
 
     // another future pipeline
 
     for (const auto& node : bindInfo.pModel->getRootNodes()) {
-      node->renderNode(cmdBuffer, EAlphaMode::Blend, &bindInfo);
+      node->renderNode(cmdBuffer, EAlphaMode::Blend, false, &bindInfo);
     }
   }
 }

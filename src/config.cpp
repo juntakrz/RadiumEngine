@@ -13,9 +13,9 @@ float config::pitchLimit = glm::radians(88.0f);
 float config::getAspectRatio() { return renderWidth / (float)renderHeight; }
 
 size_t config::scene::getVertexBufferSize() {
-  return sizeof(RVertex) * uniqueVertexCount;
+  return sizeof(RVertex) * vertexBudget;
 }
 
 size_t config::scene::getIndexBufferSize() {
-  return sizeof(uint32_t) * uniqueIndexCount;
+  return sizeof(uint32_t) * indexBudget;
 }

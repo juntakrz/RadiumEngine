@@ -48,9 +48,9 @@ void core::run() {
   APawn* pPawn = core::actors.getPawn("sphere0");
   pPawn->setModel(pModel);
 
-  core::renderer.bindModel(pModel);
+  //core::renderer.bindModel(pModel);
 
-  core::world.loadModelFromFile("content/models/test/scene.gltf",
+  core::world.loadModelFromFile("content/models/wc3guy/scene.gltf",
                                 "mdlTest");
   //core::world.loadModelFromFile("content/models/wc3guy/scene.gltf", "mdlGuy");
 

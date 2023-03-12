@@ -105,7 +105,8 @@ class WModel {
     void updateNode();
 
     // try to render node and its children by material's alpha mode
-    void renderNode(VkCommandBuffer cmdBuffer, EAlphaMode alphaMode, RModelBindInfo* pModelInfo);
+    void renderNode(VkCommandBuffer cmdBuffer, EAlphaMode alphaMode,
+                    bool doubleSided, RModelBindInfo* pModelInfo);
   };
 
   struct {
