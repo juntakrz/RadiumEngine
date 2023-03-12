@@ -15,6 +15,12 @@ TResult WModel::validateStagingData() {
 }
 
 void WModel::clearStagingData() {
+
+  // this method was already called
+  if (staging.isClean) {
+    return;
+  }
+
   staging.pInModel = nullptr;
 
   if (!staging.vertices.empty()) {
@@ -26,9 +32,12 @@ void WModel::clearStagingData() {
   }
   
   vmaDestroyBuffer(core::renderer.memAlloc, staging.vertexBuffer.buffer,
-                   staging.vertexBuffer.allocation);
+                     staging.vertexBuffer.allocation);
   vmaDestroyBuffer(core::renderer.memAlloc, staging.indexBuffer.buffer,
-                   staging.indexBuffer.allocation);
+                     staging.indexBuffer.allocation);
+
+  // all staging data is guaranteed to be empty
+  staging.isClean = true;
 }
 
 void WModel::prepareStagingData() {
@@ -92,6 +101,8 @@ TResult WModel::clean() {
   m_pChildNodes.clear();
   m_pLinearNodes.clear();
   m_pLinearPrimitives.clear();
+
+  clearStagingData();
 
   RE_LOG(Log, "Model '%s' is prepared for deletion.", m_name.c_str());
 

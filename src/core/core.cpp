@@ -52,9 +52,12 @@ void core::run() {
 
   core::world.loadModelFromFile("content/models/test/scene.gltf",
                                 "mdlTest");
+  //core::world.loadModelFromFile("content/models/wc3guy/scene.gltf", "mdlGuy");
 
   WModel* pTestModel = core::world.getModel("mdlTest");
   core::renderer.bindModel(pTestModel);
+  //pTestModel = core::world.getModel("mdlGuy");
+  //core::renderer.bindModel(pTestModel);
   // ---------------------------- */
 
   RE_LOG(Log, "Launching main event loop.");

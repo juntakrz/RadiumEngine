@@ -115,10 +115,13 @@ TResult WModel::createModel(const char* name, const tinygltf::Model* pInModel) {
   core::renderer.createBuffer(EBufferMode::STAGING, indexBufferSize,
                              staging.indexBuffer, staging.indices.data());
 
-  // clear raw staging data
+  // clear some of the raw staging data
   staging.pInModel = nullptr;
   staging.vertices.clear();
   staging.indices.clear();
+
+  // mark that staging data still contains buffers
+  staging.isClean = false;
 
   return RE_OK;
 }

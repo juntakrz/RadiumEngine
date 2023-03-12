@@ -586,13 +586,13 @@ uint32_t core::MRenderer::bindModel(WModel* pModel) {
   // copy vertex buffer
   VkBufferCopy copyInfo{};
   copyInfo.srcOffset = 0u;
-  copyInfo.dstOffset = scene.currentVertexOffset;
+  copyInfo.dstOffset = scene.currentVertexOffset * sizeof(RVertex);
   copyInfo.size = sizeof(RVertex) * pModel->m_vertexCount;
 
   copyBuffer(&pModel->staging.vertexBuffer, &scene.vertexBuffer, &copyInfo);
 
   // copy index buffer
-  copyInfo.dstOffset = scene.currentIndexOffset;
+  copyInfo.dstOffset = scene.currentIndexOffset * sizeof(uint32_t);
   copyInfo.size = sizeof(uint32_t) * pModel->m_indexCount;
 
   copyBuffer(&pModel->staging.indexBuffer, &scene.indexBuffer, &copyInfo);

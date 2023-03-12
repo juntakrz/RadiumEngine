@@ -116,6 +116,7 @@ class WModel {
     std::vector<uint32_t> indices;
     RBuffer vertexBuffer;
     RBuffer indexBuffer;
+    bool isClean = true;
   } staging;
 
   std::string m_name = "$NONAMEMODEL$";
