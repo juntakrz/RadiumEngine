@@ -12,6 +12,7 @@ class WPrimitive {
   uint32_t indexOffset = 0u;     // initial index location in owning model
   uint32_t vertexCount = 0u;
   uint32_t indexCount = 0u;
+  bool createTangentSpaceData = false;
 
   RMaterial* pMaterial = nullptr;
 
@@ -21,18 +22,27 @@ class WPrimitive {
     bool isValid = false;
   } extent;
 
- private:
-  // OBSOLETE
-  void createVertexBuffer(const std::vector<RVertex>& vertexData);
-  void createIndexBuffer(const std::vector<uint32_t>& indexData);
-  // OBSOLETE
-
  public:
-  WPrimitive() = default;
+  WPrimitive() = delete;
   WPrimitive(RPrimitiveInfo* pCreateInfo);
   virtual ~WPrimitive(){};
 
-  virtual void create(int arg1 = 1, int arg2 = 1){};
+  void generatePlane(int32_t xDivisions, int32_t yDivisions,
+                     std::vector<RVertex>& outVertices,
+                     std::vector<uint32_t>& outIndices) noexcept;
+
+  void generateSphere(int32_t divisions, bool invertNormals,
+                      std::vector<RVertex>& outVertices,
+                      std::vector<uint32_t>& outIndices) noexcept;
+
+  // 'divisions' variable is not implemented yet
+  void generateCube(int32_t divisions, bool invertNormals,
+                    std::vector<RVertex>& outVertices,
+                    std::vector<uint32_t>& outIndices) noexcept;
+
+  void generateBoundingBox(std::vector<RVertex>& outVertices,
+                           std::vector<uint32_t>& outIndices) noexcept;
+
 
   void setBoundingBoxExtent(const glm::vec3& min, const glm::vec3& max);
 

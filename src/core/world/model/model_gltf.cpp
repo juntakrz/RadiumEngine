@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "core/core.h"
 #include "core/managers/renderer.h"
-#include "core/world/model/primitive_custom.h"
 #include "core/world/model/model.h"
 
 #include "tiny_gltf.h"
@@ -102,28 +101,7 @@ TResult WModel::createModel(const char* name, const tinygltf::Model* pInModel) {
     node->setNodeDescriptorSet(false);
   }
 
-  // create staging buffers for later copy to scene buffer
-#ifndef NDEBUG
-  RE_LOG(Log, "Creating staging buffers for model.");
-#endif
-
-  VkDeviceSize vertexBufferSize = sizeof(RVertex) * staging.vertices.size();
-  VkDeviceSize indexBufferSize = sizeof(uint32_t) * staging.indices.size();
-
-  core::renderer.createBuffer(EBufferMode::STAGING, vertexBufferSize,
-                              staging.vertexBuffer, staging.vertices.data());
-  core::renderer.createBuffer(EBufferMode::STAGING, indexBufferSize,
-                             staging.indexBuffer, staging.indices.data());
-
-  // clear some of the raw staging data
-  staging.pInModel = nullptr;
-  staging.vertices.clear();
-  staging.indices.clear();
-
-  // mark that staging data still contains buffers
-  staging.isClean = false;
-
-  return RE_OK;
+  return createStagingBuffers();
 }
 
 void WModel::createNode(WModel::Node* pParentNode,
@@ -443,7 +421,7 @@ void WModel::createNode(WModel::Node* pParentNode,
 
       // create new primitive
       pMesh->pPrimitives.emplace_back(
-          std::make_unique<WPrimitive_Custom>(&primitiveInfo));
+          std::make_unique<WPrimitive>(&primitiveInfo));
       WPrimitive* pPrimitive = pMesh->pPrimitives.back().get();
       pPrimitive->setBoundingBoxExtent(posMin, posMax);
       pPrimitive->pMaterial = core::materials.getMaterial(

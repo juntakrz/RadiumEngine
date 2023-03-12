@@ -5,7 +5,9 @@
 #include "core/world/model/primitive.h"
 
 WPrimitive::WPrimitive(RPrimitiveInfo* pCreateInfo) {
-  if (pCreateInfo->vertexCount < 3 || pCreateInfo->indexCount < 3) {
+  // will check for create info data validity only if vertex data was provided
+  if ((pCreateInfo->vertexCount < 3 || pCreateInfo->indexCount < 3) &&
+      pCreateInfo->pVertexData) {
     RE_LOG(Error, "Invalid primitive creation data provided.");
     return;
   }
@@ -15,32 +17,81 @@ WPrimitive::WPrimitive(RPrimitiveInfo* pCreateInfo) {
   indexOffset = pCreateInfo->indexOffset;
   indexCount = pCreateInfo->indexCount;
 
+  // should create tangent space data - either now or later if generated primitive
   if (pCreateInfo->createTangentSpaceData) {
+    createTangentSpaceData = true;
+
     if (!pCreateInfo->pVertexData || !pCreateInfo->pIndexData) {
-      RE_LOG(Error,
-             "Could not create tangent space data for vertex buffer - no "
-             "valid data was provided.");
       return;
     }
 
     generateTangentsAndBinormals(*pCreateInfo->pVertexData,
                                  *pCreateInfo->pIndexData);
   }
+}
+void WPrimitive::generatePlane(int32_t xDivisions, int32_t yDivisions,
+                               std::vector<RVertex>& outVertices,
+                               std::vector<uint32_t>& outIndices) noexcept {
+  auto plane = WPrimitiveGen_Plane::create<RVertex>(xDivisions, yDivisions);
+
+  plane.setNormals();
+  plane.setColorForAllVertices(1.0f, 1.0f, 1.0f, 1.0f);
+
+  outVertices = plane.vertices;
+  outIndices = plane.indices;
+
+  // store vertex and index count but offset must be provided to primitive externally
+  vertexCount = static_cast<uint32_t>(outVertices.size());
+  indexCount = static_cast<uint32_t>(outIndices.size());
+
+  if (createTangentSpaceData) {
+    generateTangentsAndBinormals(outVertices, outIndices);
+  }
+}
+void WPrimitive::generateSphere(int32_t divisions, bool invertNormals,
+                                std::vector<RVertex>& outVertices,
+                                std::vector<uint32_t>& outIndices) noexcept {
+  auto sphere = WPrimitiveGen_Sphere::create<RVertex>(divisions, invertNormals);
+
+  sphere.setNormals();
+  sphere.setColorForAllVertices(1.0f, 1.0f, 1.0f, 1.0f);
+
+  outVertices = sphere.vertices;
+  outIndices = sphere.indices;
+
+  // store vertex and index count but offset must be provided to primitive externally
+  vertexCount = static_cast<uint32_t>(outVertices.size());
+  indexCount = static_cast<uint32_t>(outIndices.size());
+
+  if (createTangentSpaceData) {
+    generateTangentsAndBinormals(outVertices, outIndices);
+  }
+}
+void WPrimitive::generateCube(int32_t divisions, bool invertNormals,
+                              std::vector<RVertex>& outVertices,
+                              std::vector<uint32_t>& outIndices) noexcept {
+  auto cube = WPrimitiveGen_Cube::create<RVertex>(divisions, invertNormals);
+
+  cube.setNormals();
+  cube.setColorForAllVertices(1.0f, 1.0f, 1.0f, 1.0f);
+
+  outVertices = cube.vertices;
+  outIndices = cube.indices;
+
+  // store vertex and index count but offset must be provided to primitive
+  // externally
+  vertexCount = static_cast<uint32_t>(outVertices.size());
+  indexCount = static_cast<uint32_t>(outIndices.size());
+
+  if (createTangentSpaceData) {
+    generateTangentsAndBinormals(outVertices, outIndices);
+  }
+}
+void WPrimitive::generateBoundingBox(
+    std::vector<RVertex>& outVertices,
+    std::vector<uint32_t>& outIndices) noexcept {
+  // not fully implemented yet, likely needs WModel to be expanded
 };
-
-void WPrimitive::createVertexBuffer(const std::vector<RVertex>& vertexData) {
-  /*VkDeviceSize size = vertexData.size() * sizeof(RVertex);
-   core::renderer.createBuffer(EBufferMode::DGPU_VERTEX, size, vertexBuffer,
-                              (void*)vertexData.data());
-  vertexCount = static_cast<uint32_t>(vertexData.size());*/
-}
-
-void WPrimitive::createIndexBuffer(const std::vector<uint32_t>& indexData) {
-  /*VkDeviceSize size = indexData.size() * sizeof(indexData[0]);
-  core::renderer.createBuffer(EBufferMode::DGPU_INDEX, size, indexBuffer,
-                              (void*)indexData.data());
-  indexCount = static_cast<uint32_t>(indexData.size());*/
-}
 
 void WPrimitive::setBoundingBoxExtent(const glm::vec3& min,
                                       const glm::vec3& max) {

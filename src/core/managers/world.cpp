@@ -3,9 +3,6 @@
 #include "core/core.h"
 #include "core/managers/materials.h"
 #include "core/managers/world.h"
-#include "core/world/model/primitive_plane.h"
-#include "core/world/model/primitive_sphere.h"
-//#include "core/world/model/primitive_cube.h"
 #include "core/world/model/model.h"
 
 #define TINYGLTF_IMPLEMENTATION
@@ -79,7 +76,7 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
   return result;
 }
 
-TResult core::MWorld::createModel(EWPrimitive type, std::string name,
+TResult core::MWorld::createModel(EPrimitiveType type, std::string name,
                                   int32_t arg0, int32_t arg1) {
   using RMaterial = core::MMaterials::RMaterial;
   auto fValidateNode = [&](WModel::Node* pNode) {
@@ -111,36 +108,55 @@ TResult core::MWorld::createModel(EWPrimitive type, std::string name,
          arg0, arg1);
 
   pModel->m_name = name;
+  WModel::Node* pNode = pModel->createNode(nullptr, 0, "node_" + name);
+  RE_CHECK(fValidateNode(pNode));
+  pModel->m_pLinearNodes.emplace_back(pNode);
+
+  RPrimitiveInfo primitiveInfo{};
+  primitiveInfo.vertexOffset = pModel->staging.currentVertexOffset;
+  primitiveInfo.indexOffset = pModel->staging.currentIndexOffset;
+  primitiveInfo.createTangentSpaceData = true;
+
+  pNode->pMesh->pPrimitives.emplace_back(
+      std::make_unique<WPrimitive>(&primitiveInfo));
+
+  std::vector<RVertex> vertices;
+  std::vector<uint32_t> indices;
 
   switch (type) {
-    /*case EWPrimitive::Plane : {
-      WModel::Node* pNode = pModel->createNode(nullptr, 0, "node_" + name);
-      RE_CHECK(fValidateNode(pNode));
-      pModel->m_pLinearNodes.emplace_back(pNode);
-      pNode->pMesh->pPrimitives.emplace_back(
-          std::make_unique<WPrimitive_Plane>());
-      pNode->pMesh->pPrimitives.back()->create(arg0, arg1);
-      pModel->m_pLinearPrimitives.emplace_back(
-          pNode->pMesh->pPrimitives.back().get());
+    case EPrimitiveType::Plane: {
+      pNode->pMesh->pPrimitives.back()->generatePlane(arg0, arg1, vertices,
+                                                      indices);
       break;
     }
 
-    case EWPrimitive::Sphere: {
-      WModel::Node* pNode = pModel->createNode(nullptr, 0, "node_" + name);
-      RE_CHECK(fValidateNode(pNode));
-      pModel->m_pLinearNodes.emplace_back(pNode);
-      pNode->pMesh->pPrimitives.emplace_back(
-          std::make_unique<WPrimitive_Sphere>());
-      pNode->pMesh->pPrimitives.back()->create(arg0, arg1);
-      pModel->m_pLinearPrimitives.emplace_back(
-          pNode->pMesh->pPrimitives.back().get());
+    case EPrimitiveType::Sphere: {
+      pNode->pMesh->pPrimitives.back()->generateSphere(arg0, arg1, vertices,
+                                                       indices);
       break;
-    }*/
+    }
+
+    case EPrimitiveType::Cube: {
+      pNode->pMesh->pPrimitives.back()->generateCube(arg0, arg1, vertices,
+                                                     indices);
+      break;
+    }
 
     default: {
       break;
     }
   }
+
+  // copy vertex and index data to local staging buffers and adjust offsets
+  pModel->staging.vertices.insert(pModel->staging.vertices.begin(), vertices.begin(), vertices.end());
+  pModel->staging.indices.insert(pModel->staging.indices.begin(), indices.begin(), indices.end());
+
+  pModel->staging.currentVertexOffset += static_cast<uint32_t>(vertices.size());
+  pModel->staging.currentIndexOffset += static_cast<uint32_t>(indices.size());
+  pModel->m_vertexCount += pModel->staging.currentVertexOffset;
+  pModel->m_indexCount += pModel->staging.currentIndexOffset;
+
+  pModel->m_pLinearPrimitives.emplace_back(pNode->pMesh->pPrimitives.back().get());
 
   // assign default material to the model
   RMaterialInfo defaultMaterialInfo{};
@@ -156,7 +172,20 @@ TResult core::MWorld::createModel(EWPrimitive type, std::string name,
     node->updateNode();
   }
 
-  return RE_OK;
+  // calculate bounding box extent for the whole mesh based on created primitives
+  /*
+  glm::vec3 minExtent{0.0f}, maxExtent{0.0f};
+  for (const auto& primitive : pNode->pMesh->pPrimitives) {
+    if (primitive->getBoundingBoxExtent(minExtent, maxExtent)) {
+      pNode->pMesh->extent.min = glm::min(pNode->pMesh->extent.min, minExtent);
+      pNode->pMesh->extent.max = glm::max(pNode->pMesh->extent.max, maxExtent);
+      pNode->pMesh->extent.isValid = true;
+
+      pModel->m_pLinearPrimitives.emplace_back(primitive.get());
+    }
+  }*/
+
+  return pModel->createStagingBuffers();
 }
 
 WModel* core::MWorld::getModel(const char* name) {

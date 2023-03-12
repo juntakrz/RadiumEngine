@@ -4,6 +4,36 @@
 #include "core/managers/materials.h"
 #include "core/world/model/model.h"
 
+TResult WModel::createStagingBuffers() {
+  if (validateStagingData() != RE_OK) {
+    RE_LOG(Error, "Staging data is invalid for model \"%s\".", m_name.c_str());
+    return RE_ERROR; 
+  }
+
+  // create staging buffers for later copy to scene buffer
+#ifndef NDEBUG
+  RE_LOG(Log, "Creating staging buffers for this model.");
+#endif
+
+  VkDeviceSize vertexBufferSize = sizeof(RVertex) * staging.vertices.size();
+  VkDeviceSize indexBufferSize = sizeof(uint32_t) * staging.indices.size();
+
+  core::renderer.createBuffer(EBufferMode::STAGING, vertexBufferSize,
+                              staging.vertexBuffer, staging.vertices.data());
+  core::renderer.createBuffer(EBufferMode::STAGING, indexBufferSize,
+                              staging.indexBuffer, staging.indices.data());
+
+  // clear some of the raw staging data
+  staging.pInModel = nullptr;
+  staging.vertices.clear();
+  staging.indices.clear();
+
+  // mark that staging data still contains buffers
+  staging.isClean = false;
+
+  return RE_OK; 
+}
+
 TResult WModel::validateStagingData() {
   if (m_indexCount != staging.currentIndexOffset ||
       m_vertexCount != staging.currentVertexOffset ||

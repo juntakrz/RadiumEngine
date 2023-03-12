@@ -33,7 +33,7 @@ enum class ECmdType {
   Present
 };
 
-enum class EWPrimitive {
+enum class EPrimitiveType {
   Null,
   Plane,
   Sphere,
@@ -150,20 +150,20 @@ struct RMaterialInfo {
 
   struct {
     std::string baseColor = RE_DEFAULTTEXTURE;
-    std::string normal = RE_WHITETEXTURE;
-    std::string metalRoughness = RE_WHITETEXTURE;
-    std::string occlusion = RE_WHITETEXTURE;
-    std::string emissive = RE_BLACKTEXTURE;
-    std::string extra = RE_BLACKTEXTURE;
+    std::string normal = "";
+    std::string metalRoughness = "";
+    std::string occlusion = "";
+    std::string emissive = "";
+    std::string extra = "";
   } textures;
 
   struct {
-    uint8_t baseColor = 0;
-    uint8_t normal = 0;
-    uint8_t metalRoughness = 0;
-    uint8_t occlusion = 0;
-    uint8_t emissive = 0;
-    uint8_t extra = 0;
+    int8_t baseColor = 0;
+    int8_t normal = 0;
+    int8_t metalRoughness = 0;
+    int8_t occlusion = 0;
+    int8_t emissive = 0;
+    int8_t extra = 0;
   } texCoordSets;
 
   glm::vec4 F0 = {0.04f, 0.04f, 0.04f, 0.0f};

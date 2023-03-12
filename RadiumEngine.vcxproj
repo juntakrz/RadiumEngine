@@ -247,19 +247,9 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core\world\model\primitive_custom.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="src\core\world\model\primitive_plane.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="src\core\world\model\model.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="src\core\world\model\primitive_sphere.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -291,11 +281,8 @@
     <ClInclude Include="include\core\world\actors\base.h" />
     <ClInclude Include="include\core\world\actors\pawn.h" />
     <ClInclude Include="include\core\objects.h" />
-    <ClInclude Include="include\core\world\model\primitive_custom.h" />
-    <ClInclude Include="include\core\world\model\primitive_plane.h" />
     <ClInclude Include="include\core\world\model\primitive.h" />
     <ClInclude Include="include\core\world\model\model.h" />
-    <ClInclude Include="include\core\world\model\primitive_sphere.h" />
     <ClInclude Include="include\core\world\primitivegen\cube.h" />
     <ClInclude Include="include\core\world\primitivegen\plane.h" />
     <ClInclude Include="include\core\world\primitivegen\primitivegen_include.h" />

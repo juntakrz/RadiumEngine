@@ -147,7 +147,8 @@ class WModel {
 
  private:
    // common
-   
+
+  TResult createStagingBuffers();
   TResult validateStagingData();
   void clearStagingData();
 

@@ -56,6 +56,7 @@ core::MMaterials::RMaterial* core::MMaterials::createMaterial(
   newMat.pushConstantBlock.alphaMode = static_cast<float>(pDesc->alphaMode);
   newMat.pushConstantBlock.alphaCutoff = pDesc->alphaCutoff;
 
+  // disable reading from texture in shader if no texture is available
   newMat.pushConstantBlock.baseColorTextureSet =
       newMat.pBaseColor ? pDesc->texCoordSets.baseColor : -1;
   newMat.pushConstantBlock.normalTextureSet =

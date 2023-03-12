@@ -43,19 +43,19 @@ void core::run() {
 
   // remove this after loadMap improvements
   core::actors.createPawn("sphere0");
-  core::world.createModel(EWPrimitive::Sphere, "mdlSphere", 16, 0);
+  core::world.createModel(EPrimitiveType::Sphere, "mdlSphere", 16, 0);
   WModel* pModel = core::world.getModel("mdlSphere");
   APawn* pPawn = core::actors.getPawn("sphere0");
   pPawn->setModel(pModel);
 
-  //core::renderer.bindModel(pModel);
+  core::renderer.bindModel(pModel);
 
   core::world.loadModelFromFile("content/models/test/scene.gltf",
                                 "mdlTest");
   //core::world.loadModelFromFile("content/models/wc3guy/scene.gltf", "mdlGuy");
 
-  WModel* pTestModel = core::world.getModel("mdlTest");
-  core::renderer.bindModel(pTestModel);
+  pModel = core::world.getModel("mdlTest");
+  core::renderer.bindModel(pModel);
   //pTestModel = core::world.getModel("mdlGuy");
   //core::renderer.bindModel(pTestModel);
   // ---------------------------- */
