@@ -48,16 +48,18 @@ void core::run() {
   APawn* pPawn = core::actors.getPawn("sphere0");
   pPawn->setModel(pModel);
 
-  //core::renderer.bindModel(pModel);
+  //core::renderer.bindEntity(pModel);
 
-  core::world.loadModelFromFile("content/models/test/scene.gltf",
-                                "mdlTest");
   //core::world.loadModelFromFile("content/models/wc3guy/scene.gltf", "mdlGuy");
 
-  pModel = core::world.getModel("mdlTest");
-  core::renderer.bindModel(pModel);
+  AStatic* pStatic = core::actors.createStatic("Static01");
+  core::world.loadModelFromFile("content/models/test/scene.gltf", "mdlTest");
+  pStatic->setModel(core::world.getModel("mdlTest"));
+  core::renderer.bindEntity(pStatic);
+  pStatic->setLocation(0.0f, -5.0f, 0.0f);
+
   //pTestModel = core::world.getModel("mdlGuy");
-  //core::renderer.bindModel(pTestModel);
+  //core::renderer.bindEntity(pTestModel);
   // ---------------------------- */
 
   RE_LOG(Log, "Launching main event loop.");

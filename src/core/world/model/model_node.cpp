@@ -104,7 +104,7 @@ void WModel::Node::updateNode() {
 }
 
 void WModel::Node::renderNode(VkCommandBuffer cmdBuffer, EAlphaMode alphaMode,
-                              bool doubleSided, RModelBindInfo* pModelInfo) {
+                              bool doubleSided, REntityBindInfo* pModelInfo) {
   if (pMesh) {
     uint32_t idFrameInFlight = core::renderer.getFrameInFlightIndex();
 

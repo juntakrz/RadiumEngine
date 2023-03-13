@@ -12,6 +12,14 @@ ABase::TransformationData& ABase::getTransformData() noexcept {
   return m_transformationData;
 }
 
+void ABase::setLocation(float x, float y, float z) noexcept {
+  m_transformationData.translation.x = x;
+  m_transformationData.translation.y = y;
+  m_transformationData.translation.z = z;
+
+  m_transformationData.initial.translation = m_transformationData.translation;
+}
+
 void ABase::setLocation(const glm::vec3& pos) noexcept {
   m_transformationData.translation = pos;
   m_transformationData.initial.translation = m_transformationData.translation;

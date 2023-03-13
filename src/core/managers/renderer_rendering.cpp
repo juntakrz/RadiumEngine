@@ -1,18 +1,21 @@
 #include "pch.h"
 #include "core/core.h"
 #include "core/managers/time.h"
+#include "core/world/actors/entity.h"
 #include "core/world/model/model.h"
 #include "core/managers/renderer.h"
 
 void core::MRenderer::drawBoundModels(VkCommandBuffer cmdBuffer) {
   // go through bound models and generate draw calls for each
-  for (auto& bindInfo : system.models) {
+  for (auto& bindInfo : system.bindings) {
+
+    auto& nodes = bindInfo.pEntity->getModel()->getRootNodes();
 
     // single-sided opaque pipeline
     vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                       system.pipelines.PBR);
 
-    for (const auto& node : bindInfo.pModel->getRootNodes()) {
+    for (const auto& node : nodes) {
       node->renderNode(cmdBuffer, EAlphaMode::Opaque, false, &bindInfo);
     }
 
@@ -20,19 +23,19 @@ void core::MRenderer::drawBoundModels(VkCommandBuffer cmdBuffer) {
     vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                       system.pipelines.PBR_DS);
 
-    for (const auto& node : bindInfo.pModel->getRootNodes()) {
+    for (const auto& node : nodes) {
       node->renderNode(cmdBuffer, EAlphaMode::Opaque, false, &bindInfo);
     }
 
     // another future pipeline
 
-    for (const auto& node : bindInfo.pModel->getRootNodes()) {
+    for (const auto& node : nodes) {
       node->renderNode(cmdBuffer, EAlphaMode::Mask, false, &bindInfo);
     }
 
     // another future pipeline
 
-    for (const auto& node : bindInfo.pModel->getRootNodes()) {
+    for (const auto& node : nodes) {
       node->renderNode(cmdBuffer, EAlphaMode::Blend, false, &bindInfo);
     }
   }

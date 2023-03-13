@@ -106,7 +106,7 @@ class WModel {
 
     // try to render node and its children by material's alpha mode
     void renderNode(VkCommandBuffer cmdBuffer, EAlphaMode alphaMode,
-                    bool doubleSided, RModelBindInfo* pModelInfo);
+                    bool doubleSided, REntityBindInfo* pModelInfo);
   };
 
   struct {
@@ -124,7 +124,6 @@ class WModel {
 
   uint32_t m_vertexCount = 0u;
   uint32_t m_indexCount = 0u;
-  bool m_isBound = false;
 
   std::vector<std::unique_ptr<Node>> m_pChildNodes;
 
@@ -132,6 +131,7 @@ class WModel {
   std::vector<WModel::Node*> m_pLinearNodes;
 
   // stores indices for primitive binds in rendering manager
+  // TODO: potentially deprecated, but may yet be used for depth sorting
   std::vector<uint32_t> m_primitiveBindsIndex;
 
   // texture samplers used by this model

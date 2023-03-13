@@ -57,8 +57,7 @@ const float minRoughness = 0.04;
 float distributionGGX(float NdotH, float roughness)
 {
     //a = roughness * roughness, a2 = a * a
-    //float a2 = roughness * roughness * roughness * roughness;
-    float a2 = roughness * roughness * roughness;
+    float a2 = roughness * roughness * roughness * roughness;
     float NdotH2 = NdotH * NdotH;
 
     float nom = a2;
@@ -97,14 +96,13 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness){
 }
 // ----------------------------------------------------------------------------
 
-vec3 ACESFilm(vec3 x){
-    return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0);
+vec3 tonemap(vec3 color){
+    return clamp((color * (2.51 * color + 0.03)) / (color * (2.43 * color + 0.59) + 0.14), 0.0, 1.0);
 }
 
 mat3 getTBN(vec3 N, bool flipB) {
     N = normalize(N);
 	vec3 B = normalize(cross(N, inT));
-
     B = flipB ? -B : B;    
 
     return mat3(inT, B, N);
@@ -118,14 +116,16 @@ void main() {
 	
     //init values    
     vec4 baseMap = texture(baseColorMap, inTexCoord0);
-    baseMap.r = pow(baseMap.r, 2.2);
-    baseMap.g = pow(baseMap.g, 2.2);
-    baseMap.b = pow(baseMap.b, 2.2);
+
+    // convert color to linear space
+    baseMap.r = pow(baseMap.r, lighting.gamma);
+    baseMap.g = pow(baseMap.g, lighting.gamma);
+    baseMap.b = pow(baseMap.b, lighting.gamma);
 
     vec3 albedo = baseMap.rgb;
     vec3 normal = texture(normalMap, inTexCoord0).rgb;
     float metallic = texture(physicalMap, inTexCoord0).b * material.metallicFactor;
-    float roughness = texture(physicalMap, inTexCoord0).g * material.roughnessFactor;
+    float roughness = texture(physicalMap, inTexCoord0).g * material.roughnessFactor * 2.0;
     float ao = texture(occlusionMap, inTexCoord0).r;
     
     vec3 L, radiance, color;
@@ -154,7 +154,6 @@ void main() {
         
     float NDF = distributionGGX(NdotH, roughness);
     float G = geometrySmith(NdotV, NdotL, roughness);
-    //vec3 F = fresnelSchlick(HdotV, F0);
     vec3 F = fresnelSchlickRoughness(HdotV, F0, roughness);
     
     vec3 specular = NDF * G * F / 4.0 * NdotV * NdotL;
@@ -164,7 +163,7 @@ void main() {
     
     Lo += (Kd * albedo / M_PI + specular) * radiance * NdotL;
 
-    // mix test
+    // flipped specular for reflecting light directly (needs testing to see if viable)
     TBN = getTBN(inNormal, true);
     N = normalize(TBN * normal);
     NdotV = max(dot(N, V), 0.0001);               //prevent divide by zero
@@ -176,18 +175,24 @@ void main() {
     
     specular = NDF * G * F / 4.0 * NdotV * NdotL;
 
-    Lo += specular * NdotL;
+    Lo += specular * NdotL * 0.25;
     //
     
-    vec3 globalAmbient = vec3(0.2, 0.05, 0.4) * 0.05;
+    // replace with IBL
+    vec3 globalAmbient = vec3(0.2, 0.05, 0.4) * 0.01;
     vec3 ambient = 0.03 * albedo * globalAmbient * ao;
 
     color = ambient + Lo;
     
     color = color / (color + 1.0);
-    color.r = pow(color.r, 1.0 / 2.2);
-    color.g = pow(color.g, 1.0 / 2.2);
-    color.b = pow(color.b, 1.0 / 2.2);
+    
+    // tonemap and apply exposure
+    color = tonemap(color) * lighting.exposure;
 
-    outColor = vec4(ACESFilm(color), baseMap.a);
+    // convert color back to sRGB
+    color.r = pow(color.r, 1.0 / lighting.gamma);
+    color.g = pow(color.g, 1.0 / lighting.gamma);
+    color.b = pow(color.b, 1.0 / lighting.gamma);
+
+    outColor = vec4(color, baseMap.a);
 }

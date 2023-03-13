@@ -3,12 +3,14 @@
 #include "vk_mem_alloc.h"
 #include "config.h"
 
-class WModel;
+class AEntity;
 
 enum class EActorType {  // actor type
   Base,
   Camera,
-  Pawn
+  Entity,     // unity for types below
+  Pawn,       // can be controlled by player input
+  Static      // part of the scene not meant to be controlled
 };
 
 enum EAlphaMode {
@@ -176,8 +178,8 @@ struct RMaterialInfo {
   uint32_t effectFlags = 0;
 };
 
-struct RModelBindInfo {
-  WModel* pModel = nullptr;
+struct REntityBindInfo {
+  AEntity* pEntity = nullptr;
   uint32_t vertexOffset = 0u;
   uint32_t indexOffset = 0u;
   uint32_t vertexCount = 0u;

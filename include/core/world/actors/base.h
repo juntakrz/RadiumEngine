@@ -12,6 +12,7 @@ class ACamera;
 
 class ABase {
  protected:
+  std::string m_name = "$NONAME$";
   EActorType m_typeId = EActorType::Base;
 
   struct TransformationData {
@@ -57,6 +58,7 @@ class ABase {
   // data set used for transformation calculations
   virtual TransformationData& getTransformData() noexcept;
 
+  virtual void setLocation(float x, float y, float z) noexcept;
   virtual void setLocation(const glm::vec3& newLocation) noexcept;
   virtual glm::vec3& getLocation() noexcept;
 

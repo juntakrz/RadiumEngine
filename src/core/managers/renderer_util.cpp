@@ -571,17 +571,19 @@ VkImageView core::MRenderer::createImageView(VkImage image, VkFormat format,
   return imageView;
 }
 
-uint32_t core::MRenderer::bindModel(WModel* pModel) {
-  if (!pModel) {
-    RE_LOG(Error, "No model provided for binding.");
+uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
+  if (!pEntity) {
+    RE_LOG(Error, "No world entity was provided for binding.");
     return -1;
   }
 
   // check if model is already bound, it shouldn't have valid offsets stored
-  if (pModel->m_isBound) {
-    RE_LOG(Error, "Model is already bound.");
+  if (pEntity->getBindingIndex() > -1) {
+    RE_LOG(Error, "Entity is already bound.");
     return -1;
   }
+
+  WModel* pModel = pEntity->getModel();
 
   // copy vertex buffer
   VkBufferCopy copyInfo{};
@@ -598,16 +600,16 @@ uint32_t core::MRenderer::bindModel(WModel* pModel) {
   copyBuffer(&pModel->staging.indexBuffer, &scene.indexBuffer, &copyInfo);
 
   // add model to rendering queue, store its offsets
-  RModelBindInfo bindInfo{};
-  bindInfo.pModel = pModel;
+  REntityBindInfo bindInfo{};
+  bindInfo.pEntity = pEntity;
   bindInfo.vertexOffset = scene.currentVertexOffset;
   bindInfo.vertexCount = pModel->m_vertexCount;
   bindInfo.indexOffset = scene.currentIndexOffset;
   bindInfo.indexCount = pModel->m_indexCount;
 
-  system.models.emplace_back(bindInfo);
+  system.bindings.emplace_back(bindInfo);
 
-  pModel->m_isBound = true;
+  pEntity->setBindingIndex(static_cast<int32_t>(system.bindings.size() - 1));
 
   // store new offsets into scene buffer data
   scene.currentVertexOffset += pModel->m_vertexCount;
@@ -619,65 +621,29 @@ uint32_t core::MRenderer::bindModel(WModel* pModel) {
   RE_LOG(Log, "Bound model \"%s\" to graphics pipeline.", pModel->getName());
 #endif
 
-  return (uint32_t)system.models.size() - 1;
+  return (uint32_t)system.bindings.size() - 1;
 }
 
-void core::MRenderer::bindModel(const std::vector<WModel*>& inModels,
-                                std::vector<uint32_t>& outIndices) {
-  outIndices.clear();
-
-  for (const auto& it : inModels) {
-    system.models.emplace_back(it);
-    outIndices.emplace_back(static_cast<uint32_t>(system.models.size() - 1));
-
-#ifndef NDEBUG
-    RE_LOG(Log, "Bound model \"%s\" to graphics pipeline.", it->getName());
-#endif
-  }
-}
-
-void core::MRenderer::unbindModel(uint32_t index) {
-  if (index > system.models.size() - 1) {
-    RE_LOG(Error, "Failed to unbind model at %d. Index is out of bounds.",
+void core::MRenderer::unbindEntity(uint32_t index) {
+  if (index > system.bindings.size() - 1) {
+    RE_LOG(Error, "Failed to unbind entity at %d. Index is out of bounds.",
            index);
     return;
   }
 
 #ifndef NDEBUG
-  if (system.models[index].pModel == nullptr) {
-    RE_LOG(Warning, "Failed to unbind model at %d. It's already unbound.",
+  if (system.bindings[index].pEntity == nullptr) {
+    RE_LOG(Warning, "Failed to unbind entity at %d. It's already unbound.",
            index);
     return;
   }
 #endif
 
-  system.models[index].pModel = nullptr;
+  system.bindings[index].pEntity->setBindingIndex(-1);
+  system.bindings[index].pEntity = nullptr;
 }
 
-void core::MRenderer::unbindModel(
-    const std::vector<uint32_t>& modelIndices) {
-  uint32_t bindsNum = static_cast<uint32_t>(system.models.size());
-
-  for (const auto& index : modelIndices) {
-    if (index > bindsNum - 1) {
-    RE_LOG(Error, "Failed to unbind model at %d. Index is out of bounds.",
-           index);
-    return;
-    }
-
-#ifndef NDEBUG
-    if (system.models[index].pModel == nullptr) {
-    RE_LOG(Warning, "Failed to unbind model at %d. It's already unbound.",
-           index);
-    return;
-    }
-#endif
-
-    system.models[index].pModel = nullptr;
-  }
-}
-
-void core::MRenderer::clearModelBinds() { system.models.clear(); }
+void core::MRenderer::clearBoundEntities() { system.bindings.clear(); }
 
 void core::MRenderer::setCamera(const char* name) {
   if (ACamera* pCamera = core::ref.getActor(name)->getAs<ACamera>()) {

@@ -5,7 +5,7 @@
 #include "common.h"
 #include "core/world/actors/camera.h"
 
-class WModel;
+class WPrimitive;
 
 namespace core {
 
@@ -43,7 +43,8 @@ namespace core {
       VkDescriptorPool descriptorPool;
       std::vector<VkDescriptorSet> descriptorSets;
       RDescriptorSetLayouts descriptorSetLayouts;
-      std::vector<RModelBindInfo> models;                 // models rendered during the current frame
+      std::vector<REntityBindInfo> bindings;              // entities rendered during the current frame
+      std::vector<WPrimitive*> depthSortedPrimitives;     // TODO
     } system;
 
     // multi-threaded synchronization objects
@@ -208,20 +209,13 @@ namespace core {
                                 uint32_t levelCount, uint32_t layerCount);
 
     // binds model to graphics pipeline
-    uint32_t bindModel(WModel* pModel);
-
-    // binds a vector of primitives and writes binding indices
-    void bindModel(const std::vector<WModel*>& inModels,
-                       std::vector<uint32_t>& outIndices);
+    uint32_t bindEntity(AEntity* pEntity);
 
     // unbind primitive by a single index
-    void unbindModel(uint32_t index);
-
-    // unbind primitive by the vector of indices
-    void unbindModel(const std::vector<uint32_t>& modelIndices);
+    void unbindEntity(uint32_t index);
 
     // clear all primitive bindings
-    void clearModelBinds();
+    void clearBoundEntities();
 
     // set camera from create cameras by name
     void setCamera(const char* name);
