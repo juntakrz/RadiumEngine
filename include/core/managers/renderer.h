@@ -60,7 +60,7 @@ namespace core {
 
       ACamera* pActiveCamera = nullptr;
       std::vector<RBuffer> modelViewProjectionBuffers;
-      RWorldViewProjectionUBO worldViewProjectionData;
+      RSceneUBO worldViewProjectionData;
     } view;
 
     struct {
@@ -146,17 +146,18 @@ namespace core {
 
     TResult createUniformBuffers();
     void destroyUniformBuffers();
-    void updateWorldViewProjectionUBO(uint32_t currentImage);
+
+    // for once-per-frame update
+    void updateSceneUBO(uint32_t currentImage);
+
+    // for once-per-model update
+    void updateSceneUBO(const glm::mat4& modelMatrix, uint32_t currentImage);
+
+    RSceneUBO* getSceneUBO();
 
     VkPipelineShaderStageCreateInfo loadShader(const char* path,
                                                VkShaderStageFlagBits stage);
     VkShaderModule createShaderModule(std::vector<uint8_t>& shaderCode);
-
-    // creates identity MVP matrices
-    RWorldViewProjectionUBO* getMVPview();
-
-    // creates MVP matrices using currently active camera and model transform
-    RWorldViewProjectionUBO* updateWorldViewProjectionUBO(glm::mat4* pTransform);
 
     TResult checkInstanceValidationLayers();
     std::vector<const char*> getRequiredInstanceExtensions();
@@ -315,8 +316,8 @@ namespace core {
     // MRenderer_rendering
     //
   private:
-    // draw bound models
-    void drawBoundModels(VkCommandBuffer cmdBuffer);
+    // draw bound entities
+    void drawBoundEntities(VkCommandBuffer cmdBuffer);
 
   public:
     TResult createRenderPass();

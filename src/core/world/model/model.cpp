@@ -109,6 +109,10 @@ std::vector<WModel::Node*>& WModel::getAllNodes() noexcept {
   return m_pLinearNodes;
 }
 
+void WModel::updateTransformationMatrix(const glm::mat4& matrix) noexcept {
+
+}
+
 TResult WModel::clean() {
   if (m_pChildNodes.empty()) {
     RE_LOG(Warning,

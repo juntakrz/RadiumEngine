@@ -50,13 +50,16 @@ void core::run() {
 
   //core::renderer.bindEntity(pModel);
 
-  //core::world.loadModelFromFile("content/models/wc3guy/scene.gltf", "mdlGuy");
+  core::world.loadModelFromFile("content/models/wc3guy/scene.gltf", "mdlGuy");
 
+  //core::world.loadModelFromFile("content/models/test/scene.gltf", "mdlTest");
+  
   AStatic* pStatic = core::actors.createStatic("Static01");
-  core::world.loadModelFromFile("content/models/test/scene.gltf", "mdlTest");
-  pStatic->setModel(core::world.getModel("mdlTest"));
+  pStatic->setModel(core::world.getModel("mdlGuy"));
   core::renderer.bindEntity(pStatic);
-  pStatic->setLocation(0.0f, -5.0f, 0.0f);
+  pStatic->setLocation(0.0f, -1.0f, -0.3f);
+  pStatic->setRotation({0.0f, 1.0f, 0.0f}, glm::radians(200.0f));
+  pStatic->setScale(0.7f);
 
   //pTestModel = core::world.getModel("mdlGuy");
   //core::renderer.bindEntity(pTestModel);

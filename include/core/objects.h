@@ -211,7 +211,7 @@ struct RSamplerInfo {
 // 
 
 // camera and view matrix UBO for vertex shader
-struct RWorldViewProjectionUBO {
+struct RSceneUBO {
   alignas(16) glm::mat4 world = glm::mat4(1.0f);
   alignas(16) glm::mat4 view = glm::mat4(1.0f);
   alignas(16) glm::mat4 projection = glm::mat4(1.0f);

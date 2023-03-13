@@ -136,7 +136,7 @@ void WModel::createNode(WModel::Node* pParentNode,
 
   if (gltfNode.rotation.size() == 4) {
     glm::quat q = glm::make_quat(gltfNode.rotation.data());
-    pNode->rotation = glm::mat4(q);  // why if both are quaternions? check later
+    pNode->rotation = glm::mat4(q);   // why if both are quaternions? check later
   }
 
   if (gltfNode.scale.size() == 3) {

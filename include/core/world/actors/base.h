@@ -25,10 +25,12 @@ class ABase {
     struct {
       // initial data defined by Set* methods
       glm::vec3 translation = {0.0f, 0.0f, 0.0f};
-      glm::quat rotation = {0.0f, 0.0f, 0.0f, 0.0f};
+      glm::quat rotation = {0.0f, 0.0f, 0.0f, 1.0f};
       glm::vec3 scaling = {1.0f, 1.0f, 1.0f};
     } initial;
 
+    // was transformation data changed
+    bool wasUpdated = false;
   } m_transformationData;
 
   float m_translationModifier = 1.0f;
@@ -44,6 +46,9 @@ class ABase {
   ABase(){};
   virtual ~ABase(){};
 
+  // SIMD stuff, no error checks
+  void copyVec3ToMatrix(const float* vec3, float* matrixColumn) noexcept;
+
  public:
   // try to get this actor as its real subclass
   // example: ACamera* camera = actor.getAs<ACamera>();
@@ -53,7 +58,7 @@ class ABase {
   };
 
   // returns matrix with all transformations applied
-  virtual glm::mat4& getTransformation() noexcept;
+  virtual glm::mat4& getTransformationMatrix() noexcept;
 
   // data set used for transformation calculations
   virtual TransformationData& getTransformData() noexcept;
@@ -75,6 +80,7 @@ class ABase {
   virtual void rotate(const glm::quat& delta) noexcept;
 
   virtual void setScale(const glm::vec3& scale) noexcept;
+  virtual void setScale(float scale) noexcept;
   virtual glm::vec3& getScale() noexcept;
 
   virtual void scale(const glm::vec3& delta) noexcept;

@@ -175,11 +175,11 @@ void main() {
     
     specular = NDF * G * F / 4.0 * NdotV * NdotL;
 
-    Lo += specular * NdotL * 0.25;
+    Lo += specular * NdotL * 0.2;
     //
     
     // replace with IBL
-    vec3 globalAmbient = vec3(0.2, 0.05, 0.4) * 0.01;
+    vec3 globalAmbient = vec3(0.2, 0.05, 0.4) * 0.1;
     vec3 ambient = 0.03 * albedo * globalAmbient * ao;
 
     color = ambient + Lo;

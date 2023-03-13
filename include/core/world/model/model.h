@@ -193,6 +193,8 @@ class WModel {
   const std::vector<std::unique_ptr<Node>>& getRootNodes() noexcept;
   std::vector<WModel::Node*>& getAllNodes() noexcept;
 
+  void updateTransformationMatrix(const glm::mat4& matrix) noexcept;
+
   // cleans all primitives and nodes within,
   // model itself won't get destroyed on its own
   TResult clean();

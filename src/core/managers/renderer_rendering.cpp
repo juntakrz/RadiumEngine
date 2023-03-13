@@ -5,11 +5,26 @@
 #include "core/world/model/model.h"
 #include "core/managers/renderer.h"
 
-void core::MRenderer::drawBoundModels(VkCommandBuffer cmdBuffer) {
+void core::MRenderer::drawBoundEntities(VkCommandBuffer cmdBuffer) {
   // go through bound models and generate draw calls for each
+  AEntity* pEntity = nullptr;
+  WModel* pModel = nullptr;
+
   for (auto& bindInfo : system.bindings) {
 
-    auto& nodes = bindInfo.pEntity->getModel()->getRootNodes();
+    if ((pEntity = bindInfo.pEntity) == nullptr) {
+      continue;
+    }
+
+    if ((pModel = bindInfo.pEntity->getModel()) == nullptr) {
+      continue;
+    }
+
+    auto& nodes = pModel->getRootNodes();
+
+    // get model matrix into vertex shader
+    updateSceneUBO(bindInfo.pEntity->getTransformationMatrix(),
+                   system.idIFFrame);
 
     // single-sided opaque pipeline
     vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -490,7 +505,7 @@ TResult core::MRenderer::recordFrameCommandBuffer(VkCommandBuffer commandBuffer,
                          &offset);
   vkCmdBindIndexBuffer(commandBuffer, scene.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
   
-  drawBoundModels(commandBuffer);
+  drawBoundEntities(commandBuffer);
 
   vkCmdEndRenderPass(commandBuffer);
 
@@ -589,7 +604,7 @@ TResult core::MRenderer::drawFrame() {
   core::time.tickTimer();
 
   // update MVP buffers
-  updateWorldViewProjectionUBO(system.idIFFrame);
+  updateSceneUBO(system.idIFFrame);
 
   // reset fences if we will do any work this frame e.g. no swap chain
   // recreation
