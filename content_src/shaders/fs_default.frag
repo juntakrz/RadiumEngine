@@ -14,7 +14,6 @@ layout(location = 2) in vec2 inTexCoord0;
 layout(location = 3) in vec2 inTexCoord1;
 layout(location = 4) in vec4 inColor0;
 layout(location = 5) in vec3 inT;
-layout(location = 6) in vec3 inB;
 
 layout (set = 0, binding = 0) uniform UBOView {
 	mat4 projection;
@@ -92,7 +91,24 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
 {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
+
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness){
+    return F0 + (max(vec3(1.0-roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
+}
 // ----------------------------------------------------------------------------
+
+vec3 ACESFilm(vec3 x){
+    return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0);
+}
+
+mat3 getTBN(vec3 N, bool flipB) {
+    N = normalize(N);
+	vec3 B = normalize(cross(N, inT));
+
+    B = flipB ? -B : B;    
+
+    return mat3(inT, B, N);
+}
 
 void main() {
     vec3 dirLightPos = vec3(-10.0, 0.0, 10.0);
@@ -102,9 +118,9 @@ void main() {
 	
     //init values    
     vec4 baseMap = texture(baseColorMap, inTexCoord0);
-    //baseMap.r = pow(baseMap.r, 2.2);
-    //baseMap.g = pow(baseMap.g, 2.2);
-    //baseMap.b = pow(baseMap.b, 2.2);
+    baseMap.r = pow(baseMap.r, 2.2);
+    baseMap.g = pow(baseMap.g, 2.2);
+    baseMap.b = pow(baseMap.b, 2.2);
 
     vec3 albedo = baseMap.rgb;
     vec3 normal = texture(normalMap, inTexCoord0).rgb;
@@ -122,7 +138,9 @@ void main() {
     //set normal map range from (0, +1) to (-1, +1)
     normal = (normal * 2.0) - 1.0;
 
-    vec3 N = normalize(normal.x * inT + normal.y * -inB + normal.z * inNormal);
+    //vec3 N = normalize(normal.x * inT + normal.y * -inB + normal.z * inNormal);
+    mat3 TBN = getTBN(inNormal, false);
+    vec3 N = normalize(TBN * normal);
     vec3 V = normalize(scene.camPos - inWorldPos);      //view vector
     L = normalize(dirLightPos);
     radiance = dirLightColor * dirLightIntensity * matIntensity;
@@ -136,7 +154,8 @@ void main() {
         
     float NDF = distributionGGX(NdotH, roughness);
     float G = geometrySmith(NdotV, NdotL, roughness);
-    vec3 F = fresnelSchlick(HdotV, F0);
+    //vec3 F = fresnelSchlick(HdotV, F0);
+    vec3 F = fresnelSchlickRoughness(HdotV, F0, roughness);
     
     vec3 specular = NDF * G * F / 4.0 * NdotV * NdotL;
         
@@ -146,7 +165,8 @@ void main() {
     Lo += (Kd * albedo / M_PI + specular) * radiance * NdotL;
 
     // mix test
-    N = normalize(normal.x * inT + normal.y * inB + normal.z * inNormal);
+    TBN = getTBN(inNormal, true);
+    N = normalize(TBN * normal);
     NdotV = max(dot(N, V), 0.0001);               //prevent divide by zero
     NdotL = max(dot(N, L), 0.0001);
     NdotH = max(dot(N, H), 0.0);
@@ -159,15 +179,15 @@ void main() {
     Lo += specular * NdotL;
     //
     
-    vec3 globalAmbient = vec3(0.2, 0.05, 0.4);
+    vec3 globalAmbient = vec3(0.2, 0.05, 0.4) * 0.05;
     vec3 ambient = 0.03 * albedo * globalAmbient * ao;
 
     color = ambient + Lo;
     
     color = color / (color + 1.0);
-    //color.r = pow(color.r, 1.0 / 2.2);
-    //color.g = pow(color.g, 1.0 / 2.2);
-    //color.b = pow(color.b, 1.0 / 2.2);
+    color.r = pow(color.r, 1.0 / 2.2);
+    color.g = pow(color.g, 1.0 / 2.2);
+    color.b = pow(color.b, 1.0 / 2.2);
 
-    outColor = vec4(color, baseMap.a);
+    outColor = vec4(ACESFilm(color), baseMap.a);
 }

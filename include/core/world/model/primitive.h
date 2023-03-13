@@ -49,7 +49,7 @@ class WPrimitive {
   // check return value first, has to be true for a valid bounding box extent
   bool getBoundingBoxExtent(glm::vec3& outMin, glm::vec3& outMax) const;
 
-  void generateTangentsAndBinormals(std::vector<RVertex>& vertexData,
+  void generateTangents(std::vector<RVertex>& vertexData,
                                     const std::vector<uint32_t>& inIndexData);
   void setNormalsFromVertices(std::vector<RVertex>& vertexData);
 };

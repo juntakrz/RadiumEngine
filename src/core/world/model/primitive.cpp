@@ -25,8 +25,7 @@ WPrimitive::WPrimitive(RPrimitiveInfo* pCreateInfo) {
       return;
     }
 
-    generateTangentsAndBinormals(*pCreateInfo->pVertexData,
-                                 *pCreateInfo->pIndexData);
+    generateTangents(*pCreateInfo->pVertexData, *pCreateInfo->pIndexData);
   }
 }
 void WPrimitive::generatePlane(int32_t xDivisions, int32_t yDivisions,
@@ -45,7 +44,7 @@ void WPrimitive::generatePlane(int32_t xDivisions, int32_t yDivisions,
   indexCount = static_cast<uint32_t>(outIndices.size());
 
   if (createTangentSpaceData) {
-    generateTangentsAndBinormals(outVertices, outIndices);
+    generateTangents(outVertices, outIndices);
   }
 }
 void WPrimitive::generateSphere(int32_t divisions, bool invertNormals,
@@ -64,7 +63,7 @@ void WPrimitive::generateSphere(int32_t divisions, bool invertNormals,
   indexCount = static_cast<uint32_t>(outIndices.size());
 
   if (createTangentSpaceData) {
-    generateTangentsAndBinormals(outVertices, outIndices);
+    generateTangents(outVertices, outIndices);
   }
 }
 void WPrimitive::generateCube(int32_t divisions, bool invertNormals,
@@ -84,7 +83,7 @@ void WPrimitive::generateCube(int32_t divisions, bool invertNormals,
   indexCount = static_cast<uint32_t>(outIndices.size());
 
   if (createTangentSpaceData) {
-    generateTangentsAndBinormals(outVertices, outIndices);
+    generateTangents(outVertices, outIndices);
   }
 }
 void WPrimitive::generateBoundingBox(
@@ -108,7 +107,7 @@ bool WPrimitive::getBoundingBoxExtent(glm::vec3& outMin, glm::vec3& outMax) cons
   return extent.isValid;
 }
 
-void WPrimitive::generateTangentsAndBinormals(
+void WPrimitive::generateTangents(
     std::vector<RVertex>& vertexData,
     const std::vector<uint32_t>& inIndexData) {
   if (inIndexData.size() % 3 != 0 || inIndexData.size() < 3) {
@@ -145,28 +144,13 @@ void WPrimitive::generateTangentsAndBinormals(
     tangent.y = (xmV.y * vecSide_1_0.y - xmV.x * vecSide_2_0.y) * den;
     tangent.z = (xmV.y * vecSide_1_0.z - xmV.x * vecSide_2_0.z) * den;
 
-    // calculate binormal
-    glm::vec3 binormal;
-
-    binormal.x = (xmU.x * vecSide_2_0.x - xmU.y * vecSide_1_0.x) * den;
-    binormal.y = (xmU.x * vecSide_2_0.y - xmU.y * vecSide_1_0.y) * den;
-    binormal.z = (xmU.x * vecSide_2_0.z - xmU.y * vecSide_1_0.z) * den;
-
-    // normalize binormal and tangent
+    // normalize tangent
     tangent = glm::normalize(tangent);
-    binormal = glm::normalize(binormal);
 
     // store new data to vertex
     vertex0.tangent = tangent;
-    vertex0.binormal = -binormal;
-
     vertex1.tangent = tangent;
-    vertex1.binormal = -binormal;
-
     vertex2.tangent = tangent;
-    vertex2.binormal = -binormal;
-
-    // setNormals();
   }
 }
 

@@ -123,7 +123,6 @@ struct RVertex {
   glm::vec4 joint;      // JOINT
   glm::vec4 weight;     // WEIGHT
   glm::vec3 tangent;    // TANGENT
-  glm::vec3 binormal;   // BINORMAL
 
   static VkVertexInputBindingDescription getBindingDesc();
   static std::vector<VkVertexInputAttributeDescription> getAttributeDescs();

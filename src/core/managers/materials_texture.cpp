@@ -236,7 +236,7 @@ TResult core::MMaterials::RTexture::createSampler(const RSamplerInfo* pSamplerIn
   createInfo.minFilter = pSamplerInfo->minFilter;
   createInfo.magFilter = pSamplerInfo->magFilter;
   createInfo.anisotropyEnable = VK_TRUE;
-  createInfo.maxAnisotropy = 16.0f;
+  createInfo.maxAnisotropy = 8.0f;
   createInfo.compareOp = VK_COMPARE_OP_NEVER;
   createInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
   createInfo.maxLod = (float)texture.levelCount;

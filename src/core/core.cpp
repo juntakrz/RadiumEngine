@@ -50,7 +50,7 @@ void core::run() {
 
   //core::renderer.bindModel(pModel);
 
-  core::world.loadModelFromFile("content/models/wc3guy/scene.gltf",
+  core::world.loadModelFromFile("content/models/test/scene.gltf",
                                 "mdlTest");
   //core::world.loadModelFromFile("content/models/wc3guy/scene.gltf", "mdlGuy");
 
