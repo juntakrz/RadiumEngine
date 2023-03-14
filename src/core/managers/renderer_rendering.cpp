@@ -250,8 +250,8 @@ TResult core::MRenderer::createGraphicsPipelines() {
   // pipeline layout for 3D world
   std::vector<VkDescriptorSetLayout> descriptorSetLayouts{
       system.descriptorSetLayouts.scene,
-      system.descriptorSetLayouts.material,
-      system.descriptorSetLayouts.node
+      system.descriptorSetLayouts.node,
+      system.descriptorSetLayouts.material
   };
 
   VkPipelineLayoutCreateInfo layoutInfo{};

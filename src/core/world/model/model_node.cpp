@@ -107,6 +107,13 @@ void WModel::Node::renderNode(VkCommandBuffer cmdBuffer, EAlphaMode alphaMode,
                               bool doubleSided, REntityBindInfo* pModelInfo) {
   if (pMesh) {
     uint32_t idFrameInFlight = core::renderer.getFrameInFlightIndex();
+    void* currentMaterialRef = nullptr;
+    void* nextMaterialRef = nullptr;
+
+    // mesh descriptor set is at binding 1
+    vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            core::renderer.getGraphicsPipelineLayout(), 1, 1,
+                            &pMesh->uniformBufferData.descriptorSet, 0, nullptr);
 
     for (const auto& primitive : pMesh->pPrimitives) {
       if (primitive->pMaterial->alphaMode != alphaMode ||
@@ -115,16 +122,16 @@ void WModel::Node::renderNode(VkCommandBuffer cmdBuffer, EAlphaMode alphaMode,
         return;
       }
 
-      // per primitive sets, will be bound at 1, because per frame set is bound
-      // at 0
-      const std::vector<VkDescriptorSet> descriptorSets = {
-          primitive->pMaterial->descriptorSet,
-          pMesh->uniformBufferData.descriptorSet};
+      // bind material descriptor set only if material is different (binding 2)
+      nextMaterialRef = primitive->pMaterial;
 
-      vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                              core::renderer.getGraphicsPipelineLayout(), 1,
-                              static_cast<uint32_t>(descriptorSets.size()),
-                              descriptorSets.data(), 0, nullptr);
+      if (currentMaterialRef != nextMaterialRef) {
+        vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                core::renderer.getGraphicsPipelineLayout(), 2,
+                                1, &primitive->pMaterial->descriptorSet, 0,
+                                nullptr);
+        currentMaterialRef = nextMaterialRef;
+      }
 
       vkCmdPushConstants(cmdBuffer, core::renderer.getGraphicsPipelineLayout(),
                          VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(RMaterialPCB),

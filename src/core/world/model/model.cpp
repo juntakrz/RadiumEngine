@@ -70,6 +70,39 @@ void WModel::clearStagingData() {
   staging.isClean = true;
 }
 
+void WModel::sortPrimitivesByMaterial() {
+  using RMaterial = core::MMaterials::RMaterial;
+  std::vector<std::vector<WPrimitive*>> vectors;
+  RMaterial* primitiveMaterial = nullptr;
+  bool wasPlaced = false;
+
+  for (const auto& primitive : m_pLinearPrimitives) {
+    wasPlaced = false;
+    primitiveMaterial = primitive->pMaterial;
+
+    for (auto& vector : vectors) {
+      if (vector[0]->pMaterial == primitiveMaterial) {
+        vector.emplace_back(primitive);
+        wasPlaced = true;
+        break;
+      }
+    }
+
+    if (!wasPlaced) {
+      vectors.emplace_back(std::vector<WPrimitive*>{});
+      vectors.back().emplace_back(primitive);
+    }
+  }
+
+  uint32_t pos = 0u;
+  for (const auto& srcVector : vectors) {
+    for (const auto& srcPrimitive : srcVector) {
+      m_pLinearPrimitives[pos] = srcPrimitive;
+      ++pos;
+    }
+  }
+}
+
 void WModel::prepareStagingData() {
   if (m_vertexCount == 0 || m_indexCount == 0) {
     RE_LOG(Error,

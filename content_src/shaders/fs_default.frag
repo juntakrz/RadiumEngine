@@ -1,12 +1,12 @@
 #version 450
 #extension GL_KHR_vulkan_glsl : enable
 
-layout(set = 1, binding = 0) uniform sampler2D baseColorMap;
-layout(set = 1, binding = 1) uniform sampler2D normalMap;
-layout(set = 1, binding = 2) uniform sampler2D physicalMap;
-layout(set = 1, binding = 3) uniform sampler2D occlusionMap;
-layout(set = 1, binding = 4) uniform sampler2D emissiveMap;
-layout(set = 1, binding = 5) uniform sampler2D extraMap;
+layout(set = 2, binding = 0) uniform sampler2D baseColorMap;
+layout(set = 2, binding = 1) uniform sampler2D normalMap;
+layout(set = 2, binding = 2) uniform sampler2D physicalMap;
+layout(set = 2, binding = 3) uniform sampler2D occlusionMap;
+layout(set = 2, binding = 4) uniform sampler2D emissiveMap;
+layout(set = 2, binding = 5) uniform sampler2D extraMap;
 
 layout(location = 0) in vec3 inWorldPos;
 layout(location = 1) in vec3 inNormal;

@@ -153,6 +153,9 @@ class WModel {
   TResult validateStagingData();
   void clearStagingData();
 
+  // sorts primitives
+  void sortPrimitivesByMaterial();
+
   // glTF
 
   TResult createModel(const char* name, const tinygltf::Model* pInModel);

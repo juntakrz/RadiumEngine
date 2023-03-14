@@ -8,7 +8,7 @@ layout(binding = 0) uniform UBOView {
 	vec3 cameraPos;
 } scene;
 
-layout (set = 2, binding = 0) uniform UBONode {
+layout (set = 1, binding = 0) uniform UBONode {
 	mat4 matrix;
 	mat4 jointMatrix[RE_MAXJOINTS];
 	float jointCount;

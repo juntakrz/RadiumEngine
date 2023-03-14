@@ -101,6 +101,8 @@ TResult WModel::createModel(const char* name, const tinygltf::Model* pInModel) {
     node->setNodeDescriptorSet(false);
   }
 
+  sortPrimitivesByMaterial();
+
   return createStagingBuffers();
 }
 
