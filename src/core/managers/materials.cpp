@@ -30,7 +30,7 @@ core::MMaterials::RMaterial* core::MMaterials::createMaterial(
 
   if (!m_materials.try_emplace(pDesc->name).second) {
 #ifndef NDEBUG
-    RE_LOG(Warning, "Material with the name \"%s\" is already created.");
+    RE_LOG(Warning, "Material \"%s\" is already created.", pDesc->name.c_str());
 #endif
     return m_materials.at(pDesc->name).get();
   }
@@ -40,6 +40,8 @@ core::MMaterials::RMaterial* core::MMaterials::createMaterial(
   newMat.shaderPixel = pDesc->shaders.pixel;
   newMat.shaderGeometry = pDesc->shaders.geometry;
   newMat.shaderVertex = pDesc->shaders.vertex;
+  newMat.alphaMode = pDesc->alphaMode;
+  newMat.doubleSided = pDesc->doubleSided;
 
   newMat.pBaseColor = assignTexture(pDesc->textures.baseColor.c_str());
   newMat.pNormal = assignTexture(pDesc->textures.normal.c_str());
@@ -52,7 +54,6 @@ core::MMaterials::RMaterial* core::MMaterials::createMaterial(
   newMat.pushConstantBlock.emissiveFactor = pDesc->emissiveFactor;
   newMat.pushConstantBlock.metallicFactor = pDesc->metallicFactor;
   newMat.pushConstantBlock.roughnessFactor = pDesc->roughnessFactor;
-  newMat.alphaMode = pDesc->alphaMode;
   newMat.pushConstantBlock.alphaMode = static_cast<float>(pDesc->alphaMode);
   newMat.pushConstantBlock.alphaCutoff = pDesc->alphaCutoff;
 

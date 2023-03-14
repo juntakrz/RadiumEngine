@@ -46,7 +46,7 @@ void WModel::Node::setNodeDescriptorSet(bool updateChildren) {
       VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
   descriptorSetAllocInfo.descriptorPool = core::renderer.getDescriptorPool();
   descriptorSetAllocInfo.pSetLayouts =
-      &core::renderer.getDescriptorSetLayouts()->node;
+      &core::renderer.getDescriptorSetLayouts()->mesh;
   descriptorSetAllocInfo.descriptorSetCount = 1;
 
   if (vkAllocateDescriptorSets(
@@ -73,12 +73,13 @@ void WModel::Node::setNodeDescriptorSet(bool updateChildren) {
   }
 }
 
-void WModel::Node::updateNode() {
+void WModel::Node::updateNode(const glm::mat4& modelMatrix) {
   if (pMesh) {
     glm::mat4 matrix = getMatrix();
+    pMesh->uniformBlock.rootMatrix = modelMatrix;
 
     if (pSkin) {
-      pMesh->uniformBlock.meshMatrix = matrix;
+      pMesh->uniformBlock.nodeMatrix = matrix;
       // Update join matrices
       glm::mat4 inverseTransform = glm::inverse(matrix);
       size_t numJoints = std::min((uint32_t)pSkin->joints.size(), RE_MAXJOINTS);
@@ -99,58 +100,7 @@ void WModel::Node::updateNode() {
   }
 
   for (auto& pChild : pChildren) {
-    pChild->updateNode();
-  }
-}
-
-void WModel::Node::renderNode(VkCommandBuffer cmdBuffer, EAlphaMode alphaMode,
-                              bool doubleSided, REntityBindInfo* pModelInfo) {
-  if (pMesh) {
-
-    // mesh descriptor set is at binding 1
-    if (core::renderer.renderView.pCurrentMesh != pMesh.get()) {
-      vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                              core::renderer.getGraphicsPipelineLayout(), 1, 1,
-                              &pMesh->uniformBufferData.descriptorSet, 0,
-                              nullptr);
-      core::renderer.renderView.pCurrentMesh = pMesh.get();
-    }
-
-    for (const auto& primitive : pMesh->pPrimitives) {
-      if (primitive->pMaterial->alphaMode != alphaMode ||
-          primitive->pMaterial->doubleSided != doubleSided) {
-        // does not belong to the current pipeline
-        return;
-      }
-
-      // bind material descriptor set only if material is different (binding 2)
-      if (core::renderer.renderView.pCurrentMaterial != primitive->pMaterial) {
-        vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                core::renderer.getGraphicsPipelineLayout(), 2,
-                                1, &primitive->pMaterial->descriptorSet, 0,
-                                nullptr);
-
-        vkCmdPushConstants(
-            cmdBuffer, core::renderer.getGraphicsPipelineLayout(),
-            VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(RMaterialPCB),
-            &primitive->pMaterial->pushConstantBlock);
-
-        core::renderer.renderView.pCurrentMaterial = primitive->pMaterial;
-      }
-
-      int32_t vertexOffset =
-          (int32_t)pModelInfo->vertexOffset + (int32_t)primitive->vertexOffset;
-      uint32_t indexOffset = pModelInfo->indexOffset + primitive->indexOffset;
-
-      // TODO: implement draw indirect
-      vkCmdDrawIndexed(cmdBuffer, primitive->indexCount, 1, indexOffset,
-                       vertexOffset, 0);
-    }
-  }
-
-  // try rendering node children
-  for (const auto& child : pChildren) {
-    child->renderNode(cmdBuffer, alphaMode, doubleSided, pModelInfo);
+    pChild->updateNode(modelMatrix);
   }
 }
 

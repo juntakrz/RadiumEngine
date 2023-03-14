@@ -73,7 +73,7 @@ struct RVkPhysicalDevice {
 struct RDescriptorSetLayouts {
   VkDescriptorSetLayout scene;
   VkDescriptorSetLayout material;
-  VkDescriptorSetLayout node;
+  VkDescriptorSetLayout mesh;
 };
 
 struct RVkLogicalDevice {
@@ -213,7 +213,6 @@ struct RSamplerInfo {
 
 // camera and view matrix UBO for vertex shader
 struct RSceneUBO {
-  alignas(16) glm::mat4 world = glm::mat4(1.0f);
   alignas(16) glm::mat4 view = glm::mat4(1.0f);
   alignas(16) glm::mat4 projection = glm::mat4(1.0f);
   alignas(16) glm::vec3 cameraPosition = glm::vec3(0.0f);
@@ -221,7 +220,8 @@ struct RSceneUBO {
 
 // mesh and joints transformation uniform buffer object
 struct RMeshUBO {
-  glm::mat4 meshMatrix = glm::mat4(1.0f);
+  glm::mat4 rootMatrix = glm::mat4(1.0f);
+  glm::mat4 nodeMatrix = glm::mat4(1.0f);
   glm::mat4 jointMatrix[RE_MAXJOINTS]{};
   float jointCount = 0.0f;
 };

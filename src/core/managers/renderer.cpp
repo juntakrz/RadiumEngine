@@ -218,7 +218,7 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
     }
   }
 
-  // model node matrices
+  // model mesh matrices
   {
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
         {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT,
@@ -234,7 +234,7 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
 
     if (vkCreateDescriptorSetLayout(
             logicalDevice.device, &setLayoutCreateInfo, nullptr,
-            &system.descriptorSetLayouts.node) != VK_SUCCESS) {
+            &system.descriptorSetLayouts.mesh) != VK_SUCCESS) {
       RE_LOG(Critical, "Failed to create model node descriptor set layout.");
       return RE_CRITICAL;
     }
@@ -251,7 +251,7 @@ void core::MRenderer::destroyDescriptorSetLayouts() {
   vkDestroyDescriptorSetLayout(logicalDevice.device,
                                system.descriptorSetLayouts.material, nullptr);
   vkDestroyDescriptorSetLayout(logicalDevice.device,
-                               system.descriptorSetLayouts.node, nullptr);
+                               system.descriptorSetLayouts.mesh, nullptr);
 }
 
 TResult core::MRenderer::createDescriptorPool() {
@@ -628,9 +628,6 @@ void core::MRenderer::destroySyncObjects() {
 }
 
 void core::MRenderer::updateSceneUBO(uint32_t currentImage) {
-  // rewrite this and UpdateMVP method to use data from the current/provided
-  // camera
-  view.worldViewProjectionData.world = glm::mat4(1.0f);
   view.worldViewProjectionData.view = view.pActiveCamera->getView();
   view.worldViewProjectionData.projection = view.pActiveCamera->getProjection();
   view.worldViewProjectionData.cameraPosition =
@@ -638,12 +635,6 @@ void core::MRenderer::updateSceneUBO(uint32_t currentImage) {
 
   memcpy(view.modelViewProjectionBuffers[currentImage].allocInfo.pMappedData,
          &view.worldViewProjectionData, sizeof(RSceneUBO));
-}
-
-void core::MRenderer::updateSceneUBO(const glm::mat4& modelMatrix,
-                                     uint32_t currentImage) {
-  memcpy(view.modelViewProjectionBuffers[currentImage].allocInfo.pMappedData,
-         &modelMatrix, sizeof(glm::mat4));
 }
 
 void core::MRenderer::waitForSystemIdle() {

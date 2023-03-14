@@ -17,6 +17,7 @@ class AEntity : public ABase {
 
   virtual void setModel(WModel* pModel);
   virtual WModel* getModel();
+  virtual void updateModel();
   virtual void bindToRenderer();
   virtual void unbindFromRenderer();
   int32_t getBindingIndex();

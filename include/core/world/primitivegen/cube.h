@@ -64,6 +64,7 @@ class WPrimitiveGen_Cube {
 
     if (invertNormals) {
       for (auto& vertex : vertices) {
+        vertex.pos = -vertex.pos;
         vertex.normal = -vertex.normal;
       }
     }

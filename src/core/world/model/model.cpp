@@ -142,8 +142,10 @@ std::vector<WModel::Node*>& WModel::getAllNodes() noexcept {
   return m_pLinearNodes;
 }
 
-void WModel::updateTransformationMatrix(const glm::mat4& matrix) noexcept {
-
+void WModel::update(const glm::mat4& modelMatrix) noexcept {
+  for (auto& it : getRootNodes()) {
+    it->updateNode(modelMatrix);
+  }
 }
 
 TResult WModel::clean() {

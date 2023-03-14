@@ -20,49 +20,49 @@ void core::MRenderer::drawBoundEntities(VkCommandBuffer cmdBuffer) {
       continue;
     }
 
+    pEntity->updateModel();
+
     auto& primitives = pModel->getPrimitives();
 
-    // get model matrix into vertex shader
-    updateSceneUBO(bindInfo.pEntity->getTransformationMatrix(),
-                   renderView.frameInFlight);
-
     // single-sided opaque pipeline
-    vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                      system.pipelines.PBR);
+    VkPipeline pipeline = system.pipelines.PBR;
+
+    vkCmdBindDescriptorSets(
+        cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, system.pipelines.layout, 0,
+        1, &system.descriptorSets[renderView.frameInFlight], 0, nullptr);
 
     for (const auto& primitive : primitives) {
-      renderPrimitive(cmdBuffer, primitive, EAlphaMode::Opaque, false,
+      renderPrimitive(cmdBuffer, pipeline, primitive, EAlphaMode::Opaque, false,
                       &bindInfo);
     }
 
     // double-sided opaque pipeline
-    vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                      system.pipelines.PBR_DS);
+    pipeline = system.pipelines.PBR_DS;
 
     for (const auto& primitive : primitives) {
-      renderPrimitive(cmdBuffer, primitive, EAlphaMode::Opaque, true,
+      renderPrimitive(cmdBuffer, pipeline, primitive, EAlphaMode::Opaque, true,
                       &bindInfo);
     }
 
     // another future pipeline
 
     for (const auto& primitive : primitives) {
-      renderPrimitive(cmdBuffer, primitive, EAlphaMode::Mask, false,
+      renderPrimitive(cmdBuffer, pipeline, primitive, EAlphaMode::Mask, false,
                       &bindInfo);
     }
 
     // TODO: add alpha pipeline and make PBR/PBRDS opaque
-    vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                      system.pipelines.PBR);
+    pipeline = system.pipelines.PBR;
 
     for (const auto& primitive : primitives) {
-      renderPrimitive(cmdBuffer, primitive, EAlphaMode::Blend, false,
+      renderPrimitive(cmdBuffer, pipeline, primitive, EAlphaMode::Blend, false,
                       &bindInfo);
     }
   }
 }
 
 void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
+                                      VkPipeline pipeline,
                                       WPrimitive* pPrimitive,
                                       EAlphaMode alphaMode, bool doubleSided,
                                       REntityBindInfo* pBindInfo) {
@@ -72,29 +72,34 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
     return;
   }
 
+  if (renderView.pCurrentPipeline != pipeline) {
+    vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+    renderView.pCurrentPipeline = pipeline;
+  }
+
   WModel::Node* pNode = reinterpret_cast<WModel::Node*>(pPrimitive->pOwnerNode);
   WModel::Mesh* pMesh = pNode->pMesh.get();
 
   // mesh descriptor set is at binding 1
-  if (core::renderer.renderView.pCurrentMesh != pMesh) {
-    vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            core::renderer.getGraphicsPipelineLayout(), 1, 1,
-                            &pMesh->uniformBufferData.descriptorSet, 0,
-                            nullptr);
-    core::renderer.renderView.pCurrentMesh = pMesh;
+  if (renderView.pCurrentMesh != pMesh) {
+    vkCmdBindDescriptorSets(
+        cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, getGraphicsPipelineLayout(),
+        1, 1, &pMesh->uniformBufferData.descriptorSet, 0, nullptr);
+    renderView.pCurrentMesh = pMesh;
   }
 
   // bind material descriptor set only if material is different (binding 2)
-  if (core::renderer.renderView.pCurrentMaterial != pPrimitive->pMaterial) {
+  if (renderView.pCurrentMaterial != pPrimitive->pMaterial) {
     vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            core::renderer.getGraphicsPipelineLayout(), 2, 1,
+                            getGraphicsPipelineLayout(), 2, 1,
                             &pPrimitive->pMaterial->descriptorSet, 0, nullptr);
 
-    vkCmdPushConstants(cmdBuffer, core::renderer.getGraphicsPipelineLayout(),
+    vkCmdPushConstants(cmdBuffer, getGraphicsPipelineLayout(),
                        VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(RMaterialPCB),
                        &pPrimitive->pMaterial->pushConstantBlock);
 
-    core::renderer.renderView.pCurrentMaterial = pPrimitive->pMaterial;
+    renderView.pCurrentMaterial = pPrimitive->pMaterial;
   }
 
   int32_t vertexOffset =
@@ -300,7 +305,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
   // pipeline layout for 3D world
   std::vector<VkDescriptorSetLayout> descriptorSetLayouts{
       system.descriptorSetLayouts.scene,
-      system.descriptorSetLayouts.node,
+      system.descriptorSetLayouts.mesh,
       system.descriptorSetLayouts.material
   };
 
@@ -432,13 +437,11 @@ TResult core::MRenderer::recordFrameCommandBuffer(VkCommandBuffer commandBuffer,
 
   vkCmdBeginRenderPass(commandBuffer, &renderPassInfo,
                        VK_SUBPASS_CONTENTS_INLINE);
-  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    system.pipelines.PBR);
 
   // bind frame scope descriptor sets
-  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                          system.pipelines.layout, 0, 1,
-                          &system.descriptorSets[renderView.frameInFlight], 0, nullptr);
+  /*vkCmdBindDescriptorSets(
+      commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, system.pipelines.layout,
+      0, 1, &system.descriptorSets[renderView.frameInFlight], 0, nullptr);*/
 
   vkCmdSetViewport(commandBuffer, 0, 1, &swapchain.viewport);
 
@@ -495,7 +498,7 @@ TResult core::MRenderer::drawFrame() {
   // get new delta time between frames
   core::time.tickTimer();
 
-  // update MVP buffers
+  // update view, projection and camera position
   updateSceneUBO(renderView.frameInFlight);
 
   // reset fences if we will do any work this frame e.g. no swap chain

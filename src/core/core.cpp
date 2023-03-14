@@ -48,11 +48,8 @@ void core::run() {
   APawn* pPawn = core::actors.getPawn("sphere0");
   pPawn->setModel(pModel);
 
-  //core::renderer.bindEntity(pModel);
-
-  core::world.loadModelFromFile("content/models/wc3guy/scene.gltf", "mdlGuy");
-
-  //core::world.loadModelFromFile("content/models/test/scene.gltf", "mdlTest");
+  core::world.loadModelFromFile("content/models/test/scene.gltf", "mdlGuy");
+  core::world.createModel(EPrimitiveType::Cube, "mdlSkybox", 1, true);
   
   AStatic* pStatic = core::actors.createStatic("Static01");
   pStatic->setModel(core::world.getModel("mdlGuy"));
@@ -61,8 +58,10 @@ void core::run() {
   pStatic->setRotation({0.0f, 1.0f, 0.0f}, glm::radians(200.0f));
   pStatic->setScale(0.7f);
 
-  //pTestModel = core::world.getModel("mdlGuy");
-  //core::renderer.bindEntity(pTestModel);
+  pStatic = core::actors.createStatic("Skybox");
+  pStatic->setModel(core::world.getModel("mdlSkybox"));
+  core::renderer.bindEntity(pStatic);
+  pStatic->setScale(100.0f);
   // ---------------------------- */
 
   RE_LOG(Log, "Launching main event loop.");

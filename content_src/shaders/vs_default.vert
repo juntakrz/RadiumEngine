@@ -2,17 +2,17 @@
 #define RE_MAXJOINTS 128
 
 layout(binding = 0) uniform UBOView {
-	mat4 world;
 	mat4 view;
 	mat4 projection;
 	vec3 cameraPos;
 } scene;
 
 layout (set = 1, binding = 0) uniform UBONode {
-	mat4 matrix;
+	mat4 rootMatrix;
+	mat4 nodeMatrix;
 	mat4 jointMatrix[RE_MAXJOINTS];
 	float jointCount;
-} node;
+} mesh;
 
 layout(location = 0) in vec3 inPos;
 layout(location = 1) in vec2 inTexCoord0;
@@ -33,18 +33,18 @@ layout(location = 5) out vec3 outTangent;
 void main(){
 	vec4 worldPos;
 
-	if (node.jointCount > 0.0) {
+	if (mesh.jointCount > 0.0) {
 		mat4 skinMatrix = 
-			inWeight.x * node.jointMatrix[int(inJoint.x)] +
-			inWeight.y * node.jointMatrix[int(inJoint.y)] +
-			inWeight.z * node.jointMatrix[int(inJoint.z)] +
-			inWeight.w * node.jointMatrix[int(inJoint.w)];
+			inWeight.x * mesh.jointMatrix[int(inJoint.x)] +
+			inWeight.y * mesh.jointMatrix[int(inJoint.y)] +
+			inWeight.z * mesh.jointMatrix[int(inJoint.z)] +
+			inWeight.w * mesh.jointMatrix[int(inJoint.w)];
 
-		worldPos = scene.world * node.matrix * skinMatrix * vec4(inPos, 1.0);
-		outNormal = normalize(transpose(inverse(mat3(scene.world * node.matrix * skinMatrix))) * inNormal);
+		worldPos = mesh.rootMatrix * mesh.nodeMatrix * skinMatrix * vec4(inPos, 1.0);
+		outNormal = normalize(transpose(inverse(mat3(mesh.rootMatrix * mesh.nodeMatrix * skinMatrix))) * inNormal);
 	} else {
-		worldPos = scene.world * node.matrix * vec4(inPos, 1.0);
-		outNormal = normalize(transpose(inverse(mat3(scene.world * node.matrix))) * inNormal);
+		worldPos = mesh.rootMatrix * mesh.nodeMatrix * vec4(inPos, 1.0);
+		outNormal = normalize(transpose(inverse(mat3(mesh.rootMatrix * mesh.nodeMatrix))) * inNormal);
 	}
 	
 	outWorldPos = worldPos.xyz / worldPos.w;

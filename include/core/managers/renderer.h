@@ -91,6 +91,7 @@ class MRenderer {
   struct {
     void* pCurrentMesh = nullptr;
     void* pCurrentMaterial = nullptr;
+    void* pCurrentPipeline = nullptr;
     uint32_t frameInFlight = 0;
     uint32_t framesRendered = 0;
   } renderView;
@@ -137,11 +138,7 @@ class MRenderer {
   TResult createSyncObjects();
   void destroySyncObjects();
 
-  // for once-per-frame update
   void updateSceneUBO(uint32_t currentImage);
-
-  // for once-per-model update
-  void updateSceneUBO(const glm::mat4& modelMatrix, uint32_t currentImage);
 
   // wait until all queues and device are idle
   void waitForSystemIdle();
@@ -333,9 +330,9 @@ class MRenderer {
  private:
   // draw bound entities
   void drawBoundEntities(VkCommandBuffer cmdBuffer);
-  void renderPrimitive(VkCommandBuffer cmdBuffer, WPrimitive* pPrimitive,
-                       EAlphaMode alphaMode, bool doubleSided,
-                       REntityBindInfo* pBindInfo);
+  void renderPrimitive(VkCommandBuffer cmdBuffer, VkPipeline pipeline,
+                       WPrimitive* pPrimitive, EAlphaMode alphaMode,
+                       bool doubleSided, REntityBindInfo* pBindInfo);
 
   TResult createRenderPass();
   void destroyRenderPass();

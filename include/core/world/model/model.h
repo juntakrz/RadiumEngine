@@ -102,11 +102,7 @@ class WModel {
     void setNodeDescriptorSet(bool updateChildren = false);
 
     // update transform matrices of this node and its children
-    void updateNode();
-
-    // try to render node and its children by material's alpha mode
-    void renderNode(VkCommandBuffer cmdBuffer, EAlphaMode alphaMode,
-                    bool doubleSided, REntityBindInfo* pModelInfo);
+    void updateNode(const glm::mat4& modelMatrix);
   };
 
   struct {
@@ -196,7 +192,7 @@ class WModel {
   const std::vector<std::unique_ptr<Node>>& getRootNodes() noexcept;
   std::vector<WModel::Node*>& getAllNodes() noexcept;
 
-  void updateTransformationMatrix(const glm::mat4& matrix) noexcept;
+  void update(const glm::mat4& modelMatrix) noexcept;
 
   // cleans all primitives and nodes within,
   // model itself won't get destroyed on its own
