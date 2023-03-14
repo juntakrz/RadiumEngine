@@ -13,7 +13,7 @@ TResult WModel::Node::allocateMeshBuffer() {
     return RE_ERROR;
   }
 
-  // prepare buffer and memory to store node transformation matrix
+  // prepare buffer and memory to store model/mesh/joints transformation matrix
   VkDeviceSize bufferSize = sizeof(pMesh->uniformBlock);
   core::renderer.createBuffer(EBufferMode::CPU_UNIFORM, bufferSize,
                               pMesh->uniformBufferData.uniformBuffer, nullptr);
@@ -77,9 +77,9 @@ void WModel::Node::updateNode(const glm::mat4& modelMatrix) {
   if (pMesh) {
     glm::mat4 matrix = getMatrix();
     pMesh->uniformBlock.rootMatrix = modelMatrix;
+    pMesh->uniformBlock.nodeMatrix = matrix;
 
     if (pSkin) {
-      pMesh->uniformBlock.nodeMatrix = matrix;
       // Update join matrices
       glm::mat4 inverseTransform = glm::inverse(matrix);
       size_t numJoints = std::min((uint32_t)pSkin->joints.size(), RE_MAXJOINTS);
@@ -95,7 +95,7 @@ void WModel::Node::updateNode(const glm::mat4& modelMatrix) {
              &pMesh->uniformBlock, sizeof(pMesh->uniformBlock));
     } else {
       memcpy(pMesh->uniformBufferData.uniformBuffer.allocInfo.pMappedData,
-             &matrix, sizeof(glm::mat4));
+             &pMesh->uniformBlock, sizeof(glm::mat4) * 2u);
     }
   }
 
