@@ -15,6 +15,7 @@ class WPrimitive {
   bool createTangentSpaceData = false;
 
   RMaterial* pMaterial = nullptr;
+  void* pOwnerNode = nullptr;
 
   struct {
     glm::vec3 min = glm::vec3(0.0f);

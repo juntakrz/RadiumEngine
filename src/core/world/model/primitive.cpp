@@ -17,6 +17,8 @@ WPrimitive::WPrimitive(RPrimitiveInfo* pCreateInfo) {
   indexOffset = pCreateInfo->indexOffset;
   indexCount = pCreateInfo->indexCount;
 
+  pOwnerNode = pCreateInfo->pOwnerNode;
+
   // should create tangent space data - either now or later if generated primitive
   if (pCreateInfo->createTangentSpaceData) {
     createTangentSpaceData = true;

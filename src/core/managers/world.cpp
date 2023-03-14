@@ -116,6 +116,7 @@ TResult core::MWorld::createModel(EPrimitiveType type, std::string name,
   primitiveInfo.vertexOffset = pModel->staging.currentVertexOffset;
   primitiveInfo.indexOffset = pModel->staging.currentIndexOffset;
   primitiveInfo.createTangentSpaceData = true;
+  primitiveInfo.pOwnerNode = pNode;
 
   pNode->pMesh->pPrimitives.emplace_back(
       std::make_unique<WPrimitive>(&primitiveInfo));

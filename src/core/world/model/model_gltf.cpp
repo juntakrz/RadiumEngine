@@ -420,6 +420,7 @@ void WModel::createNode(WModel::Node* pParentNode,
       primitiveInfo.createTangentSpaceData = true;
       primitiveInfo.pVertexData = &vertices;
       primitiveInfo.pIndexData = &indices;
+      primitiveInfo.pOwnerNode = pNode;
 
       // create new primitive
       pMesh->pPrimitives.emplace_back(

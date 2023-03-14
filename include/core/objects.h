@@ -195,6 +195,7 @@ struct RPrimitiveInfo {
   bool createTangentSpaceData = false;
   std::vector<RVertex>* pVertexData = nullptr;
   std::vector<uint32_t>* pIndexData = nullptr;
+  void* pOwnerNode = nullptr;
 };
 
 // stored by WModel, used to create a valid sampler for a specific texture

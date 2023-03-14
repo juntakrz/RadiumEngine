@@ -106,14 +106,15 @@ void WModel::Node::updateNode() {
 void WModel::Node::renderNode(VkCommandBuffer cmdBuffer, EAlphaMode alphaMode,
                               bool doubleSided, REntityBindInfo* pModelInfo) {
   if (pMesh) {
-    uint32_t idFrameInFlight = core::renderer.getFrameInFlightIndex();
-    void* currentMaterialRef = nullptr;
-    void* nextMaterialRef = nullptr;
 
     // mesh descriptor set is at binding 1
-    vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            core::renderer.getGraphicsPipelineLayout(), 1, 1,
-                            &pMesh->uniformBufferData.descriptorSet, 0, nullptr);
+    if (core::renderer.renderView.pCurrentMesh != pMesh.get()) {
+      vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                              core::renderer.getGraphicsPipelineLayout(), 1, 1,
+                              &pMesh->uniformBufferData.descriptorSet, 0,
+                              nullptr);
+      core::renderer.renderView.pCurrentMesh = pMesh.get();
+    }
 
     for (const auto& primitive : pMesh->pPrimitives) {
       if (primitive->pMaterial->alphaMode != alphaMode ||
@@ -123,24 +124,25 @@ void WModel::Node::renderNode(VkCommandBuffer cmdBuffer, EAlphaMode alphaMode,
       }
 
       // bind material descriptor set only if material is different (binding 2)
-      nextMaterialRef = primitive->pMaterial;
-
-      if (currentMaterialRef != nextMaterialRef) {
+      if (core::renderer.renderView.pCurrentMaterial != primitive->pMaterial) {
         vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 core::renderer.getGraphicsPipelineLayout(), 2,
                                 1, &primitive->pMaterial->descriptorSet, 0,
                                 nullptr);
-        currentMaterialRef = nextMaterialRef;
-      }
 
-      vkCmdPushConstants(cmdBuffer, core::renderer.getGraphicsPipelineLayout(),
-                         VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(RMaterialPCB),
-                         &primitive->pMaterial->pushConstantBlock);
+        vkCmdPushConstants(
+            cmdBuffer, core::renderer.getGraphicsPipelineLayout(),
+            VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(RMaterialPCB),
+            &primitive->pMaterial->pushConstantBlock);
+
+        core::renderer.renderView.pCurrentMaterial = primitive->pMaterial;
+      }
 
       int32_t vertexOffset =
           (int32_t)pModelInfo->vertexOffset + (int32_t)primitive->vertexOffset;
       uint32_t indexOffset = pModelInfo->indexOffset + primitive->indexOffset;
 
+      // TODO: implement draw indirect
       vkCmdDrawIndexed(cmdBuffer, primitive->indexCount, 1, indexOffset,
                        vertexOffset, 0);
     }

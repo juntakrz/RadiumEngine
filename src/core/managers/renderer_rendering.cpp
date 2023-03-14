@@ -20,40 +20,90 @@ void core::MRenderer::drawBoundEntities(VkCommandBuffer cmdBuffer) {
       continue;
     }
 
-    auto& nodes = pModel->getRootNodes();
+    auto& primitives = pModel->getPrimitives();
 
     // get model matrix into vertex shader
     updateSceneUBO(bindInfo.pEntity->getTransformationMatrix(),
-                   system.idIFFrame);
+                   renderView.frameInFlight);
 
     // single-sided opaque pipeline
     vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                       system.pipelines.PBR);
 
-    for (const auto& node : nodes) {
-      node->renderNode(cmdBuffer, EAlphaMode::Opaque, false, &bindInfo);
+    for (const auto& primitive : primitives) {
+      renderPrimitive(cmdBuffer, primitive, EAlphaMode::Opaque, false,
+                      &bindInfo);
     }
 
     // double-sided opaque pipeline
     vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                       system.pipelines.PBR_DS);
 
-    for (const auto& node : nodes) {
-      node->renderNode(cmdBuffer, EAlphaMode::Opaque, false, &bindInfo);
+    for (const auto& primitive : primitives) {
+      renderPrimitive(cmdBuffer, primitive, EAlphaMode::Opaque, true,
+                      &bindInfo);
     }
 
     // another future pipeline
 
-    for (const auto& node : nodes) {
-      node->renderNode(cmdBuffer, EAlphaMode::Mask, false, &bindInfo);
+    for (const auto& primitive : primitives) {
+      renderPrimitive(cmdBuffer, primitive, EAlphaMode::Mask, false,
+                      &bindInfo);
     }
 
-    // another future pipeline
+    // TODO: add alpha pipeline and make PBR/PBRDS opaque
+    vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                      system.pipelines.PBR);
 
-    for (const auto& node : nodes) {
-      node->renderNode(cmdBuffer, EAlphaMode::Blend, false, &bindInfo);
+    for (const auto& primitive : primitives) {
+      renderPrimitive(cmdBuffer, primitive, EAlphaMode::Blend, false,
+                      &bindInfo);
     }
   }
+}
+
+void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
+                                      WPrimitive* pPrimitive,
+                                      EAlphaMode alphaMode, bool doubleSided,
+                                      REntityBindInfo* pBindInfo) {
+  if (pPrimitive->pMaterial->alphaMode != alphaMode ||
+      pPrimitive->pMaterial->doubleSided != doubleSided) {
+    // does not belong to the current pipeline
+    return;
+  }
+
+  WModel::Node* pNode = reinterpret_cast<WModel::Node*>(pPrimitive->pOwnerNode);
+  WModel::Mesh* pMesh = pNode->pMesh.get();
+
+  // mesh descriptor set is at binding 1
+  if (core::renderer.renderView.pCurrentMesh != pMesh) {
+    vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            core::renderer.getGraphicsPipelineLayout(), 1, 1,
+                            &pMesh->uniformBufferData.descriptorSet, 0,
+                            nullptr);
+    core::renderer.renderView.pCurrentMesh = pMesh;
+  }
+
+  // bind material descriptor set only if material is different (binding 2)
+  if (core::renderer.renderView.pCurrentMaterial != pPrimitive->pMaterial) {
+    vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            core::renderer.getGraphicsPipelineLayout(), 2, 1,
+                            &pPrimitive->pMaterial->descriptorSet, 0, nullptr);
+
+    vkCmdPushConstants(cmdBuffer, core::renderer.getGraphicsPipelineLayout(),
+                       VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(RMaterialPCB),
+                       &pPrimitive->pMaterial->pushConstantBlock);
+
+    core::renderer.renderView.pCurrentMaterial = pPrimitive->pMaterial;
+  }
+
+  int32_t vertexOffset =
+      (int32_t)pBindInfo->vertexOffset + (int32_t)pPrimitive->vertexOffset;
+  uint32_t indexOffset = pBindInfo->indexOffset + pPrimitive->indexOffset;
+
+  // TODO: implement draw indirect
+  vkCmdDrawIndexed(cmdBuffer, pPrimitive->indexCount, 1, indexOffset,
+                   vertexOffset, 0);
 }
 
 TResult core::MRenderer::createRenderPass() {
@@ -354,108 +404,6 @@ RWorldPipelineSet core::MRenderer::getGraphicsPipelineSet() {
 
 VkPipeline core::MRenderer::getBoundPipeline() { return system.boundPipeline; }
 
-TResult core::MRenderer::createCoreCommandPools() {
-  RE_LOG(Log, "Creating command pool.");
-
-  VkCommandPoolCreateInfo cmdPoolRenderInfo{};
-  cmdPoolRenderInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-  cmdPoolRenderInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-  cmdPoolRenderInfo.queueFamilyIndex =
-      physicalDevice.queueFamilyIndices.graphics[0];
-
-  if (vkCreateCommandPool(logicalDevice.device, &cmdPoolRenderInfo, nullptr,
-                          &command.poolGraphics) != VK_SUCCESS) {
-    RE_LOG(Critical,
-           "failed to create command pool for graphics queue family.");
-
-    return RE_CRITICAL;
-  }
-
-  cmdPoolRenderInfo.queueFamilyIndex =
-      physicalDevice.queueFamilyIndices.transfer[0];
-
-  if (vkCreateCommandPool(logicalDevice.device, &cmdPoolRenderInfo, nullptr,
-                          &command.poolTransfer) != VK_SUCCESS) {
-    RE_LOG(Critical,
-           "failed to create command pool for transfer queue family.");
-
-    return RE_CRITICAL;
-  }
-
-  cmdPoolRenderInfo.queueFamilyIndex =
-      physicalDevice.queueFamilyIndices.compute[0];
-
-  if (vkCreateCommandPool(logicalDevice.device, &cmdPoolRenderInfo, nullptr,
-                          &command.poolCompute) != VK_SUCCESS) {
-    RE_LOG(Critical,
-           "failed to create command pool for compute queue family.");
-
-    return RE_CRITICAL;
-  }
-
-  return RE_OK;
-}
-
-void core::MRenderer::destroyCoreCommandPools() {
-  RE_LOG(Log, "Destroying command pools.");
-  vkDestroyCommandPool(logicalDevice.device, command.poolGraphics, nullptr);
-  vkDestroyCommandPool(logicalDevice.device, command.poolTransfer, nullptr);
-  vkDestroyCommandPool(logicalDevice.device, command.poolCompute, nullptr);
-}
-
-TResult core::MRenderer::createCoreCommandBuffers() {
-  RE_LOG(Log, "Creating graphics command buffers for %d frames.",
-         MAX_FRAMES_IN_FLIGHT);
-
-  command.buffersGraphics.resize(MAX_FRAMES_IN_FLIGHT);
-
-  for (uint8_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-    command.buffersGraphics[i] = createCommandBuffer(
-        ECmdType::Graphics, VK_COMMAND_BUFFER_LEVEL_PRIMARY, false);
-
-    if (command.buffersGraphics[i] == nullptr) {
-      RE_LOG(Critical, "Failed to allocate graphics command buffers.");
-      return RE_CRITICAL;
-    }
-  }
-
-  RE_LOG(Log, "Creating %d transfer command buffers.", MAX_TRANSFER_BUFFERS);
-
-  command.buffersTransfer.resize(MAX_TRANSFER_BUFFERS);
-
-  for (uint8_t j = 0; j < MAX_TRANSFER_BUFFERS; ++j) {
-    command.buffersTransfer[j] = createCommandBuffer(
-        ECmdType::Transfer, VK_COMMAND_BUFFER_LEVEL_PRIMARY, false);
-
-    if (command.buffersTransfer[j] == nullptr) {
-      RE_LOG(Critical, "Failed to allocate transfer command buffers.");
-      return RE_CRITICAL;
-    }
-  }
-
-  return RE_OK;
-}
-
-void core::MRenderer::destroyCoreCommandBuffers() {
-  RE_LOG(Log, "Freeing %d graphics command buffers.",
-         command.buffersGraphics.size());
-  vkFreeCommandBuffers(logicalDevice.device, command.poolGraphics,
-                       static_cast<uint32_t>(command.buffersGraphics.size()),
-                       command.buffersGraphics.data());
-
-  RE_LOG(Log, "Freeing %d compute command buffers.",
-         command.buffersCompute.size());
-  vkFreeCommandBuffers(logicalDevice.device, command.poolCompute,
-                       static_cast<uint32_t>(command.buffersCompute.size()),
-                       command.buffersGraphics.data());
-
-  RE_LOG(Log, "Freeing %d transfer command buffer.",
-         command.buffersTransfer.size());
-  vkFreeCommandBuffers(logicalDevice.device, command.poolTransfer,
-                       static_cast<uint32_t>(command.buffersTransfer.size()),
-                       command.buffersTransfer.data());
-}
-
 TResult core::MRenderer::recordFrameCommandBuffer(VkCommandBuffer commandBuffer,
                                      uint32_t imageIndex) {
   VkCommandBufferBeginInfo beginInfo{};
@@ -490,7 +438,7 @@ TResult core::MRenderer::recordFrameCommandBuffer(VkCommandBuffer commandBuffer,
   // bind frame scope descriptor sets
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           system.pipelines.layout, 0, 1,
-                          &system.descriptorSets[system.idIFFrame], 0, nullptr);
+                          &system.descriptorSets[renderView.frameInFlight], 0, nullptr);
 
   vkCmdSetViewport(commandBuffer, 0, 1, &swapchain.viewport);
 
@@ -518,73 +466,17 @@ TResult core::MRenderer::recordFrameCommandBuffer(VkCommandBuffer commandBuffer,
   return RE_OK;
 }
 
-TResult core::MRenderer::createSyncObjects() {
-  RE_LOG(Log, "Creating sychronization objects for %d frames.",
-         MAX_FRAMES_IN_FLIGHT);
-
-  sync.semImgAvailable.resize(MAX_FRAMES_IN_FLIGHT);
-  sync.semRenderFinished.resize(MAX_FRAMES_IN_FLIGHT);
-  sync.fenceInFlight.resize(MAX_FRAMES_IN_FLIGHT);
-
-  VkSemaphoreCreateInfo semInfo{};
-  semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-  VkFenceCreateInfo fenInfo{};
-  fenInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-  fenInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;  // signaled to skip waiting for
-                                                 // it on the first frame
-
-  for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-    if (vkCreateSemaphore(logicalDevice.device, &semInfo, nullptr,
-                          &sync.semImgAvailable[i]) != VK_SUCCESS) {
-      RE_LOG(Critical, "failed to create 'image available' semaphore.");
-
-      return RE_CRITICAL;
-    }
-
-    if (vkCreateSemaphore(logicalDevice.device, &semInfo, nullptr,
-                          &sync.semRenderFinished[i]) != VK_SUCCESS) {
-      RE_LOG(Critical, "failed to create 'render finished' semaphore.");
-
-      return RE_CRITICAL;
-    }
-
-    if (vkCreateFence(logicalDevice.device, &fenInfo, nullptr,
-                      &sync.fenceInFlight[i])) {
-      RE_LOG(Critical, "failed to create 'in flight' fence.");
-
-      return RE_CRITICAL;
-    }
-  }
-
-  return RE_OK;
-}
-
-void core::MRenderer::destroySyncObjects() {
-  RE_LOG(Log, "Destroying synchronization objects.");
-
-  for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-    vkDestroySemaphore(logicalDevice.device, sync.semImgAvailable[i],
-                       nullptr);
-    vkDestroySemaphore(logicalDevice.device, sync.semRenderFinished[i],
-                       nullptr);
-
-    vkDestroyFence(logicalDevice.device, sync.fenceInFlight[i],
-                   nullptr);
-  }
-}
-
 TResult core::MRenderer::drawFrame() {
   uint32_t imageIndex = -1;
   TResult chkResult = RE_OK;
 
   vkWaitForFences(logicalDevice.device, 1,
-                  &sync.fenceInFlight[system.idIFFrame], VK_TRUE,
+                  &sync.fenceInFlight[renderView.frameInFlight], VK_TRUE,
                   UINT64_MAX);
 
   VkResult APIResult =
       vkAcquireNextImageKHR(logicalDevice.device, swapChain, UINT64_MAX,
-                            sync.semImgAvailable[system.idIFFrame],
+                            sync.semImgAvailable[renderView.frameInFlight],
                             VK_NULL_HANDLE, &imageIndex);
 
   if (APIResult == VK_ERROR_OUT_OF_DATE_KHR) {
@@ -604,22 +496,22 @@ TResult core::MRenderer::drawFrame() {
   core::time.tickTimer();
 
   // update MVP buffers
-  updateSceneUBO(system.idIFFrame);
+  updateSceneUBO(renderView.frameInFlight);
 
   // reset fences if we will do any work this frame e.g. no swap chain
   // recreation
   vkResetFences(logicalDevice.device, 1,
-                &sync.fenceInFlight[system.idIFFrame]);
+                &sync.fenceInFlight[renderView.frameInFlight]);
 
-  vkResetCommandBuffer(command.buffersGraphics[system.idIFFrame], NULL);
+  vkResetCommandBuffer(command.buffersGraphics[renderView.frameInFlight], NULL);
 
   // generate selected frame data and record it to command buffer
-  recordFrameCommandBuffer(command.buffersGraphics[system.idIFFrame], imageIndex);
+  recordFrameCommandBuffer(command.buffersGraphics[renderView.frameInFlight], imageIndex);
 
   // wait until image to write color data to is acquired
-  VkSemaphore waitSems[] = {sync.semImgAvailable[system.idIFFrame]};
+  VkSemaphore waitSems[] = {sync.semImgAvailable[renderView.frameInFlight]};
   VkSemaphore signalSems[] = {
-      sync.semRenderFinished[system.idIFFrame]};
+      sync.semRenderFinished[renderView.frameInFlight]};
   VkPipelineStageFlags waitStages[] = {
       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
@@ -631,7 +523,7 @@ TResult core::MRenderer::drawFrame() {
       waitStages;  // each stage index corresponds to provided semaphore index
   submitInfo.commandBufferCount = 1;
   submitInfo.pCommandBuffers =
-      &command.buffersGraphics[system.idIFFrame];  // submit command buffer
+      &command.buffersGraphics[renderView.frameInFlight];  // submit command buffer
                                                    // recorded previously
   submitInfo.signalSemaphoreCount = 1;
   submitInfo.pSignalSemaphores =
@@ -640,7 +532,7 @@ TResult core::MRenderer::drawFrame() {
   // submit an array featuring command buffers to graphics queue and signal
   // fence for CPU to wait for execution
   if (vkQueueSubmit(logicalDevice.queues.graphics, 1, &submitInfo,
-                    sync.fenceInFlight[system.idIFFrame]) !=
+                    sync.fenceInFlight[renderView.frameInFlight]) !=
       VK_SUCCESS) {
     RE_LOG(Error, "Failed to submit data to graphics queue.");
 
@@ -678,7 +570,8 @@ TResult core::MRenderer::drawFrame() {
     return RE_ERROR;
   }
 
-  system.idIFFrame = ++system.idIFFrame % MAX_FRAMES_IN_FLIGHT;
+  renderView.frameInFlight = ++renderView.frameInFlight % MAX_FRAMES_IN_FLIGHT;
+  ++renderView.framesRendered;
 
   return chkResult;
 }

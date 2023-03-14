@@ -34,6 +34,108 @@ TResult core::MRenderer::setDepthStencilFormat() {
   return RE_OK;
 }
 
+
+VkPipelineShaderStageCreateInfo core::MRenderer::loadShader(
+    const char* path, VkShaderStageFlagBits stage) {
+  std::string fullPath = RE_PATH_SHADERS + std::string(path);
+  std::vector<uint8_t> shaderCode = util::readFile(fullPath.c_str());
+
+  VkPipelineShaderStageCreateInfo stageCreateInfo{};
+  stageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  stageCreateInfo.stage = stage;
+  stageCreateInfo.module = createShaderModule(shaderCode);
+  stageCreateInfo.pName = "main";
+
+  return stageCreateInfo;
+}
+
+VkShaderModule core::MRenderer::createShaderModule(
+    std::vector<uint8_t>& shaderCode) {
+  VkShaderModuleCreateInfo smInfo{};
+  smInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+  smInfo.codeSize = shaderCode.size();
+  smInfo.pCode = reinterpret_cast<uint32_t*>(shaderCode.data());
+
+  VkShaderModule shaderModule;
+  if ((vkCreateShaderModule(logicalDevice.device, &smInfo, nullptr,
+                            &shaderModule) != VK_SUCCESS)) {
+    RE_LOG(Warning, "failed to create requested shader module.");
+    return VK_NULL_HANDLE;
+  };
+
+  return shaderModule;
+}
+
+TResult core::MRenderer::checkInstanceValidationLayers() {
+  uint32_t layerCount = 0;
+  std::vector<VkLayerProperties> availableValidationLayers;
+  VkResult checkResult;
+  bool bRequestedLayersAvailable = false;
+  std::string errorLayer;
+
+  // enumerate instance layers
+  checkResult = vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+  availableValidationLayers.resize(layerCount);
+  checkResult = vkEnumerateInstanceLayerProperties(
+      &layerCount, availableValidationLayers.data());
+  if (checkResult != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to enumerate instance layer properties.");
+    return RE_CRITICAL;
+  }
+
+  // check if all requested validation layers are available
+  for (const char* requestedLayer : debug::validationLayers) {
+    bRequestedLayersAvailable = false;
+    for (const auto& availableLayer : availableValidationLayers) {
+      if (strcmp(requestedLayer, availableLayer.layerName) == 0) {
+        bRequestedLayersAvailable = true;
+        break;
+      }
+    }
+    if (!bRequestedLayersAvailable) {
+      errorLayer = std::string(requestedLayer);
+      break;
+    }
+  }
+
+  if (!bRequestedLayersAvailable) {
+    RE_LOG(Critical,
+           "Failed to detect all requested validation layers. Layer '%s' not "
+           "present.",
+           errorLayer.c_str());
+    return RE_CRITICAL;
+  }
+
+  return RE_OK;
+}
+
+std::vector<const char*> core::MRenderer::getRequiredInstanceExtensions() {
+  uint32_t extensionCount = 0;
+  const char** ppExtensions;
+
+  ppExtensions = glfwGetRequiredInstanceExtensions(&extensionCount);
+  std::vector<const char*> requiredExtensions(ppExtensions,
+                                              ppExtensions + extensionCount);
+
+  if (bRequireValidationLayers) {
+    requiredExtensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+  }
+
+  return requiredExtensions;
+}
+
+std::vector<VkExtensionProperties> core::MRenderer::getInstanceExtensions() {
+  uint32_t extensionCount = 0;
+  std::vector<VkExtensionProperties> extensionProperties;
+
+  vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+  extensionProperties.resize(extensionCount);
+  vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount,
+                                         extensionProperties.data());
+
+  return extensionProperties;
+}
+
 // PUBLIC
 
 TResult core::MRenderer::createBuffer(EBufferMode mode, VkDeviceSize size, RBuffer& outBuffer, void* inData)

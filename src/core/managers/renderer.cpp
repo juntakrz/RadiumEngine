@@ -77,67 +77,6 @@ TResult core::MRenderer::destroyInstance() {
   return RE_OK;
 }
 
-TResult core::MRenderer::initialize() {
-  TResult chkResult = RE_OK;
-
-  chkResult = core::renderer.createInstance();
-
-  // debug manager setup
-  if (chkResult <= RE_ERRORLIMIT)
-    chkResult = MDebug::get().create(core::renderer.APIInstance);
-
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createSurface();
-
-  if (chkResult <= RE_ERRORLIMIT) chkResult = enumPhysicalDevices();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = initPhysicalDevice();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = initLogicalDevice();
-
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createMemAlloc();
-
-  if (chkResult <= RE_ERRORLIMIT)
-    chkResult =
-    initSwapChain(core::vulkan::format, core::vulkan::colorSpace,
-                      core::vulkan::presentMode);
-  updateAspectRatio();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandPools();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandBuffers();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createSceneBuffers();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createDepthResources();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createRenderPass();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSetLayouts();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createGraphicsPipelines();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createFramebuffers();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createUniformBuffers();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorPool();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSets();
-
-  return chkResult;
-}
-
-void core::MRenderer::deinitialize() {
-  waitForSystemIdle();
-
-  destroySwapChain();
-  destroySyncObjects();
-  destroyCoreCommandBuffers();
-  destroyCoreCommandPools();
-  destroyGraphicsPipelines();
-  destroyRenderPass();
-  destroyDepthResources();
-  destroySceneBuffers();
-  destroySurface();
-  core::actors.destroyAllPawns();
-  core::world.destroyAllModels();
-  core::materials.destroyAllTextures();
-  destroyDescriptorPool();
-  destroyUniformBuffers();
-  destroyMemAlloc();
-  if(bRequireValidationLayers) MDebug::get().destroy(APIInstance);
-  destroyLogicalDevice();
-  destroyInstance();
-}
-
 TResult core::MRenderer::createMemAlloc() {
   RE_LOG(Log, "initializing Vulkan memory allocator.");
 
@@ -160,12 +99,6 @@ void core::MRenderer::destroyMemAlloc() {
   vmaDestroyAllocator(memAlloc);
 }
 
-void core::MRenderer::waitForSystemIdle() {
-  vkQueueWaitIdle(logicalDevice.queues.graphics);
-  vkQueueWaitIdle(logicalDevice.queues.present);
-  vkDeviceWaitIdle(logicalDevice.device);
-}
-
 TResult core::MRenderer::createSurface() {
   RE_LOG(Log, "Creating rendering surface.");
 
@@ -182,20 +115,6 @@ TResult core::MRenderer::createSurface() {
 void core::MRenderer::destroySurface() {
   RE_LOG(Log, "Destroying drawing surface.");
   vkDestroySurfaceKHR(APIInstance, surface, nullptr);
-}
-
-const RDescriptorSetLayouts* core::MRenderer::getDescriptorSetLayouts() const {
-  return &system.descriptorSetLayouts;
-}
-
-const VkDescriptorPool core::MRenderer::getDescriptorPool() {
-  return system.descriptorPool;
-}
-
-const VkDescriptorSet core::MRenderer::getDescriptorSet(
-    uint32_t frameInFlight) {
-  return frameInFlight == -1 ? system.descriptorSets[system.idIFFrame]
-                             : system.descriptorSets[frameInFlight];
 }
 
 TResult core::MRenderer::createSceneBuffers() {
@@ -224,13 +143,9 @@ core::MRenderer::RSceneBuffers* core::MRenderer::getSceneBuffers() {
   return &scene;
 }
 
-uint32_t core::MRenderer::getFrameInFlightIndex() {
-  return system.idIFFrame; }
-
-// PRIVATE
-
 TResult core::MRenderer::createDescriptorSetLayouts() {
-  // layout: shader binding / descriptor type / count / shader stage / immutable samplers
+  // layout: shader binding / descriptor type / count / shader stage / immutable
+  // samplers
 
   // scene matrices and environmental maps
   // 0 - MVP matrix
@@ -328,7 +243,7 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
   return RE_OK;
 }
 
-void core::MRenderer::destroyDescriptorSetLayouts(){
+void core::MRenderer::destroyDescriptorSetLayouts() {
   RE_LOG(Log, "Removing descriptor set layouts.");
 
   vkDestroyDescriptorSetLayout(logicalDevice.device,
@@ -351,14 +266,14 @@ TResult core::MRenderer::createDescriptorPool() {
   poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
   // materials and textures
-  // TODO: rewrite so that descriptorCounts are calculated by objects/textures using map data
-  // e.g. max preloaded textures plus 256 for headroom
+  // TODO: rewrite so that descriptorCounts are calculated by objects/textures
+  // using map data e.g. max preloaded textures plus 256 for headroom
   poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
   poolSizes[1].descriptorCount = (1536 + 256) * MAX_FRAMES_IN_FLIGHT;
 
   // model nodes
-  // TODO: rewrite so that descriptorCounts are calculated by objects/textures using map data
-  // e.g. max preloaded model nodes plus 256 for headroom
+  // TODO: rewrite so that descriptorCounts are calculated by objects/textures
+  // using map data e.g. max preloaded model nodes plus 256 for headroom
   poolSizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
   poolSizes[2].descriptorCount = (1024 + 256) * MAX_FRAMES_IN_FLIGHT;
 
@@ -368,7 +283,7 @@ TResult core::MRenderer::createDescriptorPool() {
   poolInfo.pPoolSizes = poolSizes.data();
   poolInfo.maxSets =
       static_cast<uint32_t>(poolSizes.size()) *
-      (MAX_FRAMES_IN_FLIGHT) * 10;  // need to calculate better number
+      (MAX_FRAMES_IN_FLIGHT)*10;  // need to calculate better number
   poolInfo.flags = 0;
 
   if (vkCreateDescriptorPool(logicalDevice.device, &poolInfo, nullptr,
@@ -386,11 +301,10 @@ void core::MRenderer::destroyDescriptorPool() {
 }
 
 TResult core::MRenderer::createDescriptorSets() {
-
   RE_LOG(Log, "Creating renderer descriptor sets.");
 
-  std::vector<VkDescriptorSetLayout> setLayouts(MAX_FRAMES_IN_FLIGHT,
-                                             system.descriptorSetLayouts.scene);
+  std::vector<VkDescriptorSetLayout> setLayouts(
+      MAX_FRAMES_IN_FLIGHT, system.descriptorSetLayouts.scene);
 
   VkDescriptorSetAllocateInfo setAllocInfo{};
   setAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -411,7 +325,6 @@ TResult core::MRenderer::createDescriptorSets() {
   uint32_t descriptorCount = 2u;
 
   for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-
     // model*view*projection data for descriptor set
     VkDescriptorBufferInfo descriptorBufferInfoMVP;
     descriptorBufferInfoMVP.buffer = view.modelViewProjectionBuffers[i].buffer;
@@ -437,7 +350,7 @@ TResult core::MRenderer::createDescriptorSets() {
     writeDescriptorSets[0].pImageInfo = nullptr;
     writeDescriptorSets[0].pTexelBufferView = nullptr;
     writeDescriptorSets[0].pNext = nullptr;
- 
+
     // settings used for writing to lighting descriptor set
     writeDescriptorSets[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     writeDescriptorSets[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -478,7 +391,7 @@ TResult core::MRenderer::createDescriptorSets() {
   return RE_OK;
 }
 
-TResult core::MRenderer::createDepthResources() { 
+TResult core::MRenderer::createDepthResources() {
   RE_LOG(Log, "Creating depth/stencil resources.");
 
   // may not be supported by every GPU, maybe write a format checker?
@@ -490,7 +403,7 @@ TResult core::MRenderer::createDepthResources() {
   imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
   imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
   imageCreateInfo.extent = {swapchain.imageExtent.width,
-                       swapchain.imageExtent.height, 1};
+                            swapchain.imageExtent.height, 1};
   imageCreateInfo.format = images.depth.format;
   imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -502,15 +415,16 @@ TResult core::MRenderer::createDepthResources() {
   VmaAllocationCreateInfo depthAllocationInfo{};
   depthAllocationInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
   depthAllocationInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-  
+
   if (vmaCreateImage(memAlloc, &imageCreateInfo, &depthAllocationInfo,
                      &images.depth.image, &images.depth.allocation,
                      &images.depth.allocInfo) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create depth/stencil image.");
     return RE_CRITICAL;
   }
-  
-  images.depth.view = createImageView(images.depth.image, images.depth.format, 1, 1);
+
+  images.depth.view =
+      createImageView(images.depth.image, images.depth.format, 1, 1);
 
   if (!images.depth.view) {
     RE_LOG(Critical, "Failed to create depth/stencil image view.");
@@ -530,7 +444,8 @@ void core::MRenderer::destroyDepthResources() {
 }
 
 TResult core::MRenderer::createUniformBuffers() {
-  // each frame will require a separate buffer, so 2 frames in flight would require buffers * 2
+  // each frame will require a separate buffer, so 2 frames in flight would
+  // require buffers * 2
   view.modelViewProjectionBuffers.resize(MAX_FRAMES_IN_FLIGHT);
   lighting.buffers.resize(MAX_FRAMES_IN_FLIGHT);
 
@@ -540,8 +455,8 @@ TResult core::MRenderer::createUniformBuffers() {
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
     createBuffer(EBufferMode::CPU_UNIFORM, uboMVPSize,
                  view.modelViewProjectionBuffers[i], getSceneUBO());
-    createBuffer(EBufferMode::CPU_UNIFORM, uboLightingSize,
-                 lighting.buffers[i], &lighting.data);
+    createBuffer(EBufferMode::CPU_UNIFORM, uboLightingSize, lighting.buffers[i],
+                 &lighting.data);
   }
 
   return RE_OK;
@@ -557,8 +472,164 @@ void core::MRenderer::destroyUniformBuffers() {
   }
 }
 
+TResult core::MRenderer::createCoreCommandPools() {
+  RE_LOG(Log, "Creating command pool.");
+
+  VkCommandPoolCreateInfo cmdPoolRenderInfo{};
+  cmdPoolRenderInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+  cmdPoolRenderInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+  cmdPoolRenderInfo.queueFamilyIndex =
+      physicalDevice.queueFamilyIndices.graphics[0];
+
+  if (vkCreateCommandPool(logicalDevice.device, &cmdPoolRenderInfo, nullptr,
+                          &command.poolGraphics) != VK_SUCCESS) {
+    RE_LOG(Critical,
+           "failed to create command pool for graphics queue family.");
+
+    return RE_CRITICAL;
+  }
+
+  cmdPoolRenderInfo.queueFamilyIndex =
+      physicalDevice.queueFamilyIndices.transfer[0];
+
+  if (vkCreateCommandPool(logicalDevice.device, &cmdPoolRenderInfo, nullptr,
+                          &command.poolTransfer) != VK_SUCCESS) {
+    RE_LOG(Critical,
+           "failed to create command pool for transfer queue family.");
+
+    return RE_CRITICAL;
+  }
+
+  cmdPoolRenderInfo.queueFamilyIndex =
+      physicalDevice.queueFamilyIndices.compute[0];
+
+  if (vkCreateCommandPool(logicalDevice.device, &cmdPoolRenderInfo, nullptr,
+                          &command.poolCompute) != VK_SUCCESS) {
+    RE_LOG(Critical, "failed to create command pool for compute queue family.");
+
+    return RE_CRITICAL;
+  }
+
+  return RE_OK;
+}
+
+void core::MRenderer::destroyCoreCommandPools() {
+  RE_LOG(Log, "Destroying command pools.");
+  vkDestroyCommandPool(logicalDevice.device, command.poolGraphics, nullptr);
+  vkDestroyCommandPool(logicalDevice.device, command.poolTransfer, nullptr);
+  vkDestroyCommandPool(logicalDevice.device, command.poolCompute, nullptr);
+}
+
+TResult core::MRenderer::createCoreCommandBuffers() {
+  RE_LOG(Log, "Creating graphics command buffers for %d frames.",
+         MAX_FRAMES_IN_FLIGHT);
+
+  command.buffersGraphics.resize(MAX_FRAMES_IN_FLIGHT);
+
+  for (uint8_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+    command.buffersGraphics[i] = createCommandBuffer(
+        ECmdType::Graphics, VK_COMMAND_BUFFER_LEVEL_PRIMARY, false);
+
+    if (command.buffersGraphics[i] == nullptr) {
+      RE_LOG(Critical, "Failed to allocate graphics command buffers.");
+      return RE_CRITICAL;
+    }
+  }
+
+  RE_LOG(Log, "Creating %d transfer command buffers.", MAX_TRANSFER_BUFFERS);
+
+  command.buffersTransfer.resize(MAX_TRANSFER_BUFFERS);
+
+  for (uint8_t j = 0; j < MAX_TRANSFER_BUFFERS; ++j) {
+    command.buffersTransfer[j] = createCommandBuffer(
+        ECmdType::Transfer, VK_COMMAND_BUFFER_LEVEL_PRIMARY, false);
+
+    if (command.buffersTransfer[j] == nullptr) {
+      RE_LOG(Critical, "Failed to allocate transfer command buffers.");
+      return RE_CRITICAL;
+    }
+  }
+
+  return RE_OK;
+}
+
+void core::MRenderer::destroyCoreCommandBuffers() {
+  RE_LOG(Log, "Freeing %d graphics command buffers.",
+         command.buffersGraphics.size());
+  vkFreeCommandBuffers(logicalDevice.device, command.poolGraphics,
+                       static_cast<uint32_t>(command.buffersGraphics.size()),
+                       command.buffersGraphics.data());
+
+  RE_LOG(Log, "Freeing %d compute command buffers.",
+         command.buffersCompute.size());
+  vkFreeCommandBuffers(logicalDevice.device, command.poolCompute,
+                       static_cast<uint32_t>(command.buffersCompute.size()),
+                       command.buffersGraphics.data());
+
+  RE_LOG(Log, "Freeing %d transfer command buffer.",
+         command.buffersTransfer.size());
+  vkFreeCommandBuffers(logicalDevice.device, command.poolTransfer,
+                       static_cast<uint32_t>(command.buffersTransfer.size()),
+                       command.buffersTransfer.data());
+}
+
+TResult core::MRenderer::createSyncObjects() {
+  RE_LOG(Log, "Creating sychronization objects for %d frames.",
+         MAX_FRAMES_IN_FLIGHT);
+
+  sync.semImgAvailable.resize(MAX_FRAMES_IN_FLIGHT);
+  sync.semRenderFinished.resize(MAX_FRAMES_IN_FLIGHT);
+  sync.fenceInFlight.resize(MAX_FRAMES_IN_FLIGHT);
+
+  VkSemaphoreCreateInfo semInfo{};
+  semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+  VkFenceCreateInfo fenInfo{};
+  fenInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+  fenInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;  // signaled to skip waiting for
+                                                 // it on the first frame
+
+  for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+    if (vkCreateSemaphore(logicalDevice.device, &semInfo, nullptr,
+                          &sync.semImgAvailable[i]) != VK_SUCCESS) {
+      RE_LOG(Critical, "failed to create 'image available' semaphore.");
+
+      return RE_CRITICAL;
+    }
+
+    if (vkCreateSemaphore(logicalDevice.device, &semInfo, nullptr,
+                          &sync.semRenderFinished[i]) != VK_SUCCESS) {
+      RE_LOG(Critical, "failed to create 'render finished' semaphore.");
+
+      return RE_CRITICAL;
+    }
+
+    if (vkCreateFence(logicalDevice.device, &fenInfo, nullptr,
+                      &sync.fenceInFlight[i])) {
+      RE_LOG(Critical, "failed to create 'in flight' fence.");
+
+      return RE_CRITICAL;
+    }
+  }
+
+  return RE_OK;
+}
+
+void core::MRenderer::destroySyncObjects() {
+  RE_LOG(Log, "Destroying synchronization objects.");
+
+  for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+    vkDestroySemaphore(logicalDevice.device, sync.semImgAvailable[i], nullptr);
+    vkDestroySemaphore(logicalDevice.device, sync.semRenderFinished[i],
+                       nullptr);
+
+    vkDestroyFence(logicalDevice.device, sync.fenceInFlight[i], nullptr);
+  }
+}
+
 void core::MRenderer::updateSceneUBO(uint32_t currentImage) {
-  // rewrite this and UpdateMVP method to use data from the current/provided camera
+  // rewrite this and UpdateMVP method to use data from the current/provided
+  // camera
   view.worldViewProjectionData.world = glm::mat4(1.0f);
   view.worldViewProjectionData.view = view.pActiveCamera->getView();
   view.worldViewProjectionData.projection = view.pActiveCamera->getProjection();
@@ -569,115 +640,94 @@ void core::MRenderer::updateSceneUBO(uint32_t currentImage) {
          &view.worldViewProjectionData, sizeof(RSceneUBO));
 }
 
-
 void core::MRenderer::updateSceneUBO(const glm::mat4& modelMatrix,
                                      uint32_t currentImage) {
   memcpy(view.modelViewProjectionBuffers[currentImage].allocInfo.pMappedData,
          &modelMatrix, sizeof(glm::mat4));
 }
 
+void core::MRenderer::waitForSystemIdle() {
+  vkQueueWaitIdle(logicalDevice.queues.graphics);
+  vkQueueWaitIdle(logicalDevice.queues.compute);
+  vkQueueWaitIdle(logicalDevice.queues.present);
+  vkDeviceWaitIdle(logicalDevice.device);
+}
+
+TResult core::MRenderer::initialize() {
+  TResult chkResult = RE_OK;
+
+  chkResult = core::renderer.createInstance();
+
+  // debug manager setup
+  if (chkResult <= RE_ERRORLIMIT)
+    chkResult = MDebug::get().create(core::renderer.APIInstance);
+
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createSurface();
+
+  if (chkResult <= RE_ERRORLIMIT) chkResult = enumPhysicalDevices();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = initPhysicalDevice();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = initLogicalDevice();
+
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createMemAlloc();
+
+  if (chkResult <= RE_ERRORLIMIT)
+    chkResult =
+    initSwapChain(core::vulkan::format, core::vulkan::colorSpace,
+                      core::vulkan::presentMode);
+  updateAspectRatio();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandPools();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandBuffers();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createSceneBuffers();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createDepthResources();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createRenderPass();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSetLayouts();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createGraphicsPipelines();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createFramebuffers();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createUniformBuffers();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorPool();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSets();
+
+  return chkResult;
+}
+
+void core::MRenderer::deinitialize() {
+  waitForSystemIdle();
+
+  destroySwapChain();
+  destroySyncObjects();
+  destroyCoreCommandBuffers();
+  destroyCoreCommandPools();
+  destroyGraphicsPipelines();
+  destroyRenderPass();
+  destroyDepthResources();
+  destroySceneBuffers();
+  destroySurface();
+  core::actors.destroyAllPawns();
+  core::world.destroyAllModels();
+  core::materials.destroyAllTextures();
+  destroyDescriptorPool();
+  destroyUniformBuffers();
+  destroyMemAlloc();
+  if(bRequireValidationLayers) MDebug::get().destroy(APIInstance);
+  destroyLogicalDevice();
+  destroyInstance();
+}
+
+const RDescriptorSetLayouts* core::MRenderer::getDescriptorSetLayouts() const {
+  return &system.descriptorSetLayouts;
+}
+
+const VkDescriptorPool core::MRenderer::getDescriptorPool() {
+  return system.descriptorPool;
+}
+
+const VkDescriptorSet core::MRenderer::getDescriptorSet(
+    uint32_t frameInFlight) {
+  return frameInFlight == -1 ? system.descriptorSets[renderView.frameInFlight]
+                             : system.descriptorSets[frameInFlight];
+}
+
 RSceneUBO* core::MRenderer::getSceneUBO() {
   return &view.worldViewProjectionData;
-}
-
-VkPipelineShaderStageCreateInfo core::MRenderer::loadShader(
-    const char* path, VkShaderStageFlagBits stage) {
-
-  std::string fullPath = RE_PATH_SHADERS + std::string(path);
-  std::vector<uint8_t> shaderCode = util::readFile(fullPath.c_str());
-
-  VkPipelineShaderStageCreateInfo stageCreateInfo{};
-  stageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-  stageCreateInfo.stage = stage;
-  stageCreateInfo.module = createShaderModule(shaderCode);
-  stageCreateInfo.pName = "main";
-
-  return stageCreateInfo;
-}
-
-VkShaderModule core::MRenderer::createShaderModule(
-    std::vector<uint8_t>& shaderCode) {
-  VkShaderModuleCreateInfo smInfo{};
-  smInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-  smInfo.codeSize = shaderCode.size();
-  smInfo.pCode = reinterpret_cast<uint32_t*>(shaderCode.data());
-
-  VkShaderModule shaderModule;
-  if ((vkCreateShaderModule(logicalDevice.device, &smInfo, nullptr,
-                            &shaderModule) != VK_SUCCESS)) {
-    RE_LOG(Warning, "failed to create requested shader module.");
-    return VK_NULL_HANDLE;
-  };
-
-  return shaderModule;
-}
-
-TResult core::MRenderer::checkInstanceValidationLayers() {
-  uint32_t layerCount = 0;
-  std::vector<VkLayerProperties> availableValidationLayers;
-  VkResult checkResult;
-  bool bRequestedLayersAvailable = false;
-  std::string errorLayer;
-
-  // enumerate instance layers
-  checkResult = vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-  availableValidationLayers.resize(layerCount);
-  checkResult = vkEnumerateInstanceLayerProperties(
-    &layerCount, availableValidationLayers.data());
-  if (checkResult != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to enumerate instance layer properties.");
-    return RE_CRITICAL;
-  }
-
-  // check if all requested validation layers are available
-  for (const char* requestedLayer : debug::validationLayers) {
-    bRequestedLayersAvailable = false;
-    for (const auto& availableLayer : availableValidationLayers) {
-      if (strcmp(requestedLayer, availableLayer.layerName) == 0) {
-        bRequestedLayersAvailable = true;
-        break;
-      }
-    }
-    if (!bRequestedLayersAvailable) {
-      errorLayer = std::string(requestedLayer);
-      break;
-    }
-  }
-
-  if (!bRequestedLayersAvailable) {
-    RE_LOG(Critical,
-           "Failed to detect all requested validation layers. Layer '%s' not "
-           "present.",
-           errorLayer.c_str());
-    return RE_CRITICAL;
-  }
-
-  return RE_OK;
-}
-
-std::vector<const char*> core::MRenderer::getRequiredInstanceExtensions() {
-  uint32_t extensionCount = 0;
-  const char** ppExtensions;
-
-  ppExtensions = glfwGetRequiredInstanceExtensions(&extensionCount);
-  std::vector<const char*> requiredExtensions(ppExtensions,
-                                              ppExtensions + extensionCount);
-
-  if (bRequireValidationLayers) {
-    requiredExtensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-  }
-
-  return requiredExtensions;
-}
-
-std::vector<VkExtensionProperties> core::MRenderer::getInstanceExtensions() {
-  uint32_t extensionCount = 0;
-  std::vector<VkExtensionProperties> extensionProperties;
-
-  vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-  extensionProperties.resize(extensionCount);
-  vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount,
-                                         extensionProperties.data());
-
-  return extensionProperties;
 }
