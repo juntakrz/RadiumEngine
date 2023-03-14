@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "util/util.h"
 #include "core/objects.h"
 
 std::set<int32_t> RVkQueueFamilyIndices::getAsSet() const {
@@ -76,4 +77,45 @@ std::vector<VkVertexInputAttributeDescription> RVertex::getAttributeDescs() {
   attrDescs[7].offset = offsetof(RVertex, tangent);
 
   return attrDescs;
+}
+
+void RAsync::loop() {
+  while (execute) {
+    std::unique_lock<std::mutex> lock(mutex);
+    conditional.wait(lock, [this]() { return cue || !execute; });
+
+    if (!execute) {
+      break;
+    }
+
+    cue = false;
+    func->exec();
+  }
+}
+
+void RAsync::start() {
+  if (!func) {
+    RE_LOG(Error, "Can't start async object, no function is bound.");
+    return;
+  }
+
+  thread = std::thread(&RAsync::loop, this);
+}
+
+void RAsync::stop() {
+  {
+    std::lock_guard<std::mutex> lock(mutex);
+    execute = false;
+  }
+  conditional.notify_all();
+
+  if (thread.joinable()) {
+    thread.join();
+  }
+}
+
+void RAsync::update() {
+  std::unique_lock<std::mutex> lock(mutex);
+  cue = true;
+  conditional.notify_all();
 }

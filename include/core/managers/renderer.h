@@ -50,6 +50,7 @@ class MRenderer {
     std::vector<VkSemaphore> semImgAvailable;
     std::vector<VkSemaphore> semRenderFinished;
     std::vector<VkFence> fenceInFlight;
+    RAsync asyncUpdateEntities;
   } sync;
 
   // current camera view data
@@ -328,6 +329,8 @@ class MRenderer {
   //
 
  private:
+  void updateBoundEntities();
+
   // draw bound entities
   void drawBoundEntities(VkCommandBuffer cmdBuffer);
   void renderPrimitive(VkCommandBuffer cmdBuffer, VkPipeline pipeline,

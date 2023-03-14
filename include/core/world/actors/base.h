@@ -33,11 +33,11 @@ class ABase {
     bool wasUpdated = false;
   } m_transformationData;
 
+  glm::mat4 m_transformationMatrix = glm::mat4(1.0f);
+
   float m_translationModifier = 1.0f;
   float m_rotationModifier = 1.0f;
   float m_scalingModifier = 1.0f;
-
-  glm::mat4 m_transformationMatrix = glm::mat4(1.0f);
 
  public:
   std::string name;

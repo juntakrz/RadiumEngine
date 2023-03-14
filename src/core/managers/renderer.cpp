@@ -612,6 +612,11 @@ TResult core::MRenderer::createSyncObjects() {
     }
   }
 
+  // create continuously running threads
+  RE_LOG(Log, "Creating entity update thread.");
+  sync.asyncUpdateEntities.bindFunction(this, &MRenderer::updateBoundEntities);
+  sync.asyncUpdateEntities.start();
+
   return RE_OK;
 }
 
@@ -625,6 +630,9 @@ void core::MRenderer::destroySyncObjects() {
 
     vkDestroyFence(logicalDevice.device, sync.fenceInFlight[i], nullptr);
   }
+
+  RE_LOG(Log, "Stopping entity update thread.");
+  sync.asyncUpdateEntities.stop();
 }
 
 void core::MRenderer::updateSceneUBO(uint32_t currentImage) {

@@ -5,6 +5,18 @@
 #include "core/world/model/model.h"
 #include "core/managers/renderer.h"
 
+void core::MRenderer::updateBoundEntities() {
+  AEntity* pEntity = nullptr;
+
+  for (auto& bindInfo : system.bindings) {
+    if ((pEntity = bindInfo.pEntity) == nullptr) {
+      continue;
+    }
+
+    pEntity->updateModel();
+  }
+}
+
 void core::MRenderer::drawBoundEntities(VkCommandBuffer cmdBuffer) {
   // go through bound models and generate draw calls for each
   AEntity* pEntity = nullptr;
@@ -19,8 +31,6 @@ void core::MRenderer::drawBoundEntities(VkCommandBuffer cmdBuffer) {
     if ((pModel = bindInfo.pEntity->getModel()) == nullptr) {
       continue;
     }
-
-    pEntity->updateModel();
 
     auto& primitives = pModel->getPrimitives();
 
@@ -455,7 +465,7 @@ TResult core::MRenderer::recordFrameCommandBuffer(VkCommandBuffer commandBuffer,
   vkCmdBindVertexBuffers(commandBuffer, 0, 1, &scene.vertexBuffer.buffer,
                          &offset);
   vkCmdBindIndexBuffer(commandBuffer, scene.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-  
+
   drawBoundEntities(commandBuffer);
 
   vkCmdEndRenderPass(commandBuffer);
@@ -572,6 +582,8 @@ TResult core::MRenderer::drawFrame() {
 
     return RE_ERROR;
   }
+
+  sync.asyncUpdateEntities.update();
 
   renderView.frameInFlight = ++renderView.frameInFlight % MAX_FRAMES_IN_FLIGHT;
   ++renderView.framesRendered;

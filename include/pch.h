@@ -10,6 +10,7 @@
 
 // standard library headers
 #include <algorithm>
+#include <atomic>
 #include <conio.h>
 #include <chrono>
 #include <cstdio>
@@ -18,13 +19,14 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
-#include <unordered_map>
 #include <memory>
+#include <mutex>
 #include <random>
 #include <set>
 #include <stdarg.h>
 #include <string>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
 // debug modules

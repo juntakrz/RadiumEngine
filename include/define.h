@@ -22,7 +22,7 @@
 #ifdef NDEBUG
 constexpr bool bRequireValidationLayers = false;
 #else
-constexpr bool bRequireValidationLayers = false;
+constexpr bool bRequireValidationLayers = true;
 #endif
 
 // global constants
