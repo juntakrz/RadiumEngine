@@ -34,41 +34,41 @@ std::vector<VkVertexInputAttributeDescription> RVertex::getAttributeDescs() {
   attrDescs[0].format = VK_FORMAT_R32G32B32_SFLOAT; // 'pos' consists of 3x 32 bit floats
   attrDescs[0].offset = offsetof(RVertex, pos);     // offset of 'pos' in memory, in bytes
 
-  // describes 'tex0'
+  // describes 'normal'
   attrDescs[1].binding = 0;
-  attrDescs[1].format = VK_FORMAT_R32G32_SFLOAT;    // UV coordinates
+  attrDescs[1].format = VK_FORMAT_R32G32B32_SFLOAT;
   attrDescs[1].location = 1;
-  attrDescs[1].offset = offsetof(RVertex, tex0);
+  attrDescs[1].offset = offsetof(RVertex, normal);
 
-  // describes 'tex1'
+  // describes 'tex0'
   attrDescs[2].binding = 0;
   attrDescs[2].format = VK_FORMAT_R32G32_SFLOAT;    // UV coordinates
   attrDescs[2].location = 2;
-  attrDescs[2].offset = offsetof(RVertex, tex1);
+  attrDescs[2].offset = offsetof(RVertex, tex0);
 
-  // describes 'normal'
+  // describes 'tex1'
   attrDescs[3].binding = 0;
-  attrDescs[3].format = VK_FORMAT_R32G32B32_SFLOAT;
+  attrDescs[3].format = VK_FORMAT_R32G32_SFLOAT;    // UV coordinates
   attrDescs[3].location = 3;
-  attrDescs[3].offset = offsetof(RVertex, normal);
+  attrDescs[3].offset = offsetof(RVertex, tex1);
 
-  // describes 'color'
+  // describes 'joint'
   attrDescs[4].binding = 0;
   attrDescs[4].format = VK_FORMAT_R32G32B32A32_SFLOAT;
   attrDescs[4].location = 4;
-  attrDescs[4].offset = offsetof(RVertex, color);
+  attrDescs[4].offset = offsetof(RVertex, joint);
 
-  // describes 'joint'
+  // describes 'weight'
   attrDescs[5].binding = 0;
   attrDescs[5].format = VK_FORMAT_R32G32B32A32_SFLOAT;
   attrDescs[5].location = 5;
-  attrDescs[5].offset = offsetof(RVertex, joint);
+  attrDescs[5].offset = offsetof(RVertex, weight);
 
-  // describes 'weight'
+  // describes 'color'
   attrDescs[6].binding = 0;
   attrDescs[6].format = VK_FORMAT_R32G32B32A32_SFLOAT;
   attrDescs[6].location = 6;
-  attrDescs[6].offset = offsetof(RVertex, weight);
+  attrDescs[6].offset = offsetof(RVertex, color);
 
   // describes 'tangent'
   attrDescs[7].binding = 0;

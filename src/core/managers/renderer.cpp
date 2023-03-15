@@ -411,6 +411,7 @@ TResult core::MRenderer::createDepthResources() {
   imageCreateInfo.arrayLayers = 1;
   imageCreateInfo.usage = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
                           VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+  imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
   VmaAllocationCreateInfo depthAllocationInfo{};
   depthAllocationInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;

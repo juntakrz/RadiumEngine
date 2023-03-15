@@ -25,12 +25,12 @@ TResult RTexture::createSampler(
 
   VkSamplerCreateInfo createInfo{};
   createInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+  createInfo.minFilter = pSamplerInfo->minFilter;
+  createInfo.magFilter = pSamplerInfo->magFilter;
+  createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
   createInfo.addressModeU = pSamplerInfo->addressModeU;
   createInfo.addressModeV = pSamplerInfo->addressModeV;
   createInfo.addressModeW = pSamplerInfo->addressModeW;
-  createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-  createInfo.minFilter = pSamplerInfo->minFilter;
-  createInfo.magFilter = pSamplerInfo->magFilter;
   createInfo.anisotropyEnable = VK_TRUE;
   createInfo.maxAnisotropy = 8.0f;
   createInfo.compareOp = VK_COMPARE_OP_NEVER;

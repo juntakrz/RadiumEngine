@@ -48,6 +48,9 @@ class MResources {
   TResult loadTexture(const std::string &filePath,
                       const RSamplerInfo* pSamplerInfo);
 
+  TResult loadTexturePNG(const std::string& filePath,
+                         const RSamplerInfo* pSamplerInfo);
+
   // create new texture with specific parameters
   void createTexture(const char* name, uint32_t width, uint32_t height,
                      VkFormat format, VkImageTiling tiling,

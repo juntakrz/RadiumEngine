@@ -42,27 +42,35 @@ void core::run() {
   core::script.loadMap("default");
 
   // remove this after loadMap improvements
+  core::world.createModel(EPrimitiveType::Sphere, "mdlSphere", 16, false);
+  core::world.createModel(EPrimitiveType::Cube, "mdlSkybox", 1, true);
+  core::world.loadModelFromFile("content/models/test/scene.gltf", "mdlGuy");
+  core::world.createModel(EPrimitiveType::Cube, "mdlBox1", 1, false);
+  
   core::actors.createPawn("sphere0");
-  core::world.createModel(EPrimitiveType::Sphere, "mdlSphere", 16, 0);
   APawn* pPawn = core::actors.getPawn("sphere0");
   pPawn->setModel(core::world.getModel("mdlSphere"));
   core::renderer.bindEntity(pPawn);
   pPawn->setLocation(-3.0f, 0.0f, 2.0f);
 
-  core::world.loadModelFromFile("content/models/test/scene.gltf", "mdlGuy");
-  core::world.createModel(EPrimitiveType::Cube, "mdlSkybox", 1, true);
+  AStatic* pStatic = core::actors.createStatic("Skybox");
+  pStatic->setModel(core::world.getModel("mdlSkybox"));
+  core::renderer.bindEntity(pStatic);
+  pStatic->setScale(100.0f);
   
-  AStatic* pStatic = core::actors.createStatic("Static01");
+  pStatic = core::actors.createStatic("Static01");
   pStatic->setModel(core::world.getModel("mdlGuy"));
   core::renderer.bindEntity(pStatic);
   pStatic->setLocation(0.0f, -1.0f, -0.3f);
   pStatic->setRotation({0.0f, 1.0f, 0.0f}, glm::radians(200.0f));
   pStatic->setScale(0.7f);
 
-  pStatic = core::actors.createStatic("Skybox");
-  pStatic->setModel(core::world.getModel("mdlSkybox"));
+  pStatic = core::actors.createStatic("Box1");
+  pStatic->setModel(core::world.getModel("mdlBox1"));
   core::renderer.bindEntity(pStatic);
-  pStatic->setScale(100.0f);
+  pStatic->setScale(2.2f);
+  pStatic->setLocation(4.0f, -0.2f, -2.0f);
+  pStatic->setRotation({0.5f, 0.32f, 0.1f});
   // ---------------------------- */
 
   RE_LOG(Log, "Launching main event loop.");

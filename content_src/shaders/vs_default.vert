@@ -15,12 +15,12 @@ layout (set = 1, binding = 0) uniform UBONode {
 } mesh;
 
 layout(location = 0) in vec3 inPos;
-layout(location = 1) in vec2 inTexCoord0;
-layout(location = 2) in vec2 inTexCoord1;
-layout(location = 3) in vec3 inNormal;
-layout(location = 4) in vec4 inColor0;
-layout(location = 5) in vec4 inJoint;
-layout(location = 6) in vec4 inWeight;
+layout(location = 1) in vec3 inNormal;
+layout(location = 2) in vec2 inTexCoord0;
+layout(location = 3) in vec2 inTexCoord1;
+layout(location = 4) in vec4 inJoint;
+layout(location = 5) in vec4 inWeight;
+layout(location = 6) in vec4 inColor0;
 layout(location = 7) in vec3 inTangent;
 
 layout(location = 0) out vec3 outWorldPos;

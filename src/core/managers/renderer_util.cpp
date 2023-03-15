@@ -401,6 +401,7 @@ TResult core::MRenderer::createBuffer(EBufferMode mode, VkDeviceSize size, RBuff
       };
       memcpy(pData, inData, size);
       vmaUnmapMemory(memAlloc, outBuffer.allocation);
+      outBuffer.allocInfo.pUserData = pData;
     }
 
     return RE_OK;
@@ -473,6 +474,130 @@ TResult core::MRenderer::copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
   flushCommandBuffer(cmdBuffer, ECmdType::Transfer);
 
   return RE_OK;
+}
+
+void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
+                                     VkImageLayout oldLayout,
+                                     VkImageLayout newLayout,
+                                     VkImageSubresourceRange subresourceRange) {
+  // Create an image barrier object
+  VkImageMemoryBarrier imageMemoryBarrier = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .pNext = NULL,
+      // Some default values
+      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED};
+
+  imageMemoryBarrier.oldLayout = oldLayout;
+  imageMemoryBarrier.newLayout = newLayout;
+  imageMemoryBarrier.image = image;
+  imageMemoryBarrier.subresourceRange = subresourceRange;
+
+  // Source layouts (old)
+  // The source access mask controls actions to be finished on the old
+  // layout before it will be transitioned to the new layout.
+  switch (oldLayout) {
+    case VK_IMAGE_LAYOUT_UNDEFINED:
+    // Image layout is undefined (or does not matter).
+    // Only valid as initial layout. No flags required.
+    imageMemoryBarrier.srcAccessMask = 0;
+    break;
+
+    case VK_IMAGE_LAYOUT_PREINITIALIZED:
+    // Image is preinitialized.
+    // Only valid as initial layout for linear images; preserves memory
+    // contents. Make sure host writes have finished.
+    imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+    break;
+
+    case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+    // Image is a color attachment.
+    // Make sure writes to the color buffer have finished
+    imageMemoryBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    break;
+
+    case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+    // Image is a depth/stencil attachment.
+    // Make sure any writes to the depth/stencil buffer have finished.
+    imageMemoryBarrier.srcAccessMask =
+        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    break;
+
+    case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+    // Image is a transfer source.
+    // Make sure any reads from the image have finished
+    imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    break;
+
+    case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+    // Image is a transfer destination.
+    // Make sure any writes to the image have finished.
+    imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    break;
+
+    case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+    // Image is read by a shader.
+    // Make sure any shader reads from the image have finished
+    imageMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    break;
+
+    default:
+    /* Value not used by callers, so not supported. */
+    assert(KTX_FALSE);
+  }
+
+  // Target layouts (new)
+  // The destination access mask controls the dependency for the new image
+  // layout.
+  switch (newLayout) {
+    case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+    // Image will be used as a transfer destination.
+    // Make sure any writes to the image have finished.
+    imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    break;
+
+    case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+    // Image will be used as a transfer source.
+    // Make sure any reads from and writes to the image have finished.
+    imageMemoryBarrier.srcAccessMask |= VK_ACCESS_TRANSFER_READ_BIT;
+    imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    break;
+
+    case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+    // Image will be used as a color attachment.
+    // Make sure any writes to the color buffer have finished.
+    imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    imageMemoryBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    break;
+
+    case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+    // Image layout will be used as a depth/stencil attachment.
+    // Make sure any writes to depth/stencil buffer have finished.
+    imageMemoryBarrier.dstAccessMask =
+        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    break;
+
+    case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+    // Image will be read in a shader (sampler, input attachment).
+    // Make sure any writes to the image have finished.
+    if (imageMemoryBarrier.srcAccessMask == 0) {
+      imageMemoryBarrier.srcAccessMask =
+          VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+    }
+    imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    break;
+    default:
+    /* Value not used by callers, so not supported. */
+    assert(KTX_FALSE);
+  }
+
+  // Put barrier on top of pipeline.
+  VkPipelineStageFlags srcStageFlags = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+  VkPipelineStageFlags destStageFlags = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+
+  // Add the barrier to the passed command buffer
+  vkCmdPipelineBarrier(cmdBuffer, srcStageFlags, destStageFlags, 0, 0,
+                               NULL, 0, NULL, 1, &imageMemoryBarrier);
 }
 
 void core::MRenderer::transitionImageLayout(VkImage image, VkFormat format,
@@ -646,10 +771,10 @@ VkImageView core::MRenderer::createImageView(VkImage image, VkFormat format,
   viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
   viewInfo.format = format;
 
-  viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+  /* viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
   viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
   viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-  viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+  viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;*/
 
   viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   viewInfo.subresourceRange.baseMipLevel = 0;

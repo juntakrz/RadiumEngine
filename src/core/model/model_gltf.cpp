@@ -493,11 +493,15 @@ void WModel::setTextureSamplers() {
     switch (filterMode) {
       case -1:
       case 9728:
-      case 9984:
-      case 9985:
         return VK_FILTER_NEAREST;
       case 9729:
+        return VK_FILTER_LINEAR;
+      case 9984:
+        return VK_FILTER_NEAREST;
+      case 9985:
+        return VK_FILTER_NEAREST;
       case 9986:
+        return VK_FILTER_LINEAR;
       case 9987:
         return VK_FILTER_LINEAR;
     }

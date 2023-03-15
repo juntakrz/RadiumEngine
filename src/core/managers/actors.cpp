@@ -19,7 +19,7 @@ ACamera* core::MActors::createCamera(const char* name,
           cameraSettings->nearZ, cameraSettings->farZ);
     } else {
       m_actors.cameras.at(name)->setPerspective(
-          glm::radians(75.0f), config::getAspectRatio(),
+          config::FOV, config::getAspectRatio(),
           RE_NEARZ, config::viewDistance);
     }
 

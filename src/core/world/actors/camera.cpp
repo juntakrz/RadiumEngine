@@ -7,8 +7,8 @@
 #include "util/math.h"
 
 void ACamera::setPerspective(float FOV, float aspectRatio, float nearZ,
-                               float farZ) noexcept {
-  m_projection = glm::perspective(FOV, aspectRatio, nearZ, farZ);
+                             float farZ) noexcept {
+  m_projection = glm::perspective(glm::radians(FOV), aspectRatio, nearZ, farZ);
 }
 
 glm::mat4& ACamera::getView() {
