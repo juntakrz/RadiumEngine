@@ -21,6 +21,7 @@ void core::MRenderer::drawBoundEntities(VkCommandBuffer cmdBuffer) {
   // go through bound models and generate draw calls for each
   AEntity* pEntity = nullptr;
   WModel* pModel = nullptr;
+  renderView.reset();
 
   for (auto& bindInfo : system.bindings) {
 

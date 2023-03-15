@@ -10,7 +10,6 @@
 
 // standard library headers
 #include <algorithm>
-#include <atomic>
 #include <conio.h>
 #include <chrono>
 #include <cstdio>

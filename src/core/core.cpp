@@ -44,9 +44,10 @@ void core::run() {
   // remove this after loadMap improvements
   core::actors.createPawn("sphere0");
   core::world.createModel(EPrimitiveType::Sphere, "mdlSphere", 16, 0);
-  WModel* pModel = core::world.getModel("mdlSphere");
   APawn* pPawn = core::actors.getPawn("sphere0");
-  pPawn->setModel(pModel);
+  pPawn->setModel(core::world.getModel("mdlSphere"));
+  core::renderer.bindEntity(pPawn);
+  pPawn->setLocation(-3.0f, 0.0f, 2.0f);
 
   core::world.loadModelFromFile("content/models/test/scene.gltf", "mdlGuy");
   core::world.createModel(EPrimitiveType::Cube, "mdlSkybox", 1, true);

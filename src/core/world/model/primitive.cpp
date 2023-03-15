@@ -35,7 +35,7 @@ void WPrimitive::generatePlane(int32_t xDivisions, int32_t yDivisions,
                                std::vector<uint32_t>& outIndices) noexcept {
   auto plane = WPrimitiveGen_Plane::create<RVertex>(xDivisions, yDivisions);
 
-  plane.setNormals();
+  plane.setNormals(false, false);
   plane.setColorForAllVertices(1.0f, 1.0f, 1.0f, 1.0f);
 
   outVertices = plane.vertices;
@@ -54,7 +54,7 @@ void WPrimitive::generateSphere(int32_t divisions, bool invertNormals,
                                 std::vector<uint32_t>& outIndices) noexcept {
   auto sphere = WPrimitiveGen_Sphere::create<RVertex>(divisions, invertNormals);
 
-  sphere.setNormals();
+  sphere.setNormals(invertNormals, false);
   sphere.setColorForAllVertices(1.0f, 1.0f, 1.0f, 1.0f);
 
   outVertices = sphere.vertices;
@@ -73,7 +73,7 @@ void WPrimitive::generateCube(int32_t divisions, bool invertNormals,
                               std::vector<uint32_t>& outIndices) noexcept {
   auto cube = WPrimitiveGen_Cube::create<RVertex>(divisions, invertNormals);
 
-  cube.setNormals();
+  cube.setNormals(invertNormals, invertNormals);
   cube.setColorForAllVertices(1.0f, 1.0f, 1.0f, 1.0f);
 
   outVertices = cube.vertices;

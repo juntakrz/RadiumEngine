@@ -62,13 +62,6 @@ class WPrimitiveGen_Cube {
       vertices[i + 3].tex0 = {1.0f, 1.0f};
     }
 
-    if (invertNormals) {
-      for (auto& vertex : vertices) {
-        vertex.pos = -vertex.pos;
-        vertex.normal = -vertex.normal;
-      }
-    }
-
     return {std::move(vertices), std::move(indices)};
   }
 

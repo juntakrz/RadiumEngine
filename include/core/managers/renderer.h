@@ -95,6 +95,12 @@ class MRenderer {
     void* pCurrentPipeline = nullptr;
     uint32_t frameInFlight = 0;
     uint32_t framesRendered = 0;
+
+    void reset() {
+      pCurrentMesh = nullptr;
+      pCurrentMaterial = nullptr;
+      pCurrentPipeline = nullptr;
+    }
   } renderView;
 
  private:

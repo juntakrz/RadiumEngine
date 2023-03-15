@@ -114,9 +114,11 @@ class WPrimitiveData {
     }
   }*/
 
-  void setNormals() noexcept {
+  void setNormals(bool flipNormals, bool flipVertices) noexcept {
     for (auto& it : vertices) {
-      it.normal = it.pos;
+      it.normal = flipNormals ? -it.pos : it.pos;
+      it.normal = glm::normalize(it.normal);
+      it.pos = flipVertices ? -it.pos : it.pos;
     }
   }
 

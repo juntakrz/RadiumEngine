@@ -98,13 +98,20 @@ class RAsync {
   void loop();
 
 public:
+
+  // example: bindFunction(this, &RClass::method)
   template <typename C>
   void bindFunction(C* owner, void (C::*function)()) {
     func = std::make_unique<OFuncPtr<C>>(owner, function);
   }
 
+  // bind function before calling start()
   void start();
+
+  // immediately stop this thread
   void stop();
+
+  // execute bound function
   void update();
 };
 
