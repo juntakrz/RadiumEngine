@@ -6,7 +6,7 @@
 #include "core/managers/debug.h"
 #include "core/managers/window.h"
 #include "core/managers/actors.h"
-#include "core/managers/materials.h"
+#include "core/managers/resources.h"
 #include "core/managers/time.h"
 #include "core/managers/world.h"
 #include "core/world/actors/camera.h"

@@ -2,6 +2,8 @@
 
 #include "common.h"
 #include "core/objects.h"
+#include "core/material/material.h"
+#include "core/material/texture.h"
 
 class WPrimitive;
 
@@ -12,69 +14,19 @@ class Node;
 
 namespace core {
 
-class MMaterials {
+class MResources {
   friend class ::WPrimitive;
 
- public:
-  struct RMaterial;
-
  private:
-
-  // if texture is loaded using KTX library - VMA allocations are not used
-  struct RTexture {
-    std::string name = "";
-    RVulkanTexture texture;
-    VmaAllocation allocation;
-    VmaAllocationInfo allocationInfo;
-    bool isKTX = false;
-
-    // trying to track how many times texture is assigned to material
-    // to see if it should be deleted if owning material is deleted
-    uint32_t references = 0;
-
-    TResult createImageView();
-    TResult createSampler(const RSamplerInfo *pSamplerInfo);
-    TResult createDescriptor();
-    ~RTexture();
-  };
-
   std::unordered_map<std::string, std::unique_ptr<RMaterial>> m_materials;
   std::unordered_map<std::string, RTexture> m_textures;
 
- public:
-  struct RMaterial {
-    std::string name;
-    bool doubleSided = false;
-    EAlphaMode alphaMode;
-
-    std::string shaderVertex, shaderPixel, shaderGeometry;
-    RTexture* pBaseColor = nullptr;
-    RTexture* pNormal = nullptr;
-    RTexture* pMetalRoughness = nullptr;
-    RTexture* pOcclusion = nullptr;
-    RTexture* pEmissive = nullptr;
-    RTexture* pExtra = nullptr;
-
-    RMaterialPCB pushConstantBlock;
-    VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
-
-    // add effects using bitwise ops
-    uint32_t effectFlags;
-
-    // will materials manager automatically try to delete textures
-    // from memory if unused by any other material
-    // !requires sharedPtr code, currently unused!
-    bool manageTextures = false;
-
-    void createDescriptorSet();
-  };
-
  private:
-  MMaterials();
+  MResources();
 
  public:
-  static MMaterials &get() {
-    static MMaterials _sInstance;
+  static MResources &get() {
+    static MResources _sInstance;
     return _sInstance;
   }
 

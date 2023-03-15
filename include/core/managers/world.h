@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/world/model/model.h"
+#include "core/model/model.h"
 
 namespace core {
 

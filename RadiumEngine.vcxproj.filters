@@ -57,7 +57,7 @@
     <ClCompile Include="src\core\managers\actors.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\world\model\primitive.cpp">
+    <ClCompile Include="src\core\model\primitive.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\managers\renderer_logicaldevice.cpp">
@@ -87,7 +87,7 @@
     <ClCompile Include="src\core\managers\ref.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\materials.cpp">
+    <ClCompile Include="src\core\managers\resources_material.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\managers\input_table.cpp">
@@ -99,25 +99,31 @@
     <ClCompile Include="src\core\world\actors\pawn.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\world\model\model.cpp">
+    <ClCompile Include="src\core\model\model.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\managers\world.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\materials_texture.cpp">
+    <ClCompile Include="src\core\managers\resources_texture.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\world\model\model_node.cpp">
+    <ClCompile Include="src\core\model\model_node.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\world\model\model_gltf.cpp">
+    <ClCompile Include="src\core\model\model_gltf.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\world\actors\astatic.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\world\actors\entity.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\material\texture.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\material\material.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -158,25 +164,25 @@
     <ClInclude Include="include\define_t.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\primitivegen\primitivedata.h">
+    <ClInclude Include="include\core\model\primitivedata.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\primitivegen\sphere.h">
+    <ClInclude Include="include\core\model\sphere.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\primitivegen\primitivegen_include.h">
+    <ClInclude Include="include\core\model\primitivegen_include.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\primitivegen\plane.h">
+    <ClInclude Include="include\core\model\plane.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\primitivegen\cube.h">
+    <ClInclude Include="include\core\model\cube.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\core\managers\actors.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\model\primitive.h">
+    <ClInclude Include="include\core\model\primitive.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="lib\include\vk_mem_alloc.h">
@@ -200,7 +206,7 @@
     <ClInclude Include="include\core\managers\ref.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\managers\materials.h">
+    <ClInclude Include="include\core\managers\resources.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\define_input.h">
@@ -215,7 +221,7 @@
     <ClInclude Include="lib\include\tinygltf\tiny_gltf.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\model\model.h">
+    <ClInclude Include="include\core\model\model.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\core\managers\world.h">
@@ -225,6 +231,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\core\world\actors\entity.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\material\texture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\material\material.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

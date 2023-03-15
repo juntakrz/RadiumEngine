@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common.h"
-#include "core/world/model/primitive.h"
+#include "core/model/primitive.h"
 #include "core/world/actors/pawn.h"
 #include "core/world/actors/static.h"
 

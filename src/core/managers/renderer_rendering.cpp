@@ -2,7 +2,7 @@
 #include "core/core.h"
 #include "core/managers/time.h"
 #include "core/world/actors/entity.h"
-#include "core/world/model/model.h"
+#include "core/model/model.h"
 #include "core/managers/renderer.h"
 
 void core::MRenderer::updateBoundEntities() {

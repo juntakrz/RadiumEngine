@@ -2,7 +2,7 @@
 #include "vk_mem_alloc.h"
 #include "core/core.h"
 #include "core/managers/renderer.h"
-#include "core/world/model/primitive.h"
+#include "core/model/primitive.h"
 
 WPrimitive::WPrimitive(RPrimitiveInfo* pCreateInfo) {
   // will check for create info data validity only if vertex data was provided

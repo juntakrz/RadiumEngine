@@ -4,7 +4,7 @@
 #include "core/managers/ref.h"
 #include "core/managers/renderer.h"
 #include "core/managers/actors.h"
-#include "core/world/model/model.h"
+#include "core/model/model.h"
 #include "core/world/actors/camera.h"
 
 // PRIVATE

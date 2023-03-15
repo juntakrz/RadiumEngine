@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "core/core.h"
 #include "core/managers/renderer.h"
-#include "core/world/model/model.h"
+#include "core/model/model.h"
 
 WModel::Node::Node(WModel::Node* pParent, uint32_t index,
                    const std::string& name)

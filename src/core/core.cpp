@@ -9,7 +9,7 @@
 #include "core/managers/script.h"
 #include "core/managers/ref.h"
 #include "core/managers/time.h"
-#include "core/managers/materials.h"
+#include "core/managers/resources.h"
 #include "core/managers/world.h"
 
 class core::MRenderer& core::renderer = MRenderer::get();
@@ -18,7 +18,7 @@ class core::MInput& core::input = MInput::get();
 class core::MScript& core::script = MScript::get();
 class core::MActors& core::actors = MActors::get();
 class core::MDebug& core::debug = MDebug::get();
-class core::MMaterials& core::materials = MMaterials::get();
+class core::MResources& core::materials = MResources::get();
 class core::MPlayer& core::player = MPlayer::get();
 class core::MRef& core::ref = MRef::get();
 class core::MTime& core::time = MTime::get();

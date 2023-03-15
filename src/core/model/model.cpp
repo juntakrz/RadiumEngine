@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "core/core.h"
 #include "core/managers/renderer.h"
-#include "core/managers/materials.h"
-#include "core/world/model/model.h"
+#include "core/managers/resources.h"
+#include "core/model/model.h"
 
 TResult WModel::createStagingBuffers() {
   if (validateStagingData() != RE_OK) {
@@ -71,7 +71,6 @@ void WModel::clearStagingData() {
 }
 
 void WModel::sortPrimitivesByMaterial() {
-  using RMaterial = core::MMaterials::RMaterial;
   std::vector<std::vector<WPrimitive*>> vectors;
   RMaterial* primitiveMaterial = nullptr;
   bool wasPlaced = false;

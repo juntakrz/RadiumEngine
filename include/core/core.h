@@ -21,7 +21,7 @@ extern class MActors& actors;
 extern class MDebug& debug;
 
 // materials manager, manages textures, shaders and materials
-extern class MMaterials& materials;
+extern class MResources& materials;
 
 // player manager, provides interaction between the player and everything else
 extern class MPlayer& player;

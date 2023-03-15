@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/objects.h"
-#include "core/world/model/primitive.h"
+#include "primitive.h"
 
 namespace tinygltf {
 class Model;

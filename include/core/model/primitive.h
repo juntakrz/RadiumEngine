@@ -1,11 +1,10 @@
 #pragma once
 
 #include "core/objects.h"
-#include "core/managers/materials.h"
-#include "core/world/primitivegen/primitivegen_include.h"
+#include "core/managers/resources.h"
+#include "core/model/primitivegen_include.h"
 
 class WPrimitive {
-  using RMaterial = core::MMaterials::RMaterial;
 
  public:
   uint32_t vertexOffset = 0u;    // initial vertex location in owning model

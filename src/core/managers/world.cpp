@@ -1,9 +1,9 @@
 #include "pch.h"
 #include "util/util.h"
 #include "core/core.h"
-#include "core/managers/materials.h"
+#include "core/managers/resources.h"
 #include "core/managers/world.h"
-#include "core/world/model/model.h"
+#include "core/model/model.h"
 
 #define TINYGLTF_IMPLEMENTATION
 #define TINYGLTF_NO_STB_IMAGE
@@ -78,7 +78,7 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
 
 TResult core::MWorld::createModel(EPrimitiveType type, std::string name,
                                   int32_t arg0, int32_t arg1) {
-  using RMaterial = core::MMaterials::RMaterial;
+
   auto fValidateNode = [&](WModel::Node* pNode) {
     if (pNode->pMesh == nullptr) {
       RE_LOG(Error, "Node validation failed for \"%s\", model: \"%s\".",

@@ -149,7 +149,10 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\config.cpp" />
+    <ClCompile Include="src\config.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="src\core\core.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
@@ -160,15 +163,19 @@
     </ClCompile>
     <ClCompile Include="src\core\managers\input_table.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core\managers\materials.cpp">
+    <ClCompile Include="src\core\managers\resources_material.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core\managers\materials_texture.cpp">
+    <ClCompile Include="src\core\managers\resources_texture.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\core\managers\player.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\core\managers\renderer.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
@@ -204,6 +211,7 @@
     </ClCompile>
     <ClCompile Include="src\core\managers\ref.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\core\managers\script.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
@@ -221,11 +229,22 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\core\material\material.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\core\material\texture.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="src\core\objects.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core\vk_mem_alloc.cpp" />
+    <ClCompile Include="src\core\vk_mem_alloc.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="src\core\world\actors\astatic.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
@@ -246,19 +265,19 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core\world\model\model_gltf.cpp">
+    <ClCompile Include="src\core\model\model_gltf.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core\world\model\model_node.cpp">
+    <ClCompile Include="src\core\model\model_node.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core\world\model\primitive.cpp">
+    <ClCompile Include="src\core\model\primitive.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core\world\model\model.cpp">
+    <ClCompile Include="src\core\model\model.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
@@ -279,7 +298,7 @@
     <ClInclude Include="include\core\core.h" />
     <ClInclude Include="include\core\managers\common.h" />
     <ClInclude Include="include\core\managers\debug.h" />
-    <ClInclude Include="include\core\managers\materials.h" />
+    <ClInclude Include="include\core\managers\resources.h" />
     <ClInclude Include="include\core\managers\player.h" />
     <ClInclude Include="include\core\managers\renderer.h" />
     <ClInclude Include="include\core\managers\input.h" />
@@ -289,18 +308,20 @@
     <ClInclude Include="include\core\managers\time.h" />
     <ClInclude Include="include\core\managers\window.h" />
     <ClInclude Include="include\core\managers\world.h" />
+    <ClInclude Include="include\core\material\material.h" />
+    <ClInclude Include="include\core\material\texture.h" />
     <ClInclude Include="include\core\world\actors\base.h" />
     <ClInclude Include="include\core\world\actors\entity.h" />
     <ClInclude Include="include\core\world\actors\pawn.h" />
     <ClInclude Include="include\core\objects.h" />
     <ClInclude Include="include\core\world\actors\static.h" />
-    <ClInclude Include="include\core\world\model\primitive.h" />
-    <ClInclude Include="include\core\world\model\model.h" />
-    <ClInclude Include="include\core\world\primitivegen\cube.h" />
-    <ClInclude Include="include\core\world\primitivegen\plane.h" />
-    <ClInclude Include="include\core\world\primitivegen\primitivegen_include.h" />
-    <ClInclude Include="include\core\world\primitivegen\sphere.h" />
-    <ClInclude Include="include\core\world\primitivegen\primitivedata.h" />
+    <ClInclude Include="include\core\model\primitive.h" />
+    <ClInclude Include="include\core\model\model.h" />
+    <ClInclude Include="include\core\model\cube.h" />
+    <ClInclude Include="include\core\model\plane.h" />
+    <ClInclude Include="include\core\model\primitivegen_include.h" />
+    <ClInclude Include="include\core\model\sphere.h" />
+    <ClInclude Include="include\core\model\primitivedata.h" />
     <ClInclude Include="include\define.h" />
     <ClInclude Include="include\define_input.h" />
     <ClInclude Include="include\pch.h" />
