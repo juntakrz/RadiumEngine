@@ -49,23 +49,6 @@ TResult core::MResources::loadTexture(const std::string& filePath,
     return RE_WARNING;
   }
 
-  VkFormat format = ktxTexture_GetVkFormat(pKTXTexture);
-
-  switch (format) {
-    case VK_FORMAT_BC1_RGB_SRGB_BLOCK: {
-      //newTexture->texture.imageFormat = VK_FORMAT_BC1_RGB_UNORM_BLOCK;
-      break;
-    }
-    case VK_FORMAT_BC1_RGBA_SRGB_BLOCK: {
-      //newTexture->texture.imageFormat = VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
-      break;
-    }
-    case VK_FORMAT_BC7_SRGB_BLOCK: {
-      //newTexture->texture.imageFormat = VK_FORMAT_BC7_UNORM_BLOCK;
-      break;
-    }
-  }
-
   // prepare freshly created texture structure
   RTexture* newTexture = &m_textures.at(filePath);
   newTexture->name = filePath;

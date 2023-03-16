@@ -42,7 +42,7 @@ namespace core {
 namespace vulkan {
 
 // Vulkan API version
-const uint32_t APIversion = VK_API_VERSION_1_2;
+const uint32_t APIversion = VK_API_VERSION_1_3;
 
 // mandatory extensions required by the renderer
 const std::vector<const char*> requiredExtensions = {

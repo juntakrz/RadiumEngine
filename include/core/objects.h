@@ -98,7 +98,6 @@ class RAsync {
   void loop();
 
 public:
-
   // example: bindFunction(this, &RClass::method)
   template <typename C>
   void bindFunction(C* owner, void (C::*function)()) {
@@ -152,7 +151,6 @@ struct RVertex {
   glm::vec4 joint;      // JOINT
   glm::vec4 weight;     // WEIGHT
   glm::vec4 color;      // COLOR
-  glm::vec3 tangent;    // TANGENT
 
   static VkVertexInputBindingDescription getBindingDesc();
   static std::vector<VkVertexInputAttributeDescription> getAttributeDescs();

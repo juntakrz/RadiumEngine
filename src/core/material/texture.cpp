@@ -32,7 +32,7 @@ TResult RTexture::createSampler(
   createInfo.addressModeV = pSamplerInfo->addressModeV;
   createInfo.addressModeW = pSamplerInfo->addressModeW;
   createInfo.anisotropyEnable = VK_TRUE;
-  createInfo.maxAnisotropy = 8.0f;
+  createInfo.maxAnisotropy = 16.0f;
   createInfo.compareOp = VK_COMPARE_OP_NEVER;
   createInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
   createInfo.maxLod = (float)texture.levelCount;

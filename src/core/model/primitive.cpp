@@ -18,17 +18,6 @@ WPrimitive::WPrimitive(RPrimitiveInfo* pCreateInfo) {
   indexCount = pCreateInfo->indexCount;
 
   pOwnerNode = pCreateInfo->pOwnerNode;
-
-  // should create tangent space data - either now or later if generated primitive
-  if (pCreateInfo->createTangentSpaceData) {
-    createTangentSpaceData = true;
-
-    if (!pCreateInfo->pVertexData || !pCreateInfo->pIndexData) {
-      return;
-    }
-
-    generateTangents(*pCreateInfo->pVertexData, *pCreateInfo->pIndexData);
-  }
 }
 void WPrimitive::generatePlane(int32_t xDivisions, int32_t yDivisions,
                                std::vector<RVertex>& outVertices,
@@ -44,10 +33,6 @@ void WPrimitive::generatePlane(int32_t xDivisions, int32_t yDivisions,
   // store vertex and index count but offset must be provided to primitive externally
   vertexCount = static_cast<uint32_t>(outVertices.size());
   indexCount = static_cast<uint32_t>(outIndices.size());
-
-  if (createTangentSpaceData) {
-    generateTangents(outVertices, outIndices);
-  }
 }
 void WPrimitive::generateSphere(int32_t divisions, bool invertNormals,
                                 std::vector<RVertex>& outVertices,
@@ -63,15 +48,11 @@ void WPrimitive::generateSphere(int32_t divisions, bool invertNormals,
   // store vertex and index count but offset must be provided to primitive externally
   vertexCount = static_cast<uint32_t>(outVertices.size());
   indexCount = static_cast<uint32_t>(outIndices.size());
-
-  if (createTangentSpaceData) {
-    generateTangents(outVertices, outIndices);
-  }
 }
 void WPrimitive::generateCube(int32_t divisions, bool invertNormals,
                               std::vector<RVertex>& outVertices,
                               std::vector<uint32_t>& outIndices) noexcept {
-  auto cube = WPrimitiveGen_Cube::create<RVertex>(divisions, invertNormals);
+  auto cube = WPrimitiveGen_Cube::create<RVertex>(divisions, false);
 
   cube.setNormals(invertNormals, invertNormals);
   cube.setColorForAllVertices(1.0f, 1.0f, 1.0f, 1.0f);
@@ -83,10 +64,6 @@ void WPrimitive::generateCube(int32_t divisions, bool invertNormals,
   // externally
   vertexCount = static_cast<uint32_t>(outVertices.size());
   indexCount = static_cast<uint32_t>(outIndices.size());
-
-  if (createTangentSpaceData) {
-    generateTangents(outVertices, outIndices);
-  }
 }
 void WPrimitive::generateBoundingBox(
     std::vector<RVertex>& outVertices,
@@ -107,53 +84,6 @@ bool WPrimitive::getBoundingBoxExtent(glm::vec3& outMin, glm::vec3& outMax) cons
     outMax = extent.max;
   }
   return extent.isValid;
-}
-
-void WPrimitive::generateTangents(
-    std::vector<RVertex>& vertexData,
-    const std::vector<uint32_t>& inIndexData) {
-  if (inIndexData.size() % 3 != 0 || inIndexData.size() < 3) {
-    return;
-  }
-
-  for (uint32_t i = 0; i < inIndexData.size(); i += 3) {
-    // load vertices
-    auto& vertex0 = vertexData[inIndexData[i]];
-    auto& vertex1 = vertexData[inIndexData[i + 1]];
-    auto& vertex2 = vertexData[inIndexData[i + 2]];
-
-    // geometry vectors
-    const glm::vec3 vec0 = vertex0.pos;
-    const glm::vec3 vec1 = vertex1.pos;
-    const glm::vec3 vec2 = vertex2.pos;
-
-    const glm::vec3 vecSide_1_0 = vec1 - vec0;
-    const glm::vec3 vecSide_2_0 = vec2 - vec0;
-
-    // texture vectors
-    const glm::vec2 xmU = {vertex1.tex0.x - vertex0.tex0.x,
-                                   vertex2.tex0.x - vertex0.tex0.x};
-    const glm::vec2 xmV = {vertex1.tex0.y - vertex0.tex0.y,
-                                   vertex2.tex0.y - vertex0.tex0.y};
-
-    // denominator of the tangent/binormal equation: 1.0 / cross(vecX, vecY)
-    const float den = 1.0f / (xmU.x * xmV.y - xmU.y * xmV.x);
-
-    // calculate tangent
-    glm::vec3 tangent;
-
-    tangent.x = (xmV.y * vecSide_1_0.x - xmV.x * vecSide_2_0.x) * den;
-    tangent.y = (xmV.y * vecSide_1_0.y - xmV.x * vecSide_2_0.y) * den;
-    tangent.z = (xmV.y * vecSide_1_0.z - xmV.x * vecSide_2_0.z) * den;
-
-    // normalize tangent
-    tangent = glm::normalize(tangent);
-
-    // store new data to vertex
-    vertex0.tangent = tangent;
-    vertex1.tangent = tangent;
-    vertex2.tangent = tangent;
-  }
 }
 
 void WPrimitive::setNormalsFromVertices(std::vector<RVertex>& vertexData) {

@@ -5,7 +5,7 @@
 class WPrimitiveGen_Cube {
  public:
   template <typename V>
-  static WPrimitiveData<V> create(int32_t divisions, bool invertNormals) {
+  static WPrimitiveData<V> create(int32_t divisions, bool unused) {
     constexpr float coord = 1.0f;
 
     std::vector<V> vertices(24);

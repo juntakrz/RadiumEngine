@@ -26,7 +26,7 @@ VkVertexInputBindingDescription RVertex::getBindingDesc() {
 }
 
 std::vector<VkVertexInputAttributeDescription> RVertex::getAttributeDescs() {
-  std::vector<VkVertexInputAttributeDescription> attrDescs(8);
+  std::vector<VkVertexInputAttributeDescription> attrDescs(7);
   
   // describes 'pos'
   attrDescs[0].binding = 0;                         // binding defined by binding description of RVertex
@@ -69,12 +69,6 @@ std::vector<VkVertexInputAttributeDescription> RVertex::getAttributeDescs() {
   attrDescs[6].format = VK_FORMAT_R32G32B32A32_SFLOAT;
   attrDescs[6].location = 6;
   attrDescs[6].offset = offsetof(RVertex, color);
-
-  // describes 'tangent'
-  attrDescs[7].binding = 0;
-  attrDescs[7].format = VK_FORMAT_R32G32B32_SFLOAT;
-  attrDescs[7].location = 7;
-  attrDescs[7].offset = offsetof(RVertex, tangent);
 
   return attrDescs;
 }
