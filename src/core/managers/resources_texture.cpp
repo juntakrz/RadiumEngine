@@ -8,7 +8,7 @@
 #include "stb_image.h"
 
 TResult core::MResources::loadTexture(const std::string& filePath,
-                                   const RSamplerInfo* pSamplerInfo) {
+                                   RSamplerInfo* pSamplerInfo) {
   auto revert = [&](const char* name) { m_textures.erase(name); };
 
   if (filePath == "") {
@@ -127,7 +127,7 @@ TResult core::MResources::loadTextureToBuffer(const std::string& filePath,
 }
 
 TResult core::MResources::loadTexturePNG(const std::string& filePath,
-                                         const RSamplerInfo* pSamplerInfo) {
+                                         RSamplerInfo* pSamplerInfo) {
   auto revert = [&](const char* name) { m_textures.erase(name); };
 
   if (filePath == "") {

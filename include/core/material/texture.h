@@ -16,7 +16,7 @@ struct RTexture {
   uint32_t references = 0;
 
   TResult createImageView();
-  TResult createSampler(const RSamplerInfo *pSamplerInfo);
+  TResult createSampler(RSamplerInfo *pSamplerInfo);
   TResult createDescriptor();
   ~RTexture();
 };

@@ -74,6 +74,11 @@ void core::run() {
 
   RSamplerInfo samplerInfo{};
   core::resources.loadTexture("skyboxCubemap.ktx2", &samplerInfo);
+
+  RMaterialInfo materialInfo{};
+  materialInfo.name = "skyboxCubemap";
+  materialInfo.textures.baseColor = "skyboxCubemap.ktx2";
+  core::resources.createMaterial(&materialInfo);
   // ---------------------------- */
 
   RE_LOG(Log, "Launching main event loop.");

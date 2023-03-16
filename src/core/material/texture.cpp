@@ -21,10 +21,17 @@ TResult RTexture::createImageView() {
 }
 
 TResult RTexture::createSampler(
-    const RSamplerInfo* pSamplerInfo) {
+    RSamplerInfo* pSamplerInfo) {
   if (!pSamplerInfo) {
     RE_LOG(Warning, "Sampler info is missing, skipping sampler creation.");
     return RE_WARNING;
+  }
+
+  // adapt to cubemap
+  if (texture.layerCount == 6) {
+    pSamplerInfo->addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    pSamplerInfo->addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    pSamplerInfo->addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
   }
 
   VkSamplerCreateInfo createInfo{};

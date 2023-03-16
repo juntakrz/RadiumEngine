@@ -771,10 +771,10 @@ VkImageView core::MRenderer::createImageView(VkImage image, VkFormat format,
   viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
   viewInfo.format = format;
 
-  /* viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+  viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
   viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
   viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-  viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;*/
+  viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 
   viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   viewInfo.subresourceRange.baseMipLevel = 0;
