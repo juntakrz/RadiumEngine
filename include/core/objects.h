@@ -150,7 +150,7 @@ struct RVertex {
   glm::vec2 tex1;       // TEXCOORD1
   glm::vec4 joint;      // JOINT
   glm::vec4 weight;     // WEIGHT
-  glm::vec4 color;      // COLOR
+  glm::vec4 color;      // COLOR      aligned to 96 bytes per vertex on device
 
   static VkVertexInputBindingDescription getBindingDesc();
   static std::vector<VkVertexInputAttributeDescription> getAttributeDescs();

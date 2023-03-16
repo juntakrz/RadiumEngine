@@ -162,7 +162,7 @@ TResult core::MWorld::createModel(EPrimitiveType type, std::string name,
   // assign default material to the model
   RMaterialInfo defaultMaterialInfo{};
   RMaterial* pDefaultMaterial =
-      core::materials.createMaterial(&defaultMaterialInfo);
+      core::resources.createMaterial(&defaultMaterialInfo);
 
   for (auto& primitive : pModel->getPrimitives()) {
     primitive->pMaterial = pDefaultMaterial;

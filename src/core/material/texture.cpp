@@ -8,6 +8,10 @@ TResult RTexture::createImageView() {
       core::renderer.createImageView(texture.image, texture.imageFormat,
                                      texture.levelCount, texture.layerCount);
 
+  if (texture.layerCount == 6) {
+    isCubemap = true;
+  }
+
   if (!texture.view) {
     RE_LOG(Error, "Failed to create view for texture \"%s\"", name.c_str());
     return RE_ERROR;

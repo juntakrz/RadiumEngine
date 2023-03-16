@@ -18,7 +18,7 @@ class core::MInput& core::input = MInput::get();
 class core::MScript& core::script = MScript::get();
 class core::MActors& core::actors = MActors::get();
 class core::MDebug& core::debug = MDebug::get();
-class core::MResources& core::materials = MResources::get();
+class core::MResources& core::resources = MResources::get();
 class core::MPlayer& core::player = MPlayer::get();
 class core::MRef& core::ref = MRef::get();
 class core::MTime& core::time = MTime::get();
@@ -71,6 +71,9 @@ void core::run() {
   pStatic->setScale(2.2f);
   pStatic->setLocation(4.0f, -0.2f, -2.0f);
   pStatic->setRotation({0.5f, 0.32f, 0.1f});
+
+  RSamplerInfo samplerInfo{};
+  core::resources.loadTexture("skyboxCubemap.ktx2", &samplerInfo);
   // ---------------------------- */
 
   RE_LOG(Log, "Launching main event loop.");
@@ -126,7 +129,7 @@ TResult core::create() {
 
   RE_LOG(Log, "Rendering module successfully initialized.");
 
-  core::materials.initialize();
+  core::resources.initialize();
   core::input.initialize(core::window.getWindow());
   core::player.initialize();
 

@@ -90,6 +90,42 @@ TResult core::MResources::loadTexture(const std::string& filePath,
   return RE_OK;
 }
 
+TResult core::MResources::loadTextureToBuffer(const std::string& filePath,
+                                              RBuffer& outBuffer) {
+  auto revert = [&](const char* name) { m_textures.erase(name); };
+
+  if (filePath == "") {
+    // nothing to load
+    return RE_WARNING;
+  }
+
+  std::string fullPath = RE_PATH_TEXTURES + filePath;
+
+  ktxTexture* pKTXTexture = nullptr;
+  KTX_error_code ktxResult;
+  RVkLogicalDevice* logicalDevice = &core::renderer.logicalDevice;
+
+  ktxVulkanDeviceInfo* deviceInfo = ktxVulkanDeviceInfo_Create(
+      core::renderer.physicalDevice.device, logicalDevice->device,
+      logicalDevice->queues.transfer,
+      core::renderer.getCommandPool(ECmdType::Transfer), nullptr);
+
+  if (!deviceInfo) {
+    RE_LOG(Error, "Failed to retrieve Vulkan device info.");
+    return RE_ERROR;
+  }
+
+  ktxResult = ktxTexture_CreateFromNamedFile(
+      fullPath.c_str(), KTX_TEXTURE_CREATE_NO_FLAGS, &pKTXTexture);
+
+  if (ktxResult != KTX_SUCCESS) {
+    RE_LOG(Error, "Failed reading texture. KTX error %d.", ktxResult);
+    return RE_ERROR;
+  }
+
+  return RE_OK;
+}
+
 TResult core::MResources::loadTexturePNG(const std::string& filePath,
                                          const RSamplerInfo* pSamplerInfo) {
   auto revert = [&](const char* name) { m_textures.erase(name); };

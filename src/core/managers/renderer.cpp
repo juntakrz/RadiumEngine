@@ -705,7 +705,7 @@ void core::MRenderer::deinitialize() {
   destroySurface();
   core::actors.destroyAllPawns();
   core::world.destroyAllModels();
-  core::materials.destroyAllTextures();
+  core::resources.destroyAllTextures();
   destroyDescriptorPool();
   destroyUniformBuffers();
   destroyMemAlloc();

@@ -9,6 +9,7 @@ struct RTexture {
   VmaAllocation allocation;
   VmaAllocationInfo allocationInfo;
   bool isKTX = false;
+  bool isCubemap = false;
 
   // trying to track how many times texture is assigned to material
   // to see if it should be deleted if owning material is deleted

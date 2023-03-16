@@ -11,8 +11,8 @@ echo Radium Engine glTF texture baker script
 echo ---------------------------------------
 echo Converting .PNG files into KTX2 format using BC1/BC5/BC7 compression
 echo Requires glTF-standard naming of files and nvtt_export added to system path
-echo 
-echo 
+echo *
+echo *
 
 setlocal enabledelayedexpansion
 

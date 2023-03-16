@@ -21,7 +21,7 @@ void RMaterial::createDescriptorSet() {
     return;
   };
 
-  RTexture* pNullTexture = core::materials.getTexture(RE_WHITETEXTURE);
+  RTexture* pNullTexture = core::resources.getTexture(RE_WHITETEXTURE);
 
   if (!pNullTexture) {
     RE_LOG(Error,

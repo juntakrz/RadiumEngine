@@ -51,7 +51,7 @@ TResult WModel::createModel(const char* name, const tinygltf::Model* pInModel) {
     RE_LOG(Log, "Loading texture \"%s\" for model \"%s\".", pImage->uri.c_str(),
            m_name.c_str());
 #endif
-    if (core::materials.loadTexture(pImage->uri.c_str(), &textureSampler) <
+    if (core::resources.loadTexture(pImage->uri.c_str(), &textureSampler) <
         RE_ERROR) {
       texturePaths.back() = pImage->uri;
     };
@@ -427,7 +427,7 @@ void WModel::createNode(WModel::Node* pParentNode,
           std::make_unique<WPrimitive>(&primitiveInfo));
       WPrimitive* pPrimitive = pMesh->pPrimitives.back().get();
       pPrimitive->setBoundingBoxExtent(posMin, posMax);
-      pPrimitive->pMaterial = core::materials.getMaterial(
+      pPrimitive->pMaterial = core::resources.getMaterial(
           m_materialList[gltfPrimitive.material].c_str());
 
       // copy vertex and index data to local staging buffers and adjust offsets
@@ -637,7 +637,7 @@ void WModel::parseMaterials(const std::vector<std::string>& texturePaths) {
     }
 
     // create new material
-    core::materials.createMaterial(&materialInfo);
+    core::resources.createMaterial(&materialInfo);
     m_materialList.emplace_back(materialInfo.name);
   }
 }

@@ -348,7 +348,9 @@ TResult core::MRenderer::createGraphicsPipelines() {
   vertexInputInfo.pVertexAttributeDescriptions = attributeDescs.data();
 
   // 'PBR' pipeline
+#ifndef NDEBUG
   RE_LOG(Log, "Setting up PBR pipeline.");
+#endif
 
   std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {
       loadShader("vs_default.spv", VK_SHADER_STAGE_VERTEX_BIT),
@@ -398,6 +400,32 @@ TResult core::MRenderer::createGraphicsPipelines() {
     vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
   }
 
+  // 'Skybox' pipeline
+#ifndef NDEBUG
+  RE_LOG(Log, "Setting up the skybox pipeline.");
+#endif
+
+  shaderStages.clear();
+  shaderStages = {
+      loadShader("vs_default.spv", VK_SHADER_STAGE_VERTEX_BIT),     // replace with skybox shaders
+      loadShader("fs_default.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
+
+  rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+  depthStencilInfo.depthTestEnable = VK_FALSE;
+  depthStencilInfo.depthWriteEnable = VK_FALSE;
+
+  if (vkCreateGraphicsPipelines(logicalDevice.device, VK_NULL_HANDLE, 1,
+                                &graphicsPipelineInfo, nullptr,
+                                &system.pipelines.skybox) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to create skybox graphics pipeline.");
+
+    return RE_CRITICAL;
+  }
+
+  for (auto stage : shaderStages) {
+    vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
+  }
+
   return RE_OK;
 }
 
@@ -406,7 +434,7 @@ void core::MRenderer::destroyGraphicsPipelines() {
   destroyDescriptorSetLayouts();
   vkDestroyPipeline(logicalDevice.device, system.pipelines.PBR, nullptr);
   vkDestroyPipeline(logicalDevice.device, system.pipelines.PBR_DS, nullptr);
-  //vkDestroyPipeline(logicalDevice.device, system.pipelines.skybox, nullptr);
+  vkDestroyPipeline(logicalDevice.device, system.pipelines.skybox, nullptr);
   vkDestroyPipelineLayout(logicalDevice.device, system.pipelines.layout, nullptr);
 }
 
