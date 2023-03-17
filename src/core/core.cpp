@@ -56,15 +56,40 @@ void core::run() {
   core::resources.createMaterial(&materialInfo);
 
   // test render to texture target
-  core::resources.createTexture(
-      "RT_Front", 1024, 1024, core::vulkan::formatHDR, VK_IMAGE_TILING_OPTIMAL,
-      VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, false);
+  RTextureInfo textureInfo{};
+  textureInfo.name = "RT_Front";
+  textureInfo.asCubemap = false;
+  textureInfo.width = 512;
+  textureInfo.height = textureInfo.width;
+  textureInfo.format = core::vulkan::formatHDR;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.usageFlags = 
+      VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
+  core::resources.createTexture(&textureInfo);
+
+  textureInfo.name = "RT_Cube";
+  textureInfo.asCubemap = true;
+  textureInfo.width = 512;
+  textureInfo.height = textureInfo.width;
+  textureInfo.format = core::vulkan::formatHDR;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.usageFlags =
+      VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+  core::resources.createTexture(&textureInfo);
+  //
+
+  // create map models
   core::world.createModel(EPrimitiveType::Sphere, "mdlSphere", 16, false);
   core::world.createModel(EPrimitiveType::Cube, "mdlSkybox", 1, true);
   core::world.loadModelFromFile("content/models/test/scene.gltf", "mdlGuy");
   core::world.createModel(EPrimitiveType::Cube, "mdlBox1", 1, false);
+  //
   
+  // create entities
   core::actors.createPawn("sphere0");
   APawn* pPawn = core::actors.getPawn("sphere0");
   pPawn->setModel(core::world.getModel("mdlSphere"));
@@ -89,6 +114,8 @@ void core::run() {
   pStatic->setScale(2.2f);
   pStatic->setLocation(4.0f, -0.2f, -2.0f);
   pStatic->setRotation({0.5f, 0.32f, 0.1f});
+  //
+
   // ---------------------------- */
 
   RE_LOG(Log, "Launching main event loop.");

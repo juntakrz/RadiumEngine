@@ -141,74 +141,87 @@ TResult core::MResources::loadTexturePNG(const std::string& filePath,
       stbi_load(fullPath.c_str(), &width, &height, &channels, STBI_rgb_alpha);
   VkDeviceSize imageSize = width * height * 4;
 
-  VkFormat format = VK_FORMAT_R8G8B8A8_UNORM;
+  RTextureInfo textureInfo{};
+  textureInfo.name = fullPath;
+  textureInfo.asCubemap = false;
+  textureInfo.width = width;
+  textureInfo.height = height;
+  textureInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.usageFlags =
+      VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  textureInfo.memoryFlags = NULL;
 
-  TResult result = createTexture(fullPath.c_str(), width, height, format,
-                VK_IMAGE_TILING_OPTIMAL,
-                VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                false, pSTBI, imageSize, nullptr);
+  RTexture* pTexture = createTexture(&textureInfo);
+
+  if (!pTexture) {
+    RE_LOG(Error, "Failed to create texture \"%s\".", fullPath.c_str());
+    return RE_ERROR;
+  }
+
+  TResult result = writeTexture(pTexture, pSTBI, imageSize);
+
+  if (result != RE_OK) {
+    RE_LOG(Error, "Failed to create texture \"%s\".", fullPath.c_str());
+    return result;
+  }
 
   RE_LOG(Log, "Successfully loaded PNG texture at \"%s\".", filePath.c_str());
 
   return result;
 }
 
-TResult core::MResources::createTexture(const char* name, uint32_t width,
-                                        uint32_t height, VkFormat format,
-                                        VkImageTiling tiling,
-                                        VkImageUsageFlags usage, bool asCubemap,
-                                        void* pData, VkDeviceSize inDataSize,
-                                        VkMemoryPropertyFlags* properties) {
+RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
   auto revert = [&](const char* name) { m_textures.erase(name); };
 
-  if (name == "") {
+  if (pInfo->name == "") {
     // nothing to load
-    return RE_ERROR;
+    return nullptr;
   }
 
   // create a texture record in the manager
-  if (!m_textures.try_emplace(name).second) {
+  if (!m_textures.try_emplace(pInfo->name.c_str()).second) {
     // already loaded
 #ifndef NDEBUG
-    RE_LOG(Warning, "Texture \"%s\" already exists.", name);
+    RE_LOG(Warning, "Texture \"%s\" already exists.", pInfo->name.c_str());
 #endif
-    return RE_WARNING;
+    return nullptr;
   }
 
-  RTexture* newTexture = &m_textures.at(name);
+  RTexture* newTexture = &m_textures.at(pInfo->name);
   VkResult result;
   VkDevice device = core::renderer.logicalDevice.device;
 
   VkImageCreateInfo createInfo{};
   createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
   createInfo.imageType = VK_IMAGE_TYPE_2D;
-  createInfo.format = format;
+  createInfo.format = pInfo->format;
   createInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  createInfo.extent = {width, height, 1};
+  createInfo.extent = {pInfo->width, pInfo->height, 1};
   createInfo.mipLevels = 1;
-  createInfo.arrayLayers = asCubemap ? 6u : 1u;
-  createInfo.tiling = tiling;
-  createInfo.usage = usage;
+  createInfo.arrayLayers = pInfo->asCubemap ? 6u : 1u;
+  createInfo.tiling = pInfo->tiling;
+  createInfo.usage = pInfo->usageFlags;
   createInfo.samples = VK_SAMPLE_COUNT_1_BIT;
   createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
   VmaAllocationCreateInfo allocCreateInfo{};
-  if (properties) {
-    allocCreateInfo.requiredFlags = *properties;
-  }
+  allocCreateInfo.requiredFlags = pInfo->memoryFlags;
 
   result = vmaCreateImage(core::renderer.memAlloc, &createInfo,
                           &allocCreateInfo, &newTexture->texture.image,
                           &newTexture->allocation, &newTexture->allocationInfo);
 
   if (result != VK_SUCCESS) {
-    RE_LOG(Error, "Failed to create image for \"%s\"", name);
-    revert(name);
+    RE_LOG(Error, "Failed to create image for \"%s\"", pInfo->name.c_str());
+    revert(pInfo->name.c_str());
 
-    return RE_ERROR;
+    return nullptr;
   }
 
-  newTexture->texture.imageFormat = format;
+  newTexture->texture.imageFormat = pInfo->format;
+  newTexture->texture.imageLayout = pInfo->targetLayout;
 
   VkImageSubresourceRange subRange;
   subRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -220,33 +233,11 @@ TResult core::MResources::createTexture(const char* name, uint32_t width,
   VkCommandBuffer cmdBuffer = core::renderer.createCommandBuffer(
       ECmdType::Graphics, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
   core::renderer.setImageLayout(cmdBuffer, newTexture->texture.image,
-                                VK_IMAGE_LAYOUT_UNDEFINED,
-                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, subRange);
-  newTexture->texture.imageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-
-  if (pData) {
-    core::renderer.flushCommandBuffer(cmdBuffer, ECmdType::Graphics);
-
-    RBuffer staging;
-    core::renderer.createBuffer(EBufferMode::STAGING, inDataSize, staging,
-                                pData);
-    core::renderer.copyBufferToImage(staging.buffer, newTexture->texture.image,
-                                     width, height, createInfo.arrayLayers);
-
-    vmaDestroyBuffer(core::renderer.memAlloc, staging.buffer,
-                     staging.allocation);
-
-    core::renderer.beginCommandBuffer(cmdBuffer);
-    core::renderer.setImageLayout(cmdBuffer, newTexture->texture.image,
-                                  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                  subRange);
-    newTexture->texture.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-  }
-
+                                VK_IMAGE_LAYOUT_UNDEFINED, pInfo->targetLayout,
+                                subRange);
   core::renderer.flushCommandBuffer(cmdBuffer, ECmdType::Graphics, true);
 
-  newTexture->name = name;
+  newTexture->name = pInfo->name;
   newTexture->texture.imageFormat = createInfo.format;
   newTexture->texture.width = createInfo.extent.width;
   newTexture->texture.height = createInfo.extent.height;
@@ -255,31 +246,66 @@ TResult core::MResources::createTexture(const char* name, uint32_t width,
   newTexture->texture.layerCount = createInfo.arrayLayers;
 
   if (newTexture->createImageView() != RE_OK) {
-    revert(name);
-    return RE_ERROR;
+    revert(pInfo->name.c_str());
+    return nullptr;
   }
 
   RSamplerInfo samplerInfo{};
   RSamplerInfo* pSamplerInfo = &samplerInfo;
 
   if (newTexture->createSampler(pSamplerInfo) != RE_OK) {
-    revert(name);
+    revert(pInfo->name.c_str());
+    return nullptr;
+  }
+
+  if (newTexture->createDescriptor() != RE_OK) {
+    revert(pInfo->name.c_str());
+    return nullptr;
+  }
+
+  std::string textureType = pInfo->asCubemap ? "cubemap" : "2D";
+
+  RE_LOG(Log, "Successfully created %s texture \"%s\".", textureType.c_str(),
+         pInfo->name.c_str());
+
+  return newTexture;
+}
+
+TResult core::MResources::writeTexture(RTexture* pTexture, void* pData,
+                                       VkDeviceSize dataSize) {
+  if (!pData ||
+      pTexture->texture.imageLayout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
     return RE_ERROR;
   }
 
-  if (&samplerInfo) {
-    if (newTexture->createDescriptor() != RE_OK) {
-      revert(name);
-      return RE_ERROR;
-    }
-  }
+  RBuffer staging;
+  core::renderer.createBuffer(EBufferMode::STAGING, dataSize, staging,
+                              pData);
+  core::renderer.copyBufferToImage(
+      staging.buffer, pTexture->texture.image, pTexture->texture.width,
+      pTexture->texture.height, pTexture->texture.layerCount);
 
-  std::string textureType = asCubemap ? "cubemap" : "2D";
+  vmaDestroyBuffer(core::renderer.memAlloc, staging.buffer,
+                   staging.allocation);
 
-  RE_LOG(Log, "Successfully created %s texture \"%s\".", textureType.c_str(),
-         name);
+  VkImageSubresourceRange subRange{};
+  subRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  subRange.baseMipLevel = 0;
+  subRange.baseArrayLayer = 0;
+  subRange.layerCount = pTexture->texture.layerCount;
+  subRange.levelCount = pTexture->texture.levelCount;
 
-  return RE_OK;
+  VkCommandBuffer cmdBuffer = core::renderer.createCommandBuffer(
+      ECmdType::Graphics, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
+
+  core::renderer.setImageLayout(cmdBuffer, pTexture->texture.image,
+                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                subRange);
+
+  pTexture->texture.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+  core::renderer.flushCommandBuffer(cmdBuffer, ECmdType::Graphics, true);
 }
 
 RTexture* core::MResources::getTexture(

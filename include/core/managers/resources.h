@@ -56,11 +56,10 @@ class MResources {
                          RSamplerInfo* pSamplerInfo);
 
   // create new texture with specific parameters
-  TResult createTexture(const char* name, uint32_t width, uint32_t height,
-                        VkFormat format, VkImageTiling tiling,
-                        VkImageUsageFlags usage, bool asCubemap = false,
-                        void* pData = nullptr, VkDeviceSize inDataSize = 0u,
-                        VkMemoryPropertyFlags* properties = nullptr);
+  RTexture* createTexture(RTextureInfo* pInfo);
+
+  // write to texture, must have proper layout
+  TResult writeTexture(RTexture* pTexture, void* pData, VkDeviceSize dataSize);
 
   // unconditional destruction of texture object if 'force' is true
   bool destroyTexture(const char* name, bool force = false) noexcept;

@@ -215,6 +215,19 @@ struct RMaterialInfo {
   EPipeline pipelineFlags = EPipeline::Null;
 };
 
+// used by createTexture()
+struct RTextureInfo {
+  std::string name = "";
+  uint32_t width = 0u;
+  uint32_t height = 0u;
+  VkImageUsageFlags usageFlags;
+  VkFormat format = core::vulkan::formatLDR;
+  VkImageLayout targetLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
+  bool asCubemap = false;
+  VkMemoryPropertyFlags memoryFlags = 0u;
+};
+
 struct REntityBindInfo {
   AEntity* pEntity = nullptr;
   uint32_t vertexOffset = 0u;
