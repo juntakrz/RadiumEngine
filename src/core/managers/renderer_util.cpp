@@ -470,7 +470,8 @@ TResult core::MRenderer::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
 }
 
 TResult core::MRenderer::copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
-                                           uint32_t width, uint32_t height) {
+                                           uint32_t width, uint32_t height,
+                                           uint32_t layerCount) {
   if (!srcBuffer || !dstImage) {
     RE_LOG(Error, "copyBufferToImage received nullptr as an argument.");
     return RE_ERROR;
@@ -483,7 +484,7 @@ TResult core::MRenderer::copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
   imageCopy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   imageCopy.imageSubresource.mipLevel = 0;
   imageCopy.imageSubresource.baseArrayLayer = 0;
-  imageCopy.imageSubresource.layerCount = 1;
+  imageCopy.imageSubresource.layerCount = layerCount;
   imageCopy.imageExtent = {width, height, 1};
   imageCopy.imageOffset = {0, 0, 0};
   imageCopy.bufferOffset = 0;

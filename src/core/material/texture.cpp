@@ -7,8 +7,11 @@ TResult RTexture::createImageView() {
   texture.view =
       core::renderer.createImageView(texture.image, texture.imageFormat,
                                      texture.levelCount, texture.layerCount);
+  
+  texture.viewType = VK_IMAGE_VIEW_TYPE_2D;
 
   if (texture.layerCount == 6) {
+    texture.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
     isCubemap = true;
   }
 

@@ -209,7 +209,8 @@ class MRenderer {
 
   // expects 'optimal layout' image as a source
   TResult copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
-                            uint32_t width, uint32_t height);
+                            uint32_t width, uint32_t height,
+                            uint32_t layerCount);
 
   void setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
                       VkImageLayout oldLayout, VkImageLayout newLayout,

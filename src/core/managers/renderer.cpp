@@ -672,7 +672,7 @@ TResult core::MRenderer::initialize() {
 
   if (chkResult <= RE_ERRORLIMIT)
     chkResult =
-    initSwapChain(core::vulkan::format, core::vulkan::colorSpace,
+    initSwapChain(core::vulkan::formatLDR, core::vulkan::colorSpace,
                       core::vulkan::presentMode);
   updateAspectRatio();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandPools();

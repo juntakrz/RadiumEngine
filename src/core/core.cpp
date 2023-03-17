@@ -55,6 +55,11 @@ void core::run() {
   materialInfo.textures.baseColor = "skyboxCubemap.ktx2";
   core::resources.createMaterial(&materialInfo);
 
+  // test render to texture target
+  core::resources.createTexture(
+      "RT_Front", 1024, 1024, core::vulkan::formatHDR, VK_IMAGE_TILING_OPTIMAL,
+      VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, false);
+
   core::world.createModel(EPrimitiveType::Sphere, "mdlSphere", 16, false);
   core::world.createModel(EPrimitiveType::Cube, "mdlSkybox", 1, true);
   core::world.loadModelFromFile("content/models/test/scene.gltf", "mdlGuy");
