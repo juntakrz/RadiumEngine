@@ -63,7 +63,7 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
                                       WPrimitive* pPrimitive,
                                       EPipeline pipelineFlag,
                                       REntityBindInfo* pBindInfo) {
-  if (checkPipeline(pPrimitive->pMaterial->pipelineFlags, pipelineFlag)) {
+  if (!checkPipeline(pPrimitive->pMaterial->pipelineFlags, pipelineFlag)) {
     // does not belong to the current pipeline
     return;
   }
@@ -345,8 +345,8 @@ TResult core::MRenderer::createGraphicsPipelines() {
 #endif
 
   std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {
-      loadShader("vs_default.spv", VK_SHADER_STAGE_VERTEX_BIT),
-      loadShader("fs_default.spv", VK_SHADER_STAGE_FRAGMENT_BIT)
+      loadShader("vs_pbr.spv", VK_SHADER_STAGE_VERTEX_BIT),
+      loadShader("fs_pbr.spv", VK_SHADER_STAGE_FRAGMENT_BIT)
   };
 
   VkGraphicsPipelineCreateInfo graphicsPipelineInfo{};
@@ -399,8 +399,8 @@ TResult core::MRenderer::createGraphicsPipelines() {
 
   shaderStages.clear();
   shaderStages = {
-      loadShader("vs_default.spv", VK_SHADER_STAGE_VERTEX_BIT),     // replace with skybox shaders
-      loadShader("fs_default.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
+      loadShader("vs_skybox.spv", VK_SHADER_STAGE_VERTEX_BIT),     // replace with skybox shaders
+      loadShader("fs_skybox.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
 
   rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
   depthStencilInfo.depthTestEnable = VK_FALSE;

@@ -42,6 +42,19 @@ void core::run() {
   core::script.loadMap("default");
 
   // remove this after loadMap improvements
+  RMaterialInfo materialInfo{};
+  materialInfo.name = "default";
+  materialInfo.pipelineFlags = EPipeline::OpaqueCullBack;
+  core::resources.createMaterial(&materialInfo);
+
+  RSamplerInfo samplerInfo{};
+  core::resources.loadTexture("skyboxCubemap.ktx2", &samplerInfo);
+
+  materialInfo.name = "skybox";
+  materialInfo.pipelineFlags = EPipeline::Skybox;
+  materialInfo.textures.baseColor = "skyboxCubemap.ktx2";
+  core::resources.createMaterial(&materialInfo);
+
   core::world.createModel(EPrimitiveType::Sphere, "mdlSphere", 16, false);
   core::world.createModel(EPrimitiveType::Cube, "mdlSkybox", 1, true);
   core::world.loadModelFromFile("content/models/test/scene.gltf", "mdlGuy");
@@ -71,17 +84,6 @@ void core::run() {
   pStatic->setScale(2.2f);
   pStatic->setLocation(4.0f, -0.2f, -2.0f);
   pStatic->setRotation({0.5f, 0.32f, 0.1f});
-
-  RSamplerInfo samplerInfo{};
-  core::resources.loadTexture("skyboxCubemap.ktx2", &samplerInfo);
-
-  RMaterialInfo materialInfo{};
-  materialInfo.name = "skyboxCubemap";
-  materialInfo.textures.baseColor = "skyboxCubemap.ktx2";
-  core::resources.createMaterial(&materialInfo);
-
-  core::resources.getMaterial("default")->pipelineFlags =
-      EPipeline::OpaqueCullBack;
   // ---------------------------- */
 
   RE_LOG(Log, "Launching main event loop.");

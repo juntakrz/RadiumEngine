@@ -21,6 +21,13 @@ layout(location = 1) out vec4 outColor0;
 void main(){
 	outUV0 = inUV0;
 	outColor0 = inColor0;
+	
+	mat4 view = scene.view;
+	view[3][0] = 0.0;
+	view[3][1] = 0.0;
+	view[3][2] = 0.0;
 
-	gl_Position = scene.projection * scene.view * (mesh.rootMatrix * mesh.nodeMatrix * vec4(inPos, 1.0));
+	vec4 worldPos = mesh.rootMatrix * mesh.nodeMatrix * vec4(inPos, 1.0);
+
+	gl_Position = scene.projection * view * worldPos;
 }
