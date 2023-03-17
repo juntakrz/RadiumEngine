@@ -132,7 +132,7 @@ TResult core::MRenderer::createRenderPass() {
   colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; // the layout will be an image
 
   VkAttachmentDescription depthAttachment{};
-  depthAttachment.format = images.depth.format;
+  depthAttachment.format = core::vulkan::formatDepth;
   depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
   depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
   depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;

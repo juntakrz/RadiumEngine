@@ -1,7 +1,8 @@
 #include "pch.h"
 #include "core/core.h"
-#include "core/managers/renderer.h"
 #include "core/managers/window.h"
+#include "core/managers/resources.h"
+#include "core/managers/renderer.h"
 
 TResult core::MRenderer::initSwapChain(VkFormat format, VkColorSpaceKHR colorSpace,
                                  VkPresentModeKHR presentMode,
@@ -212,7 +213,6 @@ TResult core::MRenderer::recreateSwapChain() {
   vkDeviceWaitIdle(logicalDevice.device);
 
   destroySwapChain();
-  destroyDepthResources();
 
   chkResult = createSwapChain();
   if (chkResult = createDepthResources() > finalResult) finalResult = chkResult;
@@ -242,8 +242,10 @@ TResult core::MRenderer::createFramebuffers() {
   swapchain.framebuffers.resize(swapchain.imageViews.size());
 
   for (size_t i = 0; i < swapchain.framebuffers.size(); ++i) {
-    std::vector<VkImageView> attachments = {swapchain.imageViews[i],
-                                            images.depth.view};
+    std::vector<VkImageView> attachments = {
+        swapchain.imageViews[i],
+        core::resources.getTexture(core::vulkan::depthTextureName)
+            ->texture.view};
 
     VkFramebufferCreateInfo framebufferInfo{};
     framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;

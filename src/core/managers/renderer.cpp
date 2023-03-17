@@ -399,49 +399,27 @@ TResult core::MRenderer::createDepthResources() {
     return result;
   };
 
-  VkImageCreateInfo imageCreateInfo{};
-  imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-  imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
-  imageCreateInfo.extent = {swapchain.imageExtent.width,
-                            swapchain.imageExtent.height, 1};
-  imageCreateInfo.format = images.depth.format;
-  imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-  imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-  imageCreateInfo.mipLevels = 1;
-  imageCreateInfo.arrayLayers = 1;
-  imageCreateInfo.usage = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
-                          VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-  imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  RTextureInfo textureInfo{};
+  textureInfo.name = core::vulkan::depthTextureName;
+  textureInfo.asCubemap = false;
+  textureInfo.format = core::vulkan::formatDepth;
+  textureInfo.width = swapchain.imageExtent.width;
+  textureInfo.height = swapchain.imageExtent.height;
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
+                           VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+  textureInfo.memoryFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+  textureInfo.vmaMemoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-  VmaAllocationCreateInfo depthAllocationInfo{};
-  depthAllocationInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-  depthAllocationInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+  RTexture* pDepthTexture = core::resources.createTexture(&textureInfo);
 
-  if (vmaCreateImage(memAlloc, &imageCreateInfo, &depthAllocationInfo,
-                     &images.depth.image, &images.depth.allocation,
-                     &images.depth.allocInfo) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create depth/stencil image.");
+  if (!pDepthTexture) {
+    RE_LOG(Critical, "Failed to create the default depth texture.");
     return RE_CRITICAL;
   }
-
-  images.depth.view =
-      createImageView(images.depth.image, images.depth.format, 1, 1);
-
-  if (!images.depth.view) {
-    RE_LOG(Critical, "Failed to create depth/stencil image view.");
-    return RE_CRITICAL;
-  }
-
-  transitionImageLayout(
-      images.depth.image, images.depth.format, VK_IMAGE_LAYOUT_UNDEFINED,
-      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, ECmdType::Graphics);
 
   return RE_OK;
-}
-
-void core::MRenderer::destroyDepthResources() {
-  vkDestroyImageView(logicalDevice.device, images.depth.view, nullptr);
-  vmaDestroyImage(memAlloc, images.depth.image, images.depth.allocation);
 }
 
 TResult core::MRenderer::createUniformBuffers() {
@@ -700,7 +678,6 @@ void core::MRenderer::deinitialize() {
   destroyCoreCommandPools();
   destroyGraphicsPipelines();
   destroyRenderPass();
-  destroyDepthResources();
   destroySceneBuffers();
   destroySurface();
   core::actors.destroyAllPawns();

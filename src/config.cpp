@@ -20,3 +20,5 @@ size_t config::scene::getVertexBufferSize() {
 size_t config::scene::getIndexBufferSize() {
   return sizeof(uint32_t) * indexBudget;
 }
+
+VkFormat core::vulkan::formatDepth;

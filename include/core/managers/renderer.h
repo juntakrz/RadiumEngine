@@ -67,10 +67,6 @@ class MRenderer {
     RLightingUBO data;
   } lighting;
 
-  struct {
-    RImage depth;
-  } images;
-
   struct RSceneBuffers {
     RBuffer vertexBuffer;
     RBuffer indexBuffer;
@@ -131,7 +127,6 @@ class MRenderer {
   TResult createDescriptorSets();
 
   TResult createDepthResources();
-  void destroyDepthResources();
 
   TResult createUniformBuffers();
   void destroyUniformBuffers();

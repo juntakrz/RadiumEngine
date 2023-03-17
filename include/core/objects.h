@@ -130,14 +130,6 @@ struct RBuffer {
   VmaAllocationInfo allocInfo;
 };
 
-struct RImage {
-  VkImage image;
-  VkImageView view;
-  VkFormat format;
-  VmaAllocation allocation;
-  VmaAllocationInfo allocInfo;
-};
-
 // expanding KTX structure
 struct RVulkanTexture : public ktxVulkanTexture {
   VkImageView view;
@@ -225,7 +217,8 @@ struct RTextureInfo {
   VkImageLayout targetLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
   VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
   bool asCubemap = false;
-  VkMemoryPropertyFlags memoryFlags = 0u;
+  VkMemoryPropertyFlags memoryFlags = NULL;
+  VmaMemoryUsage vmaMemoryUsage = VMA_MEMORY_USAGE_AUTO;
 };
 
 struct REntityBindInfo {

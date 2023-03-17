@@ -205,9 +205,12 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
   createInfo.usage = pInfo->usageFlags;
   createInfo.samples = VK_SAMPLE_COUNT_1_BIT;
   createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  createInfo.flags =
+      pInfo->asCubemap ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : NULL;
 
   VmaAllocationCreateInfo allocCreateInfo{};
   allocCreateInfo.requiredFlags = pInfo->memoryFlags;
+  allocCreateInfo.usage = pInfo->vmaMemoryUsage;
 
   result = vmaCreateImage(core::renderer.memAlloc, &createInfo,
                           &allocCreateInfo, &newTexture->texture.image,
@@ -224,11 +227,21 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
   newTexture->texture.imageLayout = pInfo->targetLayout;
 
   VkImageSubresourceRange subRange;
-  subRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   subRange.baseMipLevel = 0;
   subRange.levelCount = createInfo.mipLevels;
   subRange.baseArrayLayer = 0;
   subRange.layerCount = createInfo.arrayLayers;
+
+  switch (pInfo->targetLayout) {
+    case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL: {
+      subRange.aspectMask =
+          VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+      break;
+    }
+    default: {
+      subRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    }
+  }
 
   VkCommandBuffer cmdBuffer = core::renderer.createCommandBuffer(
       ECmdType::Graphics, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
@@ -306,6 +319,8 @@ TResult core::MResources::writeTexture(RTexture* pTexture, void* pData,
   pTexture->texture.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
   core::renderer.flushCommandBuffer(cmdBuffer, ECmdType::Graphics, true);
+
+  return RE_OK;
 }
 
 RTexture* core::MResources::getTexture(

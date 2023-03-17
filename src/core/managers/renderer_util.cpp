@@ -20,7 +20,7 @@ TResult core::MRenderer::setDepthStencilFormat() {
     vkGetPhysicalDeviceFormatProperties(physicalDevice.device, format, &formatProps);
     if (formatProps.optimalTilingFeatures &
         VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
-      images.depth.format = format;
+      core::vulkan::formatDepth = format;
       validDepthFormat = true;
       break;
     }
