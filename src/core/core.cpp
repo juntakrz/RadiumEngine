@@ -79,6 +79,9 @@ void core::run() {
   materialInfo.name = "skyboxCubemap";
   materialInfo.textures.baseColor = "skyboxCubemap.ktx2";
   core::resources.createMaterial(&materialInfo);
+
+  core::resources.getMaterial("default")->pipelineFlags =
+      EPipeline::OpaqueCullBack;
   // ---------------------------- */
 
   RE_LOG(Log, "Launching main event loop.");

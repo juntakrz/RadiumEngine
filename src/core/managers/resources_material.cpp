@@ -40,8 +40,6 @@ RMaterial* core::MResources::createMaterial(
   newMat.shaderPixel = pDesc->shaders.pixel;
   newMat.shaderGeometry = pDesc->shaders.geometry;
   newMat.shaderVertex = pDesc->shaders.vertex;
-  newMat.alphaMode = pDesc->alphaMode;
-  newMat.doubleSided = pDesc->doubleSided;
 
   newMat.pBaseColor = assignTexture(pDesc->textures.baseColor.c_str());
   newMat.pNormal = assignTexture(pDesc->textures.normal.c_str());
@@ -74,6 +72,30 @@ RMaterial* core::MResources::createMaterial(
   newMat.pushConstantBlock.bumpIntensity = pDesc->bumpIntensity;
   newMat.pushConstantBlock.materialIntensity = pDesc->materialIntensity;
   newMat.pushConstantBlock.f0 = pDesc->F0;
+
+  newMat.pipelineFlags = pDesc->pipelineFlags;
+
+  // determine pipeline automatically if not explicitly set
+  if (pDesc->pipelineFlags == EPipeline::Null) {
+    switch (pDesc->alphaMode) {
+      case EAlphaMode::Blend: {
+        newMat.pipelineFlags |= EPipeline::BlendCullBack;
+        break;
+      }
+      case EAlphaMode::Mask: {
+        newMat.pipelineFlags |= EPipeline::MaskCullBack;
+        break;
+      }
+      case EAlphaMode::Opaque: {
+        newMat.pipelineFlags |= pDesc->doubleSided ? EPipeline::OpaqueCullNone
+                                                   : EPipeline::OpaqueCullBack;
+        break;
+      }
+    }
+
+    // all glTF materials are featured in depth prepass by default
+    newMat.pipelineFlags |= EPipeline::Depth;
+  }
 
   RE_LOG(Log, "Creating material \"%s\".", newMat.name.c_str());
   m_materials.at(pDesc->name) = std::make_unique<RMaterial>(std::move(newMat));

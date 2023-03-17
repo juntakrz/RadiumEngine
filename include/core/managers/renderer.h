@@ -86,7 +86,7 @@ class MRenderer {
   RVkPhysicalDevice physicalDevice;
   RVkLogicalDevice logicalDevice;
   VmaAllocator memAlloc = nullptr;
-  bool bFramebufferResized = false;
+  bool framebufferResized = false;
 
   // data for easy access by any other object
   struct {
@@ -186,6 +186,11 @@ class MRenderer {
   TResult checkInstanceValidationLayers();
   std::vector<const char*> getRequiredInstanceExtensions();
   std::vector<VkExtensionProperties> getInstanceExtensions();
+
+  // check if pipeline flag is present in the flag array
+  bool checkPipeline(uint32_t pipelineFlags, EPipeline pipelineFlag);
+
+  VkPipeline getPipeline(EPipeline pipelineFlag);
 
  public:
   /* create buffer for CPU/iGPU or dedicated GPU use:
@@ -343,9 +348,8 @@ class MRenderer {
 
   // draw bound entities
   void drawBoundEntities(VkCommandBuffer cmdBuffer);
-  void renderPrimitive(VkCommandBuffer cmdBuffer, VkPipeline pipeline,
-                       WPrimitive* pPrimitive, EAlphaMode alphaMode,
-                       bool doubleSided, REntityBindInfo* pBindInfo);
+  void renderPrimitive(VkCommandBuffer cmdBuffer, WPrimitive* pPrimitive,
+                       EPipeline pipelineFlag, REntityBindInfo* pBindInfo);
 
   TResult createRenderPass();
   void destroyRenderPass();

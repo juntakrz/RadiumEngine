@@ -2,7 +2,7 @@
 
 #include "core/objects.h"
 
-// if texture is loaded using KTX library - VMA allocations are not used
+// NOTE: if texture is loaded using KTX library - VMA allocations are not used
 struct RTexture {
   std::string name = "";
   RVulkanTexture texture;

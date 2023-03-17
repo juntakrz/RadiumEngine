@@ -46,5 +46,5 @@ TResult core::MWindow::destroyWindow(GLFWwindow* pOtherWindow) {
 GLFWwindow* core::MWindow::getWindow() { return pWindow.get(); }
 
 void core::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
-  core::renderer.bFramebufferResized = true;
+  core::renderer.framebufferResized = true;
 }

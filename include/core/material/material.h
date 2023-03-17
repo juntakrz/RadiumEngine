@@ -6,8 +6,7 @@ struct RTexture;
 
 struct RMaterial {
   std::string name;
-  bool doubleSided = false;
-  EAlphaMode alphaMode;
+  uint32_t pipelineFlags = EPipeline::Null;
 
   std::string shaderVertex, shaderPixel, shaderGeometry;
   RTexture* pBaseColor = nullptr;
@@ -19,9 +18,6 @@ struct RMaterial {
 
   RMaterialPCB pushConstantBlock;
   VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
-
-  // add effects using bitwise ops
-  uint32_t effectFlags;
 
   // will materials manager automatically try to delete textures
   // from memory if unused by any other material

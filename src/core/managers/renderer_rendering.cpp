@@ -24,7 +24,6 @@ void core::MRenderer::drawBoundEntities(VkCommandBuffer cmdBuffer) {
   renderView.reset();
 
   for (auto& bindInfo : system.bindings) {
-
     if ((pEntity = bindInfo.pEntity) == nullptr) {
       continue;
     }
@@ -35,51 +34,44 @@ void core::MRenderer::drawBoundEntities(VkCommandBuffer cmdBuffer) {
 
     auto& primitives = pModel->getPrimitives();
 
-    // single-sided opaque pipeline
-    VkPipeline pipeline = system.pipelines.PBR;
-
     vkCmdBindDescriptorSets(
         cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, system.pipelines.layout, 0,
         1, &system.descriptorSets[renderView.frameInFlight], 0, nullptr);
 
     for (const auto& primitive : primitives) {
-      renderPrimitive(cmdBuffer, pipeline, primitive, EAlphaMode::Opaque, false,
+      renderPrimitive(cmdBuffer, primitive, EPipeline::OpaqueCullBack,
                       &bindInfo);
     }
 
-    // double-sided opaque pipeline
-    pipeline = system.pipelines.PBR_DS;
-
     for (const auto& primitive : primitives) {
-      renderPrimitive(cmdBuffer, pipeline, primitive, EAlphaMode::Opaque, true,
+      renderPrimitive(cmdBuffer, primitive, EPipeline::OpaqueCullNone,
                       &bindInfo);
     }
 
-    // another future pipeline
-
     for (const auto& primitive : primitives) {
-      renderPrimitive(cmdBuffer, pipeline, primitive, EAlphaMode::Mask, false,
-                      &bindInfo);
+      renderPrimitive(cmdBuffer, primitive, EPipeline::MaskCullBack, &bindInfo);
     }
 
-    // TODO: add alpha pipeline and make PBR/PBRDS opaque
-    pipeline = system.pipelines.PBR;
-
     for (const auto& primitive : primitives) {
-      renderPrimitive(cmdBuffer, pipeline, primitive, EAlphaMode::Blend, false,
+      renderPrimitive(cmdBuffer, primitive, EPipeline::BlendCullBack,
                       &bindInfo);
     }
   }
 }
 
 void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
-                                      VkPipeline pipeline,
                                       WPrimitive* pPrimitive,
-                                      EAlphaMode alphaMode, bool doubleSided,
+                                      EPipeline pipelineFlag,
                                       REntityBindInfo* pBindInfo) {
-  if (pPrimitive->pMaterial->alphaMode != alphaMode ||
-      pPrimitive->pMaterial->doubleSided != doubleSided) {
+  if (checkPipeline(pPrimitive->pMaterial->pipelineFlags, pipelineFlag)) {
     // does not belong to the current pipeline
+    return;
+  }
+
+  VkPipeline pipeline = getPipeline(pipelineFlag);
+
+  if (pipeline == VK_NULL_HANDLE) {
+    // pipeline wasn't resolved because it probably isn't implemented yet
     return;
   }
 
@@ -597,10 +589,10 @@ TResult core::MRenderer::drawFrame() {
   APIResult = vkQueuePresentKHR(logicalDevice.queues.present, &presentInfo);
 
   if (APIResult == VK_ERROR_OUT_OF_DATE_KHR || APIResult == VK_SUBOPTIMAL_KHR ||
-      bFramebufferResized) {
+      framebufferResized) {
 
     RE_LOG(Warning, "Recreating swap chain, reason: %d", APIResult);
-    bFramebufferResized = false;
+    framebufferResized = false;
     recreateSwapChain();
 
     return RE_WARNING;

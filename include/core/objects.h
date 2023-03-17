@@ -35,6 +35,16 @@ enum class ECmdType {
   Present
 };
 
+enum EPipeline : uint32_t {
+  Null = 0,
+  Depth = 1,
+  Skybox = 2,
+  OpaqueCullBack = 4,
+  OpaqueCullNone = 8,
+  MaskCullBack = 16,
+  BlendCullBack = 32
+};
+
 enum class EPrimitiveType {
   Null,
   Plane,
@@ -201,7 +211,8 @@ struct RMaterialInfo {
   float bumpIntensity = 1.0f;
   float materialIntensity = 1.0f;
 
-  uint32_t effectFlags = 0;
+  // if 'Null' - pipeline is determined using material properties
+  EPipeline pipelineFlags = EPipeline::Null;
 };
 
 struct REntityBindInfo {

@@ -11,7 +11,6 @@ class WPrimitive {
   uint32_t indexOffset = 0u;     // initial index location in owning model
   uint32_t vertexCount = 0u;
   uint32_t indexCount = 0u;
-  bool createTangentSpaceData = false;
 
   RMaterial* pMaterial = nullptr;
   void* pOwnerNode = nullptr;
