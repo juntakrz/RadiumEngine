@@ -114,6 +114,21 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
                    vertexOffset, 0);
 }
 
+void core::MRenderer::renderEnvironmentMaps() {
+  // prepare initial environment rendering data
+  environment.pushConstantRanges[0] = VkPushConstantRange{};
+  environment.pushConstantRanges[1] = VkPushConstantRange{};
+
+  environment.pushConstantRanges[0].stageFlags =
+      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+  environment.pushConstantRanges[1].stageFlags =
+      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+  environment.pushConstantRanges[0].size = environment.envPCBSize;
+  environment.pushConstantRanges[1].size = environment.irrPCBSize;
+
+
+}
+
 TResult core::MRenderer::createRenderPass() {
   //
   // MAIN render pass
@@ -198,12 +213,15 @@ TResult core::MRenderer::createRenderPass() {
   passName = RP_CUBEMAP;
   attachments.clear();
 
+  const uint32_t numMips = static_cast<uint32_t>(floor(
+                               log2(core::vulkan::envCubeResolution))) + 1;
+
   if (!system.renderPasses.try_emplace(passName).second) {
     RE_LOG(Critical, "Render pass %s already exists.", passName);
     return RE_CRITICAL;
   }
 
-  colorAttachment.format = core::vulkan::formatHDR;
+  colorAttachment.format = core::vulkan::formatHDR16;
   subpassDesc.pDepthStencilAttachment = nullptr;
   attachments = {colorAttachment};
   dependency.dstStageMask =
@@ -507,19 +525,19 @@ TResult core::MRenderer::createImageTargets() {
   RTexture* pNewTexture = nullptr;
   RTextureInfo textureInfo{};
 
-  // default front target texture
+  // front target texture used as a source for environment cubemap sides
   std::string rtName = RT_FRONT;
 
   textureInfo = RTextureInfo{};
   textureInfo.name = rtName;
   textureInfo.asCubemap = false;
-  textureInfo.width = 512;
+  textureInfo.width = core::vulkan::envCubeResolution;
   textureInfo.height = textureInfo.width;
-  textureInfo.format = core::vulkan::formatHDR;
+  textureInfo.format = core::vulkan::formatHDR16;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags =
-      VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+      VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -534,9 +552,9 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo = RTextureInfo{};
   textureInfo.name = rtName;
   textureInfo.asCubemap = true;
-  textureInfo.width = 512;
+  textureInfo.width = core::vulkan::envCubeResolution;
   textureInfo.height = textureInfo.width;
-  textureInfo.format = core::vulkan::formatHDR;
+  textureInfo.format = core::vulkan::formatHDR16;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags =
@@ -594,8 +612,8 @@ RWorldPipelineSet core::MRenderer::getGraphicsPipelineSet() {
 
 VkPipeline core::MRenderer::getBoundPipeline() { return system.boundPipeline; }
 
-TResult core::MRenderer::recordFrameCommandBuffer(VkCommandBuffer commandBuffer,
-                                     uint32_t imageIndex) {
+TResult core::MRenderer::doRenderPass(VkCommandBuffer commandBuffer,
+                                     uint32_t imageIndex, const char* renderPass) {
   VkCommandBufferBeginInfo beginInfo{};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   beginInfo.pInheritanceInfo = nullptr;
@@ -607,7 +625,7 @@ TResult core::MRenderer::recordFrameCommandBuffer(VkCommandBuffer commandBuffer,
     return RE_ERROR;
   }
 
-  system.renderPassBeginInfo.renderPass = system.renderPasses.at(RP_MAIN);
+  system.renderPassBeginInfo.renderPass = system.renderPasses.at(renderPass);
   system.renderPassBeginInfo.framebuffer = swapchain.framebuffers[imageIndex];
 
   vkCmdBeginRenderPass(commandBuffer, &system.renderPassBeginInfo,
@@ -678,8 +696,8 @@ TResult core::MRenderer::drawFrame() {
 
   vkResetCommandBuffer(command.buffersGraphics[renderView.frameInFlight], NULL);
 
-  // generate selected frame data and record it to command buffer
-  recordFrameCommandBuffer(command.buffersGraphics[renderView.frameInFlight], imageIndex);
+  // main render pass
+  doRenderPass(command.buffersGraphics[renderView.frameInFlight], imageIndex, RP_MAIN);
 
   // wait until image to write color data to is acquired
   VkSemaphore waitSems[] = {sync.semImgAvailable[renderView.frameInFlight]};

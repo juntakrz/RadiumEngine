@@ -421,9 +421,9 @@ TResult core::MRenderer::createFramebuffers() {
     }
   }
 
-  // create render-to-texture cubemap framebuffer
+  // create render-to-texture framebuffer
   RTexture* fbTarget = core::resources.getTexture(RT_FRONT);
-  std::string fbName = FB_CUBEMAP;
+  std::string fbName = FB_FRONT;
 
   framebufferInfo.renderPass = getRenderPass(RP_CUBEMAP);
   framebufferInfo.attachmentCount = 1;

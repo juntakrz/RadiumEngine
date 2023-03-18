@@ -51,13 +51,9 @@ void core::run() {
   core::resources.loadTexture("skyboxCubemap.ktx2", &samplerInfo);
 
   materialInfo.name = "skybox";
-  materialInfo.pipelineFlags = EPipeline::Skybox;
+  materialInfo.pipelineFlags = EPipeline::Skybox | EPipeline::Environment;
   materialInfo.textures.baseColor = "skyboxCubemap.ktx2";
   core::resources.createMaterial(&materialInfo);
-
-  // test render to texture target
-  
-  //
 
   // create map models
   core::world.createModel(EPrimitiveType::Sphere, "mdlSphere", 16, false);
@@ -91,6 +87,8 @@ void core::run() {
   pStatic->setScale(2.2f);
   pStatic->setLocation(4.0f, -0.2f, -2.0f);
   pStatic->setRotation({0.5f, 0.32f, 0.1f});
+
+  core::actors.getCamera("camMain")->setRotation({0.0f, 90.0f, 0.0f});
   //
 
   // ---------------------------- */

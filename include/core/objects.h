@@ -37,12 +37,13 @@ enum class ECmdType {
 
 enum EPipeline : uint32_t {
   Null = 0,
-  Depth = 1,
-  Skybox = 2,
-  OpaqueCullBack = 4,
-  OpaqueCullNone = 8,
-  MaskCullBack = 16,
-  BlendCullBack = 32
+  Environment = 1,
+  Depth = 2,
+  Skybox = 4,
+  OpaqueCullBack = 8,
+  OpaqueCullNone = 16,
+  MaskCullBack = 32,
+  BlendCullBack = 64
 };
 
 enum class EPrimitiveType {
@@ -204,7 +205,7 @@ struct RMaterialInfo {
   float materialIntensity = 1.0f;
 
   // if 'Null' - pipeline is determined using material properties
-  EPipeline pipelineFlags = EPipeline::Null;
+  uint32_t pipelineFlags = EPipeline::Null;
 };
 
 // used by createTexture()

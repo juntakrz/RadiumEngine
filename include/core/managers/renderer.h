@@ -11,6 +11,47 @@ namespace core {
 
 class MRenderer {
  private:
+  // command buffers and pools data
+  struct {
+    VkCommandPool poolGraphics;
+    VkCommandPool poolCompute;
+    VkCommandPool poolTransfer;
+    std::vector<VkCommandBuffer> buffersGraphics;
+    std::vector<VkCommandBuffer> buffersCompute;  // no code for this yet
+    std::vector<VkCommandBuffer> buffersTransfer;
+  } command;
+
+  struct REnvironmentInfo {
+    struct REnvironmentPCB {
+      glm::mat4 matrix;
+      float roughness;
+      uint32_t numSamples = 32u;
+    } envPushBlock;
+
+    struct RIrradiancePCB {
+      glm::mat4 matrix;
+      float deltaPhi = (2.0f * float(M_PI)) / 180.0f;
+      float deltaTheta = (0.5f * float(M_PI)) / 64.0f;
+    } irradiancePushBlock;
+
+    uint32_t envPCBSize = sizeof(REnvironmentPCB);
+    uint32_t irrPCBSize = sizeof(RIrradiancePCB);
+    
+    std::array<VkPushConstantRange, 2> pushConstantRanges;
+  } environment;
+
+  struct {
+    std::vector<RBuffer> buffers;
+    RLightingUBO data;
+  } lighting;
+
+  struct RSceneBuffers {
+    RBuffer vertexBuffer;
+    RBuffer indexBuffer;
+    uint32_t currentVertexOffset = 0u;
+    uint32_t currentIndexOffset = 0u;
+  } scene;
+
   // swapchain data
   struct {
     VkSurfaceFormatKHR formatData;
@@ -23,15 +64,13 @@ class MRenderer {
     std::vector<VkFramebuffer> framebuffers;
   } swapchain;
 
-  // command buffers and pools data
+  // multi-threaded synchronization objects
   struct {
-    VkCommandPool poolGraphics;
-    VkCommandPool poolCompute;
-    VkCommandPool poolTransfer;
-    std::vector<VkCommandBuffer> buffersGraphics;
-    std::vector<VkCommandBuffer> buffersCompute;  // no code for this yet
-    std::vector<VkCommandBuffer> buffersTransfer;
-  } command;
+    std::vector<VkSemaphore> semImgAvailable;
+    std::vector<VkSemaphore> semRenderFinished;
+    std::vector<VkFence> fenceInFlight;
+    RAsync asyncUpdateEntities;
+  } sync;
 
   // render system data - passes, pipelines, mesh data to render
   struct {
@@ -48,14 +87,6 @@ class MRenderer {
     std::vector<WPrimitive*> depthSortedPrimitives;               // TODO: not used, need to also consider material sorting
   } system;
 
-  // multi-threaded synchronization objects
-  struct {
-    std::vector<VkSemaphore> semImgAvailable;
-    std::vector<VkSemaphore> semRenderFinished;
-    std::vector<VkFence> fenceInFlight;
-    RAsync asyncUpdateEntities;
-  } sync;
-
   // current camera view data
   struct {
     RCameraInfo cameraSettings;
@@ -64,18 +95,6 @@ class MRenderer {
     std::vector<RBuffer> modelViewProjectionBuffers;
     RSceneUBO worldViewProjectionData;
   } view;
-
-  struct {
-    std::vector<RBuffer> buffers;
-    RLightingUBO data;
-  } lighting;
-
-  struct RSceneBuffers {
-    RBuffer vertexBuffer;
-    RBuffer indexBuffer;
-    uint32_t currentVertexOffset = 0u;
-    uint32_t currentIndexOffset = 0u;
-  } scene;
 
  public:
   VkInstance APIInstance = VK_NULL_HANDLE;
@@ -349,6 +368,9 @@ class MRenderer {
   void renderPrimitive(VkCommandBuffer cmdBuffer, WPrimitive* pPrimitive,
                        EPipeline pipelineFlag, REntityBindInfo* pBindInfo);
 
+  // renders skybox pass and generates PBR cubemaps for future passes
+  void renderEnvironmentMaps();
+
   TResult createRenderPass();
   void destroyRenderPass();
   VkRenderPass getRenderPass(const char* name);
@@ -365,8 +387,8 @@ class MRenderer {
   RWorldPipelineSet getGraphicsPipelineSet();
   VkPipeline getBoundPipeline();
 
-  TResult recordFrameCommandBuffer(VkCommandBuffer commandBuffer,
-                                   uint32_t imageIndex);
+  TResult doRenderPass(VkCommandBuffer commandBuffer, uint32_t imageIndex,
+                       const char* renderPass);
 
   TResult drawFrame();
 

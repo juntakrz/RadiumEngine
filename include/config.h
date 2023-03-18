@@ -12,7 +12,7 @@
 #define RP_CUBEMAP              "RP_Cubemap"
 
 // frame buffers
-#define FB_CUBEMAP              "FB_Cubemap"
+#define FB_FRONT                "FB_Front"
 
 // render targets
 #define RT_DEPTH                "RT_Depth"
@@ -60,10 +60,12 @@ const std::vector<const char*> requiredExtensions = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
-const VkFormat formatLDR =
-    VK_FORMAT_B8G8R8A8_SRGB;
-const VkFormat formatHDR = VK_FORMAT_R16G16B16A16_SFLOAT;
+const VkFormat formatLDR = VK_FORMAT_B8G8R8A8_SRGB;
+const VkFormat formatHDR16 = VK_FORMAT_R16G16B16A16_SFLOAT;
+const VkFormat formatHDR32 = VK_FORMAT_R32G32B32A32_SFLOAT;
 extern VkFormat formatDepth;
+const uint32_t envCubeResolution = 512u;
+const uint32_t irradianceResolution = 64u;
 const VkColorSpaceKHR colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
 const VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 constexpr uint8_t maxFramesInFlight = MAX_FRAMES_IN_FLIGHT;
