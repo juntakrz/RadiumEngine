@@ -57,7 +57,6 @@ class MRenderer {
     VkSurfaceFormatKHR formatData;
     VkPresentModeKHR presentMode;
     VkExtent2D imageExtent;
-    VkViewport viewport;
     uint32_t imageCount = 0;
     std::vector<VkImage> images;
     std::vector<VkImageView> imageViews;
@@ -85,6 +84,7 @@ class MRenderer {
     std::vector<VkDescriptorSet> descriptorSets;
     RDescriptorSetLayouts descriptorSetLayouts;
     std::vector<REntityBindInfo> bindings;                        // entities rendered during the current frame
+    std::unordered_map<EPipeline, std::vector<WPrimitive*>> primitivesByPipeline;   // TODO
   } system;
 
   // current camera view data
@@ -110,11 +110,13 @@ class MRenderer {
     void* pCurrentMesh = nullptr;
     void* pCurrentMaterial = nullptr;
     void* pCurrentPipeline = nullptr;
+
     RRenderPass* pCurrentRenderPass = nullptr;
     uint32_t frameInFlight = 0;
     uint32_t framesRendered = 0;
+    bool doEnvironmentPass = false;
 
-    void reset() {
+    void refresh() {
       pCurrentMesh = nullptr;
       pCurrentMaterial = nullptr;
       pCurrentPipeline = nullptr;
@@ -364,7 +366,7 @@ class MRenderer {
                        EPipeline pipelineFlag, REntityBindInfo* pBindInfo);
 
   // renders skybox pass and generates PBR cubemaps for future passes
-  void renderEnvironmentMaps();
+  void renderEnvironmentMaps(VkCommandBuffer commandBuffer);
 
   TResult createRenderPasses();
   void destroyRenderPasses();
@@ -386,9 +388,9 @@ class MRenderer {
   bool checkPipeline(uint32_t pipelineFlags, EPipeline pipelineFlag);
 
  public:
-  TResult doRenderPass(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+  void doRenderPass(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
-  TResult drawFrame();
+  void renderFrame();
 
   void updateAspectRatio();
   void setFOV(float FOV);

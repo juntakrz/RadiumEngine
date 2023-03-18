@@ -21,7 +21,7 @@ void core::MRenderer::drawBoundEntities(VkCommandBuffer cmdBuffer) {
   // go through bound models and generate draw calls for each
   AEntity* pEntity = nullptr;
   WModel* pModel = nullptr;
-  renderView.reset();
+  renderView.refresh();
 
   for (auto& bindInfo : system.bindings) {
     if ((pEntity = bindInfo.pEntity) == nullptr) {
@@ -102,7 +102,7 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
                    vertexOffset, 0);
 }
 
-void core::MRenderer::renderEnvironmentMaps() {
+void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   // prepare initial environment rendering data
   environment.pushConstantRanges[0] = VkPushConstantRange{};
   environment.pushConstantRanges[1] = VkPushConstantRange{};
@@ -114,7 +114,55 @@ void core::MRenderer::renderEnvironmentMaps() {
   environment.pushConstantRanges[0].size = environment.envPCBSize;
   environment.pushConstantRanges[1].size = environment.irrPCBSize;
 
+  // environment render pass
+  renderView.pCurrentRenderPass = getRenderPass(ERenderPass::Environment);
 
+  VkCommandBufferBeginInfo beginInfo{};
+  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  beginInfo.pInheritanceInfo = nullptr;
+  beginInfo.flags = 0;
+
+  if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
+    RE_LOG(Error, "failure when trying to record command buffer.");
+    return;
+  }
+
+  system.renderPassBeginInfo.renderPass =
+      renderView.pCurrentRenderPass->renderPass;
+  system.renderPassBeginInfo.renderArea.extent = {
+      core::vulkan::envCubeResolution, core::vulkan::envCubeResolution
+  };
+  system.renderPassBeginInfo.framebuffer = system.framebuffers.at(FB_FRONT);
+
+  vkCmdBeginRenderPass(commandBuffer, &system.renderPassBeginInfo,
+                       VK_SUBPASS_CONTENTS_INLINE);
+
+  vkCmdSetViewport(commandBuffer, 0, 1,
+                   &renderView.pCurrentRenderPass->viewport);
+
+  VkRect2D scissor{};
+  scissor.offset = {0, 0};
+  scissor.extent.width = core::resources.getTexture(RT_FRONT)->texture.width;
+  scissor.extent.height = core::resources.getTexture(RT_FRONT)->texture.height;
+
+  vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+  /* VkDeviceSize offset = 0u;
+  vkCmdBindVertexBuffers(commandBuffer, 0, 1, &scene.vertexBuffer.buffer,
+                         &offset);
+  vkCmdBindIndexBuffer(commandBuffer, scene.indexBuffer.buffer, 0,
+                       VK_INDEX_TYPE_UINT32);*/
+
+  drawBoundEntities(commandBuffer);
+
+  vkCmdEndRenderPass(commandBuffer);
+
+  if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to end writing to command buffer.");
+  }
+
+  // no need to render new environment maps every frame
+  renderView.doEnvironmentPass = false;
 }
 
 TResult core::MRenderer::createRenderPasses() {
@@ -257,6 +305,17 @@ TResult core::MRenderer::configureRenderPasses() {
   pRenderPass->usedPipelines.emplace_back(EPipeline::OpaqueCullNone);
   pRenderPass->usedPipelines.emplace_back(EPipeline::BlendCullBack);
 
+  // configure 'environment' cubemap render pass
+  pRenderPass = getRenderPass(ERenderPass::Environment);
+  pRenderPass->usedLayout = getPipelineLayout(EPipelineLayout::Scene);
+  pRenderPass->usedPipelines.emplace_back(EPipeline::Environment);
+  pRenderPass->viewport.width = static_cast<float>(core::vulkan::envCubeResolution);
+  pRenderPass->viewport.height = core::vulkan::bFlipViewPortY
+                                     ? -pRenderPass->viewport.width
+                                     : pRenderPass->viewport.width;
+  pRenderPass->viewport.y =
+      core::vulkan::bFlipViewPortY ? pRenderPass->viewport.width : 0;
+
   return RE_OK;
 }
 
@@ -273,17 +332,18 @@ TResult core::MRenderer::createGraphicsPipelines() {
   inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
 
   // set main viewport
-  swapchain.viewport.x = 0.0f;
-  swapchain.viewport.y = (core::vulkan::bFlipViewPortY)
+  VkViewport& viewport = getRenderPass(ERenderPass::PBR)->viewport;
+  viewport.x = 0.0f;
+  viewport.y = (core::vulkan::bFlipViewPortY)
                              ? static_cast<float>(swapchain.imageExtent.height)
                              : 0.0f;
-  swapchain.viewport.width = static_cast<float>(swapchain.imageExtent.width);
-  swapchain.viewport.height =
+  viewport.width = static_cast<float>(swapchain.imageExtent.width);
+  viewport.height =
       (core::vulkan::bFlipViewPortY)
           ? -static_cast<float>(swapchain.imageExtent.height)
           : static_cast<float>(swapchain.imageExtent.height);
-  swapchain.viewport.minDepth = 0.0f;
-  swapchain.viewport.maxDepth = 1.0f;
+  viewport.minDepth = 0.0f;
+  viewport.maxDepth = 1.0f;
 
   VkRect2D scissor{};
   scissor.offset = {0, 0};
@@ -291,7 +351,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
 
   VkPipelineViewportStateCreateInfo viewportInfo{};
   viewportInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-  viewportInfo.pViewports = &swapchain.viewport;
+  viewportInfo.pViewports = &viewport;
   viewportInfo.viewportCount = 1;
   viewportInfo.pScissors = &scissor;
   viewportInfo.scissorCount = 1;
@@ -625,7 +685,7 @@ bool core::MRenderer::checkPipeline(uint32_t pipelineFlags,
   return pipelineFlags & pipelineFlag;
 }
 
-TResult core::MRenderer::doRenderPass(VkCommandBuffer commandBuffer,
+void core::MRenderer::doRenderPass(VkCommandBuffer commandBuffer,
                                      uint32_t imageIndex) {
   VkCommandBufferBeginInfo beginInfo{};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -634,18 +694,20 @@ TResult core::MRenderer::doRenderPass(VkCommandBuffer commandBuffer,
 
   if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
     RE_LOG(Error, "failure when trying to record command buffer.");
-
-    return RE_ERROR;
+    return;
   }
 
   system.renderPassBeginInfo.renderPass =
       renderView.pCurrentRenderPass->renderPass;
+  system.renderPassBeginInfo.renderArea.extent = {
+      config::renderWidth, config::renderHeight
+  };
   system.renderPassBeginInfo.framebuffer = swapchain.framebuffers[imageIndex];
 
   vkCmdBeginRenderPass(commandBuffer, &system.renderPassBeginInfo,
                        VK_SUBPASS_CONTENTS_INLINE);
 
-  vkCmdSetViewport(commandBuffer, 0, 1, &swapchain.viewport);
+  vkCmdSetViewport(commandBuffer, 0, 1, &renderView.pCurrentRenderPass->viewport);
 
   VkRect2D scissor{};
   scissor.offset = {0, 0};
@@ -664,14 +726,10 @@ TResult core::MRenderer::doRenderPass(VkCommandBuffer commandBuffer,
 
   if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to end writing to command buffer.");
-
-    return RE_CRITICAL;
   }
-
-  return RE_OK;
 }
 
-TResult core::MRenderer::drawFrame() {
+void core::MRenderer::renderFrame() {
   uint32_t imageIndex = -1;
   TResult chkResult = RE_OK;
 
@@ -688,13 +746,13 @@ TResult core::MRenderer::drawFrame() {
     RE_LOG(Warning, "Out of date swap chain image. Recreating swap chain.");
 
     recreateSwapChain();
-    return RE_WARNING;
+    return;
   }
 
   if (APIResult != VK_SUCCESS && APIResult != VK_SUBOPTIMAL_KHR) {
     RE_LOG(Error, "Failed to acquire valid swap chain image.");
 
-    return RE_ERROR;
+    return;
   }
 
   // get new delta time between frames
@@ -710,9 +768,15 @@ TResult core::MRenderer::drawFrame() {
 
   vkResetCommandBuffer(command.buffersGraphics[renderView.frameInFlight], NULL);
 
+  VkCommandBuffer cmdBuffer = command.buffersGraphics[renderView.frameInFlight];
+
+  if (renderView.doEnvironmentPass) {
+    renderEnvironmentMaps(cmdBuffer);
+  }
+
   // main PBR render pass
   renderView.pCurrentRenderPass = getRenderPass(ERenderPass::PBR);
-  doRenderPass(command.buffersGraphics[renderView.frameInFlight], imageIndex);
+  doRenderPass(cmdBuffer, imageIndex);
 
   // wait until image to write color data to is acquired
   VkSemaphore waitSems[] = {sync.semImgAvailable[renderView.frameInFlight]};
@@ -740,9 +804,7 @@ TResult core::MRenderer::drawFrame() {
   if (vkQueueSubmit(logicalDevice.queues.graphics, 1, &submitInfo,
                     sync.fenceInFlight[renderView.frameInFlight]) !=
       VK_SUCCESS) {
-    RE_LOG(Error, "Failed to submit data to graphics queue.");
-
-    chkResult = RE_ERROR;
+    RE_LOG(Error, "Failed to submit data to graphics queue.");;
   }
 
   VkSwapchainKHR swapChains[] = {swapChain};
@@ -767,21 +829,19 @@ TResult core::MRenderer::drawFrame() {
     framebufferResized = false;
     recreateSwapChain();
 
-    return RE_WARNING;
+    return;
   }
 
   if (APIResult != VK_SUCCESS) {
     RE_LOG(Error, "Failed to present new frame.");
 
-    return RE_ERROR;
+    return;
   }
 
   sync.asyncUpdateEntities.update();
 
   renderView.frameInFlight = ++renderView.frameInFlight % MAX_FRAMES_IN_FLIGHT;
   ++renderView.framesRendered;
-
-  return chkResult;
 }
 
 void core::MRenderer::updateAspectRatio() {

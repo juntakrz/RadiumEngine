@@ -25,7 +25,7 @@ TResult core::MScript::loadMap(const char* mapName) {
   jsonParseCameras(jsonLoad(camPath.c_str(), "cameraData"));
 
   // draw initialization frame
-  core::renderer.drawFrame();
+  core::renderer.renderFrame();
 
   // TODO: parse everything else
 

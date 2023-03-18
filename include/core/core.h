@@ -42,7 +42,7 @@ void stop(TResult cause);
 TResult create();
 void destroy();
 
-TResult drawFrame();
+void drawFrame();
 
 void loadCoreConfig(const wchar_t* path = RE_PATH_CONFIG);
 void loadDevelopmentConfig(const wchar_t* path = RE_PATH_DEVCONFIG);

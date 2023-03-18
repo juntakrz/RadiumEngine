@@ -88,7 +88,7 @@ void core::run() {
   pStatic->setLocation(4.0f, -0.2f, -2.0f);
   pStatic->setRotation({0.5f, 0.32f, 0.1f});
   //
-
+  core::renderer.renderView.doEnvironmentPass = true;
   // ---------------------------- */
 
   RE_LOG(Log, "Launching main event loop.");
@@ -157,12 +157,8 @@ void core::destroy() {
   glfwTerminate();
 }
 
-TResult core::drawFrame() {
-  TResult chkResult = RE_OK;
-
-  chkResult = core::renderer.drawFrame();
-
-  return chkResult;
+void core::drawFrame() {
+  core::renderer.renderFrame();
 }
 
 void core::loadCoreConfig(const wchar_t* path) {

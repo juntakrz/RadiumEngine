@@ -7,10 +7,6 @@
 #define MAX_FRAMES_IN_FLIGHT    2u
 #define MAX_TRANSFER_BUFFERS    2u
 
-// render passes
-#define RP_MAIN                 "RP_Main"
-#define RP_CUBEMAP              "RP_Cubemap"
-
 // frame buffers
 #define FB_FRONT                "FB_Front"
 

@@ -146,8 +146,7 @@ struct RRenderPass {
   VkRenderPass renderPass;
   std::vector<EPipeline> usedPipelines;
   VkPipelineLayout usedLayout;
-
-  //RRenderPass(){};
+  VkViewport viewport;
 };
 
 // expanding KTX structure
