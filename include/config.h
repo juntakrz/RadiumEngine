@@ -7,6 +7,18 @@
 #define MAX_FRAMES_IN_FLIGHT    2u
 #define MAX_TRANSFER_BUFFERS    2u
 
+// render passes
+#define RP_MAIN                 "RP_Main"
+#define RP_CUBEMAP              "RP_Cubemap"
+
+// frame buffers
+#define FB_CUBEMAP              "FB_Cubemap"
+
+// render targets
+#define RT_DEPTH                "RT_Depth"
+#define RT_FRONT                "RT_Front"
+#define RT_CUBEMAP              "RT_Cubemap"
+
 struct RVertex;
 
 namespace config {
@@ -48,9 +60,8 @@ const std::vector<const char*> requiredExtensions = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
-// desired swap chain settings, will be set if supported by the physical device
-constexpr char depthTextureName[] = "RT_Depth";
-const VkFormat formatLDR = VK_FORMAT_B8G8R8A8_SRGB;
+const VkFormat formatLDR =
+    VK_FORMAT_B8G8R8A8_SRGB;
 const VkFormat formatHDR = VK_FORMAT_R16G16B16A16_SFLOAT;
 extern VkFormat formatDepth;
 const VkColorSpaceKHR colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;

@@ -16,7 +16,7 @@ class MRenderer {
     VkSurfaceFormatKHR formatData;
     VkPresentModeKHR presentMode;
     VkExtent2D imageExtent;
-    VkViewport viewport;  // not used in code, needs to be
+    VkViewport viewport;
     uint32_t imageCount = 0;
     std::vector<VkImage> images;
     std::vector<VkImageView> imageViews;
@@ -35,14 +35,17 @@ class MRenderer {
 
   // render system data - passes, pipelines, mesh data to render
   struct {
-    VkRenderPass renderPass;
+    std::unordered_map<std::string, VkRenderPass> renderPasses;
+    VkRenderPassBeginInfo renderPassBeginInfo;
+    std::unordered_map<std::string, VkFramebuffer> framebuffers;  // general purpose, swapchain uses its own set
+    std::array<VkClearValue, 2> clearColors;
     VkPipeline boundPipeline;
     RWorldPipelineSet pipelines;
     VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> descriptorSets;
     RDescriptorSetLayouts descriptorSetLayouts;
-    std::vector<REntityBindInfo> bindings;  // entities rendered during the current frame
-    std::vector<WPrimitive*> depthSortedPrimitives;  // TODO: need to also consider material sorting
+    std::vector<REntityBindInfo> bindings;                        // entities rendered during the current frame
+    std::vector<WPrimitive*> depthSortedPrimitives;               // TODO: not used, need to also consider material sorting
   } system;
 
   // multi-threaded synchronization objects
@@ -126,7 +129,7 @@ class MRenderer {
 
   TResult createDescriptorSets();
 
-  TResult createDepthResources();
+  TResult createFramebuffers();
 
   TResult createUniformBuffers();
   void destroyUniformBuffers();
@@ -333,7 +336,6 @@ class MRenderer {
 
  private:
   TResult createSwapChainImageViews();
-  TResult createFramebuffers();
 
   //
   // ***RENDERING
@@ -349,6 +351,11 @@ class MRenderer {
 
   TResult createRenderPass();
   void destroyRenderPass();
+  VkRenderPass getRenderPass(const char* name);
+  VkRenderPass getRenderPassFast(const char* name);
+
+  TResult createImageTargets();
+  TResult createDepthTarget();
 
   TResult createGraphicsPipelines();
   void destroyGraphicsPipelines();

@@ -115,7 +115,16 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
 }
 
 TResult core::MRenderer::createRenderPass() {
-  RE_LOG(Log, "Creating render pass");
+  //
+  // MAIN render pass
+  //
+  std::string passName = RP_MAIN;
+  RE_LOG(Log, "Creating %s render pass", passName);
+
+  if (!system.renderPasses.try_emplace(passName).second) {
+    RE_LOG(Critical, "Render pass %s already exists.", passName);
+    return RE_CRITICAL;
+  }
 
   VkAttachmentDescription colorAttachment{};
   colorAttachment.format = swapchain.formatData.format;
@@ -177,18 +186,65 @@ TResult core::MRenderer::createRenderPass() {
   renderPassInfo.pDependencies = &dependency;
 
   if (vkCreateRenderPass(logicalDevice.device, &renderPassInfo, nullptr,
-                         &system.renderPass) != VK_SUCCESS) {
-    RE_LOG(Critical, "render pass creation failed.");
+                         &system.renderPasses.at(passName)) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to create render pass \"%s\".", passName.c_str());
 
     return RE_CRITICAL;
   }
+
+  //
+  // CUBEMAP render pass
+  //
+  passName = RP_CUBEMAP;
+  attachments.clear();
+
+  if (!system.renderPasses.try_emplace(passName).second) {
+    RE_LOG(Critical, "Render pass %s already exists.", passName);
+    return RE_CRITICAL;
+  }
+
+  colorAttachment.format = core::vulkan::formatHDR;
+  subpassDesc.pDepthStencilAttachment = nullptr;
+  attachments = {colorAttachment};
+  dependency.dstStageMask =
+      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+      VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+  dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+  renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+  renderPassInfo.pAttachments = attachments.data();
+
+  if (vkCreateRenderPass(logicalDevice.device, &renderPassInfo, nullptr,
+                         &system.renderPasses.at(passName)) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to create render pass \"%s\".", passName.c_str());
+
+    return RE_CRITICAL;
+  }
+
+  // setup default render pass begin info
+  system.clearColors[0].color = {0.0f, 0.0f, 0.0f, 1.0f};
+  system.clearColors[1].depthStencil = {1.0f, 0};
+
+  system.renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+  system.renderPassBeginInfo.renderArea.offset = {0, 0};
+  system.renderPassBeginInfo.renderArea.extent = swapchain.imageExtent;
+  system.renderPassBeginInfo.pClearValues = system.clearColors.data();
+  system.renderPassBeginInfo.clearValueCount =
+      static_cast<uint32_t>(system.clearColors.size());
+
+  // must be set up during frame drawing
+  system.renderPassBeginInfo.renderPass = VK_NULL_HANDLE;
+  system.renderPassBeginInfo.framebuffer = VK_NULL_HANDLE;
 
   return RE_OK;
 }
 
 void core::MRenderer::destroyRenderPass() {
-  RE_LOG(Log, "Destroying render pass.");
-  vkDestroyRenderPass(logicalDevice.device, system.renderPass, nullptr);
+  RE_LOG(Log, "Destroying render passes.");
+  
+  for (auto& it : system.renderPasses) {
+    vkDestroyRenderPass(logicalDevice.device, it.second, nullptr);
+  }
 }
 
 TResult core::MRenderer::createGraphicsPipelines() {
@@ -362,7 +418,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
   graphicsPipelineInfo.pStages = shaderStages.data();
   graphicsPipelineInfo.pVertexInputState = &vertexInputInfo;
   graphicsPipelineInfo.layout = system.pipelines.layout;
-  graphicsPipelineInfo.renderPass = system.renderPass;
+  graphicsPipelineInfo.renderPass = system.renderPasses.at(RP_MAIN);
   graphicsPipelineInfo.subpass = 0;  // subpass index for render pass
   graphicsPipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
   graphicsPipelineInfo.basePipelineIndex = -1;
@@ -430,8 +486,106 @@ void core::MRenderer::destroyGraphicsPipelines() {
   vkDestroyPipelineLayout(logicalDevice.device, system.pipelines.layout, nullptr);
 }
 
+VkRenderPass core::MRenderer::getRenderPass(const char* name) {
+  if (system.renderPasses.contains(name)) {
+    return system.renderPasses.at(name);
+  }
+
+  RE_LOG(Error, "Failed to get render pass \"%s\", it does not exist.", name);
+  return VK_NULL_HANDLE;
+}
+
+VkRenderPass core::MRenderer::getRenderPassFast(const char* name) {
+  return system.renderPasses.at(name);
+}
+
 VkPipelineLayout core::MRenderer::getGraphicsPipelineLayout() {
   return system.pipelines.layout;
+}
+
+TResult core::MRenderer::createImageTargets() {
+  RTexture* pNewTexture = nullptr;
+  RTextureInfo textureInfo{};
+
+  // default front target texture
+  std::string rtName = RT_FRONT;
+
+  textureInfo = RTextureInfo{};
+  textureInfo.name = rtName;
+  textureInfo.asCubemap = false;
+  textureInfo.width = 512;
+  textureInfo.height = textureInfo.width;
+  textureInfo.format = core::vulkan::formatHDR;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.usageFlags =
+      VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+  pNewTexture = core::resources.createTexture(&textureInfo);
+
+  if (!pNewTexture) {
+    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName);
+    return RE_CRITICAL;
+  }
+
+  // default cubemap texture
+  rtName = RT_CUBEMAP;
+
+  textureInfo = RTextureInfo{};
+  textureInfo.name = rtName;
+  textureInfo.asCubemap = true;
+  textureInfo.width = 512;
+  textureInfo.height = textureInfo.width;
+  textureInfo.format = core::vulkan::formatHDR;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.usageFlags =
+      VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+  pNewTexture = core::resources.createTexture(&textureInfo);
+
+  if (!pNewTexture) {
+    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName);
+    return RE_CRITICAL;
+  }
+
+  return createDepthTarget();
+}
+
+TResult core::MRenderer::createDepthTarget() {
+#ifndef NDEBUG
+  RE_LOG(Log, "Creating depth/stencil target.");
+#endif
+
+  // may not be supported by every GPU, maybe write a format checker?
+  if (TResult result = setDepthStencilFormat() != RE_OK) {
+    return result;
+  };
+
+  // default depth/stencil texture
+  std::string rtName = RT_DEPTH;
+
+  RTextureInfo textureInfo{};
+  textureInfo.name = rtName;
+  textureInfo.asCubemap = false;
+  textureInfo.format = core::vulkan::formatDepth;
+  textureInfo.width = swapchain.imageExtent.width;
+  textureInfo.height = swapchain.imageExtent.height;
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
+                           VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+  textureInfo.memoryFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+  textureInfo.vmaMemoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+  RTexture* pNewTexture = core::resources.createTexture(&textureInfo);
+
+  if (!pNewTexture) {
+    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName);
+    return RE_CRITICAL;
+  }
+
+  return RE_OK;
 }
 
 RWorldPipelineSet core::MRenderer::getGraphicsPipelineSet() {
@@ -453,26 +607,11 @@ TResult core::MRenderer::recordFrameCommandBuffer(VkCommandBuffer commandBuffer,
     return RE_ERROR;
   }
 
-  std::array<VkClearValue, 2> clearColors;
-  clearColors[0].color = {0.0f, 0.0f, 0.0f, 1.0f};
-  clearColors[1].depthStencil = {1.0f, 0};
+  system.renderPassBeginInfo.renderPass = system.renderPasses.at(RP_MAIN);
+  system.renderPassBeginInfo.framebuffer = swapchain.framebuffers[imageIndex];
 
-  VkRenderPassBeginInfo renderPassInfo{};
-  renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-  renderPassInfo.renderPass = system.renderPass;
-  renderPassInfo.framebuffer = swapchain.framebuffers[imageIndex];
-  renderPassInfo.renderArea.offset = {0, 0};
-  renderPassInfo.renderArea.extent = swapchain.imageExtent;
-  renderPassInfo.pClearValues = clearColors.data();
-  renderPassInfo.clearValueCount = static_cast<uint32_t>(clearColors.size());
-
-  vkCmdBeginRenderPass(commandBuffer, &renderPassInfo,
+  vkCmdBeginRenderPass(commandBuffer, &system.renderPassBeginInfo,
                        VK_SUBPASS_CONTENTS_INLINE);
-
-  // bind frame scope descriptor sets
-  /*vkCmdBindDescriptorSets(
-      commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, system.pipelines.layout,
-      0, 1, &system.descriptorSets[renderView.frameInFlight], 0, nullptr);*/
 
   vkCmdSetViewport(commandBuffer, 0, 1, &swapchain.viewport);
 

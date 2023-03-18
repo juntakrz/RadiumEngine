@@ -391,31 +391,59 @@ TResult core::MRenderer::createDescriptorSets() {
   return RE_OK;
 }
 
-TResult core::MRenderer::createDepthResources() {
-  RE_LOG(Log, "Creating depth/stencil resources.");
+TResult core::MRenderer::createFramebuffers() {
+  RE_LOG(Log, "Creating swapchain framebuffers.");
 
-  // may not be supported by every GPU, maybe write a format checker?
-  if (TResult result = setDepthStencilFormat() != RE_OK) {
-    return result;
-  };
+  swapchain.framebuffers.resize(swapchain.imageViews.size());
 
-  RTextureInfo textureInfo{};
-  textureInfo.name = core::vulkan::depthTextureName;
-  textureInfo.asCubemap = false;
-  textureInfo.format = core::vulkan::formatDepth;
-  textureInfo.width = swapchain.imageExtent.width;
-  textureInfo.height = swapchain.imageExtent.height;
-  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-  textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
-                           VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-  textureInfo.memoryFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-  textureInfo.vmaMemoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
+  VkFramebufferCreateInfo framebufferInfo{};
+  framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 
-  RTexture* pDepthTexture = core::resources.createTexture(&textureInfo);
+  for (size_t i = 0; i < swapchain.framebuffers.size(); ++i) {
+    std::vector<VkImageView> attachments = {
+        swapchain.imageViews[i],
+        core::resources.getTexture(RT_DEPTH)
+            ->texture.view};
 
-  if (!pDepthTexture) {
-    RE_LOG(Critical, "Failed to create the default depth texture.");
+    framebufferInfo.renderPass = getRenderPass(RP_MAIN);
+    framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+    framebufferInfo.pAttachments = attachments.data();
+    framebufferInfo.width = swapchain.imageExtent.width;
+    framebufferInfo.height = swapchain.imageExtent.height;
+    framebufferInfo.layers = 1;
+
+    if (vkCreateFramebuffer(logicalDevice.device, &framebufferInfo, nullptr,
+                            &swapchain.framebuffers[i]) != VK_SUCCESS) {
+      RE_LOG(Critical, "failed to create swapchain framebuffer with index %d.",
+             i);
+
+      return RE_CRITICAL;
+    }
+  }
+
+  // create render-to-texture cubemap framebuffer
+  RTexture* fbTarget = core::resources.getTexture(RT_FRONT);
+  std::string fbName = FB_CUBEMAP;
+
+  framebufferInfo.renderPass = getRenderPass(RP_CUBEMAP);
+  framebufferInfo.attachmentCount = 1;
+  framebufferInfo.pAttachments = &fbTarget->texture.view;
+  framebufferInfo.width = fbTarget->texture.width;
+  framebufferInfo.height = fbTarget->texture.height;
+  framebufferInfo.layers = 1;
+
+  if (!system.framebuffers.try_emplace(fbName).second) {
+    RE_LOG(Critical,
+           "Failed to create framebuffer record for \"%s\". Already exists.",
+           fbName.c_str());
+    return RE_CRITICAL;
+  }
+
+  if (vkCreateFramebuffer(logicalDevice.device, &framebufferInfo, nullptr,
+                          &system.framebuffers.at(fbName)) != VK_SUCCESS) {
+    RE_LOG(Critical, "failed to create framebuffer with index %d.",
+           fbName.c_str());
+
     return RE_CRITICAL;
   }
 
@@ -656,7 +684,7 @@ TResult core::MRenderer::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandPools();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSceneBuffers();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createDepthResources();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createImageTargets();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createRenderPass();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSetLayouts();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createGraphicsPipelines();

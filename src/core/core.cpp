@@ -56,30 +56,7 @@ void core::run() {
   core::resources.createMaterial(&materialInfo);
 
   // test render to texture target
-  RTextureInfo textureInfo{};
-  textureInfo.name = "RT_Front";
-  textureInfo.asCubemap = false;
-  textureInfo.width = 512;
-  textureInfo.height = textureInfo.width;
-  textureInfo.format = core::vulkan::formatHDR;
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-  textureInfo.usageFlags = 
-      VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-  core::resources.createTexture(&textureInfo);
-
-  textureInfo.name = "RT_Cube";
-  textureInfo.asCubemap = true;
-  textureInfo.width = 512;
-  textureInfo.height = textureInfo.width;
-  textureInfo.format = core::vulkan::formatHDR;
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-  textureInfo.usageFlags =
-      VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-  core::resources.createTexture(&textureInfo);
+  
   //
 
   // create map models
