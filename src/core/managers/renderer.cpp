@@ -405,7 +405,7 @@ TResult core::MRenderer::createFramebuffers() {
         core::resources.getTexture(RT_DEPTH)
             ->texture.view};
 
-    framebufferInfo.renderPass = getRenderPass(RP_MAIN);
+    framebufferInfo.renderPass = getVkRenderPass(ERenderPass::PBR);
     framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
     framebufferInfo.pAttachments = attachments.data();
     framebufferInfo.width = swapchain.imageExtent.width;
@@ -425,7 +425,7 @@ TResult core::MRenderer::createFramebuffers() {
   RTexture* fbTarget = core::resources.getTexture(RT_FRONT);
   std::string fbName = FB_FRONT;
 
-  framebufferInfo.renderPass = getRenderPass(RP_CUBEMAP);
+  framebufferInfo.renderPass = getVkRenderPass(ERenderPass::Environment);
   framebufferInfo.attachmentCount = 1;
   framebufferInfo.pAttachments = &fbTarget->texture.view;
   framebufferInfo.width = fbTarget->texture.width;
@@ -684,11 +684,14 @@ TResult core::MRenderer::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandPools();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSceneBuffers();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createImageTargets();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createRenderPass();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createImageTargets();           // render targets, e.g. front, cube, depth
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSetLayouts();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createGraphicsPipelines();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createFramebuffers();
+
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createRenderPasses();           // A
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createGraphicsPipelines();      // B
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createFramebuffers();           // C
+  if (chkResult <= RE_ERRORLIMIT) chkResult = configureRenderPasses();        // connect A, B, C together
+
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createUniformBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorPool();
@@ -705,7 +708,7 @@ void core::MRenderer::deinitialize() {
   destroyCoreCommandBuffers();
   destroyCoreCommandPools();
   destroyGraphicsPipelines();
-  destroyRenderPass();
+  destroyRenderPasses();
   destroySceneBuffers();
   destroySurface();
   core::actors.destroyAllPawns();

@@ -136,28 +136,6 @@ std::vector<VkExtensionProperties> core::MRenderer::getInstanceExtensions() {
   return extensionProperties;
 }
 
-bool core::MRenderer::checkPipeline(uint32_t pipelineFlags,
-                                    EPipeline pipelineFlag) {
-  return pipelineFlags & pipelineFlag;
-}
-
-VkPipeline core::MRenderer::getPipeline(EPipeline pipelineFlag) {
-  switch (pipelineFlag) {
-    case EPipeline::OpaqueCullBack: {
-      return system.pipelines.PBR;
-    }
-    case EPipeline::OpaqueCullNone: {
-      return system.pipelines.PBR_DS;
-    }
-    case EPipeline::BlendCullBack: {    // TODO: replace it with alpha-specific pipeline
-      return system.pipelines.PBR;
-    }
-    default: {
-      return VK_NULL_HANDLE;
-    }
-  }
-}
-
 // PUBLIC
 
 TResult core::MRenderer::createBuffer(EBufferMode mode, VkDeviceSize size, RBuffer& outBuffer, void* inData)

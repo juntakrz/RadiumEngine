@@ -74,23 +74,22 @@ class MRenderer {
 
   // render system data - passes, pipelines, mesh data to render
   struct {
-    std::unordered_map<std::string, VkRenderPass> renderPasses;
+    std::unordered_map<EPipelineLayout, VkPipelineLayout> layouts;
+    std::unordered_map<EPipeline, VkPipeline> pipelines;
+    std::unordered_map<ERenderPass, RRenderPass> renderPasses;
     VkRenderPassBeginInfo renderPassBeginInfo;
     std::unordered_map<std::string, VkFramebuffer> framebuffers;  // general purpose, swapchain uses its own set
     std::array<VkClearValue, 2> clearColors;
-    VkPipeline boundPipeline;
-    RWorldPipelineSet pipelines;
+
     VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> descriptorSets;
     RDescriptorSetLayouts descriptorSetLayouts;
     std::vector<REntityBindInfo> bindings;                        // entities rendered during the current frame
-    std::vector<WPrimitive*> depthSortedPrimitives;               // TODO: not used, need to also consider material sorting
   } system;
 
   // current camera view data
   struct {
     RCameraInfo cameraSettings;
-
     ACamera* pActiveCamera = nullptr;
     std::vector<RBuffer> modelViewProjectionBuffers;
     RSceneUBO worldViewProjectionData;
@@ -111,6 +110,7 @@ class MRenderer {
     void* pCurrentMesh = nullptr;
     void* pCurrentMaterial = nullptr;
     void* pCurrentPipeline = nullptr;
+    RRenderPass* pCurrentRenderPass = nullptr;
     uint32_t frameInFlight = 0;
     uint32_t framesRendered = 0;
 
@@ -203,11 +203,6 @@ class MRenderer {
   TResult checkInstanceValidationLayers();
   std::vector<const char*> getRequiredInstanceExtensions();
   std::vector<VkExtensionProperties> getInstanceExtensions();
-
-  // check if pipeline flag is present in the flag array
-  bool checkPipeline(uint32_t pipelineFlags, EPipeline pipelineFlag);
-
-  VkPipeline getPipeline(EPipeline pipelineFlag);
 
  public:
   /* create buffer for CPU/iGPU or dedicated GPU use:
@@ -371,10 +366,12 @@ class MRenderer {
   // renders skybox pass and generates PBR cubemaps for future passes
   void renderEnvironmentMaps();
 
-  TResult createRenderPass();
-  void destroyRenderPass();
-  VkRenderPass getRenderPass(const char* name);
-  VkRenderPass getRenderPassFast(const char* name);
+  TResult createRenderPasses();
+  void destroyRenderPasses();
+  TResult configureRenderPasses();
+
+  RRenderPass* getRenderPass(ERenderPass type);
+  VkRenderPass& getVkRenderPass(ERenderPass type);
 
   TResult createImageTargets();
   TResult createDepthTarget();
@@ -382,13 +379,14 @@ class MRenderer {
   TResult createGraphicsPipelines();
   void destroyGraphicsPipelines();
 
- public:
-  VkPipelineLayout getGraphicsPipelineLayout();
-  RWorldPipelineSet getGraphicsPipelineSet();
-  VkPipeline getBoundPipeline();
+  VkPipelineLayout& getPipelineLayout(EPipelineLayout type);
+  VkPipeline& getPipeline(EPipeline type);
 
-  TResult doRenderPass(VkCommandBuffer commandBuffer, uint32_t imageIndex,
-                       const char* renderPass);
+  // check if pipeline flag is present in the flag array
+  bool checkPipeline(uint32_t pipelineFlags, EPipeline pipelineFlag);
+
+ public:
+  TResult doRenderPass(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
   TResult drawFrame();
 

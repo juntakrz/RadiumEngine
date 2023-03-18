@@ -42,6 +42,17 @@ void ACamera::setRotation(const glm::vec3& newRotation) noexcept {
   m_transformationData.initial.rotation =
       glm::quat(glm::vec3(m_pitch, newRotation.y, newRotation.z));
   m_transformationData.rotation = m_transformationData.initial.rotation;
+
+  switch (m_viewData.bAnchorFocusPoint) {
+    case true: {
+      // code for when the camera should be rotated around its focus point
+      break;
+    }
+    case false: {
+      m_viewData.focusPoint = glm::rotate(m_transformationData.rotation,
+                                          m_transformationData.frontVector);
+    }
+  }
 }
 
 void ACamera::rotate(const glm::vec3& vector, float angle) noexcept {

@@ -46,12 +46,23 @@ enum EPipeline : uint32_t {
   BlendCullBack = 64
 };
 
+enum class EPipelineLayout {
+  Null,
+  Scene
+};
+
 enum class EPrimitiveType {
   Null,
   Plane,
   Sphere,
   Cube,
   Custom
+};
+
+enum class ERenderPass {
+  Null,
+  Environment,
+  PBR
 };
 
 struct RVkQueueFamilyIndices {
@@ -131,19 +142,19 @@ struct RBuffer {
   VmaAllocationInfo allocInfo;
 };
 
+struct RRenderPass {
+  VkRenderPass renderPass;
+  std::vector<EPipeline> usedPipelines;
+  VkPipelineLayout usedLayout;
+
+  //RRenderPass(){};
+};
+
 // expanding KTX structure
 struct RVulkanTexture : public ktxVulkanTexture {
   VkImageView view;
   VkSampler sampler;
   VkDescriptorImageInfo descriptor;
-};
-
-// pipelines used by the 3D world
-struct RWorldPipelineSet {
-  VkPipeline PBR;           // standard PBR pipeline
-  VkPipeline PBR_DS;        // double sided PBR pipeline
-  VkPipeline skybox;        // depth independent skybox/sphere
-  VkPipelineLayout layout;  // general 3D world pipeline layout
 };
 
 struct RVertex {

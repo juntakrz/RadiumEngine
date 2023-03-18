@@ -34,27 +34,15 @@ void core::MRenderer::drawBoundEntities(VkCommandBuffer cmdBuffer) {
 
     auto& primitives = pModel->getPrimitives();
 
-    vkCmdBindDescriptorSets(
-        cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, system.pipelines.layout, 0,
+    vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            renderView.pCurrentRenderPass->usedLayout, 0,
         1, &system.descriptorSets[renderView.frameInFlight], 0, nullptr);
 
-    for (const auto& primitive : primitives) {
-      renderPrimitive(cmdBuffer, primitive, EPipeline::OpaqueCullBack,
-                      &bindInfo);
-    }
-
-    for (const auto& primitive : primitives) {
-      renderPrimitive(cmdBuffer, primitive, EPipeline::OpaqueCullNone,
-                      &bindInfo);
-    }
-
-    for (const auto& primitive : primitives) {
-      renderPrimitive(cmdBuffer, primitive, EPipeline::MaskCullBack, &bindInfo);
-    }
-
-    for (const auto& primitive : primitives) {
-      renderPrimitive(cmdBuffer, primitive, EPipeline::BlendCullBack,
-                      &bindInfo);
+    for (auto& pipeline : renderView.pCurrentRenderPass->usedPipelines) {
+      for (const auto& primitive : primitives) {
+        renderPrimitive(cmdBuffer, primitive, pipeline,
+                        &bindInfo);
+      }
     }
   }
 }
@@ -87,7 +75,7 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
   // mesh descriptor set is at binding 1
   if (renderView.pCurrentMesh != pMesh) {
     vkCmdBindDescriptorSets(
-        cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, getGraphicsPipelineLayout(),
+        cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentRenderPass->usedLayout,
         1, 1, &pMesh->uniformBufferData.descriptorSet, 0, nullptr);
     renderView.pCurrentMesh = pMesh;
   }
@@ -95,10 +83,10 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
   // bind material descriptor set only if material is different (binding 2)
   if (renderView.pCurrentMaterial != pPrimitive->pMaterial) {
     vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            getGraphicsPipelineLayout(), 2, 1,
+                            renderView.pCurrentRenderPass->usedLayout, 2, 1,
                             &pPrimitive->pMaterial->descriptorSet, 0, nullptr);
 
-    vkCmdPushConstants(cmdBuffer, getGraphicsPipelineLayout(),
+    vkCmdPushConstants(cmdBuffer, renderView.pCurrentRenderPass->usedLayout,
                        VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(RMaterialPCB),
                        &pPrimitive->pMaterial->pushConstantBlock);
 
@@ -129,17 +117,15 @@ void core::MRenderer::renderEnvironmentMaps() {
 
 }
 
-TResult core::MRenderer::createRenderPass() {
+TResult core::MRenderer::createRenderPasses() {
   //
   // MAIN render pass
   //
-  std::string passName = RP_MAIN;
-  RE_LOG(Log, "Creating %s render pass", passName);
+  ERenderPass passType = ERenderPass::PBR;
 
-  if (!system.renderPasses.try_emplace(passName).second) {
-    RE_LOG(Critical, "Render pass %s already exists.", passName);
-    return RE_CRITICAL;
-  }
+  RE_LOG(Log, "Creating render pass E%d", passType);
+
+  system.renderPasses.emplace(passType, RRenderPass{});
 
   VkAttachmentDescription colorAttachment{};
   colorAttachment.format = swapchain.formatData.format;
@@ -201,8 +187,8 @@ TResult core::MRenderer::createRenderPass() {
   renderPassInfo.pDependencies = &dependency;
 
   if (vkCreateRenderPass(logicalDevice.device, &renderPassInfo, nullptr,
-                         &system.renderPasses.at(passName)) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create render pass \"%s\".", passName.c_str());
+                         &getVkRenderPass(passType)) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to create render pass E%d.", passType);
 
     return RE_CRITICAL;
   }
@@ -210,16 +196,13 @@ TResult core::MRenderer::createRenderPass() {
   //
   // CUBEMAP render pass
   //
-  passName = RP_CUBEMAP;
+  passType = ERenderPass::Environment;
   attachments.clear();
 
   const uint32_t numMips = static_cast<uint32_t>(floor(
                                log2(core::vulkan::envCubeResolution))) + 1;
 
-  if (!system.renderPasses.try_emplace(passName).second) {
-    RE_LOG(Critical, "Render pass %s already exists.", passName);
-    return RE_CRITICAL;
-  }
+  system.renderPasses.emplace(passType, RRenderPass{});
 
   colorAttachment.format = core::vulkan::formatHDR16;
   subpassDesc.pDepthStencilAttachment = nullptr;
@@ -233,8 +216,9 @@ TResult core::MRenderer::createRenderPass() {
   renderPassInfo.pAttachments = attachments.data();
 
   if (vkCreateRenderPass(logicalDevice.device, &renderPassInfo, nullptr,
-                         &system.renderPasses.at(passName)) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create render pass \"%s\".", passName.c_str());
+                         &getVkRenderPass(passType)) !=
+      VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to create render pass E%d.", passType);
 
     return RE_CRITICAL;
   }
@@ -257,12 +241,23 @@ TResult core::MRenderer::createRenderPass() {
   return RE_OK;
 }
 
-void core::MRenderer::destroyRenderPass() {
+void core::MRenderer::destroyRenderPasses() {
   RE_LOG(Log, "Destroying render passes.");
   
   for (auto& it : system.renderPasses) {
-    vkDestroyRenderPass(logicalDevice.device, it.second, nullptr);
+    vkDestroyRenderPass(logicalDevice.device, it.second.renderPass, nullptr);
   }
+}
+
+TResult core::MRenderer::configureRenderPasses() {
+  // configure main 'scene', PBR render pass
+  RRenderPass* pRenderPass = getRenderPass(ERenderPass::PBR);
+  pRenderPass->usedLayout = getPipelineLayout(EPipelineLayout::Scene);
+  pRenderPass->usedPipelines.emplace_back(EPipeline::OpaqueCullBack);
+  pRenderPass->usedPipelines.emplace_back(EPipeline::OpaqueCullNone);
+  pRenderPass->usedPipelines.emplace_back(EPipeline::BlendCullBack);
+
+  return RE_OK;
 }
 
 TResult core::MRenderer::createGraphicsPipelines() {
@@ -379,7 +374,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
   materialPushConstRange.offset = 0;
   materialPushConstRange.size = sizeof(RMaterialPCB);
 
-  // pipeline layout for 3D world
+  // pipeline layout for the main 'scene'
   std::vector<VkDescriptorSetLayout> descriptorSetLayouts{
       system.descriptorSetLayouts.scene,
       system.descriptorSetLayouts.mesh,
@@ -394,8 +389,12 @@ TResult core::MRenderer::createGraphicsPipelines() {
   layoutInfo.pushConstantRangeCount = 1;
   layoutInfo.pPushConstantRanges = &materialPushConstRange;
 
+  EPipelineLayout layoutType = EPipelineLayout::Scene;
+
+  system.layouts.emplace(layoutType, VK_NULL_HANDLE);
+
   if (vkCreatePipelineLayout(logicalDevice.device, &layoutInfo, nullptr,
-                             &system.pipelines.layout) != VK_SUCCESS) {
+                             &getPipelineLayout(layoutType)) != VK_SUCCESS) {
     RE_LOG(Critical, "failed to create graphics pipeline layout.");
 
     return RE_CRITICAL;
@@ -413,7 +412,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
       static_cast<uint32_t>(attributeDescs.size());
   vertexInputInfo.pVertexAttributeDescriptions = attributeDescs.data();
 
-  // 'PBR' pipeline
+  // 'PBR single sided' pipeline, uses 'PBR' render pass and 'scene' layout
 #ifndef NDEBUG
   RE_LOG(Log, "Setting up PBR pipeline.");
 #endif
@@ -435,27 +434,31 @@ TResult core::MRenderer::createGraphicsPipelines() {
   graphicsPipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
   graphicsPipelineInfo.pStages = shaderStages.data();
   graphicsPipelineInfo.pVertexInputState = &vertexInputInfo;
-  graphicsPipelineInfo.layout = system.pipelines.layout;
-  graphicsPipelineInfo.renderPass = system.renderPasses.at(RP_MAIN);
+  graphicsPipelineInfo.layout = getPipelineLayout(EPipelineLayout::Scene);
+  graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::PBR);
   graphicsPipelineInfo.subpass = 0;  // subpass index for render pass
   graphicsPipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
   graphicsPipelineInfo.basePipelineIndex = -1;
 
+  system.pipelines.emplace(EPipeline::OpaqueCullBack, VK_NULL_HANDLE);
+
   if (vkCreateGraphicsPipelines(logicalDevice.device, VK_NULL_HANDLE, 1,
                                 &graphicsPipelineInfo, nullptr,
-                                &system.pipelines.PBR) != VK_SUCCESS) {
+                                &getPipeline(OpaqueCullBack)) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create PBR graphics pipeline.");
 
     return RE_CRITICAL;
   }
 
   
-  // 'PBR doublesided' pipeline
+  // 'PBR doublesided' pipeline, uses 'PBR' render pass and 'scene' layout
   rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
+
+  system.pipelines.emplace(EPipeline::OpaqueCullNone, VK_NULL_HANDLE);
 
   if (vkCreateGraphicsPipelines(logicalDevice.device, VK_NULL_HANDLE, 1,
                                 &graphicsPipelineInfo, nullptr,
-                                &system.pipelines.PBR_DS) != VK_SUCCESS) {
+                                &getPipeline(OpaqueCullNone)) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create PBR doublesided graphics pipeline.");
 
     return RE_CRITICAL;
@@ -480,9 +483,11 @@ TResult core::MRenderer::createGraphicsPipelines() {
   depthStencilInfo.depthTestEnable = VK_FALSE;
   depthStencilInfo.depthWriteEnable = VK_FALSE;
 
+  system.pipelines.emplace(EPipeline::Skybox, VK_NULL_HANDLE);
+
   if (vkCreateGraphicsPipelines(logicalDevice.device, VK_NULL_HANDLE, 1,
                                 &graphicsPipelineInfo, nullptr,
-                                &system.pipelines.skybox) != VK_SUCCESS) {
+                                &getPipeline(Skybox)) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create skybox graphics pipeline.");
 
     return RE_CRITICAL;
@@ -498,27 +503,27 @@ TResult core::MRenderer::createGraphicsPipelines() {
 void core::MRenderer::destroyGraphicsPipelines() {
   RE_LOG(Log, "Shutting down graphics pipeline.");
   destroyDescriptorSetLayouts();
-  vkDestroyPipeline(logicalDevice.device, system.pipelines.PBR, nullptr);
-  vkDestroyPipeline(logicalDevice.device, system.pipelines.PBR_DS, nullptr);
-  vkDestroyPipeline(logicalDevice.device, system.pipelines.skybox, nullptr);
-  vkDestroyPipelineLayout(logicalDevice.device, system.pipelines.layout, nullptr);
-}
 
-VkRenderPass core::MRenderer::getRenderPass(const char* name) {
-  if (system.renderPasses.contains(name)) {
-    return system.renderPasses.at(name);
+  for (auto& pipeline : system.pipelines) {
+    vkDestroyPipeline(logicalDevice.device, pipeline.second, nullptr);
   }
 
-  RE_LOG(Error, "Failed to get render pass \"%s\", it does not exist.", name);
+  for (auto& layout : system.layouts) {
+    vkDestroyPipelineLayout(logicalDevice.device, layout.second, nullptr);
+  }
+}
+
+RRenderPass* core::MRenderer::getRenderPass(ERenderPass type) {
+  if (system.renderPasses.contains(type)) {
+    return &system.renderPasses.at(type);
+  }
+
+  RE_LOG(Error, "Failed to get render pass E%d, it does not exist.", type);
   return VK_NULL_HANDLE;
 }
 
-VkRenderPass core::MRenderer::getRenderPassFast(const char* name) {
-  return system.renderPasses.at(name);
-}
-
-VkPipelineLayout core::MRenderer::getGraphicsPipelineLayout() {
-  return system.pipelines.layout;
+VkRenderPass& core::MRenderer::getVkRenderPass(ERenderPass type) {
+  return system.renderPasses.at(type).renderPass;
 }
 
 TResult core::MRenderer::createImageTargets() {
@@ -606,14 +611,22 @@ TResult core::MRenderer::createDepthTarget() {
   return RE_OK;
 }
 
-RWorldPipelineSet core::MRenderer::getGraphicsPipelineSet() {
-  return system.pipelines;
+VkPipelineLayout& core::MRenderer::getPipelineLayout(EPipelineLayout type) {
+  return system.layouts.at(type);
 }
 
-VkPipeline core::MRenderer::getBoundPipeline() { return system.boundPipeline; }
+VkPipeline& core::MRenderer::getPipeline(EPipeline type) {
+  // not error checked
+  return system.pipelines.at(type);
+}
+
+bool core::MRenderer::checkPipeline(uint32_t pipelineFlags,
+                                    EPipeline pipelineFlag) {
+  return pipelineFlags & pipelineFlag;
+}
 
 TResult core::MRenderer::doRenderPass(VkCommandBuffer commandBuffer,
-                                     uint32_t imageIndex, const char* renderPass) {
+                                     uint32_t imageIndex) {
   VkCommandBufferBeginInfo beginInfo{};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   beginInfo.pInheritanceInfo = nullptr;
@@ -625,7 +638,8 @@ TResult core::MRenderer::doRenderPass(VkCommandBuffer commandBuffer,
     return RE_ERROR;
   }
 
-  system.renderPassBeginInfo.renderPass = system.renderPasses.at(renderPass);
+  system.renderPassBeginInfo.renderPass =
+      renderView.pCurrentRenderPass->renderPass;
   system.renderPassBeginInfo.framebuffer = swapchain.framebuffers[imageIndex];
 
   vkCmdBeginRenderPass(commandBuffer, &system.renderPassBeginInfo,
@@ -696,8 +710,9 @@ TResult core::MRenderer::drawFrame() {
 
   vkResetCommandBuffer(command.buffersGraphics[renderView.frameInFlight], NULL);
 
-  // main render pass
-  doRenderPass(command.buffersGraphics[renderView.frameInFlight], imageIndex, RP_MAIN);
+  // main PBR render pass
+  renderView.pCurrentRenderPass = getRenderPass(ERenderPass::PBR);
+  doRenderPass(command.buffersGraphics[renderView.frameInFlight], imageIndex);
 
   // wait until image to write color data to is acquired
   VkSemaphore waitSems[] = {sync.semImgAvailable[renderView.frameInFlight]};
