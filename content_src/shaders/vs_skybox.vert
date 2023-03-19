@@ -12,14 +12,13 @@ layout (set = 1, binding = 0) uniform UBOMesh {
 } mesh;
 
 layout(location = 0) in vec3 inPos;
-layout(location = 2) in vec2 inUV0;
 layout(location = 6) in vec4 inColor0;
 
-layout(location = 0) out vec2 outUV0;
+layout(location = 0) out vec3 outTexCoord;
 layout(location = 1) out vec4 outColor0;
 
 void main(){
-	outUV0 = inUV0;
+	outTexCoord = inPos;
 	outColor0 = inColor0;
 	
 	mat4 view = scene.view;

@@ -39,9 +39,6 @@ class ABase {
   float m_rotationModifier = 1.0f;
   float m_scalingModifier = 1.0f;
 
- public:
-  std::string name;
-
  protected:
   ABase(){};
   virtual ~ABase(){};
@@ -69,6 +66,10 @@ class ABase {
 
   virtual void translate(const glm::vec3& delta) noexcept;
 
+  // set absolute rotation in degrees
+  virtual void setRotation(float x, float y, float z) noexcept {};
+
+  // set absolute rotation in radians
   virtual void setRotation(const glm::vec3& newRotation) noexcept;
   virtual void setRotation(const glm::vec3& newVector, float newAngle) noexcept;
   virtual void setRotation(const glm::quat& newRotation) noexcept;
@@ -88,6 +89,8 @@ class ABase {
   void setTranslationModifier(float newModifier);
   void setRotationModifier(float newModifier);
   void setScalingModifier(float newModifier);
+
+  void setName(const char* name);
 
   const EActorType& typeId();
 };

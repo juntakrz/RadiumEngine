@@ -122,6 +122,15 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   beginInfo.pInheritanceInfo = nullptr;
   beginInfo.flags = 0;
 
+  // store active cameras original transformations and setup for cube rendering
+  glm::quat originalRotation = view.pActiveCamera->getRotation();
+  glm::vec4 originalPerspective = view.pActiveCamera->getPerspective();
+  view.pActiveCamera->setFOV(90.0f);
+  view.pActiveCamera->setAspectRatio(1.0f);
+  view.pActiveCamera->setRotation(0.0f, 180.0f, 0.0f);
+
+  updateSceneUBO(renderView.frameInFlight);
+
   if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
     RE_LOG(Error, "failure when trying to record command buffer.");
     return;
@@ -132,6 +141,7 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   system.renderPassBeginInfo.renderArea.extent = {
       core::vulkan::envCubeResolution, core::vulkan::envCubeResolution
   };
+  //system.renderPassBeginInfo.framebuffer = system.framebuffers.at(FB_FRONT);
   system.renderPassBeginInfo.framebuffer = system.framebuffers.at(FB_FRONT);
 
   vkCmdBeginRenderPass(commandBuffer, &system.renderPassBeginInfo,
@@ -142,16 +152,16 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
 
   VkRect2D scissor{};
   scissor.offset = {0, 0};
-  scissor.extent.width = core::resources.getTexture(RT_FRONT)->texture.width;
-  scissor.extent.height = core::resources.getTexture(RT_FRONT)->texture.height;
+  scissor.extent.width = core::resources.getTexture(RT_CUBEMAP)->texture.width;
+  scissor.extent.height = core::resources.getTexture(RT_CUBEMAP)->texture.height;
 
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-  /* VkDeviceSize offset = 0u;
+  VkDeviceSize offset = 0u;
   vkCmdBindVertexBuffers(commandBuffer, 0, 1, &scene.vertexBuffer.buffer,
                          &offset);
   vkCmdBindIndexBuffer(commandBuffer, scene.indexBuffer.buffer, 0,
-                       VK_INDEX_TYPE_UINT32);*/
+                       VK_INDEX_TYPE_UINT32);
 
   drawBoundEntities(commandBuffer);
 
@@ -160,6 +170,15 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to end writing to command buffer.");
   }
+
+  //flushCommandBuffer(commandBuffer, ECmdType::Graphics, false, true);
+
+  // reset active camera to original values
+  view.pActiveCamera->setRotation(originalRotation);
+  view.pActiveCamera->setPerspective(
+      originalPerspective.x, originalPerspective.y, originalPerspective.z,
+      originalPerspective.w
+  );
 
   // no need to render new environment maps every frame
   renderView.doEnvironmentPass = false;
@@ -553,6 +572,16 @@ TResult core::MRenderer::createGraphicsPipelines() {
     return RE_CRITICAL;
   }
 
+  system.pipelines.emplace(EPipeline::Environment, VK_NULL_HANDLE);
+
+  if (vkCreateGraphicsPipelines(logicalDevice.device, VK_NULL_HANDLE, 1,
+                                &graphicsPipelineInfo, nullptr,
+                                &getPipeline(Environment)) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to create environment graphics pipeline.");
+
+    return RE_CRITICAL;
+  }
+
   for (auto stage : shaderStages) {
     vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
   }
@@ -758,9 +787,6 @@ void core::MRenderer::renderFrame() {
   // get new delta time between frames
   core::time.tickTimer();
 
-  // update view, projection and camera position
-  updateSceneUBO(renderView.frameInFlight);
-
   // reset fences if we will do any work this frame e.g. no swap chain
   // recreation
   vkResetFences(logicalDevice.device, 1,
@@ -771,12 +797,14 @@ void core::MRenderer::renderFrame() {
   VkCommandBuffer cmdBuffer = command.buffersGraphics[renderView.frameInFlight];
 
   if (renderView.doEnvironmentPass) {
-    renderEnvironmentMaps(cmdBuffer);
+    //renderEnvironmentMaps(cmdBuffer);
   }
-
-  // main PBR render pass
-  renderView.pCurrentRenderPass = getRenderPass(ERenderPass::PBR);
-  doRenderPass(cmdBuffer, imageIndex);
+  renderEnvironmentMaps(cmdBuffer);
+  // main PBR render pass:
+  // update view, projection and camera position
+  //updateSceneUBO(renderView.frameInFlight);
+  //renderView.pCurrentRenderPass = getRenderPass(ERenderPass::PBR);
+  //doRenderPass(cmdBuffer, imageIndex);
 
   // wait until image to write color data to is acquired
   VkSemaphore waitSems[] = {sync.semImgAvailable[renderView.frameInFlight]};

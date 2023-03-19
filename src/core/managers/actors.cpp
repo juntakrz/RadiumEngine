@@ -12,19 +12,21 @@ ACamera* core::MActors::createCamera(const char* name,
                                      RCameraInfo* cameraSettings) {
   if (m_actors.cameras.try_emplace(name).second) {
     m_actors.cameras.at(name) = std::make_unique<ACamera>();
+    ACamera* pCamera = m_actors.cameras.at(name).get();
+    pCamera->setName(name);
 
     if (cameraSettings) {
-      m_actors.cameras.at(name)->setPerspective(
+      pCamera->setPerspective(
           cameraSettings->FOV, cameraSettings->aspectRatio,
           cameraSettings->nearZ, cameraSettings->farZ);
     } else {
-      m_actors.cameras.at(name)->setPerspective(
+      pCamera->setPerspective(
           config::FOV, config::getAspectRatio(),
           RE_NEARZ, config::viewDistance);
     }
 
     RE_LOG(Log, "Created camera '%s'.", name);
-    return m_actors.cameras.at(name).get();
+    return pCamera;
   }
 
   RE_LOG(Error,
