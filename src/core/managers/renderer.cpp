@@ -1037,10 +1037,8 @@ TResult core::MRenderer::createGraphicsPipelines() {
 #endif
 
   shaderStages.clear();
-  shaderStages = {
-      loadShader("vs_skybox.spv",
-                 VK_SHADER_STAGE_VERTEX_BIT),  // replace with skybox shaders
-      loadShader("fs_skybox.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
+  shaderStages = {loadShader("vs_skybox.spv", VK_SHADER_STAGE_VERTEX_BIT),
+                  loadShader("fs_skybox.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
 
   rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
 
@@ -1055,6 +1053,9 @@ TResult core::MRenderer::createGraphicsPipelines() {
   }
 
   system.pipelines.emplace(EPipeline::Environment, VK_NULL_HANDLE);
+
+  graphicsPipelineInfo.layout = getPipelineLayout(EPipelineLayout::Environment);
+  graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::Environment);
 
   if (vkCreateGraphicsPipelines(logicalDevice.device, VK_NULL_HANDLE, 1,
                                 &graphicsPipelineInfo, nullptr,

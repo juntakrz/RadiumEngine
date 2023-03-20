@@ -391,7 +391,8 @@ class MRenderer {
   void renderEnvironmentMaps(VkCommandBuffer commandBuffer);
 
  public:
-  void doRenderPass(VkCommandBuffer commandBuffer, std::vector<VkDescriptorSet>& sets);
+  void doRenderPass(VkCommandBuffer commandBuffer,
+                    std::vector<VkDescriptorSet>& sets, uint32_t imageIndex);
 
   void renderFrame();
 

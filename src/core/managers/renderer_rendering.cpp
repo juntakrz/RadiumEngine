@@ -104,17 +104,6 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
 }
 
 void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
-  // prepare initial environment rendering data
-  /* environment.pushConstantRanges[0] = VkPushConstantRange{};
-  environment.pushConstantRanges[1] = VkPushConstantRange{};
-
-  environment.pushConstantRanges[0].stageFlags =
-      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-  environment.pushConstantRanges[1].stageFlags =
-      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-  environment.pushConstantRanges[0].size = environment.envPCBSize;
-  environment.pushConstantRanges[1].size = environment.irrPCBSize;*/
-
   uint32_t offsets[] = {0};
 
   // environment render pass
@@ -135,7 +124,7 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   system.renderPassBeginInfo.renderArea.extent = {
       core::vulkan::envCubeResolution, core::vulkan::envCubeResolution
   };
-  //system.renderPassBeginInfo.framebuffer = system.framebuffers.at(FB_FRONT);
+
   system.renderPassBeginInfo.framebuffer = system.framebuffers.at(FB_FRONT);
 
   vkCmdBeginRenderPass(commandBuffer, &system.renderPassBeginInfo,
@@ -162,10 +151,6 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
                           &environment.descriptorSets[renderView.frameInFlight],
                           1, offsets);
 
-  vkCmdPushConstants(commandBuffer, renderView.pCurrentRenderPass->usedLayout,
-                     VK_SHADER_STAGE_VERTEX_BIT, 0, environment.envPCBSize,
-                     &environment.envPushBlock);
-
   drawBoundEntities(commandBuffer);
 
   vkCmdEndRenderPass(commandBuffer);
@@ -181,7 +166,8 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
 }
 
 void core::MRenderer::doRenderPass(VkCommandBuffer commandBuffer,
-                                     std::vector<VkDescriptorSet>& sets) {
+                                   std::vector<VkDescriptorSet>& sets,
+                                   uint32_t imageIndex) {
   VkCommandBufferBeginInfo beginInfo{};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   beginInfo.pInheritanceInfo = nullptr;
@@ -194,27 +180,29 @@ void core::MRenderer::doRenderPass(VkCommandBuffer commandBuffer,
 
   system.renderPassBeginInfo.renderPass =
       renderView.pCurrentRenderPass->renderPass;
-  system.renderPassBeginInfo.renderArea.extent = {
-      config::renderWidth, config::renderHeight
-  };
-  system.renderPassBeginInfo.framebuffer =
-      swapchain.framebuffers[renderView.frameInFlight];
+  system.renderPassBeginInfo.renderArea.extent = {config::renderWidth,
+                                                  config::renderHeight};
+
+  // swapchain image index is different from frame in flight
+  system.renderPassBeginInfo.framebuffer = swapchain.framebuffers[imageIndex];
 
   vkCmdBeginRenderPass(commandBuffer, &system.renderPassBeginInfo,
                        VK_SUBPASS_CONTENTS_INLINE);
 
-  vkCmdSetViewport(commandBuffer, 0, 1, &renderView.pCurrentRenderPass->viewport);
+  vkCmdSetViewport(commandBuffer, 0, 1,
+                   &renderView.pCurrentRenderPass->viewport);
 
   VkRect2D scissor{};
   scissor.offset = {0, 0};
   scissor.extent = swapchain.imageExtent;
-  
+
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
   VkDeviceSize offset = 0u;
   vkCmdBindVertexBuffers(commandBuffer, 0, 1, &scene.vertexBuffer.buffer,
                          &offset);
-  vkCmdBindIndexBuffer(commandBuffer, scene.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+  vkCmdBindIndexBuffer(commandBuffer, scene.indexBuffer.buffer, 0,
+                       VK_INDEX_TYPE_UINT32);
 
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           renderView.pCurrentRenderPass->usedLayout, 0, 1,
@@ -270,12 +258,12 @@ void core::MRenderer::renderFrame() {
   if (renderView.doEnvironmentPass) {
     //renderEnvironmentMaps(cmdBuffer);
   }
-  //renderEnvironmentMaps(cmdBuffer);
+  renderEnvironmentMaps(cmdBuffer);
   // main PBR render pass:
   // update view, projection and camera position
   updateSceneUBO(renderView.frameInFlight);
   renderView.pCurrentRenderPass = getRenderPass(ERenderPass::PBR);
-  doRenderPass(cmdBuffer, system.descriptorSets);
+  doRenderPass(cmdBuffer, system.descriptorSets, imageIndex);
 
   // wait until image to write color data to is acquired
   VkSemaphore waitSems[] = {sync.semImgAvailable[renderView.frameInFlight]};
@@ -338,7 +326,7 @@ void core::MRenderer::renderFrame() {
   }
 
   sync.asyncUpdateEntities.update();
-  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
   renderView.frameInFlight = ++renderView.frameInFlight % MAX_FRAMES_IN_FLIGHT;
   ++renderView.framesRendered;
 }
