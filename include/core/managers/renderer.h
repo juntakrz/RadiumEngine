@@ -157,6 +157,25 @@ class MRenderer {
   TResult createUniformBuffers();
   void destroyUniformBuffers();
 
+  TResult createRenderPasses();
+  void destroyRenderPasses();
+  TResult configureRenderPasses();
+
+  RRenderPass* getRenderPass(ERenderPass type);
+  VkRenderPass& getVkRenderPass(ERenderPass type);
+
+  TResult createImageTargets();
+  TResult createDepthTarget();
+
+  TResult createGraphicsPipelines();
+  void destroyGraphicsPipelines();
+
+  VkPipelineLayout& getPipelineLayout(EPipelineLayout type);
+  VkPipeline& getPipeline(EPipeline type);
+
+  // check if pipeline flag is present in the flag array
+  bool checkPipeline(uint32_t pipelineFlags, EPipeline pipelineFlag);
+
   TResult createCoreCommandPools();
   void destroyCoreCommandPools();
 
@@ -371,27 +390,8 @@ class MRenderer {
   // renders skybox pass and generates PBR cubemaps for future passes
   void renderEnvironmentMaps(VkCommandBuffer commandBuffer);
 
-  TResult createRenderPasses();
-  void destroyRenderPasses();
-  TResult configureRenderPasses();
-
-  RRenderPass* getRenderPass(ERenderPass type);
-  VkRenderPass& getVkRenderPass(ERenderPass type);
-
-  TResult createImageTargets();
-  TResult createDepthTarget();
-
-  TResult createGraphicsPipelines();
-  void destroyGraphicsPipelines();
-
-  VkPipelineLayout& getPipelineLayout(EPipelineLayout type);
-  VkPipeline& getPipeline(EPipeline type);
-
-  // check if pipeline flag is present in the flag array
-  bool checkPipeline(uint32_t pipelineFlags, EPipeline pipelineFlag);
-
  public:
-  void doRenderPass(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+  void doRenderPass(VkCommandBuffer commandBuffer, std::vector<VkDescriptorSet>& sets);
 
   void renderFrame();
 

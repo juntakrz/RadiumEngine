@@ -55,7 +55,8 @@ enum EPipeline : uint32_t {
 
 enum class EPipelineLayout {
   Null,
-  Scene
+  Scene,
+  Environment
 };
 
 enum class EPrimitiveType {
