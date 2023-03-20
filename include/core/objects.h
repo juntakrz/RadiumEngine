@@ -265,6 +265,13 @@ struct RSamplerInfo {
 // uniform buffer objects and push contant blocks
 // 
 
+// camera rotation UBO for environment map generation
+struct REnvironmentUBO {
+  glm::mat4 view;
+  glm::mat4 projection =
+      glm::perspective(glm::radians(90.0f), 1.0f, 0.01f, 100.0f);
+};
+
 // camera and view matrix UBO for vertex shader
 struct RSceneUBO {
   alignas(16) glm::mat4 view = glm::mat4(1.0f);

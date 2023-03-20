@@ -338,92 +338,148 @@ void core::MRenderer::destroyDescriptorPool() {
 }
 
 TResult core::MRenderer::createDescriptorSets() {
+#ifndef NDEBUG
   RE_LOG(Log, "Creating renderer descriptor sets.");
+#endif
 
-  std::vector<VkDescriptorSetLayout> setLayouts(
-      MAX_FRAMES_IN_FLIGHT, getDescriptorSetLayout(EDescriptorSetLayout::Scene)
-  );
+  {
+    std::vector<VkDescriptorSetLayout> setLayouts(
+        MAX_FRAMES_IN_FLIGHT,
+        getDescriptorSetLayout(EDescriptorSetLayout::Scene));
 
-  VkDescriptorSetAllocateInfo setAllocInfo{};
-  setAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-  setAllocInfo.descriptorPool = system.descriptorPool;
-  setAllocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-  setAllocInfo.pSetLayouts = setLayouts.data();
+    VkDescriptorSetAllocateInfo setAllocInfo{};
+    setAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    setAllocInfo.descriptorPool = system.descriptorPool;
+    setAllocInfo.descriptorSetCount =
+        static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    setAllocInfo.pSetLayouts = setLayouts.data();
 
-  system.descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+    system.descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
 
-  if (vkAllocateDescriptorSets(logicalDevice.device, &setAllocInfo,
-                               system.descriptorSets.data()) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to allocate descriptor sets.");
-    return RE_CRITICAL;
+    if (vkAllocateDescriptorSets(logicalDevice.device, &setAllocInfo,
+                                 system.descriptorSets.data()) != VK_SUCCESS) {
+      RE_LOG(Critical, "Failed to allocate descriptor sets.");
+      return RE_CRITICAL;
+    }
+
+#ifndef NDEBUG
+    RE_LOG(Log, "Populating renderer descriptor sets.");
+#endif
+
+    uint32_t descriptorCount = 2u;
+
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+      // model*view*projection data for descriptor set
+      VkDescriptorBufferInfo descriptorBufferInfoMVP;
+      descriptorBufferInfoMVP.buffer =
+          view.modelViewProjectionBuffers[i].buffer;
+      descriptorBufferInfoMVP.offset = 0;
+      descriptorBufferInfoMVP.range = sizeof(RSceneUBO);
+
+      // lighting data for descriptor set
+      VkDescriptorBufferInfo descriptorBufferInfoLighting;
+      descriptorBufferInfoLighting.buffer = lighting.buffers[i].buffer;
+      descriptorBufferInfoLighting.offset = 0;
+      descriptorBufferInfoLighting.range = sizeof(RLightingUBO);
+
+      std::vector<VkWriteDescriptorSet> writeDescriptorSets(descriptorCount);
+
+      // settings used for writing to MVP descriptor set
+      writeDescriptorSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writeDescriptorSets[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+      writeDescriptorSets[0].dstSet = system.descriptorSets[i];
+      writeDescriptorSets[0].dstBinding = 0;
+      writeDescriptorSets[0].dstArrayElement = 0;
+      writeDescriptorSets[0].descriptorCount = 1;
+      writeDescriptorSets[0].pBufferInfo = &descriptorBufferInfoMVP;
+      writeDescriptorSets[0].pImageInfo = nullptr;
+      writeDescriptorSets[0].pTexelBufferView = nullptr;
+      writeDescriptorSets[0].pNext = nullptr;
+
+      // settings used for writing to lighting descriptor set
+      writeDescriptorSets[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writeDescriptorSets[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+      writeDescriptorSets[1].descriptorCount = 1;
+      writeDescriptorSets[1].dstSet = system.descriptorSets[i];
+      writeDescriptorSets[1].dstBinding = 1;
+      writeDescriptorSets[1].pBufferInfo = &descriptorBufferInfoLighting;
+      /*
+      // environment image data
+      writeDescriptorSets[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writeDescriptorSets[2].descriptorType =
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      writeDescriptorSets[2].descriptorCount = 1;
+      writeDescriptorSets[2].dstSet = system.descriptorSets[i];
+      writeDescriptorSets[2].dstBinding = 2;
+      writeDescriptorSets[2].pImageInfo = &textures.irradianceCube.descriptor;
+
+      writeDescriptorSets[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writeDescriptorSets[3].descriptorType =
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      writeDescriptorSets[3].descriptorCount = 1;
+      writeDescriptorSets[3].dstSet = system.descriptorSets[i];
+      writeDescriptorSets[3].dstBinding = 3;
+      writeDescriptorSets[3].pImageInfo = &textures.prefilteredCube.descriptor;
+
+      writeDescriptorSets[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writeDescriptorSets[4].descriptorType =
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      writeDescriptorSets[4].descriptorCount = 1;
+      writeDescriptorSets[4].dstSet = system.descriptorSets[i];
+      writeDescriptorSets[4].dstBinding = 4;
+      writeDescriptorSets[4].pImageInfo = &textures.lutBrdf.descriptor;
+      */
+      vkUpdateDescriptorSets(logicalDevice.device, descriptorCount,
+                             writeDescriptorSets.data(), 0, nullptr);
+    }
   }
 
-  RE_LOG(Log, "Populating descriptor sets.");
+#ifndef NDEBUG
+  RE_LOG(Log, "Creating environment desriptor set.");
+#endif
 
-  uint32_t descriptorCount = 2u;
+  environment.descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
 
-  for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-    // model*view*projection data for descriptor set
-    VkDescriptorBufferInfo descriptorBufferInfoMVP;
-    descriptorBufferInfoMVP.buffer = view.modelViewProjectionBuffers[i].buffer;
-    descriptorBufferInfoMVP.offset = 0;
-    descriptorBufferInfoMVP.range = sizeof(RSceneUBO);
+  {
+    for (uint32_t j = 0; j < MAX_FRAMES_IN_FLIGHT; ++j) {
+      VkDescriptorSetLayout environmentSetLayout =
+          getDescriptorSetLayout(EDescriptorSetLayout::Environment);
 
-    // lighting data for descriptor set
-    VkDescriptorBufferInfo descriptorBufferInfoLighting;
-    descriptorBufferInfoLighting.buffer = lighting.buffers[i].buffer;
-    descriptorBufferInfoLighting.offset = 0;
-    descriptorBufferInfoLighting.range = sizeof(RLightingUBO);
+      VkDescriptorSetAllocateInfo setAllocInfo{};
+      setAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+      setAllocInfo.descriptorPool = system.descriptorPool;
+      setAllocInfo.descriptorSetCount = 1;
+      setAllocInfo.pSetLayouts = &environmentSetLayout;
 
-    std::vector<VkWriteDescriptorSet> writeDescriptorSets(descriptorCount);
+      if (vkAllocateDescriptorSets(logicalDevice.device, &setAllocInfo,
+                                   &environment.descriptorSets[j]) !=
+          VK_SUCCESS) {
+        RE_LOG(Critical, "Failed to allocate descriptor sets.");
+        return RE_CRITICAL;
+      }
 
-    // settings used for writing to MVP descriptor set
-    writeDescriptorSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeDescriptorSets[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    writeDescriptorSets[0].dstSet = system.descriptorSets[i];
-    writeDescriptorSets[0].dstBinding = 0;
-    writeDescriptorSets[0].dstArrayElement = 0;
-    writeDescriptorSets[0].descriptorCount = 1;
-    writeDescriptorSets[0].pBufferInfo = &descriptorBufferInfoMVP;
-    writeDescriptorSets[0].pImageInfo = nullptr;
-    writeDescriptorSets[0].pTexelBufferView = nullptr;
-    writeDescriptorSets[0].pNext = nullptr;
+#ifndef NDEBUG
+      RE_LOG(Log, "Populating environment descriptor set.");
+#endif
+      VkDescriptorBufferInfo descriptorBufferInfo;
+      descriptorBufferInfo.buffer = environment.transformBuffers[j].buffer;
+      descriptorBufferInfo.offset = 0;
+      descriptorBufferInfo.range = sizeof(REnvironmentUBO);
 
-    // settings used for writing to lighting descriptor set
-    writeDescriptorSets[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeDescriptorSets[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    writeDescriptorSets[1].descriptorCount = 1;
-    writeDescriptorSets[1].dstSet = system.descriptorSets[i];
-    writeDescriptorSets[1].dstBinding = 1;
-    writeDescriptorSets[1].pBufferInfo = &descriptorBufferInfoLighting;
-    /*
-    // environment image data
-    writeDescriptorSets[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeDescriptorSets[2].descriptorType =
-        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    writeDescriptorSets[2].descriptorCount = 1;
-    writeDescriptorSets[2].dstSet = system.descriptorSets[i];
-    writeDescriptorSets[2].dstBinding = 2;
-    writeDescriptorSets[2].pImageInfo = &textures.irradianceCube.descriptor;
+      VkWriteDescriptorSet writeSet{};
+      writeSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writeSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+      writeSet.dstSet = environment.descriptorSets[j];
+      writeSet.dstBinding = 0;
+      writeSet.dstArrayElement = 0;
+      writeSet.descriptorCount = 1;
+      writeSet.pBufferInfo = &descriptorBufferInfo;
+      writeSet.pImageInfo = nullptr;
+      writeSet.pTexelBufferView = nullptr;
+      writeSet.pNext = nullptr;
 
-    writeDescriptorSets[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeDescriptorSets[3].descriptorType =
-        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    writeDescriptorSets[3].descriptorCount = 1;
-    writeDescriptorSets[3].dstSet = system.descriptorSets[i];
-    writeDescriptorSets[3].dstBinding = 3;
-    writeDescriptorSets[3].pImageInfo = &textures.prefilteredCube.descriptor;
-
-    writeDescriptorSets[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeDescriptorSets[4].descriptorType =
-        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    writeDescriptorSets[4].descriptorCount = 1;
-    writeDescriptorSets[4].dstSet = system.descriptorSets[i];
-    writeDescriptorSets[4].dstBinding = 4;
-    writeDescriptorSets[4].pImageInfo = &textures.lutBrdf.descriptor;
-    */
-    vkUpdateDescriptorSets(logicalDevice.device, descriptorCount,
-                           writeDescriptorSets.data(), 0, nullptr);
+      vkUpdateDescriptorSets(logicalDevice.device, 1, &writeSet, 0, nullptr);
+    }
   }
 
   return RE_OK;
@@ -504,6 +560,24 @@ TResult core::MRenderer::createUniformBuffers() {
                  &lighting.data);
   }
 
+  // create environment buffer
+  VkDeviceSize minBufferAlignment =
+      physicalDevice.properties.limits.minUniformBufferOffsetAlignment;
+  VkDeviceSize alignedSize = (sizeof(REnvironmentUBO) + minBufferAlignment - 1) &
+                         ~(minBufferAlignment - 1);
+  VkDeviceSize bufferSize = alignedSize * 6;
+
+  environment.transformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+  environment.transformOffset = alignedSize;
+
+  for (int j = 0; j < MAX_FRAMES_IN_FLIGHT; ++j) {
+    createBuffer(EBufferMode::CPU_UNIFORM, bufferSize,
+                 environment.transformBuffers[j], nullptr);
+  }
+
+  // environment transformations need to be set only once
+  setEnvironmentUBO();
+
   return RE_OK;
 }
 
@@ -513,6 +587,10 @@ void core::MRenderer::destroyUniformBuffers() {
   }
 
   for (auto& it : lighting.buffers) {
+    vmaDestroyBuffer(memAlloc, it.buffer, it.allocation);
+  }
+
+  for (auto& it : environment.transformBuffers) {
     vmaDestroyBuffer(memAlloc, it.buffer, it.allocation);
   }
 }
@@ -678,6 +756,33 @@ void core::MRenderer::destroySyncObjects() {
 
   RE_LOG(Log, "Stopping entity update thread.");
   sync.asyncUpdateEntities.stop();
+}
+
+void core::MRenderer::setEnvironmentUBO() {
+  // prepare transformation matrices
+  std::array<glm::mat4, 6> transformArray;
+
+  transformArray[0] =
+      glm::rotate(glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));  // X+
+  transformArray[1] =
+      glm::rotate(glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));  // X-
+  transformArray[2] =
+      glm::rotate(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));  // Y+
+  transformArray[3] =
+      glm::rotate(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));  // Y-
+  transformArray[4] = glm::mat4(1.0f);                                 // Z+
+  transformArray[5] =
+      glm::rotate(glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));  // Z-
+
+  for (uint8_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+    for (uint8_t j = 0; j < transformArray.size(); ++j) {
+      uint8_t* memAddress = static_cast<uint8_t*>(
+          environment.transformBuffers[i].allocInfo.pMappedData);
+      memAddress += environment.transformOffset * j;
+
+      memcpy(memAddress, &transformArray[j], sizeof(REnvironmentUBO));
+    }
+  }
 }
 
 void core::MRenderer::updateSceneUBO(uint32_t currentImage) {

@@ -66,7 +66,7 @@ void core::run() {
   core::actors.createPawn("sphere0");
   APawn* pPawn = core::actors.getPawn("sphere0");
   pPawn->setModel(core::world.getModel("mdlSphere"));
-  //core::renderer.bindEntity(pPawn);
+  core::renderer.bindEntity(pPawn);
   pPawn->setLocation(-3.0f, 0.0f, 2.0f);
 
   AStatic* pStatic = core::actors.createStatic("Skybox");
@@ -81,14 +81,14 @@ void core::run() {
   
   pStatic = core::actors.createStatic("Static01");
   pStatic->setModel(core::world.getModel("mdlGuy"));
-  //core::renderer.bindEntity(pStatic);
+  core::renderer.bindEntity(pStatic);
   pStatic->setLocation(0.0f, -1.0f, -0.3f);
   pStatic->setRotation({0.0f, 1.0f, 0.0f}, glm::radians(200.0f));
   pStatic->setScale(0.7f);
 
   pStatic = core::actors.createStatic("Box1");
   pStatic->setModel(core::world.getModel("mdlBox1"));
-  //core::renderer.bindEntity(pStatic);
+  core::renderer.bindEntity(pStatic);
   pStatic->setScale(2.2f);
   pStatic->setLocation(4.0f, -0.2f, -2.0f);
   pStatic->setRotation({0.5f, 0.32f, 0.1f});

@@ -25,8 +25,9 @@ void main(){
 	view[3][0] = 0.0;
 	view[3][1] = 0.0;
 	view[3][2] = 0.0;
-
+	
 	vec4 worldPos = mesh.rootMatrix * mesh.nodeMatrix * vec4(inPos, 1.0);
+	worldPos = scene.projection * view * worldPos;
 
-	gl_Position = scene.projection * view * worldPos;
+	gl_Position = worldPos.xyww;
 }

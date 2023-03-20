@@ -23,25 +23,25 @@ void core::MRenderer::drawBoundEntities(VkCommandBuffer cmdBuffer) {
   WModel* pModel = nullptr;
   renderView.refresh();
 
-  for (auto& bindInfo : system.bindings) {
-    if ((pEntity = bindInfo.pEntity) == nullptr) {
-      continue;
-    }
+  vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          renderView.pCurrentRenderPass->usedLayout, 0, 1,
+                          &system.descriptorSets[renderView.frameInFlight], 0,
+                          nullptr);
 
-    if ((pModel = bindInfo.pEntity->getModel()) == nullptr) {
-      continue;
-    }
+  for (auto& pipeline : renderView.pCurrentRenderPass->usedPipelines) {
+    for (auto& bindInfo : system.bindings) {
+      if ((pEntity = bindInfo.pEntity) == nullptr) {
+        continue;
+      }
 
-    auto& primitives = pModel->getPrimitives();
+      if ((pModel = bindInfo.pEntity->getModel()) == nullptr) {
+        continue;
+      }
 
-    vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            renderView.pCurrentRenderPass->usedLayout, 0,
-        1, &system.descriptorSets[renderView.frameInFlight], 0, nullptr);
+      auto& primitives = pModel->getPrimitives();
 
-    for (auto& pipeline : renderView.pCurrentRenderPass->usedPipelines) {
       for (const auto& primitive : primitives) {
-        renderPrimitive(cmdBuffer, primitive, pipeline,
-                        &bindInfo);
+        renderPrimitive(cmdBuffer, primitive, pipeline, &bindInfo);
       }
     }
   }
@@ -104,7 +104,7 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
 
 void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   // prepare initial environment rendering data
-  environment.pushConstantRanges[0] = VkPushConstantRange{};
+  /* environment.pushConstantRanges[0] = VkPushConstantRange{};
   environment.pushConstantRanges[1] = VkPushConstantRange{};
 
   environment.pushConstantRanges[0].stageFlags =
@@ -112,20 +112,7 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   environment.pushConstantRanges[1].stageFlags =
       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
   environment.pushConstantRanges[0].size = environment.envPCBSize;
-  environment.pushConstantRanges[1].size = environment.irrPCBSize;
-
-  // prepare transformation matrices
-  environment.rotationMatrices[0] =
-      glm::rotate(glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));  // X+
-  environment.rotationMatrices[1] =
-      glm::rotate(glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f)); // X-
-  environment.rotationMatrices[2] =
-      glm::rotate(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));  // Y+
-  environment.rotationMatrices[3] =
-      glm::rotate(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f)); // Y-
-  environment.rotationMatrices[4] = glm::mat4(1.0f);                  // Z+
-  environment.rotationMatrices[5] =
-      glm::rotate(glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f)); // Z-
+  environment.pushConstantRanges[1].size = environment.irrPCBSize;*/
 
   // environment render pass
   renderView.pCurrentRenderPass = getRenderPass(ERenderPass::Environment);
@@ -134,14 +121,6 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   beginInfo.pInheritanceInfo = nullptr;
   beginInfo.flags = 0;
-
-  auto storePerspective = view.pActiveCamera->getPerspective();
-  auto storeRotation = view.pActiveCamera->getRotation();
-  view.pActiveCamera->setRotation(0.0f, 90.0f, 0.0f);
-  view.pActiveCamera->setFOV(90.0f);
-  view.pActiveCamera->setAspectRatio(1.0f);
-
-  updateSceneUBO(renderView.frameInFlight);
 
   if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
     RE_LOG(Error, "failure when trying to record command buffer.");
@@ -175,9 +154,8 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   vkCmdBindIndexBuffer(commandBuffer, scene.indexBuffer.buffer, 0,
                        VK_INDEX_TYPE_UINT32);
 
-  /*environment.envPushBlock.mvpMatrix = environment.rotationMatrices[3];
-
-  vkCmdPushConstants(commandBuffer, renderView.pCurrentRenderPass->usedLayout,
+  /*vkCmdPushConstants(commandBuffer,
+                          renderView.pCurrentRenderPass->usedLayout,
                      VK_SHADER_STAGE_VERTEX_BIT, 0, environment.envPCBSize,
                      &environment.envPushBlock);*/
 
@@ -190,12 +168,6 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   }*/
 
   flushCommandBuffer(commandBuffer, ECmdType::Graphics, false, true);
-
-  //vkResetCommandBuffer(commandBuffer, NULL);
-
-  view.pActiveCamera->setRotation(storeRotation);
-  view.pActiveCamera->setPerspective(storePerspective.x, storePerspective.y,
-                                     storePerspective.z, storePerspective.w);
 
   // no need to render new environment maps every frame
   renderView.doEnvironmentPass = false;
@@ -340,6 +312,7 @@ TResult core::MRenderer::configureRenderPasses() {
   pRenderPass->usedPipelines.emplace_back(EPipeline::OpaqueCullBack);
   pRenderPass->usedPipelines.emplace_back(EPipeline::OpaqueCullNone);
   pRenderPass->usedPipelines.emplace_back(EPipeline::BlendCullBack);
+  pRenderPass->usedPipelines.emplace_back(EPipeline::Skybox);
 
   // configure 'environment' cubemap render pass
   pRenderPass = getRenderPass(ERenderPass::Environment);
@@ -576,8 +549,6 @@ TResult core::MRenderer::createGraphicsPipelines() {
       loadShader("fs_skybox.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
 
   rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-  depthStencilInfo.depthTestEnable = VK_FALSE;
-  depthStencilInfo.depthWriteEnable = VK_FALSE;
 
   system.pipelines.emplace(EPipeline::Skybox, VK_NULL_HANDLE);
 
@@ -814,14 +785,14 @@ void core::MRenderer::renderFrame() {
   VkCommandBuffer cmdBuffer = command.buffersGraphics[renderView.frameInFlight];
 
   if (renderView.doEnvironmentPass) {
-    //renderEnvironmentMaps(cmdBuffer);
+    renderEnvironmentMaps(cmdBuffer);
   }
-  renderEnvironmentMaps(cmdBuffer);
+  //renderEnvironmentMaps(cmdBuffer);
   // main PBR render pass:
   // update view, projection and camera position
   updateSceneUBO(renderView.frameInFlight);
-  //renderView.pCurrentRenderPass = getRenderPass(ERenderPass::PBR);
-  //doRenderPass(cmdBuffer, imageIndex);
+  renderView.pCurrentRenderPass = getRenderPass(ERenderPass::PBR);
+  doRenderPass(cmdBuffer, imageIndex);
 
   // wait until image to write color data to is acquired
   VkSemaphore waitSems[] = {sync.semImgAvailable[renderView.frameInFlight]};

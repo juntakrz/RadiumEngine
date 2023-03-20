@@ -23,13 +23,11 @@ class MRenderer {
 
   struct REnvironmentInfo {
     struct REnvironmentPCB {
-      glm::mat4 mvpMatrix;
       float roughness;
       uint32_t numSamples = 32u;
     } envPushBlock;
 
     struct RIrradiancePCB {
-      glm::mat4 mvpMatrix;
       float deltaPhi = (2.0f * float(M_PI)) / 180.0f;
       float deltaTheta = (0.5f * float(M_PI)) / 64.0f;
     } irradiancePushBlock;
@@ -37,8 +35,10 @@ class MRenderer {
     uint32_t envPCBSize = sizeof(REnvironmentPCB);
     uint32_t irrPCBSize = sizeof(RIrradiancePCB);
     
-    std::array<glm::mat4, 6> rotationMatrices;              // used to "rotate" the cube around the camera
     std::array<VkPushConstantRange, 2> pushConstantRanges;
+    std::vector<RBuffer> transformBuffers;
+    std::vector<VkDescriptorSet> descriptorSets;
+    VkDeviceSize transformOffset = 0u;
   } environment;
 
   struct {
@@ -166,6 +166,7 @@ class MRenderer {
   TResult createSyncObjects();
   void destroySyncObjects();
 
+  void setEnvironmentUBO();
   void updateSceneUBO(uint32_t currentImage);
 
   // wait until all queues and device are idle
