@@ -269,5 +269,9 @@
     <None Include="development\compileShaders_Win_x64_DEBUG.bat">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="content_src\shaders\fs_pbr.frag" />
+    <None Include="content_src\shaders\fs_skybox.frag" />
+    <None Include="content_src\shaders\vs_pbr.vert" />
+    <None Include="content_src\shaders\vs_skybox.vert" />
   </ItemGroup>
 </Project>

@@ -186,7 +186,7 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
 #ifndef NDEBUG
     RE_LOG(Warning, "Texture \"%s\" already exists.", pInfo->name.c_str());
 #endif
-    return nullptr;
+    return &m_textures.at(pInfo->name);
   }
 
   RTexture* newTexture = &m_textures.at(pInfo->name);

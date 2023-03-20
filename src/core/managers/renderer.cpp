@@ -527,10 +527,11 @@ TResult core::MRenderer::createFramebuffers() {
   framebufferInfo.layers = 1;
 
   if (!system.framebuffers.try_emplace(fbName).second) {
-    RE_LOG(Critical,
+#ifndef NDEBUG
+    RE_LOG(Warning,
            "Failed to create framebuffer record for \"%s\". Already exists.",
            fbName.c_str());
-    return RE_CRITICAL;
+#endif
   }
 
   if (vkCreateFramebuffer(logicalDevice.device, &framebufferInfo, nullptr,

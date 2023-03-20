@@ -519,7 +519,6 @@ TResult core::MRenderer::createGraphicsPipelines() {
     return RE_CRITICAL;
   }
 
-  
   // 'PBR doublesided' pipeline, uses 'PBR' render pass and 'scene' layout
   rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
 
@@ -624,7 +623,7 @@ TResult core::MRenderer::createImageTargets() {
   pNewTexture = core::resources.createTexture(&textureInfo);
 
   if (!pNewTexture) {
-    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName);
+    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
     return RE_CRITICAL;
   }
 
@@ -645,7 +644,7 @@ TResult core::MRenderer::createImageTargets() {
   pNewTexture = core::resources.createTexture(&textureInfo);
 
   if (!pNewTexture) {
-    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName);
+    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
     return RE_CRITICAL;
   }
 
@@ -681,7 +680,7 @@ TResult core::MRenderer::createDepthTarget() {
   RTexture* pNewTexture = core::resources.createTexture(&textureInfo);
 
   if (!pNewTexture) {
-    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName);
+    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
     return RE_CRITICAL;
   }
 
@@ -785,14 +784,14 @@ void core::MRenderer::renderFrame() {
   VkCommandBuffer cmdBuffer = command.buffersGraphics[renderView.frameInFlight];
 
   if (renderView.doEnvironmentPass) {
-    renderEnvironmentMaps(cmdBuffer);
+    //renderEnvironmentMaps(cmdBuffer);
   }
-  //renderEnvironmentMaps(cmdBuffer);
+  renderEnvironmentMaps(cmdBuffer);
   // main PBR render pass:
   // update view, projection and camera position
   updateSceneUBO(renderView.frameInFlight);
   renderView.pCurrentRenderPass = getRenderPass(ERenderPass::PBR);
-  doRenderPass(cmdBuffer, imageIndex);
+  //doRenderPass(cmdBuffer, imageIndex);
 
   // wait until image to write color data to is acquired
   VkSemaphore waitSems[] = {sync.semImgAvailable[renderView.frameInFlight]};
