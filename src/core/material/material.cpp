@@ -7,11 +7,13 @@
 
 void RMaterial::createDescriptorSet() {
   // allocate material's descriptor set
+  VkDescriptorSetLayout materialLayout =
+      core::renderer.getDescriptorSetLayout(EDescriptorSetLayout::Material);
+
   VkDescriptorSetAllocateInfo allocateInfo{};
   allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
   allocateInfo.descriptorPool = core::renderer.getDescriptorPool();
-  allocateInfo.pSetLayouts =
-      &core::renderer.getDescriptorSetLayouts()->material;
+  allocateInfo.pSetLayouts = &materialLayout;
   allocateInfo.descriptorSetCount = 1;
 
   if (vkAllocateDescriptorSets(core::renderer.logicalDevice.device,

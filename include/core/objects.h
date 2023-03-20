@@ -35,6 +35,13 @@ enum class ECmdType {
   Present
 };
 
+enum class EDescriptorSetLayout {
+  Scene,
+  Material,
+  Mesh,
+  Environment
+};
+
 enum EPipeline : uint32_t {
   Null = 0,
   Environment = 1,
@@ -65,6 +72,23 @@ enum class ERenderPass {
   PBR
 };
 
+struct RVkLogicalDevice {
+  VkDevice device;
+
+  struct {
+    VkQueue graphics = VK_NULL_HANDLE;
+    VkQueue compute = VK_NULL_HANDLE;
+    VkQueue present = VK_NULL_HANDLE;
+    VkQueue transfer = VK_NULL_HANDLE;
+  } queues;
+};
+
+struct RVkSwapChainInfo {
+  VkSurfaceCapabilitiesKHR capabilities;
+  std::vector<VkSurfaceFormatKHR> formats;
+  std::vector<VkPresentModeKHR> modes;
+};
+
 struct RVkQueueFamilyIndices {
   std::vector<int32_t> graphics;
   std::vector<int32_t> compute;
@@ -75,12 +99,6 @@ struct RVkQueueFamilyIndices {
   std::set<int32_t> getAsSet() const;
 };
 
-struct RVkSwapChainInfo {
-  VkSurfaceCapabilitiesKHR capabilities;
-  std::vector<VkSurfaceFormatKHR> formats;
-  std::vector<VkPresentModeKHR> modes;
-};
-
 struct RVkPhysicalDevice {
   VkPhysicalDevice device = VK_NULL_HANDLE;
   VkPhysicalDeviceFeatures features;
@@ -89,24 +107,6 @@ struct RVkPhysicalDevice {
   RVkQueueFamilyIndices queueFamilyIndices;
   RVkSwapChainInfo swapChainInfo;
   bool bIsValid = false;
-};
-
-// used by renderer
-struct RDescriptorSetLayouts {
-  VkDescriptorSetLayout scene;
-  VkDescriptorSetLayout material;
-  VkDescriptorSetLayout mesh;
-};
-
-struct RVkLogicalDevice {
-  VkDevice device;
-
-  struct {
-    VkQueue graphics  = VK_NULL_HANDLE;
-    VkQueue compute   = VK_NULL_HANDLE;
-    VkQueue present   = VK_NULL_HANDLE;
-    VkQueue transfer  = VK_NULL_HANDLE;
-  } queues;
 };
 
 class RAsync {
@@ -290,6 +290,7 @@ struct RLightingUBO {
 };
 
 // push constant block used by RMaterial
+// (96 bytes of 128 Vulkan spec)
 struct RMaterialPCB {
   glm::vec4 baseColorFactor;
   glm::vec4 emissiveFactor;

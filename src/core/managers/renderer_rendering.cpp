@@ -114,6 +114,19 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   environment.pushConstantRanges[0].size = environment.envPCBSize;
   environment.pushConstantRanges[1].size = environment.irrPCBSize;
 
+  // prepare transformation matrices
+  environment.rotationMatrices[0] =
+      glm::rotate(glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));  // X+
+  environment.rotationMatrices[1] =
+      glm::rotate(glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f)); // X-
+  environment.rotationMatrices[2] =
+      glm::rotate(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));  // Y+
+  environment.rotationMatrices[3] =
+      glm::rotate(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f)); // Y-
+  environment.rotationMatrices[4] = glm::mat4(1.0f);                  // Z+
+  environment.rotationMatrices[5] =
+      glm::rotate(glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f)); // Z-
+
   // environment render pass
   renderView.pCurrentRenderPass = getRenderPass(ERenderPass::Environment);
 
@@ -122,12 +135,11 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   beginInfo.pInheritanceInfo = nullptr;
   beginInfo.flags = 0;
 
-  // store active cameras original transformations and setup for cube rendering
-  glm::quat originalRotation = view.pActiveCamera->getRotation();
-  glm::vec4 originalPerspective = view.pActiveCamera->getPerspective();
+  auto storePerspective = view.pActiveCamera->getPerspective();
+  auto storeRotation = view.pActiveCamera->getRotation();
+  view.pActiveCamera->setRotation(0.0f, 90.0f, 0.0f);
   view.pActiveCamera->setFOV(90.0f);
   view.pActiveCamera->setAspectRatio(1.0f);
-  view.pActiveCamera->setRotation(0.0f, 180.0f, 0.0f);
 
   updateSceneUBO(renderView.frameInFlight);
 
@@ -163,22 +175,27 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   vkCmdBindIndexBuffer(commandBuffer, scene.indexBuffer.buffer, 0,
                        VK_INDEX_TYPE_UINT32);
 
+  /*environment.envPushBlock.mvpMatrix = environment.rotationMatrices[3];
+
+  vkCmdPushConstants(commandBuffer, renderView.pCurrentRenderPass->usedLayout,
+                     VK_SHADER_STAGE_VERTEX_BIT, 0, environment.envPCBSize,
+                     &environment.envPushBlock);*/
+
   drawBoundEntities(commandBuffer);
 
   vkCmdEndRenderPass(commandBuffer);
 
-  if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+  /*if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to end writing to command buffer.");
-  }
+  }*/
 
-  //flushCommandBuffer(commandBuffer, ECmdType::Graphics, false, true);
+  flushCommandBuffer(commandBuffer, ECmdType::Graphics, false, true);
 
-  // reset active camera to original values
-  view.pActiveCamera->setRotation(originalRotation);
-  view.pActiveCamera->setPerspective(
-      originalPerspective.x, originalPerspective.y, originalPerspective.z,
-      originalPerspective.w
-  );
+  //vkResetCommandBuffer(commandBuffer, NULL);
+
+  view.pActiveCamera->setRotation(storeRotation);
+  view.pActiveCamera->setPerspective(storePerspective.x, storePerspective.y,
+                                     storePerspective.z, storePerspective.w);
 
   // no need to render new environment maps every frame
   renderView.doEnvironmentPass = false;
@@ -455,9 +472,9 @@ TResult core::MRenderer::createGraphicsPipelines() {
 
   // pipeline layout for the main 'scene'
   std::vector<VkDescriptorSetLayout> descriptorSetLayouts{
-      system.descriptorSetLayouts.scene,
-      system.descriptorSetLayouts.mesh,
-      system.descriptorSetLayouts.material
+      getDescriptorSetLayout(EDescriptorSetLayout::Scene),      // 0
+      getDescriptorSetLayout(EDescriptorSetLayout::Mesh),       // 1
+      getDescriptorSetLayout(EDescriptorSetLayout::Material)    // 2
   };
 
   VkPipelineLayoutCreateInfo layoutInfo{};
@@ -802,7 +819,7 @@ void core::MRenderer::renderFrame() {
   renderEnvironmentMaps(cmdBuffer);
   // main PBR render pass:
   // update view, projection and camera position
-  //updateSceneUBO(renderView.frameInFlight);
+  updateSceneUBO(renderView.frameInFlight);
   //renderView.pCurrentRenderPass = getRenderPass(ERenderPass::PBR);
   //doRenderPass(cmdBuffer, imageIndex);
 

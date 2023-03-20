@@ -41,12 +41,15 @@ void WModel::Node::setNodeDescriptorSet(bool updateChildren) {
 
   VkDevice device = core::renderer.logicalDevice.device;
 
+  // create node/mesh descriptor set
+  VkDescriptorSetLayout layoutMesh =
+      core::renderer.getDescriptorSetLayout(EDescriptorSetLayout::Mesh);
+
   VkDescriptorSetAllocateInfo descriptorSetAllocInfo{};
   descriptorSetAllocInfo.sType =
       VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
   descriptorSetAllocInfo.descriptorPool = core::renderer.getDescriptorPool();
-  descriptorSetAllocInfo.pSetLayouts =
-      &core::renderer.getDescriptorSetLayouts()->mesh;
+  descriptorSetAllocInfo.pSetLayouts = &layoutMesh;
   descriptorSetAllocInfo.descriptorSetCount = 1;
 
   if (vkAllocateDescriptorSets(

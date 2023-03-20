@@ -23,13 +23,13 @@ class MRenderer {
 
   struct REnvironmentInfo {
     struct REnvironmentPCB {
-      glm::mat4 matrix;
+      glm::mat4 mvpMatrix;
       float roughness;
       uint32_t numSamples = 32u;
     } envPushBlock;
 
     struct RIrradiancePCB {
-      glm::mat4 matrix;
+      glm::mat4 mvpMatrix;
       float deltaPhi = (2.0f * float(M_PI)) / 180.0f;
       float deltaTheta = (0.5f * float(M_PI)) / 64.0f;
     } irradiancePushBlock;
@@ -37,6 +37,7 @@ class MRenderer {
     uint32_t envPCBSize = sizeof(REnvironmentPCB);
     uint32_t irrPCBSize = sizeof(RIrradiancePCB);
     
+    std::array<glm::mat4, 6> rotationMatrices;              // used to "rotate" the cube around the camera
     std::array<VkPushConstantRange, 2> pushConstantRanges;
   } environment;
 
@@ -77,13 +78,14 @@ class MRenderer {
     std::unordered_map<EPipeline, VkPipeline> pipelines;
     std::unordered_map<ERenderPass, RRenderPass> renderPasses;
     VkRenderPassBeginInfo renderPassBeginInfo;
-    std::unordered_map<std::string, VkFramebuffer> framebuffers;  // general purpose, swapchain uses its own set
+    std::unordered_map<std::string, VkFramebuffer> framebuffers;   // general purpose, swapchain uses its own set
     std::array<VkClearValue, 2> clearColors;
 
     VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> descriptorSets;
-    RDescriptorSetLayouts descriptorSetLayouts;
-    std::vector<REntityBindInfo> bindings;                        // entities rendered during the current frame
+    std::unordered_map<EDescriptorSetLayout, VkDescriptorSetLayout>
+        descriptorSetLayouts;
+    std::vector<REntityBindInfo> bindings;                            // entities rendered during the current frame
     std::unordered_map<EPipeline, std::vector<WPrimitive*>> primitivesByPipeline;   // TODO
   } system;
 
@@ -114,7 +116,7 @@ class MRenderer {
     RRenderPass* pCurrentRenderPass = nullptr;
     uint32_t frameInFlight = 0;
     uint32_t framesRendered = 0;
-    bool doEnvironmentPass = false;
+    bool doEnvironmentPass = false;           // queue environment cubemaps (re)generation
 
     void refresh() {
       pCurrentMesh = nullptr;
@@ -181,7 +183,7 @@ class MRenderer {
   void deinitialize();
 
  public:
-  const RDescriptorSetLayouts* getDescriptorSetLayouts() const;
+  const VkDescriptorSetLayout getDescriptorSetLayout(EDescriptorSetLayout type) const;
   const VkDescriptorPool getDescriptorPool();
 
   // returns descriptor set used by the current frame in flight by default

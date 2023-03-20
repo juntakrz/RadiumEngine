@@ -751,6 +751,7 @@ void core::MRenderer::flushCommandBuffer(VkCommandBuffer cmdBuffer,
     case true: {
     // fence timeout is 1 second
     vkWaitForFences(logicalDevice.device, 1, &fence, VK_TRUE, 1000000000uLL);
+    vkDestroyFence(logicalDevice.device, fence, nullptr);
     break;
     }
   }

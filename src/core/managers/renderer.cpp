@@ -154,6 +154,9 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
   // 3 - TODO
   // 4 - TODO
   {
+    system.descriptorSetLayouts.emplace(EDescriptorSetLayout::Scene,
+                                        VK_NULL_HANDLE);
+
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
         {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1,
          VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
@@ -175,7 +178,8 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
 
     if (vkCreateDescriptorSetLayout(
             logicalDevice.device, &setLayoutCreateInfo, nullptr,
-            &system.descriptorSetLayouts.scene) != VK_SUCCESS) {
+            &system.descriptorSetLayouts.at(EDescriptorSetLayout::Scene)) !=
+        VK_SUCCESS) {
       RE_LOG(Critical, "Failed to create scene descriptor set layout.");
       return RE_CRITICAL;
     }
@@ -189,6 +193,9 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
   // 4 - emissive
   // 5 - extra
   {
+    system.descriptorSetLayouts.emplace(EDescriptorSetLayout::Material,
+                                        VK_NULL_HANDLE);
+
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
         {0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
          VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
@@ -212,7 +219,8 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
 
     if (vkCreateDescriptorSetLayout(
             logicalDevice.device, &setLayoutCreateInfo, nullptr,
-            &system.descriptorSetLayouts.material) != VK_SUCCESS) {
+            &system.descriptorSetLayouts.at(EDescriptorSetLayout::Material)) !=
+        VK_SUCCESS) {
       RE_LOG(Critical, "Failed to create material descriptor set layout.");
       return RE_CRITICAL;
     }
@@ -220,6 +228,9 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
 
   // model mesh matrices
   {
+    system.descriptorSetLayouts.emplace(EDescriptorSetLayout::Mesh,
+                                        VK_NULL_HANDLE);
+
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
         {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT,
          nullptr},
@@ -234,8 +245,37 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
 
     if (vkCreateDescriptorSetLayout(
             logicalDevice.device, &setLayoutCreateInfo, nullptr,
-            &system.descriptorSetLayouts.mesh) != VK_SUCCESS) {
+            &system.descriptorSetLayouts.at(EDescriptorSetLayout::Mesh)) !=
+        VK_SUCCESS) {
       RE_LOG(Critical, "Failed to create model node descriptor set layout.");
+      return RE_CRITICAL;
+    }
+  }
+
+  // environment map generation
+  {
+    system.descriptorSetLayouts.emplace(EDescriptorSetLayout::Environment,
+                                        VK_NULL_HANDLE);
+
+    // dynamic uniform buffer will contain 6 matrices for per-face
+    // transformation
+    std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
+        {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1,
+         VK_SHADER_STAGE_VERTEX_BIT, nullptr},
+    };
+
+    VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
+    setLayoutCreateInfo.sType =
+        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    setLayoutCreateInfo.pBindings = setLayoutBindings.data();
+    setLayoutCreateInfo.bindingCount =
+        static_cast<uint32_t>(setLayoutBindings.size());
+
+    if (vkCreateDescriptorSetLayout(
+            logicalDevice.device, &setLayoutCreateInfo, nullptr,
+            &system.descriptorSetLayouts.at(
+                EDescriptorSetLayout::Environment)) != VK_SUCCESS) {
+      RE_LOG(Critical, "Failed to create environment descriptor set layout.");
       return RE_CRITICAL;
     }
   }
@@ -246,12 +286,9 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
 void core::MRenderer::destroyDescriptorSetLayouts() {
   RE_LOG(Log, "Removing descriptor set layouts.");
 
-  vkDestroyDescriptorSetLayout(logicalDevice.device,
-                               system.descriptorSetLayouts.scene, nullptr);
-  vkDestroyDescriptorSetLayout(logicalDevice.device,
-                               system.descriptorSetLayouts.material, nullptr);
-  vkDestroyDescriptorSetLayout(logicalDevice.device,
-                               system.descriptorSetLayouts.mesh, nullptr);
+  for (auto& it : system.descriptorSetLayouts) {
+    vkDestroyDescriptorSetLayout(logicalDevice.device, it.second, nullptr);
+  }
 }
 
 TResult core::MRenderer::createDescriptorPool() {
@@ -304,7 +341,8 @@ TResult core::MRenderer::createDescriptorSets() {
   RE_LOG(Log, "Creating renderer descriptor sets.");
 
   std::vector<VkDescriptorSetLayout> setLayouts(
-      MAX_FRAMES_IN_FLIGHT, system.descriptorSetLayouts.scene);
+      MAX_FRAMES_IN_FLIGHT, getDescriptorSetLayout(EDescriptorSetLayout::Scene)
+  );
 
   VkDescriptorSetAllocateInfo setAllocInfo{};
   setAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -722,8 +760,8 @@ void core::MRenderer::deinitialize() {
   destroyInstance();
 }
 
-const RDescriptorSetLayouts* core::MRenderer::getDescriptorSetLayouts() const {
-  return &system.descriptorSetLayouts;
+const VkDescriptorSetLayout core::MRenderer::getDescriptorSetLayout(EDescriptorSetLayout type) const {
+  return system.descriptorSetLayouts.at(type);
 }
 
 const VkDescriptorPool core::MRenderer::getDescriptorPool() {
