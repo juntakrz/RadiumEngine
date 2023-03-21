@@ -477,6 +477,16 @@ TResult core::MRenderer::copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
   return RE_OK;
 }
 
+void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer,
+                                     RTexture* pTexture,
+                                     VkImageLayout newLayout,
+                                     VkImageSubresourceRange subresourceRange) {
+  setImageLayout(cmdBuffer, pTexture->texture.image,
+                 pTexture->texture.imageLayout, newLayout, subresourceRange);
+  
+  pTexture->texture.imageLayout = newLayout;
+}
+
 void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
                                      VkImageLayout oldLayout,
                                      VkImageLayout newLayout,
@@ -599,67 +609,6 @@ void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
   // Add the barrier to the passed command buffer
   vkCmdPipelineBarrier(cmdBuffer, srcStageFlags, destStageFlags, 0, 0,
                                NULL, 0, NULL, 1, &imageMemoryBarrier);
-}
-
-void core::MRenderer::transitionImageLayout(VkImage image, VkFormat format,
-                                             VkImageLayout oldLayout,
-                                             VkImageLayout newLayout, ECmdType cmdType) {
-  VkCommandBuffer cmdBuffer =
-      createCommandBuffer(cmdType, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
-
-  VkImageMemoryBarrier imageBarrier{};
-  imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-  imageBarrier.image = image;
-  imageBarrier.oldLayout = oldLayout;
-  imageBarrier.newLayout = newLayout;
-  imageBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  imageBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  imageBarrier.subresourceRange.baseMipLevel = 0;
-  imageBarrier.subresourceRange.levelCount = 1;
-  imageBarrier.subresourceRange.baseArrayLayer = 0;
-  imageBarrier.subresourceRange.layerCount = 1;
-
-  // change aspect mask if image is of a depth/stencil type
-  if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
-    imageBarrier.subresourceRange.aspectMask =
-        VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-  }
-
-  VkPipelineStageFlags srcStageFlags;
-  VkPipelineStageFlags dstStageFlags;
-
-  if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
-      newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-    imageBarrier.srcAccessMask = NULL;
-    imageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-    srcStageFlags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-    dstStageFlags = VK_PIPELINE_STAGE_TRANSFER_BIT;
-  } else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
-             newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-    imageBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    imageBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-    srcStageFlags = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    dstStageFlags = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-  } else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
-             newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
-    imageBarrier.srcAccessMask = 0;
-    imageBarrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
-                            VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-    srcStageFlags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-    dstStageFlags = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-  } else {
-    RE_LOG(Error, "Unsupported layout transition.");
-    return;
-  }
-
-  vkCmdPipelineBarrier(cmdBuffer, srcStageFlags, dstStageFlags, NULL, NULL,
-                       nullptr, NULL, nullptr, 1, &imageBarrier);
-
-  core::renderer.flushCommandBuffer(cmdBuffer, cmdType, true);
 }
 
 VkCommandPool core::MRenderer::getCommandPool(ECmdType type) {

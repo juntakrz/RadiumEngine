@@ -99,12 +99,52 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
 }
 
 void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
-  uint32_t dynamicOffset =
-      static_cast<uint32_t>(environment.transformOffset * 0);
+
+  // initial variables
+  uint32_t dynamicOffset = 0;
+  size_t layerOffset = 0;
+  size_t layerSize = core::vulkan::envCubeResolution *
+                     core::vulkan::envCubeResolution *
+                     8;  // 16 bpp RGBA = 8 bytes
+  RTexture* pTexture = core::resources.getTexture(RT_FRONT);
+  RTexture* pCubemap = core::resources.getTexture(RT_CUBEMAP);
+
+  // source render target range for layout transitions
+  VkImageSubresourceRange srcRange{};
+  srcRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  srcRange.baseArrayLayer = 0;
+  srcRange.layerCount = pTexture->texture.layerCount;
+  srcRange.baseMipLevel = 0;
+  srcRange.levelCount = pTexture->texture.levelCount;
+
+  // copy to cubemap setup
+  VkImageCopy copyRegion{};
+  copyRegion.extent.width = pTexture->texture.width;
+  copyRegion.extent.height = pTexture->texture.height;
+  copyRegion.extent.depth = pTexture->texture.depth;
+
+  copyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  copyRegion.srcSubresource.baseArrayLayer = 0;
+  copyRegion.srcSubresource.layerCount = 1;
+  copyRegion.srcSubresource.mipLevel = 0;
+  copyRegion.srcOffset = {0, 0, 0};
+
+  copyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  copyRegion.dstSubresource.layerCount = 1;
+  copyRegion.dstSubresource.mipLevel = 0;
+  copyRegion.dstOffset = {0, 0, 0};
 
   // environment render pass
   renderView.pCurrentRenderPass = getRenderPass(ERenderPass::Environment);
 
+  system.renderPassBeginInfo.renderPass =
+      renderView.pCurrentRenderPass->renderPass;
+  system.renderPassBeginInfo.renderArea.extent = {
+      core::vulkan::envCubeResolution, core::vulkan::envCubeResolution};
+
+  system.renderPassBeginInfo.framebuffer = system.framebuffers.at(FB_FRONT);
+
+  // start rendering 6 camera views
   VkCommandBufferBeginInfo beginInfo{};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   beginInfo.pInheritanceInfo = nullptr;
@@ -115,24 +155,14 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
     return;
   }
 
-  system.renderPassBeginInfo.renderPass =
-      renderView.pCurrentRenderPass->renderPass;
-  system.renderPassBeginInfo.renderArea.extent = {
-      core::vulkan::envCubeResolution, core::vulkan::envCubeResolution
-  };
-
-  system.renderPassBeginInfo.framebuffer = system.framebuffers.at(FB_FRONT);
-
-  vkCmdBeginRenderPass(commandBuffer, &system.renderPassBeginInfo,
-                       VK_SUBPASS_CONTENTS_INLINE);
-
   vkCmdSetViewport(commandBuffer, 0, 1,
                    &renderView.pCurrentRenderPass->viewport);
 
   VkRect2D scissor{};
   scissor.offset = {0, 0};
   scissor.extent.width = core::resources.getTexture(RT_CUBEMAP)->texture.width;
-  scissor.extent.height = core::resources.getTexture(RT_CUBEMAP)->texture.height;
+  scissor.extent.height =
+      core::resources.getTexture(RT_CUBEMAP)->texture.height;
 
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
@@ -142,20 +172,42 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   vkCmdBindIndexBuffer(commandBuffer, scene.indexBuffer.buffer, 0,
                        VK_INDEX_TYPE_UINT32);
 
-  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                          renderView.pCurrentRenderPass->usedLayout, 0, 1,
-                          &environment.descriptorSets[renderView.frameInFlight],
-                          1, &dynamicOffset);
+  for (uint8_t i = 0; i < 6; ++i) {
+    dynamicOffset = static_cast<uint32_t>(environment.transformOffset * i);
+    layerOffset = layerSize * i;
 
-  drawBoundEntities(commandBuffer);
+    vkCmdBeginRenderPass(commandBuffer, &system.renderPassBeginInfo,
+                         VK_SUBPASS_CONTENTS_INLINE);
 
-  vkCmdEndRenderPass(commandBuffer);
+    vkCmdBindDescriptorSets(
+        commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+        renderView.pCurrentRenderPass->usedLayout, 0, 1,
+        &environment.descriptorSets[renderView.frameInFlight], 1,
+        &dynamicOffset);
 
-  /*if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to end writing to command buffer.");
-  }*/
+    drawBoundEntities(commandBuffer);
 
-  flushCommandBuffer(commandBuffer, ECmdType::Graphics, false, true);
+    vkCmdEndRenderPass(commandBuffer);
+
+    setImageLayout(commandBuffer, pTexture, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                   srcRange);
+
+    // go through cubemap layers and copy front render target
+    copyRegion.dstSubresource.baseArrayLayer = i;
+
+    vkCmdCopyImage(commandBuffer, pTexture->texture.image,
+                   pTexture->texture.imageLayout, pCubemap->texture.image,
+                   pCubemap->texture.imageLayout, 1, &copyRegion);
+
+    setImageLayout(commandBuffer, pTexture,
+                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, srcRange);
+  }
+
+  //flushCommandBuffer(commandBuffer, ECmdType::Graphics, false, true);
+
+  if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+    RE_LOG(Error, "Failed to end writing to command buffer.");
+  }
 
   // no need to render new environment maps every frame
   renderView.doEnvironmentPass = false;

@@ -502,7 +502,7 @@ TResult core::MRenderer::createDescriptorSets() {
   return RE_OK;
 }
 
-TResult core::MRenderer::createFramebuffers() {
+TResult core::MRenderer::createDefaultFramebuffers() {
   RE_LOG(Log, "Creating swapchain framebuffers.");
 
   swapchain.framebuffers.resize(swapchain.imageViews.size());
@@ -513,8 +513,7 @@ TResult core::MRenderer::createFramebuffers() {
   for (size_t i = 0; i < swapchain.framebuffers.size(); ++i) {
     std::vector<VkImageView> attachments = {
         swapchain.imageViews[i],
-        core::resources.getTexture(RT_DEPTH)
-            ->texture.view};
+        core::resources.getTexture(RT_DEPTH)->texture.view};
 
     framebufferInfo.renderPass = getVkRenderPass(ERenderPass::PBR);
     framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
@@ -531,17 +530,33 @@ TResult core::MRenderer::createFramebuffers() {
       return RE_CRITICAL;
     }
   }
+      
+  return createFramebuffer(ERenderPass::Environment, RT_FRONT, FB_FRONT);
+}
 
+TResult core::MRenderer::createFramebuffer(ERenderPass renderPass,
+                                           const char* targetTextureName,
+                                           const char* framebufferName) {
   // create render-to-texture framebuffer
-  RTexture* fbTarget = core::resources.getTexture(RT_FRONT);
-  std::string fbName = FB_FRONT;
+  RTexture* fbTarget = core::resources.getTexture(targetTextureName);
 
-  framebufferInfo.renderPass = getVkRenderPass(ERenderPass::Environment);
+  if (!fbTarget) {
+    RE_LOG(Error,
+           "Failed to create framebuffer %s, target texture %s wasn't found.",
+           framebufferName, targetTextureName);
+    return RE_ERROR;
+  }
+
+  std::string fbName = framebufferName;
+
+  VkFramebufferCreateInfo framebufferInfo{};
+  framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+  framebufferInfo.renderPass = getVkRenderPass(renderPass);
   framebufferInfo.attachmentCount = 1;
   framebufferInfo.pAttachments = &fbTarget->texture.view;
   framebufferInfo.width = fbTarget->texture.width;
   framebufferInfo.height = fbTarget->texture.height;
-  framebufferInfo.layers = 1;
+  framebufferInfo.layers = fbTarget->texture.layerCount;
 
   if (!system.framebuffers.try_emplace(fbName).second) {
 #ifndef NDEBUG
@@ -549,14 +564,14 @@ TResult core::MRenderer::createFramebuffers() {
            "Failed to create framebuffer record for \"%s\". Already exists.",
            fbName.c_str());
 #endif
+    return RE_WARNING;
   }
 
   if (vkCreateFramebuffer(logicalDevice.device, &framebufferInfo, nullptr,
                           &system.framebuffers.at(fbName)) != VK_SUCCESS) {
-    RE_LOG(Critical, "failed to create framebuffer with index %d.",
-           fbName.c_str());
+    RE_LOG(Error, "failed to create framebuffer %s.", fbName.c_str());
 
-    return RE_CRITICAL;
+    return RE_ERROR;
   }
 
   return RE_OK;
@@ -1123,7 +1138,7 @@ TResult core::MRenderer::createImageTargets() {
     return RE_CRITICAL;
   }
 
-  // default cubemap texture
+  // default cubemap texture as a copy target
   rtName = RT_CUBEMAP;
 
   textureInfo = RTextureInfo{};
@@ -1132,7 +1147,8 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.width = core::vulkan::envCubeResolution;
   textureInfo.height = textureInfo.width;
   textureInfo.format = core::vulkan::formatHDR16;
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  textureInfo.mipLevels = 8u;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags =
       VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -1440,7 +1456,7 @@ TResult core::MRenderer::initialize() {
 
   if (chkResult <= RE_ERRORLIMIT) chkResult = createRenderPasses();           // A
   if (chkResult <= RE_ERRORLIMIT) chkResult = createGraphicsPipelines();      // B
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createFramebuffers();           // C
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createDefaultFramebuffers();           // C
   if (chkResult <= RE_ERRORLIMIT) chkResult = configureRenderPasses();        // connect A, B, C together
 
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();

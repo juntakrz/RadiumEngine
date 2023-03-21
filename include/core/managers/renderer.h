@@ -6,6 +6,7 @@
 #include "core/world/actors/camera.h"
 
 class WPrimitive;
+struct RTexture;
 
 namespace core {
 
@@ -152,7 +153,10 @@ class MRenderer {
 
   TResult createDescriptorSets();
 
-  TResult createFramebuffers();
+  TResult createDefaultFramebuffers();
+  TResult createFramebuffer(ERenderPass renderPass,
+                            const char* targetTextureName,
+                            const char* framebufferName);
 
   TResult createUniformBuffers();
   void destroyUniformBuffers();
@@ -248,13 +252,13 @@ class MRenderer {
                             uint32_t width, uint32_t height,
                             uint32_t layerCount);
 
+  void setImageLayout(VkCommandBuffer cmdBuffer, RTexture* pTexture,
+                      VkImageLayout newLayout,
+                      VkImageSubresourceRange subresourceRange);
+
   void setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
                       VkImageLayout oldLayout, VkImageLayout newLayout,
                       VkImageSubresourceRange subresourceRange);
-
-  void transitionImageLayout(VkImage image, VkFormat format,
-                             VkImageLayout oldLayout, VkImageLayout newLayout,
-                             ECmdType cmdType = ECmdType::Transfer);
 
   VkCommandPool getCommandPool(ECmdType type);
   VkQueue getCommandQueue(ECmdType type);

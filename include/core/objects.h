@@ -226,6 +226,7 @@ struct RTextureInfo {
   uint32_t height = 0u;
   VkImageUsageFlags usageFlags;
   VkFormat format = core::vulkan::formatLDR;
+  uint32_t mipLevels = 1u;
   VkImageLayout targetLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
   VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
   bool asCubemap = false;

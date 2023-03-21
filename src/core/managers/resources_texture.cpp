@@ -199,7 +199,7 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
   createInfo.format = pInfo->format;
   createInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   createInfo.extent = {pInfo->width, pInfo->height, 1};
-  createInfo.mipLevels = 1;
+  createInfo.mipLevels = pInfo->mipLevels;
   createInfo.arrayLayers = pInfo->asCubemap ? 6u : 1u;
   createInfo.tiling = pInfo->tiling;
   createInfo.usage = pInfo->usageFlags;
