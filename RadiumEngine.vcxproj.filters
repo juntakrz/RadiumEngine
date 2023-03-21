@@ -273,5 +273,7 @@
     <None Include="content_src\shaders\fs_skybox.frag" />
     <None Include="content_src\shaders\vs_pbr.vert" />
     <None Include="content_src\shaders\vs_skybox.vert" />
+    <None Include="content_src\shaders\vs_envFilter.vert" />
+    <None Include="content_src\shaders\fs_envFilter.frag" />
   </ItemGroup>
 </Project>

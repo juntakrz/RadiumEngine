@@ -23,18 +23,12 @@ class MRenderer {
   } command;
 
   struct REnvironmentInfo {
-    struct REnvironmentPCB {
-      float roughness;
-      uint32_t numSamples = 32u;
-    } envPushBlock;
+    REnvironmentPCB envPushBlock;
 
     struct RIrradiancePCB {
       float deltaPhi = (2.0f * float(M_PI)) / 180.0f;
       float deltaTheta = (0.5f * float(M_PI)) / 64.0f;
     } irradiancePushBlock;
-
-    uint32_t envPCSize = sizeof(REnvironmentPCB);
-    uint32_t irrPCSize = sizeof(RIrradiancePCB);
     
     std::array<VkPushConstantRange, 2> pushConstantRanges;
     std::vector<RBuffer> transformBuffers;

@@ -729,6 +729,8 @@ TResult core::MRenderer::createRenderPasses() {
 
   system.renderPasses.emplace(passType, RRenderPass{});
 
+  colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
   colorAttachment.format = core::vulkan::formatHDR16;
   subpassDesc.pDepthStencilAttachment = nullptr;
   attachments = {colorAttachment};
@@ -961,13 +963,19 @@ TResult core::MRenderer::createGraphicsPipelines() {
       getDescriptorSetLayout(EDescriptorSetLayout::Material)      // 2
   };
 
+  VkPushConstantRange envPushConstRange{};
+  envPushConstRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+  envPushConstRange.offset = 0;
+  envPushConstRange.size = sizeof(REnvironmentPCB);
+
   layoutInfo = VkPipelineLayoutCreateInfo{};
   layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
   layoutInfo.setLayoutCount =
       static_cast<uint32_t>(descriptorSetLayouts.size());
   layoutInfo.pSetLayouts = descriptorSetLayouts.data();
   layoutInfo.pushConstantRangeCount = 1;
-  layoutInfo.pPushConstantRanges = &materialPushConstRange;
+  //layoutInfo.pPushConstantRanges = &envPushConstRange;
+  layoutInfo.pPushConstantRanges = &envPushConstRange;
 
   if (vkCreatePipelineLayout(logicalDevice.device, &layoutInfo, nullptr,
                              &getPipelineLayout(layoutType)) != VK_SUCCESS) {
@@ -1066,6 +1074,14 @@ TResult core::MRenderer::createGraphicsPipelines() {
 
     return RE_CRITICAL;
   }
+
+  for (auto stage : shaderStages) {
+    vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
+  }
+
+  shaderStages.clear();
+  shaderStages = {loadShader("vs_envFilter.spv", VK_SHADER_STAGE_VERTEX_BIT),
+                  loadShader("fs_envFilter.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
 
   system.pipelines.emplace(EPipeline::Environment, VK_NULL_HANDLE);
 

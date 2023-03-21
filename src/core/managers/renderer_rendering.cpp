@@ -81,10 +81,13 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
     vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                             renderView.pCurrentRenderPass->usedLayout, 2, 1,
                             &pPrimitive->pMaterial->descriptorSet, 0, nullptr);
-                            
-    vkCmdPushConstants(cmdBuffer, renderView.pCurrentRenderPass->usedLayout,
-                       VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(RMaterialPCB),
-                       &pPrimitive->pMaterial->pushConstantBlock);
+    
+    // environment render pass uses global push constant block for fragment shader
+    if (!renderView.doEnvironmentPass) {
+      vkCmdPushConstants(cmdBuffer, renderView.pCurrentRenderPass->usedLayout,
+                         VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(RMaterialPCB),
+                         &pPrimitive->pMaterial->pushConstantBlock);
+    }
 
     renderView.pCurrentMaterial = pPrimitive->pMaterial;
   }
@@ -108,6 +111,8 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
                      8;  // 16 bpp RGBA = 8 bytes
   RTexture* pTexture = core::resources.getTexture(RT_FRONT);
   RTexture* pCubemap = core::resources.getTexture(RT_CUBEMAP);
+
+  environment.envPushBlock.samples = 32u;
 
   // source render target range for layout transitions
   VkImageSubresourceRange srcRange{};
@@ -175,6 +180,7 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   for (uint8_t i = 0; i < 6; ++i) {
     dynamicOffset = static_cast<uint32_t>(environment.transformOffset * i);
     layerOffset = layerSize * i;
+    environment.envPushBlock.roughness = 0.6f;
 
     vkCmdBeginRenderPass(commandBuffer, &system.renderPassBeginInfo,
                          VK_SUBPASS_CONTENTS_INLINE);
@@ -184,6 +190,11 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
         renderView.pCurrentRenderPass->usedLayout, 0, 1,
         &environment.descriptorSets[renderView.frameInFlight], 1,
         &dynamicOffset);
+
+    // global set of push constants is used instead of per material ones
+    vkCmdPushConstants(commandBuffer, renderView.pCurrentRenderPass->usedLayout,
+                       VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(REnvironmentPCB),
+                       &environment.envPushBlock);
 
     drawBoundEntities(commandBuffer);
 
@@ -210,7 +221,7 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   }
 
   // no need to render new environment maps every frame
-  renderView.doEnvironmentPass = false;
+  //renderView.doEnvironmentPass = false;
 }
 
 void core::MRenderer::doRenderPass(VkCommandBuffer commandBuffer,
@@ -304,9 +315,9 @@ void core::MRenderer::renderFrame() {
   VkCommandBuffer cmdBuffer = command.buffersGraphics[renderView.frameInFlight];
 
   if (renderView.doEnvironmentPass) {
-    //renderEnvironmentMaps(cmdBuffer);
+    renderEnvironmentMaps(cmdBuffer);
   }
-  renderEnvironmentMaps(cmdBuffer);
+
   // main PBR render pass:
   // update view, projection and camera position
   updateSceneUBO(renderView.frameInFlight);

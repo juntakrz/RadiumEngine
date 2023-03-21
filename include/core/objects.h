@@ -297,6 +297,11 @@ struct RLightingUBO {
   float scaleIBLAmbient = 1.0f;
 };
 
+struct REnvironmentPCB {
+  float roughness;
+  uint32_t samples;
+};
+
 // push constant block used by RMaterial
 // (96 bytes of 128 Vulkan spec)
 struct RMaterialPCB {

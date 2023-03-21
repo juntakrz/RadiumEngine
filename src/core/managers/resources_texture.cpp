@@ -246,8 +246,8 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
   VkCommandBuffer cmdBuffer = core::renderer.createCommandBuffer(
       ECmdType::Graphics, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
   core::renderer.setImageLayout(cmdBuffer, newTexture->texture.image,
-                                VK_IMAGE_LAYOUT_UNDEFINED, pInfo->targetLayout,
-                                subRange);
+                                VK_IMAGE_LAYOUT_UNDEFINED,
+                                pInfo->targetLayout, subRange);
   core::renderer.flushCommandBuffer(cmdBuffer, ECmdType::Graphics, true);
 
   newTexture->name = pInfo->name;
