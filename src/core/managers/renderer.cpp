@@ -974,7 +974,6 @@ TResult core::MRenderer::createGraphicsPipelines() {
       static_cast<uint32_t>(descriptorSetLayouts.size());
   layoutInfo.pSetLayouts = descriptorSetLayouts.data();
   layoutInfo.pushConstantRangeCount = 1;
-  //layoutInfo.pPushConstantRanges = &envPushConstRange;
   layoutInfo.pPushConstantRanges = &envPushConstRange;
 
   if (vkCreatePipelineLayout(logicalDevice.device, &layoutInfo, nullptr,
@@ -1156,14 +1155,16 @@ TResult core::MRenderer::createImageTargets() {
 
   // default cubemap texture as a copy target
   rtName = RT_CUBEMAP;
+  uint32_t dimension = core::vulkan::envCubeResolution;
+  const uint32_t mipLevels = static_cast<uint32_t>(floor(log2(dimension))) + 1;
 
   textureInfo = RTextureInfo{};
   textureInfo.name = rtName;
   textureInfo.asCubemap = true;
-  textureInfo.width = core::vulkan::envCubeResolution;
+  textureInfo.width = dimension;
   textureInfo.height = textureInfo.width;
   textureInfo.format = core::vulkan::formatHDR16;
-  textureInfo.mipLevels = 8u;
+  textureInfo.mipLevels = mipLevels;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags =

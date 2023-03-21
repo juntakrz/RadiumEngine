@@ -1,5 +1,8 @@
 #version 450
 
+layout (location = 0) in vec3 inPos;
+layout (location = 0) out vec3 outWorldPos;
+
 layout(binding = 0) uniform UBOView {
 	mat4 view;
 	mat4 projection;
@@ -9,9 +12,6 @@ layout (set = 1, binding = 0) uniform UBOMesh {
 	mat4 rootMatrix;
 	mat4 nodeMatrix;
 } mesh;
-
-layout (location = 0) in vec3 inPos;
-layout (location = 0) out vec3 outWorldPos;
 
 out gl_PerVertex {
 	vec4 gl_Position;
