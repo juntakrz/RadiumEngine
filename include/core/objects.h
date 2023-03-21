@@ -269,8 +269,7 @@ struct RSamplerInfo {
 // camera rotation UBO for environment map generation
 struct REnvironmentUBO {
   glm::mat4 view;
-  glm::mat4 projection =
-      glm::perspective(glm::radians(90.0f), 1.0f, 0.01f, 100.0f);
+  glm::mat4 projection;
 };
 
 // camera and view matrix UBO for vertex shader

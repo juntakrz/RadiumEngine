@@ -1363,26 +1363,32 @@ void core::MRenderer::destroySyncObjects() {
 void core::MRenderer::setEnvironmentUBO() {
   // prepare transformation matrices
   std::array<glm::mat4, 6> transformArray;
+  size_t projectionOffset = sizeof(glm::mat4);
+
+  glm::mat4 perspective =
+      glm::perspective(glm::radians(90.0f), 1.0f, 0.01f, 10.0f);
 
   transformArray[0] =
-      glm::rotate(glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));  // X+
+      glm::rotate(glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));   // X+
   transformArray[1] =
-      glm::rotate(glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));  // X-
+      glm::rotate(glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));    // X-
   transformArray[2] =
-      glm::rotate(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));  // Y+
+      glm::rotate(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));    // Y+
   transformArray[3] =
-      glm::rotate(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));  // Y-
-  transformArray[4] = glm::mat4(1.0f);                                 // Z+
+      glm::rotate(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));   // Y-
+  transformArray[4] = glm::mat4(1.0f);                                  // Z+
   transformArray[5] =
-      glm::rotate(glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));  // Z-
+      glm::rotate(glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));   // Z-
 
   for (uint8_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-    for (uint8_t j = 0; j < transformArray.size(); ++j) {
-      uint8_t* memAddress = static_cast<uint8_t*>(
-          environment.transformBuffers[i].allocInfo.pMappedData);
-      memAddress += environment.transformOffset * j;
 
-      memcpy(memAddress, &transformArray[j], sizeof(REnvironmentUBO));
+    uint8_t* memAddress = static_cast<uint8_t*>(
+        environment.transformBuffers[i].allocInfo.pMappedData);
+
+    for (uint8_t j = 0; j < transformArray.size(); ++j) {
+      memcpy(memAddress, &transformArray[j], sizeof(glm::mat4));
+      memcpy(memAddress + projectionOffset, &perspective, sizeof(glm::mat4));
+      memAddress += environment.transformOffset;
     }
   }
 }

@@ -24,11 +24,6 @@ void core::MRenderer::drawBoundEntities(VkCommandBuffer cmdBuffer) {
   WModel* pModel = nullptr;
   renderView.refresh();
 
-  /*vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                          renderView.pCurrentRenderPass->usedLayout, 0, 1,
-                          &system.descriptorSets[renderView.frameInFlight], 0,
-                          nullptr);*/
-
   for (auto& pipeline : renderView.pCurrentRenderPass->usedPipelines) {
     for (auto& bindInfo : system.bindings) {
       if ((pEntity = bindInfo.pEntity) == nullptr) {
@@ -104,7 +99,8 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
 }
 
 void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
-  uint32_t offsets[] = {0};
+  uint32_t dynamicOffset =
+      static_cast<uint32_t>(environment.transformOffset * 0);
 
   // environment render pass
   renderView.pCurrentRenderPass = getRenderPass(ERenderPass::Environment);
@@ -149,7 +145,7 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           renderView.pCurrentRenderPass->usedLayout, 0, 1,
                           &environment.descriptorSets[renderView.frameInFlight],
-                          1, offsets);
+                          1, &dynamicOffset);
 
   drawBoundEntities(commandBuffer);
 
@@ -263,7 +259,7 @@ void core::MRenderer::renderFrame() {
   // update view, projection and camera position
   updateSceneUBO(renderView.frameInFlight);
   renderView.pCurrentRenderPass = getRenderPass(ERenderPass::PBR);
-  doRenderPass(cmdBuffer, system.descriptorSets, imageIndex);
+  //doRenderPass(cmdBuffer, system.descriptorSets, imageIndex);
 
   // wait until image to write color data to is acquired
   VkSemaphore waitSems[] = {sync.semImgAvailable[renderView.frameInFlight]};

@@ -32,8 +32,8 @@ class MRenderer {
       float deltaTheta = (0.5f * float(M_PI)) / 64.0f;
     } irradiancePushBlock;
 
-    uint32_t envPCBSize = sizeof(REnvironmentPCB);
-    uint32_t irrPCBSize = sizeof(RIrradiancePCB);
+    uint32_t envPCSize = sizeof(REnvironmentPCB);
+    uint32_t irrPCSize = sizeof(RIrradiancePCB);
     
     std::array<VkPushConstantRange, 2> pushConstantRanges;
     std::vector<RBuffer> transformBuffers;
