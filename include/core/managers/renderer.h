@@ -24,11 +24,6 @@ class MRenderer {
 
   struct REnvironmentInfo {
     REnvironmentPCB envPushBlock;
-
-    struct RIrradiancePCB {
-      float deltaPhi = (2.0f * float(M_PI)) / 180.0f;
-      float deltaTheta = (0.5f * float(M_PI)) / 64.0f;
-    } irradiancePushBlock;
     
     std::array<VkPushConstantRange, 2> pushConstantRanges;
     std::vector<RBuffer> transformBuffers;
@@ -138,35 +133,15 @@ class MRenderer {
   TResult createSceneBuffers();
   void destroySceneBuffers();
 
-  TResult createDescriptorSetLayouts();
-  void destroyDescriptorSetLayouts();
-
   // TODO: improve pool size calculations using loaded map data
   TResult createDescriptorPool();
   void destroyDescriptorPool();
 
-  TResult createDescriptorSets();
-
-  TResult createDefaultFramebuffers();
-  TResult createFramebuffer(ERenderPass renderPass,
-                            const char* targetTextureName,
-                            const char* framebufferName);
-
   TResult createUniformBuffers();
   void destroyUniformBuffers();
 
-  TResult createRenderPasses();
-  void destroyRenderPasses();
-  TResult configureRenderPasses();
-
-  RRenderPass* getRenderPass(ERenderPass type);
-  VkRenderPass& getVkRenderPass(ERenderPass type);
-
   TResult createImageTargets();
   TResult createDepthTarget();
-
-  TResult createGraphicsPipelines();
-  void destroyGraphicsPipelines();
 
   VkPipelineLayout& getPipelineLayout(EPipelineLayout type);
   VkPipeline& getPipeline(EPipeline type);
@@ -210,6 +185,30 @@ class MRenderer {
   RSceneBuffers* getSceneBuffers();
 
   RSceneUBO* getSceneUBO();
+
+  //
+  // ***PIPELINE
+  //
+
+  TResult createDescriptorSetLayouts();
+  void destroyDescriptorSetLayouts();
+
+  TResult createDescriptorSets();
+
+  TResult createDefaultFramebuffers();
+  TResult createFramebuffer(ERenderPass renderPass,
+                            const char* targetTextureName,
+                            const char* framebufferName);
+
+  TResult createRenderPasses();
+  void destroyRenderPasses();
+  RRenderPass* getRenderPass(ERenderPass type);
+  VkRenderPass& getVkRenderPass(ERenderPass type);
+
+  TResult createGraphicsPipelines();
+  void destroyGraphicsPipelines();
+
+  TResult configureRenderPasses();
 
   //
   // ***UTIL
@@ -380,8 +379,12 @@ class MRenderer {
  private:
   void updateBoundEntities();
 
-  // draw bound entities
+  // draw bound entities using render pass pipelines
   void drawBoundEntities(VkCommandBuffer cmdBuffer);
+
+  // draw bound entities using specific pipeline
+  void drawBoundEntities(VkCommandBuffer, EPipeline forcedPipeline);
+
   void renderPrimitive(VkCommandBuffer cmdBuffer, WPrimitive* pPrimitive,
                        EPipeline pipelineFlag, REntityBindInfo* pBindInfo);
 

@@ -51,7 +51,7 @@ void core::run() {
   core::resources.loadTexture("skyboxCubemap.ktx2", &samplerInfo);
 
   materialInfo.name = "skybox";
-  materialInfo.pipelineFlags = EPipeline::Skybox | EPipeline::Environment;
+  materialInfo.pipelineFlags = EPipeline::Skybox | EPipeline::MixEnvironment;
   materialInfo.textures.baseColor = "skyboxCubemap.ktx2";
   core::resources.createMaterial(&materialInfo);
 

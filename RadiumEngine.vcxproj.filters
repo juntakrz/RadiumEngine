@@ -129,6 +129,9 @@
     <ClCompile Include="src\core\stb_image.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\core\managers\renderer_pipeline.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\pch.h">
@@ -273,7 +276,8 @@
     <None Include="content_src\shaders\fs_skybox.frag" />
     <None Include="content_src\shaders\vs_pbr.vert" />
     <None Include="content_src\shaders\vs_skybox.vert" />
-    <None Include="content_src\shaders\vs_envFilter.vert" />
+    <None Include="content_src\shaders\vs_environment.vert" />
     <None Include="content_src\shaders\fs_envFilter.frag" />
+    <None Include="content_src\shaders\fs_envIrradiance.frag" />
   </ItemGroup>
 </Project>

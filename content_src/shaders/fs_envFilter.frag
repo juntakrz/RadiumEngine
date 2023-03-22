@@ -5,7 +5,7 @@ layout (location = 0) out vec4 outColor;
 
 layout (set = 2, binding = 0) uniform samplerCube samplerEnv;
 
-layout (push_constant) uniform PushConsts {
+layout (push_constant) uniform envPCB {
 	float roughness;
 	uint numSamples;
 } pushBlock;
@@ -55,11 +55,11 @@ vec3 importanceSample_GGX(vec2 Xi, float roughness, vec3 normal)
 }
 
 // Normal Distribution function
-float D_GGX(float dotNH, float roughness)
+float D_GGX(float NdotH, float roughness)
 {
 	float alpha = roughness * roughness;
 	float alpha2 = alpha * alpha;
-	float denom = dotNH * dotNH * (alpha2 - 1.0) + 1.0;
+	float denom = NdotH * NdotH * (alpha2 - 1.0) + 1.0;
 	return (alpha2)/(M_PI * denom*denom); 
 }
 

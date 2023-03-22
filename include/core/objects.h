@@ -44,13 +44,17 @@ enum class EDescriptorSetLayout {
 
 enum EPipeline : uint32_t {
   Null = 0,
-  Environment = 1,
-  Depth = 2,
-  Skybox = 4,
-  OpaqueCullBack = 8,
-  OpaqueCullNone = 16,
-  MaskCullBack = 32,
-  BlendCullBack = 64
+  EnvFilter = 1,
+  EnvIrradiance = 2,
+  Depth = 4,
+  Skybox = 8,
+  OpaqueCullBack = 16,
+  OpaqueCullNone = 32,
+  MaskCullBack = 64,
+  BlendCullBack = 128,
+
+  // combined pipeline indices for rendering only
+  MixEnvironment = EnvFilter + EnvIrradiance
 };
 
 enum class EPipelineLayout {
