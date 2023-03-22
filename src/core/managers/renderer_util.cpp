@@ -485,6 +485,7 @@ void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer,
                  pTexture->texture.imageLayout, newLayout, subresourceRange);
   
   pTexture->texture.imageLayout = newLayout;
+  pTexture->texture.descriptor.imageLayout = newLayout;
 }
 
 void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,

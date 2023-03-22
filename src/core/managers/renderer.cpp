@@ -242,7 +242,7 @@ TResult core::MRenderer::createImageTargets() {
   RTextureInfo textureInfo{};
 
   // front target texture used as a source for environment cubemap sides
-  std::string rtName = RT_FRONT;
+  std::string rtName = RTGT_ENVSRC;
 
   textureInfo = RTextureInfo{};
   textureInfo.name = rtName;
@@ -262,8 +262,26 @@ TResult core::MRenderer::createImageTargets() {
     return RE_CRITICAL;
   }
 
+  // target for BRDF LUT generation
+  rtName = RTGT_LUTMAP;
+
+  textureInfo.name = rtName;
+  textureInfo.width = core::vulkan::LUTExtent;
+  textureInfo.height = textureInfo.width;
+  textureInfo.format = core::vulkan::formatLUT;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  textureInfo.usageFlags =
+      VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+  pNewTexture = core::resources.createTexture(&textureInfo);
+
+  if (!pNewTexture) {
+    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
+    return RE_CRITICAL;
+  }
+
   // default cubemap texture as a copy target
-  rtName = RT_ENVMAP;
+  rtName = RTGT_ENVFILTER;
   uint32_t dimension = core::vulkan::envFilterExtent;
   uint32_t mipLevels = static_cast<uint32_t>(floor(log2(dimension))) + 1;
 
@@ -286,7 +304,7 @@ TResult core::MRenderer::createImageTargets() {
     return RE_CRITICAL;
   }
 
-  rtName = RT_IRRADMAP;
+  rtName = RTGT_ENVIRRAD;
   dimension = core::vulkan::envIrradianceExtent;
   mipLevels = static_cast<uint32_t>(floor(log2(dimension))) + 1;
 
@@ -317,7 +335,7 @@ TResult core::MRenderer::createDepthTarget() {
   };
 
   // default depth/stencil texture
-  std::string rtName = RT_DEPTH;
+  std::string rtName = RTGT_DEPTH;
 
   RTextureInfo textureInfo{};
   textureInfo.name = rtName;
@@ -340,20 +358,6 @@ TResult core::MRenderer::createDepthTarget() {
   }
 
   return RE_OK;
-}
-
-VkPipelineLayout& core::MRenderer::getPipelineLayout(EPipelineLayout type) {
-  return system.layouts.at(type);
-}
-
-VkPipeline& core::MRenderer::getPipeline(EPipeline type) {
-  // not error checked
-  return system.pipelines.at(type);
-}
-
-bool core::MRenderer::checkPipeline(uint32_t pipelineFlags,
-                                    EPipeline pipelineFlag) {
-  return pipelineFlags & pipelineFlag;
 }
 
 TResult core::MRenderer::createCoreCommandPools() {
@@ -599,7 +603,7 @@ TResult core::MRenderer::initialize() {
 
   if (chkResult <= RE_ERRORLIMIT) chkResult = createRenderPasses();           // A
   if (chkResult <= RE_ERRORLIMIT) chkResult = createGraphicsPipelines();      // B
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createDefaultFramebuffers();           // C
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createDefaultFramebuffers();    // C
   if (chkResult <= RE_ERRORLIMIT) chkResult = configureRenderPasses();        // connect A, B, C together
 
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();

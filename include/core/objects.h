@@ -39,19 +39,21 @@ enum class EDescriptorSetLayout {
   Scene,
   Material,
   Mesh,
-  Environment
+  Environment,
+  Dummy
 };
 
 enum EPipeline : uint32_t {
-  Null = 0,
-  EnvFilter = 1,
-  EnvIrradiance = 2,
-  Depth = 4,
-  Skybox = 8,
-  OpaqueCullBack = 16,
-  OpaqueCullNone = 32,
-  MaskCullBack = 64,
-  BlendCullBack = 128,
+  Null              = 0,
+  LUTGen            = 0b1,
+  EnvFilter         = 0b10,
+  EnvIrradiance     = 0b100,
+  Depth             = 0b1000,
+  Skybox            = 0b10000,
+  OpaqueCullBack    = 0b100000,
+  OpaqueCullNone    = 0b1000000,
+  MaskCullBack      = 0b10000000,
+  BlendCullBack     = 0b100000000,
 
   // combined pipeline indices for rendering only
   MixEnvironment = EnvFilter + EnvIrradiance
@@ -60,7 +62,8 @@ enum EPipeline : uint32_t {
 enum class EPipelineLayout {
   Null,
   Scene,
-  Environment
+  Environment,
+  LUTGen
 };
 
 enum class EPrimitiveType {
@@ -73,6 +76,7 @@ enum class EPrimitiveType {
 
 enum class ERenderPass {
   Null,
+  LUTGen,
   Environment,
   PBR
 };

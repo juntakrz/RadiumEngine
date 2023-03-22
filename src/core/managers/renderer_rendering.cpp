@@ -133,7 +133,7 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   size_t layerSize = core::vulkan::envFilterExtent *
                      core::vulkan::envFilterExtent *
                      8;  // 16 bpp RGBA = 8 bytes
-  RTexture* pTexture = core::resources.getTexture(RT_FRONT);
+  RTexture* pTexture = core::resources.getTexture(RTGT_ENVSRC);
   RTexture* pCubemap = nullptr;
   environment.envPushBlock.samples = 32u;
 
@@ -186,13 +186,13 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
       case EPipeline::EnvFilter: {
         system.renderPassBeginInfo.renderArea.extent = {
             core::vulkan::envFilterExtent, core::vulkan::envFilterExtent};
-        pCubemap = core::resources.getTexture(RT_ENVMAP);
+        pCubemap = core::resources.getTexture(RTGT_ENVFILTER);
         break;
       }
       case EPipeline::EnvIrradiance: {
         system.renderPassBeginInfo.renderArea.extent = {
             core::vulkan::envIrradianceExtent, core::vulkan::envIrradianceExtent};
-        pCubemap = core::resources.getTexture(RT_IRRADMAP);
+        pCubemap = core::resources.getTexture(RTGT_ENVIRRAD);
         break;
       }
     }
@@ -200,7 +200,7 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
     mipLevels = pCubemap->texture.levelCount;
     dimension = pCubemap->texture.width;
 
-    system.renderPassBeginInfo.framebuffer = system.framebuffers.at(FB_FRONT);
+    system.renderPassBeginInfo.framebuffer = system.framebuffers.at(RFB_ENV);
 
     // start rendering 6 camera views
     VkCommandBufferBeginInfo beginInfo{};
@@ -249,7 +249,7 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
         vkCmdBindDescriptorSets(
             commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
             renderView.pCurrentRenderPass->usedLayout, 0, 1,
-            &environment.descriptorSets[renderView.frameInFlight], 1,
+            &environment.envDescriptorSets[renderView.frameInFlight], 1,
             &dynamicOffset);
 
         if (pipelines[k] == EPipeline::EnvFilter) {
@@ -287,7 +287,7 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
 
     // switch image layout of the current cubemap to be used in future shaders
     setImageLayout(commandBuffer, pCubemap,
-                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, dstRange);
+                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, dstRange);
 
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
       RE_LOG(Error, "Failed to end writing to command buffer.");
@@ -296,6 +296,59 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
 
   // no need to render new environment maps every frame
   renderView.doEnvironmentPass = false;
+}
+
+void core::MRenderer::generateLUTMap() {
+  core::time.tickTimer();
+
+  system.renderPassBeginInfo.renderPass = getVkRenderPass(ERenderPass::LUTGen);
+  system.renderPassBeginInfo.framebuffer = system.framebuffers.at(RFB_LUT);
+  system.renderPassBeginInfo.renderArea.extent = {core::vulkan::LUTExtent,
+                                                  core::vulkan::LUTExtent};
+
+  RTexture* pLUTTexture = core::resources.getTexture(RTGT_LUTMAP);
+
+  VkImageSubresourceRange subresourceRange{};
+  subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  subresourceRange.baseArrayLayer = 0;
+  subresourceRange.layerCount = pLUTTexture->texture.layerCount;
+  subresourceRange.baseMipLevel = 0;
+  subresourceRange.levelCount = pLUTTexture->texture.levelCount;
+
+  VkViewport viewport{};
+  viewport.width = core::vulkan::LUTExtent;
+  viewport.height = viewport.width;
+  viewport.minDepth = 0.0f;
+  viewport.maxDepth = 1.0f;
+
+  VkRect2D scissor{};
+  scissor.extent = system.renderPassBeginInfo.renderArea.extent;
+  scissor.offset = {0, 0};
+
+  VkCommandBuffer cmdBuffer = createCommandBuffer(
+      ECmdType::Graphics, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
+
+  vkCmdBeginRenderPass(cmdBuffer, &system.renderPassBeginInfo,
+                       VK_SUBPASS_CONTENTS_INLINE);
+
+  vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
+  vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
+
+  vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    getPipeline(EPipeline::LUTGen));
+
+  vkCmdDraw(cmdBuffer, 3, 1, 0, 0);
+
+  vkCmdEndRenderPass(cmdBuffer);
+
+  setImageLayout(cmdBuffer, pLUTTexture,
+                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subresourceRange);
+
+  flushCommandBuffer(cmdBuffer, ECmdType::Graphics, true, true);
+
+  float timeSpent = core::time.tickTimer();
+
+  RE_LOG(Log, "Generating BRDF LUT map took %.2f milliseconds.", timeSpent);
 }
 
 void core::MRenderer::doRenderPass(VkCommandBuffer commandBuffer,
@@ -457,11 +510,16 @@ void core::MRenderer::renderFrame() {
 
     return;
   }
-
+  //renderView.doEnvironmentPass = true;
   sync.asyncUpdateEntities.update();
 
   renderView.frameInFlight = ++renderView.frameInFlight % MAX_FRAMES_IN_FLIGHT;
   ++renderView.framesRendered;
+}
+
+void core::MRenderer::renderInitFrame() {
+  generateLUTMap();
+  renderFrame();
 }
 
 void core::MRenderer::updateAspectRatio() {

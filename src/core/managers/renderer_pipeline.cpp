@@ -8,12 +8,31 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
   // layout: shader binding / descriptor type / count / shader stage / immutable
   // samplers
 
+  
+  // dummy descriptor set layout
+  {
+    system.descriptorSetLayouts.emplace(EDescriptorSetLayout::Dummy,
+                                        VK_NULL_HANDLE);
+
+    VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
+    setLayoutCreateInfo.sType =
+        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+
+    if (vkCreateDescriptorSetLayout(
+            logicalDevice.device, &setLayoutCreateInfo, nullptr,
+            &system.descriptorSetLayouts.at(
+                EDescriptorSetLayout::Dummy)) != VK_SUCCESS) {
+      RE_LOG(Critical, "Failed to create dummy descriptor set layout.");
+      return RE_CRITICAL;
+    }
+  }
+
   // scene matrices and environmental maps
   // 0 - MVP matrix
   // 1 - lighting variables
-  // 2 - TODO
-  // 3 - TODO
-  // 4 - TODO
+  // 2 - environment filtered map
+  // 3 - environment irradiance map
+  // 4 - generated BRDF LUT map
   {
     system.descriptorSetLayouts.emplace(EDescriptorSetLayout::Scene,
                                         VK_NULL_HANDLE);
@@ -182,7 +201,19 @@ TResult core::MRenderer::createDescriptorSets() {
     RE_LOG(Log, "Populating renderer descriptor sets.");
 #endif
 
-    uint32_t descriptorCount = 2u;
+    // TODO: maybe needs a better workaround / solution
+    // stepping ahead environment texture descriptors to update sets without errors
+    RTexture* pTexture = core::resources.getTexture(RTGT_ENVFILTER);
+    pTexture->texture.descriptor.imageLayout =
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    pTexture = core::resources.getTexture(RTGT_ENVIRRAD);
+    pTexture->texture.descriptor.imageLayout =
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    pTexture = core::resources.getTexture(RTGT_LUTMAP);
+    pTexture->texture.descriptor.imageLayout =
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    uint32_t descriptorCount = 5u;
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
       // model*view*projection data for descriptor set
@@ -219,7 +250,7 @@ TResult core::MRenderer::createDescriptorSets() {
       writeDescriptorSets[1].dstSet = system.descriptorSets[i];
       writeDescriptorSets[1].dstBinding = 1;
       writeDescriptorSets[1].pBufferInfo = &descriptorBufferInfoLighting;
-      /*
+      
       // environment image data
       writeDescriptorSets[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
       writeDescriptorSets[2].descriptorType =
@@ -227,7 +258,8 @@ TResult core::MRenderer::createDescriptorSets() {
       writeDescriptorSets[2].descriptorCount = 1;
       writeDescriptorSets[2].dstSet = system.descriptorSets[i];
       writeDescriptorSets[2].dstBinding = 2;
-      writeDescriptorSets[2].pImageInfo = &textures.irradianceCube.descriptor;
+      writeDescriptorSets[2].pImageInfo =
+          &core::resources.getTexture(RTGT_ENVFILTER)->texture.descriptor;
 
       writeDescriptorSets[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
       writeDescriptorSets[3].descriptorType =
@@ -235,7 +267,8 @@ TResult core::MRenderer::createDescriptorSets() {
       writeDescriptorSets[3].descriptorCount = 1;
       writeDescriptorSets[3].dstSet = system.descriptorSets[i];
       writeDescriptorSets[3].dstBinding = 3;
-      writeDescriptorSets[3].pImageInfo = &textures.prefilteredCube.descriptor;
+      writeDescriptorSets[3].pImageInfo =
+          &core::resources.getTexture(RTGT_ENVIRRAD)->texture.descriptor;
 
       writeDescriptorSets[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
       writeDescriptorSets[4].descriptorType =
@@ -243,8 +276,9 @@ TResult core::MRenderer::createDescriptorSets() {
       writeDescriptorSets[4].descriptorCount = 1;
       writeDescriptorSets[4].dstSet = system.descriptorSets[i];
       writeDescriptorSets[4].dstBinding = 4;
-      writeDescriptorSets[4].pImageInfo = &textures.lutBrdf.descriptor;
-      */
+      writeDescriptorSets[4].pImageInfo =
+          &core::resources.getTexture(RTGT_LUTMAP)->texture.descriptor;
+      
       vkUpdateDescriptorSets(logicalDevice.device, descriptorCount,
                              writeDescriptorSets.data(), 0, nullptr);
     }
@@ -265,10 +299,10 @@ TResult core::MRenderer::createDescriptorSets() {
     setAllocInfo.descriptorSetCount = MAX_FRAMES_IN_FLIGHT;
     setAllocInfo.pSetLayouts = environmentSetLayout.data();
 
-    environment.descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+    environment.envDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
 
     if (vkAllocateDescriptorSets(logicalDevice.device, &setAllocInfo,
-                                 environment.descriptorSets.data()) !=
+                                 environment.envDescriptorSets.data()) !=
         VK_SUCCESS) {
       RE_LOG(Critical, "Failed to allocate descriptor sets.");
       return RE_CRITICAL;
@@ -293,7 +327,7 @@ TResult core::MRenderer::createDescriptorSets() {
       std::vector<VkWriteDescriptorSet> writeSets(2);
       writeSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
       writeSets[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-      writeSets[0].dstSet = environment.descriptorSets[j];
+      writeSets[0].dstSet = environment.envDescriptorSets[j];
       writeSets[0].dstBinding = 0;
       writeSets[0].dstArrayElement = 0;
       writeSets[0].descriptorCount = 1;
@@ -301,7 +335,7 @@ TResult core::MRenderer::createDescriptorSets() {
 
       writeSets[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
       writeSets[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-      writeSets[1].dstSet = environment.descriptorSets[j];
+      writeSets[1].dstSet = environment.envDescriptorSets[j];
       writeSets[1].dstBinding = 1;
       writeSets[1].descriptorCount = 1;
       writeSets[1].pBufferInfo = &infoLighting;
@@ -326,7 +360,7 @@ TResult core::MRenderer::createDefaultFramebuffers() {
   for (size_t i = 0; i < swapchain.framebuffers.size(); ++i) {
     std::vector<VkImageView> attachments = {
         swapchain.imageViews[i],
-        core::resources.getTexture(RT_DEPTH)->texture.view};
+        core::resources.getTexture(RTGT_DEPTH)->texture.view};
 
     framebufferInfo.renderPass = getVkRenderPass(ERenderPass::PBR);
     framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
@@ -344,7 +378,14 @@ TResult core::MRenderer::createDefaultFramebuffers() {
     }
   }
 
-  return createFramebuffer(ERenderPass::Environment, RT_FRONT, FB_FRONT);
+  TResult chkResult;
+  
+  if (chkResult = createFramebuffer(ERenderPass::Environment, RTGT_ENVSRC,
+                                    RFB_ENV) != RE_OK) {
+    return chkResult;
+  };
+
+  return createFramebuffer(ERenderPass::LUTGen, RTGT_LUTMAP, RFB_LUT);
 }
 
 TResult core::MRenderer::createFramebuffer(ERenderPass renderPass,
@@ -486,9 +527,6 @@ TResult core::MRenderer::createRenderPasses() {
   passType = ERenderPass::Environment;
   attachments.clear();
 
-  const uint32_t numMips =
-      static_cast<uint32_t>(floor(log2(core::vulkan::envFilterExtent))) + 1;
-
   system.renderPasses.emplace(passType, RRenderPass{});
 
   colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -500,6 +538,28 @@ TResult core::MRenderer::createRenderPasses() {
                             VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
   dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
+  renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+  renderPassInfo.pAttachments = attachments.data();
+
+  if (vkCreateRenderPass(logicalDevice.device, &renderPassInfo, nullptr,
+                         &getVkRenderPass(passType)) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to create render pass E%d.", passType);
+
+    return RE_CRITICAL;
+  }
+
+  //
+  // BRDF LUT render pass
+  //
+  passType = ERenderPass::LUTGen;
+  attachments.clear();
+
+  system.renderPasses.emplace(passType, RRenderPass{});
+
+  colorAttachment.format = core::vulkan::formatLUT;
+  attachments = {colorAttachment};
+  renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+  renderPassInfo.pAttachments = attachments.data();
   renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
   renderPassInfo.pAttachments = attachments.data();
 
@@ -734,6 +794,28 @@ TResult core::MRenderer::createGraphicsPipelines() {
     return RE_CRITICAL;
   }
 
+  // pipeline layout for generating BRDF LUT map
+  layoutType = EPipelineLayout::LUTGen;
+  system.layouts.emplace(layoutType, VK_NULL_HANDLE);
+
+  descriptorSetLayouts.clear();
+  descriptorSetLayouts = {getDescriptorSetLayout(EDescriptorSetLayout::Dummy)};
+
+  layoutInfo = VkPipelineLayoutCreateInfo{};
+  layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+  layoutInfo.setLayoutCount =
+      static_cast<uint32_t>(descriptorSetLayouts.size());
+  layoutInfo.pSetLayouts = descriptorSetLayouts.data();
+  layoutInfo.pushConstantRangeCount = 0;
+  layoutInfo.pPushConstantRanges = nullptr;
+
+  if (vkCreatePipelineLayout(logicalDevice.device, &layoutInfo, nullptr,
+                             &getPipelineLayout(layoutType)) != VK_SUCCESS) {
+    RE_LOG(Critical, "failed to create \"BRDF LUT generator\" pipeline layout.");
+
+    return RE_CRITICAL;
+  }
+
   //
   // PIPELINES
   //
@@ -751,10 +833,6 @@ TResult core::MRenderer::createGraphicsPipelines() {
   vertexInputInfo.pVertexAttributeDescriptions = attributeDescs.data();
 
   // 'PBR single sided' pipeline, uses 'PBR' render pass and 'scene' layout
-#ifndef NDEBUG
-  RE_LOG(Log, "Setting up PBR pipeline.");
-#endif
-
   std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {
       loadShader("vs_pbr.spv", VK_SHADER_STAGE_VERTEX_BIT),
       loadShader("fs_pbr.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
@@ -805,10 +883,6 @@ TResult core::MRenderer::createGraphicsPipelines() {
   }
 
   // 'Skybox' pipeline
-#ifndef NDEBUG
-  RE_LOG(Log, "Setting up the skybox pipeline.");
-#endif
-
   shaderStages.clear();
   shaderStages = {loadShader("vs_skybox.spv", VK_SHADER_STAGE_VERTEX_BIT),
                   loadShader("fs_skybox.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
@@ -829,6 +903,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
     vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
   }
 
+  // 'EnvFilter' pipeline
   shaderStages.clear();
   shaderStages = {loadShader("vs_environment.spv", VK_SHADER_STAGE_VERTEX_BIT),
                   loadShader("fs_envFilter.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
@@ -850,6 +925,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
     vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
   }
 
+  // 'EnvIrradiance' pipeline
   shaderStages.clear();
   shaderStages = {loadShader("vs_environment.spv", VK_SHADER_STAGE_VERTEX_BIT),
                   loadShader("fs_envIrradiance.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
@@ -861,6 +937,34 @@ TResult core::MRenderer::createGraphicsPipelines() {
           nullptr, &getPipeline(EPipeline::EnvIrradiance)) != VK_SUCCESS) {
     RE_LOG(Critical,
            "Failed to create environment irradiance graphics pipeline.");
+
+    return RE_CRITICAL;
+  }
+
+  for (auto stage : shaderStages) {
+    vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
+  }
+
+  // 'EnvLUT' pipeline
+  shaderStages.clear();
+  shaderStages = {
+      loadShader("vs_brdfLUT.spv", VK_SHADER_STAGE_VERTEX_BIT),
+      loadShader("fs_brdfLUT.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
+
+  system.pipelines.emplace(EPipeline::LUTGen, VK_NULL_HANDLE);
+
+  vertexInputInfo = VkPipelineVertexInputStateCreateInfo{};
+  vertexInputInfo.sType =
+      VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+  graphicsPipelineInfo.layout = getPipelineLayout(EPipelineLayout::LUTGen);
+  graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::LUTGen);
+
+  if (vkCreateGraphicsPipelines(
+          logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
+          nullptr, &getPipeline(EPipeline::LUTGen)) != VK_SUCCESS) {
+    RE_LOG(Critical,
+           "Failed to create LUT generator pipeline.");
 
     return RE_CRITICAL;
   }
@@ -883,6 +987,20 @@ void core::MRenderer::destroyGraphicsPipelines() {
   for (auto& layout : system.layouts) {
     vkDestroyPipelineLayout(logicalDevice.device, layout.second, nullptr);
   }
+}
+
+VkPipelineLayout& core::MRenderer::getPipelineLayout(EPipelineLayout type) {
+  return system.layouts.at(type);
+}
+
+VkPipeline& core::MRenderer::getPipeline(EPipeline type) {
+  // not error checked
+  return system.pipelines.at(type);
+}
+
+bool core::MRenderer::checkPipeline(uint32_t pipelineFlags,
+                                    EPipeline pipelineFlag) {
+  return pipelineFlags & pipelineFlag;
 }
 
 TResult core::MRenderer::configureRenderPasses() {

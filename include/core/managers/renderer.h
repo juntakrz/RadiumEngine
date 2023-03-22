@@ -24,10 +24,10 @@ class MRenderer {
 
   struct REnvironmentInfo {
     REnvironmentPCB envPushBlock;
-    
-    std::array<VkPushConstantRange, 2> pushConstantRanges;
+    std::vector<VkDescriptorSet> envDescriptorSets;
+    VkDescriptorSet LUTDescriptorSet;
+
     std::vector<RBuffer> transformBuffers;
-    std::vector<VkDescriptorSet> descriptorSets;
     VkDeviceSize transformOffset = 0u;
   } environment;
 
@@ -75,6 +75,7 @@ class MRenderer {
     std::vector<VkDescriptorSet> descriptorSets;
     std::unordered_map<EDescriptorSetLayout, VkDescriptorSetLayout>
         descriptorSetLayouts;
+
     std::vector<REntityBindInfo> bindings;                            // entities rendered during the current frame
     std::unordered_map<EPipeline, std::vector<WPrimitive*>> primitivesByPipeline;   // TODO
   } system;
@@ -143,12 +144,6 @@ class MRenderer {
   TResult createImageTargets();
   TResult createDepthTarget();
 
-  VkPipelineLayout& getPipelineLayout(EPipelineLayout type);
-  VkPipeline& getPipeline(EPipeline type);
-
-  // check if pipeline flag is present in the flag array
-  bool checkPipeline(uint32_t pipelineFlags, EPipeline pipelineFlag);
-
   TResult createCoreCommandPools();
   void destroyCoreCommandPools();
 
@@ -207,6 +202,11 @@ class MRenderer {
 
   TResult createGraphicsPipelines();
   void destroyGraphicsPipelines();
+  VkPipelineLayout& getPipelineLayout(EPipelineLayout type);
+  VkPipeline& getPipeline(EPipeline type);
+
+  // check if pipeline flag is present in the flag array
+  bool checkPipeline(uint32_t pipelineFlags, EPipeline pipelineFlag);
 
   TResult configureRenderPasses();
 
@@ -388,14 +388,18 @@ class MRenderer {
   void renderPrimitive(VkCommandBuffer cmdBuffer, WPrimitive* pPrimitive,
                        EPipeline pipelineFlag, REntityBindInfo* pBindInfo);
 
-  // renders skybox pass and generates PBR cubemaps for future passes
+  // renders Environment passes and generates PBR cubemaps for future use
   void renderEnvironmentMaps(VkCommandBuffer commandBuffer);
+
+  // generates BRDF LUT map
+  void generateLUTMap();
 
  public:
   void doRenderPass(VkCommandBuffer commandBuffer,
                     std::vector<VkDescriptorSet>& sets, uint32_t imageIndex);
 
   void renderFrame();
+  void renderInitFrame();
 
   void updateAspectRatio();
   void setFOV(float FOV);

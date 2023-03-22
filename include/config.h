@@ -8,13 +8,15 @@
 #define MAX_TRANSFER_BUFFERS    2u
 
 // frame buffers
-#define FB_FRONT                "FB_Front"
+#define RFB_ENV                 "FB_Env"
+#define RFB_LUT                 "FB_Lut"
 
 // render targets
-#define RT_DEPTH                "RT_Depth"
-#define RT_FRONT                "RT_Front"
-#define RT_ENVMAP               "RT_EnvMap"
-#define RT_IRRADMAP             "RT_IrradMap"
+#define RTGT_DEPTH              "RT2D_Depth"        // depth render target
+#define RTGT_ENVSRC             "RT2D_EnvSrc"       // source texture for environment cubemaps
+#define RTGT_ENVFILTER          "RTCube_EnvFilter"
+#define RTGT_ENVIRRAD           "RTCube_EnvIrrad"
+#define RTGT_LUTMAP             "RTCube_EnvLUT"
 
 struct RVertex;
 
@@ -60,7 +62,9 @@ const std::vector<const char*> requiredExtensions = {
 const VkFormat formatLDR = VK_FORMAT_B8G8R8A8_SRGB;
 const VkFormat formatHDR16 = VK_FORMAT_R16G16B16A16_SFLOAT;
 const VkFormat formatHDR32 = VK_FORMAT_R32G32B32A32_SFLOAT;
+const VkFormat formatLUT = VK_FORMAT_R16G16_SFLOAT;
 extern VkFormat formatDepth;
+const uint32_t LUTExtent = 512u;
 const uint32_t envFilterExtent = 512u;
 const uint32_t envIrradianceExtent = 64u;
 const VkColorSpaceKHR colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
