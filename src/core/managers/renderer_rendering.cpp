@@ -289,9 +289,11 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
     setImageLayout(commandBuffer, pCubemap,
                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, dstRange);
 
-    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+    /*if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
       RE_LOG(Error, "Failed to end writing to command buffer.");
-    }
+    }*/
+
+    flushCommandBuffer(commandBuffer, ECmdType::Graphics);
   }
 
   // no need to render new environment maps every frame
@@ -471,6 +473,10 @@ void core::MRenderer::renderFrame() {
   submitInfo.signalSemaphoreCount = 1;
   submitInfo.pSignalSemaphores =
       signalSems;  // signal these after rendering is finished
+
+  RTexture* tex0 = core::resources.getTexture(RTGT_ENVFILTER);
+  RTexture* tex1 = core::resources.getTexture(RTGT_ENVIRRAD);
+  RTexture* tex2 = core::resources.getTexture(RTGT_LUTMAP);
 
   // submit an array featuring command buffers to graphics queue and signal
   // fence for CPU to wait for execution

@@ -358,11 +358,13 @@
     <None Include="content\shaders\fs_default.spv" />
     <None Include="content\shaders\shaders" />
     <None Include="content\shaders\vs_default.spv" />
+    <None Include="content_src\shaders\fs_brdfLUT.frag" />
     <None Include="content_src\shaders\fs_default.frag" />
     <None Include="content_src\shaders\fs_envFilter.frag" />
     <None Include="content_src\shaders\fs_envIrradiance.frag" />
     <None Include="content_src\shaders\fs_pbr.frag" />
     <None Include="content_src\shaders\fs_skybox.frag" />
+    <None Include="content_src\shaders\vs_brdfLUT.vert" />
     <None Include="content_src\shaders\vs_default.vert" />
     <None Include="content_src\shaders\vs_environment.vert" />
     <None Include="content_src\shaders\vs_pbr.vert" />

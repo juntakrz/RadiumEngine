@@ -22,13 +22,18 @@ layout (set = 0, binding = 1) uniform UBOLighting {
 	float scaleIBLAmbient;
 } lighting;
 
-// Material bindings
+// environment bindings
+layout (set = 0, binding = 2) uniform samplerCube prefilteredMap;
+layout (set = 0, binding = 3) uniform samplerCube irradianceMap;
+layout (set = 0, binding = 4) uniform sampler2D BRDFLUTMap;
 
+// material bindings
 layout (set = 2, binding = 0) uniform sampler2D colorMap;
 layout (set = 2, binding = 1) uniform sampler2D normalMap;
 layout (set = 2, binding = 2) uniform sampler2D physicalDescriptorMap;
 layout (set = 2, binding = 3) uniform sampler2D aoMap;
 layout (set = 2, binding = 4) uniform sampler2D emissiveMap;
+layout (set = 2, binding = 5) uniform sampler2D extraMap;		// TODO: implement extra map in shader
 
 layout (push_constant) uniform Material {
 	vec4 baseColorFactor;
@@ -121,6 +126,35 @@ float getMicrofacetDistribution(float roughness, float NdotH) {
 	return r2 / (M_PI * f * f);
 }
 
+// Calculation of the lighting contribution from an optional Image Based Light source.
+// Precomputed Environment Maps are required uniform inputs
+vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, float NdotV, vec3 n, vec3 reflection)
+{
+	//float lod = (roughness * lighting.prefilteredCubeMipLevels);
+	float lod = (roughness * 32.0);
+
+	// retrieve a scale and bias to F0
+	vec3 brdf = (texture(BRDFLUTMap, vec2(NdotV, 1.0 - roughness))).rgb;
+	vec3 diffuseLight = tonemap(texture(irradianceMap, n)).rgb;
+	vec3 specularLight = tonemap(textureLod(prefilteredMap, reflection, lod)).rgb;
+
+	diffuseLight.r = pow(diffuseLight.r, 2.2);
+	diffuseLight.g = pow(diffuseLight.g, 2.2);
+	diffuseLight.b = pow(diffuseLight.b, 2.2);
+
+	specularLight.r = pow(specularLight.r, 2.2);
+	specularLight.g = pow(specularLight.g, 2.2);
+	specularLight.b = pow(specularLight.b, 2.2);
+
+	vec3 diffuse = diffuseLight * diffuseColor;
+	vec3 specular = specularLight * (specularColor * brdf.x + brdf.y);
+
+	//diffuse *= lighting.scaleIBLAmbient;
+	//specular *= lighting.scaleIBLAmbient;
+
+	return diffuse + specular;
+}
+
 void main() {
 	float perceptualRoughness;
 	float metallic;
@@ -189,19 +223,19 @@ void main() {
 	vec3 specularEnvironmentR0 = specularColor.rgb;
 	vec3 specularEnvironmentR90 = vec3(1.0, 1.0, 1.0) * reflectance90;
 
-	vec3 n = (material.normalTextureSet > -1) ? getNormal() : normalize(inNormal);
+	vec3 N = (material.normalTextureSet > -1) ? getNormal() : normalize(inNormal);
 
-	vec3 v = normalize(scene.camPos - inWorldPos);    // Vector from surface point to camera
-	vec3 l = normalize(dirLightPos);				// Vector from surface point to light
-	vec3 h = normalize(l+v);                        // Half vector between both l and v
-	vec3 reflection = -normalize(reflect(v, n));
+	vec3 V = normalize(scene.camPos - inWorldPos);  // Vector from surface point to camera
+	vec3 L = normalize(dirLightPos);				// Vector from surface point to light
+	vec3 H = normalize(L + V);                      // Half vector between both l and v
+	vec3 reflection = -normalize(reflect(V, N));
 	reflection.y *= -1.0f;
 
-	float NdotL = clamp(dot(n, l), 0.001, 1.0);
-	float NdotV = clamp(abs(dot(n, v)), 0.001, 1.0);
-	float NdotH = clamp(dot(n, h), 0.0, 1.0);
-	float LdotH = clamp(dot(l, h), 0.0, 1.0);
-	float VdotH = clamp(dot(v, h), 0.0, 1.0);
+	float NdotL = clamp(dot(N, L), 0.001, 1.0);
+	float NdotV = clamp(abs(dot(N, V)), 0.001, 1.0);
+	float NdotH = clamp(dot(N, H), 0.0, 1.0);
+	float LdotH = clamp(dot(L, H), 0.0, 1.0);
+	float VdotH = clamp(dot(V, H), 0.0, 1.0);
 
 	// Calculate the shading terms for the microfacet specular shading model
 	vec3 F = getFresnelReflectanceR(specularEnvironmentR0, specularEnvironmentR90, alphaRoughness, VdotH);
@@ -216,7 +250,7 @@ void main() {
 	vec3 color = NdotL * dirLightColor * (diffuseContrib + specContrib);
 
 	// Calculate lighting contribution from image based lighting source (IBL)
-	//color += getIBLContribution(pbrInputs, n, reflection);
+	color += getIBLContribution(diffuseColor, specularColor, perceptualRoughness, NdotV, N, reflection);
 
 	if (material.occlusionTextureSet > -1) {
 		float ao = texture(aoMap, (material.occlusionTextureSet == 0 ? inUV0 : inUV1)).r;
