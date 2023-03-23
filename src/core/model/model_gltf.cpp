@@ -1,102 +1,116 @@
 #include "pch.h"
 #include "core/core.h"
 #include "core/managers/renderer.h"
-#include "core/managers/materials.h"
-#include "core/world/model/primitive_custom.h"
-#include "core/world/model/model.h"
+#include "core/model/model.h"
 
 #include "tiny_gltf.h"
 
-glm::mat4 WModel::Node::getLocalMatrix() {
-  return glm::translate(glm::mat4(1.0f), translation) * glm::mat4(rotation) *
-         glm::scale(glm::mat4(1.0f), scale) * nodeMatrix;
-}
-
-glm::mat4 WModel::Node::getMatrix() {
-  glm::mat4 matrix = getLocalMatrix();
-  Node* pParent = pParentNode;
-  while (pParent) {
-    matrix = pParent->getLocalMatrix() * matrix;
-    pParent = pParent->pParentNode;
-  }
-  return matrix;
-}
-
-WModel::Node::Node(WModel::Node* pParent, uint32_t index,
-                   const std::string& name)
-    : pParentNode(pParent), index(index), name(name) {
-  // prepare buffer and memory to store node transformation matrix
-  core::renderer.createBuffer(EBufferMode::CPU_UNIFORM,
-                              uniformBufferData.bufferSize,
-                              uniformBufferData.uniformBuffer, nullptr);
-}
-
-void WModel::Node::update() {
-  if (!pMesh) {
-    glm::mat4 matrix = getMatrix();
-    /*if (skin) {
-      mesh->uniformBlock.matrix = m;
-      // Update join matrices
-      glm::mat4 inverseTransform = glm::inverse(m);
-      size_t numJoints =
-          std::min((uint32_t)skin->joints.size(), MAX_NUM_JOINTS);
-      for (size_t i = 0; i < numJoints; i++) {
-        vkglTF::Node* jointNode = skin->joints[i];
-        glm::mat4 jointMat =
-            jointNode->getMatrix() * skin->inverseBindMatrices[i];
-        jointMat = inverseTransform * jointMat;
-        mesh->uniformBlock.jointMatrix[i] = jointMat;
-      }
-      mesh->uniformBlock.jointcount = (float)numJoints;
-      memcpy(mesh->uniformBuffer.mapped, &mesh->uniformBlock,
-             sizeof(mesh->uniformBlock));
-    } else {
-      memcpy(mesh->uniformBuffer.mapped, &m, sizeof(glm::mat4));
-    }*/
-
-    // store node matrix into a uniform buffer
-    memcpy(uniformBufferData.uniformBuffer.allocInfo.pMappedData, &matrix,
-           sizeof(glm::mat4));
+TResult WModel::createModel(const char* name, const tinygltf::Model* pInModel) {
+  if (!pInModel) {
+    RE_LOG(Error,
+           "Failed to create model, no glTF source was provided for \"%s\".",
+           name);
   }
 
-  for (auto& pChild : pChildren) {
-    pChild->update();
-  }
-}
+  staging.pInModel = pInModel;
+  const tinygltf::Model& gltfModel = *pInModel;
 
-void WModel::parseNodeProperties(const tinygltf::Model& gltfModel,
-  const tinygltf::Node& gltfNode) {
-  if (gltfNode.children.size() > 0) {
-    for (size_t i = 0; i < gltfNode.children.size(); i++) {
-      parseNodeProperties(gltfModel, gltfModel.nodes[gltfNode.children[i]]);
+  m_name = name;
+
+  uint32_t vertexCount = 0u, vertexPos = 0u, indexCount = 0u, indexPos = 0u;
+  const tinygltf::Scene& gltfScene =
+      gltfModel
+          .scenes[gltfModel.defaultScene > -1 ? gltfModel.defaultScene : 0];
+
+  // index of texture paths used by this model, required by the material setup
+  // later
+  std::vector<std::string> texturePaths;
+
+  // assign texture samplers for the current WModel
+  setTextureSamplers();
+
+  // go through glTF model's texture records
+  for (const tinygltf::Texture& tex : gltfModel.textures) {
+    const tinygltf::Image* pImage = &gltfModel.images[tex.source];
+
+    // get custom corresponding sampler data from WModel if present
+    RSamplerInfo textureSampler{};
+    if (tex.sampler != -1) {
+      textureSampler = m_textureSamplers[tex.sampler];
     }
-  }
 
-  if (gltfNode.mesh > -1) {
-    const tinygltf::Mesh& mesh = gltfModel.meshes[gltfNode.mesh];
+    // add empty path, should be changed later
+    texturePaths.emplace_back("");
 
-    for (size_t i = 0; i < mesh.primitives.size(); ++i) {
-      const tinygltf::Primitive& currentPrimitive = mesh.primitives[i];
-
-      // get vertex count of a current primitive
-      m_vertexCount += static_cast<uint32_t>(
-          gltfModel.accessors[currentPrimitive.attributes.find("POSITION")->second]
-              .count);
-
-      // get index count of a current primitive
-      if (currentPrimitive.indices > -1) {
-        m_indexCount += static_cast<uint32_t>(
-            gltfModel.accessors[currentPrimitive.indices].count);
-      }
+    // get texture name and load it though materials manager
+    if (pImage->uri == "") {
+      continue;
     }
+
+#ifndef NDEBUG
+    RE_LOG(Log, "Loading texture \"%s\" for model \"%s\".", pImage->uri.c_str(),
+           m_name.c_str());
+#endif
+    if (core::resources.loadTexture(pImage->uri.c_str(), &textureSampler) <
+        RE_ERROR) {
+      texturePaths.back() = pImage->uri;
+    };
   }
+
+  // get glTF materials and convert them to RMaterial
+  parseMaterials(texturePaths);
+
+  // parse node properties and get index/vertex counts
+  for (size_t i = 0; i < gltfScene.nodes.size(); ++i) {
+    parseNodeProperties(gltfModel.nodes[gltfScene.nodes[i]]);
+  }
+
+  // resize local staging buffers
+  prepareStagingData();
+
+  // create nodes using data from glTF model
+  for (size_t n = 0; n < gltfScene.nodes.size(); ++n) {
+    const tinygltf::Node& gltfNode = gltfModel.nodes[gltfScene.nodes[n]];
+    createNode(nullptr, gltfNode, gltfScene.nodes[n]);
+  }
+
+  // validate model staging buffers
+  if (validateStagingData() != RE_OK) {
+    RE_LOG(Error,
+           "Failed to create model \"%s\". Error when generating buffers.",
+           m_name.c_str());
+    return RE_ERROR;
+  }
+
+  if (gltfModel.animations.size() > 0) {
+    loadAnimations();
+  }
+  loadSkins();
+
+  for (auto node : m_pLinearNodes) {
+    // Assign skins
+    if (node->skinIndex > -1) {
+      node->pSkin = m_pSkins[node->skinIndex].get();
+    }
+    // Initial pose
+    if (node->pMesh) {
+      node->updateNode(glm::mat4(1.0f));
+    }
+
+    // no need to update children, they are accessed anyway
+    node->setNodeDescriptorSet(false);
+  }
+
+  sortPrimitivesByMaterial();
+
+  return createStagingBuffers();
 }
 
 void WModel::createNode(WModel::Node* pParentNode,
-                        const tinygltf::Model& gltfModel,
                         const tinygltf::Node& gltfNode,
                         uint32_t gltfNodeIndex) {
   WModel::Node* pNode = nullptr;
+  const tinygltf::Model& gltfModel = *staging.pInModel;
 
   if (pParentNode == nullptr) {
     m_pChildNodes.emplace_back(std::make_unique<WModel::Node>(
@@ -113,7 +127,7 @@ void WModel::createNode(WModel::Node* pParentNode,
            gltfNode.name.c_str());
     return;
   }
-  
+
   pNode->skinIndex = gltfNode.skin;
   pNode->nodeMatrix = glm::mat4(1.0f);
 
@@ -124,7 +138,7 @@ void WModel::createNode(WModel::Node* pParentNode,
 
   if (gltfNode.rotation.size() == 4) {
     glm::quat q = glm::make_quat(gltfNode.rotation.data());
-    pNode->rotation = glm::mat4(q);  // why if both are quaternions? check later
+    pNode->rotation = glm::mat4(q);   // why if both are quaternions? check later
   }
 
   if (gltfNode.scale.size() == 3) {
@@ -138,7 +152,7 @@ void WModel::createNode(WModel::Node* pParentNode,
   // recursively create node children
   if (gltfNode.children.size() > 0) {
     for (size_t i = 0; i < gltfNode.children.size(); ++i) {
-      createNode(pNode, gltfModel, gltfModel.nodes[gltfNode.children[i]],
+      createNode(pNode, gltfModel.nodes[gltfNode.children[i]],
                  gltfNode.children[i]);
     }
   }
@@ -147,6 +161,8 @@ void WModel::createNode(WModel::Node* pParentNode,
   if (gltfNode.mesh > -1) {
     const tinygltf::Mesh& gltfMesh = gltfModel.meshes[gltfNode.mesh];
     pNode->pMesh = std::make_unique<WModel::Mesh>();
+    // allocate buffer for UBO used for writing mesh transformation data
+    pNode->allocateMeshBuffer();
     WModel::Mesh* pMesh = pNode->pMesh.get();
 
     for (size_t j = 0; j < gltfMesh.primitives.size(); ++j) {
@@ -395,13 +411,33 @@ void WModel::createNode(WModel::Node* pParentNode,
         }
       }
 
-      // create new primitive for storing vertex and index data
+      RPrimitiveInfo primitiveInfo{};
+      primitiveInfo.vertexOffset = staging.currentVertexOffset;
+      primitiveInfo.indexOffset = staging.currentIndexOffset;
+      primitiveInfo.vertexCount = static_cast<uint32_t>(vertices.size());
+      primitiveInfo.indexCount = static_cast<uint32_t>(indices.size());
+
+      primitiveInfo.createTangentSpaceData = true;
+      primitiveInfo.pVertexData = &vertices;
+      primitiveInfo.pIndexData = &indices;
+      primitiveInfo.pOwnerNode = pNode;
+
+      // create new primitive
       pMesh->pPrimitives.emplace_back(
-          std::make_unique<WPrimitive_Custom>(vertices, indices));
+          std::make_unique<WPrimitive>(&primitiveInfo));
       WPrimitive* pPrimitive = pMesh->pPrimitives.back().get();
       pPrimitive->setBoundingBoxExtent(posMin, posMax);
-      pPrimitive->pMaterial = core::materials.getMaterial(
+      pPrimitive->pMaterial = core::resources.getMaterial(
           m_materialList[gltfPrimitive.material].c_str());
+
+      // copy vertex and index data to local staging buffers and adjust offsets
+      std::copy(vertices.begin(), vertices.end(),
+                staging.vertices.begin() + staging.currentVertexOffset);
+      std::copy(indices.begin(), indices.end(),
+                staging.indices.begin() + staging.currentIndexOffset);
+
+      staging.currentVertexOffset += primitiveInfo.vertexCount;
+      staging.currentIndexOffset += primitiveInfo.indexCount;
     }
 
     // calculate bounding box extent for the whole mesh based on created
@@ -422,44 +458,50 @@ void WModel::createNode(WModel::Node* pParentNode,
   m_pLinearNodes.emplace_back(pNode);
 }
 
-WModel::Node* WModel::createNode(WModel::Node* pParentNode, uint32_t nodeIndex,
-                                 std::string nodeName) {
-  WModel::Node* pNode = nullptr;
+void WModel::parseNodeProperties(const tinygltf::Node& gltfNode) {
+  const tinygltf::Model& gltfModel = *staging.pInModel;
 
-  if (pParentNode == nullptr) {
-    m_pChildNodes.emplace_back(
-        std::make_unique<WModel::Node>(pParentNode, nodeIndex, nodeName));
-    pNode = m_pChildNodes.back().get();
-  } else {
-    pParentNode->pChildren.emplace_back(
-        std::make_unique<WModel::Node>(pParentNode, nodeIndex, nodeName));
-    pNode = pParentNode->pChildren.back().get();
+  if (gltfNode.children.size() > 0) {
+    for (size_t i = 0; i < gltfNode.children.size(); i++) {
+      parseNodeProperties(gltfModel.nodes[gltfNode.children[i]]);
+    }
   }
 
-  if (!pNode) {
-    RE_LOG(Error, "Trying to create the node '%s', but got nullptr.",
-           nodeName.c_str());
-    return nullptr;
+  if (gltfNode.mesh > -1) {
+    const tinygltf::Mesh& mesh = gltfModel.meshes[gltfNode.mesh];
+
+    for (size_t i = 0; i < mesh.primitives.size(); ++i) {
+      const tinygltf::Primitive& currentPrimitive = mesh.primitives[i];
+
+      // get vertex count of a current primitive
+      m_vertexCount += static_cast<uint32_t>(
+          gltfModel
+              .accessors[currentPrimitive.attributes.find("POSITION")->second]
+              .count);
+
+      // get index count of a current primitive
+      if (currentPrimitive.indices > -1) {
+        m_indexCount += static_cast<uint32_t>(
+            gltfModel.accessors[currentPrimitive.indices].count);
+      }
+    }
   }
-
-  pNode->name = nodeName;
-  pNode->nodeMatrix = glm::mat4(1.0f);
-
-  pNode->pMesh = std::make_unique<WModel::Mesh>();
-
-  return pNode;
 }
 
-void WModel::setTextureSamplers(const tinygltf::Model& gltfModel) {
+void WModel::setTextureSamplers() {
   auto getVkFilter = [](const int& filterMode) {
     switch (filterMode) {
       case -1:
       case 9728:
-      case 9984:
-      case 9985:
         return VK_FILTER_NEAREST;
       case 9729:
+        return VK_FILTER_LINEAR;
+      case 9984:
+        return VK_FILTER_NEAREST;
+      case 9985:
+        return VK_FILTER_NEAREST;
       case 9986:
+        return VK_FILTER_LINEAR;
       case 9987:
         return VK_FILTER_LINEAR;
     }
@@ -487,6 +529,8 @@ void WModel::setTextureSamplers(const tinygltf::Model& gltfModel) {
     return VK_SAMPLER_ADDRESS_MODE_REPEAT;
   };
 
+  const tinygltf::Model& gltfModel = *staging.pInModel;
+
   for (const auto& it : gltfModel.samplers) {
     m_textureSamplers.emplace_back();
     auto& sampler = m_textureSamplers.back();
@@ -498,8 +542,8 @@ void WModel::setTextureSamplers(const tinygltf::Model& gltfModel) {
   }
 }
 
-void WModel::parseMaterials(const tinygltf::Model& gltfModel,
-                            const std::vector<std::string>& texturePaths) {
+void WModel::parseMaterials(const std::vector<std::string>& texturePaths) {
+  const tinygltf::Model& gltfModel = *staging.pInModel;
 
   for (const tinygltf::Material& mat : gltfModel.materials) {
     RMaterialInfo materialInfo{};
@@ -578,12 +622,12 @@ void WModel::parseMaterials(const tinygltf::Model& gltfModel,
       tinygltf::Parameter param = mat.additionalValues.at("alphaMode");
 
       if (param.string_value == "BLEND") {
-        materialInfo.alphaMode = ERAlphaMode::Blend;
+        materialInfo.alphaMode = EAlphaMode::Blend;
       }
 
       if (param.string_value == "MASK") {
         materialInfo.alphaCutoff = 0.5f;
-        materialInfo.alphaMode = ERAlphaMode::Mask;
+        materialInfo.alphaMode = EAlphaMode::Mask;
       }
     }
 
@@ -593,75 +637,160 @@ void WModel::parseMaterials(const tinygltf::Model& gltfModel,
     }
 
     // create new material
-    core::materials.createMaterial(&materialInfo);
+    core::resources.createMaterial(&materialInfo);
     m_materialList.emplace_back(materialInfo.name);
   }
 }
 
-void WModel::destroyNode(std::unique_ptr<WModel::Node>& pNode) {
-  if (!pNode->pChildren.empty()) {
-    for (auto& pChildNode : pNode->pChildren) {
-      destroyNode(pChildNode);
-    };
-  }
+void WModel::loadAnimations() {
+  const tinygltf::Model& gltfModel = *staging.pInModel;
+  for (const tinygltf::Animation& anim : gltfModel.animations) {
+    Animation animation{};
+    animation.name = anim.name;
+    if (anim.name.empty()) {
+      animation.name = m_name + "_" + std::to_string(m_animations.size());
+    }
 
-  if (pNode->pMesh) {
-    auto& primitives = pNode->pMesh->pPrimitives;
-    for (auto& primitive : primitives) {
-      if (primitive) {
-        primitive->destroy();
-        primitive.reset();
+    // Samplers
+    for (auto& samp : anim.samplers) {
+      AnimationSampler sampler{};
+
+      if (samp.interpolation == "LINEAR") {
+        sampler.interpolation = AnimationSampler::EInterpolationType::LINEAR;
+      }
+      if (samp.interpolation == "STEP") {
+        sampler.interpolation = AnimationSampler::EInterpolationType::STEP;
+      }
+      if (samp.interpolation == "CUBICSPLINE") {
+        sampler.interpolation =
+            AnimationSampler::EInterpolationType::CUBICSPLINE;
+      }
+
+      // Read sampler input time values
+      {
+        const tinygltf::Accessor& accessor = gltfModel.accessors[samp.input];
+        const tinygltf::BufferView& bufferView =
+            gltfModel.bufferViews[accessor.bufferView];
+        const tinygltf::Buffer& buffer = gltfModel.buffers[bufferView.buffer];
+
+        assert(accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT);
+
+        const void* dataPtr =
+            &buffer.data[accessor.byteOffset + bufferView.byteOffset];
+        const float* buf = static_cast<const float*>(dataPtr);
+        for (size_t index = 0; index < accessor.count; index++) {
+          sampler.inputs.emplace_back(buf[index]);
+        }
+
+        for (auto input : sampler.inputs) {
+          if (input < animation.start) {
+            animation.start = input;
+          };
+          if (input > animation.end) {
+            animation.end = input;
+          }
+        }
+      }
+
+      // Read sampler output T/R/S values
+      {
+        const tinygltf::Accessor& accessor = gltfModel.accessors[samp.output];
+        const tinygltf::BufferView& bufferView =
+            gltfModel.bufferViews[accessor.bufferView];
+        const tinygltf::Buffer& buffer = gltfModel.buffers[bufferView.buffer];
+
+        assert(accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT);
+
+        const void* dataPtr =
+            &buffer.data[accessor.byteOffset + bufferView.byteOffset];
+
+        switch (accessor.type) {
+          case TINYGLTF_TYPE_VEC3: {
+            const glm::vec3* buf = static_cast<const glm::vec3*>(dataPtr);
+            for (size_t index = 0; index < accessor.count; index++) {
+              sampler.outputsVec4.emplace_back(glm::vec4(buf[index], 0.0f));
+            }
+            break;
+          }
+          case TINYGLTF_TYPE_VEC4: {
+            const glm::vec4* buf = static_cast<const glm::vec4*>(dataPtr);
+            for (size_t index = 0; index < accessor.count; index++) {
+              sampler.outputsVec4.emplace_back(buf[index]);
+            }
+            break;
+          }
+          default: {
+            std::cout << "unknown type" << std::endl;
+            break;
+          }
+        }
+      }
+
+      animation.samplers.emplace_back(sampler);
+    }
+
+    // Channels
+    for (auto& source : anim.channels) {
+      AnimationChannel channel{};
+
+      if (source.target_path == "rotation") {
+        channel.path = AnimationChannel::EPathType::ROTATION;
+      }
+      if (source.target_path == "translation") {
+        channel.path = AnimationChannel::EPathType::TRANSLATION;
+      }
+      if (source.target_path == "scale") {
+        channel.path = AnimationChannel::EPathType::SCALE;
+      }
+      if (source.target_path == "weights") {
+        std::cout << "weights not yet supported, skipping channel" << std::endl;
+        continue;
+      }
+      channel.samplerIndex = source.sampler;
+      channel.node = getNode(source.target_node);
+      if (!channel.node) {
+        continue;
+      }
+
+      animation.channels.emplace_back(channel);
+    }
+
+    m_animations.emplace_back(animation);
+  }
+}
+
+void WModel::loadSkins() {
+  const tinygltf::Model& gltfModel = *staging.pInModel;
+
+  for (const tinygltf::Skin& source : gltfModel.skins) {
+    m_pSkins.emplace_back(std::make_unique<Skin>());
+    Skin* pSkin = m_pSkins.back().get();
+    pSkin->name = source.name;
+
+    // Find skeleton root node
+    if (source.skeleton > -1) {
+      pSkin->skeletonRoot = getNode(source.skeleton);
+    }
+
+    // Find joint nodes
+    for (int jointIndex : source.joints) {
+      Node* pNode = getNode(jointIndex);
+      if (pNode) {
+        pSkin->joints.emplace_back(pNode);
       }
     }
 
-    pNode->pChildren.clear();
-    pNode->pMesh->pPrimitives.clear();
-    pNode->pMesh.reset();
+    // Get inverse bind matrices from buffer
+    if (source.inverseBindMatrices > -1) {
+      const tinygltf::Accessor& accessor =
+          gltfModel.accessors[source.inverseBindMatrices];
+      const tinygltf::BufferView& bufferView =
+          gltfModel.bufferViews[accessor.bufferView];
+      const tinygltf::Buffer& buffer = gltfModel.buffers[bufferView.buffer];
+      pSkin->inverseBindMatrices.resize(accessor.count);
+      memcpy(pSkin->inverseBindMatrices.data(),
+             &buffer.data[accessor.byteOffset + bufferView.byteOffset],
+             accessor.count * sizeof(glm::mat4));
+    }
   }
-
-  vmaDestroyBuffer(core::renderer.memAlloc,
-                   pNode->uniformBufferData.uniformBuffer.buffer,
-                   pNode->uniformBufferData.uniformBuffer.allocation);
-
-  pNode.reset();
-}
-
-bool WModel::Mesh::validateBoundingBoxExtent() {
-  if (extent.min == extent.max) {
-    extent.isValid = false;
-    RE_LOG(Warning, "Bounding box of a mesh was invalidated.");
-  }
-
-  return extent.isValid;
-}
-
-const std::vector<WPrimitive*>& WModel::getPrimitives() {
-  return m_pLinearPrimitives;
-}
-
-std::vector<uint32_t>& WModel::getPrimitiveBindsIndex() {
-  return m_primitiveBindsIndex;
-}
-
-TResult WModel::clean() {
-  if (m_pChildNodes.empty()) {
-    RE_LOG(Warning,
-           "Model '%s' can not be cleared. It may be already empty and ready "
-           "for deletion.",
-           m_name.c_str());
-
-    return RE_WARNING;
-  }
-
-  for (auto& node : m_pChildNodes) {
-    destroyNode(node);
-  }
-
-  m_pChildNodes.clear();
-  m_pLinearNodes.clear();
-  m_pLinearPrimitives.clear();
-
-  RE_LOG(Log, "Model '%s' is prepared for deletion.", m_name.c_str());
-
-  return RE_OK;
 }

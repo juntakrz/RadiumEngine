@@ -21,7 +21,7 @@ extern class MActors& actors;
 extern class MDebug& debug;
 
 // materials manager, manages textures, shaders and materials
-extern class MMaterials& materials;
+extern class MResources& resources;
 
 // player manager, provides interaction between the player and everything else
 extern class MPlayer& player;
@@ -42,7 +42,7 @@ void stop(TResult cause);
 TResult create();
 void destroy();
 
-TResult drawFrame();
+void drawFrame();
 
 void loadCoreConfig(const wchar_t* path = RE_PATH_CONFIG);
 void loadDevelopmentConfig(const wchar_t* path = RE_PATH_DEVCONFIG);

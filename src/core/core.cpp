@@ -9,7 +9,7 @@
 #include "core/managers/script.h"
 #include "core/managers/ref.h"
 #include "core/managers/time.h"
-#include "core/managers/materials.h"
+#include "core/managers/resources.h"
 #include "core/managers/world.h"
 
 class core::MRenderer& core::renderer = MRenderer::get();
@@ -18,7 +18,7 @@ class core::MInput& core::input = MInput::get();
 class core::MScript& core::script = MScript::get();
 class core::MActors& core::actors = MActors::get();
 class core::MDebug& core::debug = MDebug::get();
-class core::MMaterials& core::materials = MMaterials::get();
+class core::MResources& core::resources = MResources::get();
 class core::MPlayer& core::player = MPlayer::get();
 class core::MRef& core::ref = MRef::get();
 class core::MTime& core::time = MTime::get();
@@ -42,24 +42,61 @@ void core::run() {
   core::script.loadMap("default");
 
   // remove this after loadMap improvements
+  RMaterialInfo materialInfo{};
+  materialInfo.name = "default";
+  materialInfo.pipelineFlags = EPipeline::OpaqueCullBack;
+  core::resources.createMaterial(&materialInfo);
+
+  RSamplerInfo samplerInfo{};
+  //core::resources.loadTexture("skyboxCubemap.ktx2", &samplerInfo);
+  core::resources.loadTexture("papermill.ktx", &samplerInfo);
+
+  materialInfo.name = "skybox";
+  materialInfo.pipelineFlags = EPipeline::Skybox | EPipeline::MixEnvironment;
+  //materialInfo.textures.baseColor = "skyboxCubemap.ktx2";
+  materialInfo.textures.baseColor = "papermill.ktx";
+  core::resources.createMaterial(&materialInfo);
+
+  // create map models
+  core::world.createModel(EPrimitiveType::Sphere, "mdlSphere", 16, false);
+  core::world.createModel(EPrimitiveType::Cube, "mdlSkybox", 1, true);
+  core::world.loadModelFromFile("content/models/drone/scene.gltf", "mdlGuy");
+  core::world.createModel(EPrimitiveType::Cube, "mdlBox1", 1, false);
+  //
+  
+  // create entities
   core::actors.createPawn("sphere0");
-  core::world.createModel(EWPrimitive::Sphere, "mdlSphere", 16, 0);
-  WModel* pModel = core::world.getModel("mdlSphere");
   APawn* pPawn = core::actors.getPawn("sphere0");
-  pPawn->setModel(pModel);
+  pPawn->setModel(core::world.getModel("mdlSphere"));
+  core::renderer.bindEntity(pPawn);
+  pPawn->setLocation(-3.0f, 0.0f, 2.0f);
 
-  //core::renderer.bindPrimitive(pModel->getPrimitives(), pModel->getPrimitiveBindsIndex());
+  AStatic* pStatic = core::actors.createStatic("Skybox");
+  pStatic->setModel(core::world.getModel("mdlSkybox"));
+  core::renderer.bindEntity(pStatic);
+  //pStatic->setScale(100.0f);
+  pStatic->setScale(1.0f);
+  pStatic->getModel()->getPrimitives()[0]->pMaterial =
+    core::resources.getMaterial("skybox");
+  //core::resources.getMaterial("default")->pipelineFlags =
+     // EPipeline::Environment;
+  
+  pStatic = core::actors.createStatic("Static01");
+  pStatic->setModel(core::world.getModel("mdlGuy"));
+  core::renderer.bindEntity(pStatic);
+  pStatic->setLocation(0.0f, -1.0f, -0.3f);
+  pStatic->setRotation({0.0f, 1.0f, 0.0f}, glm::radians(200.0f));
+  pStatic->setScale(0.7f);
 
-  //core::world.loadModelFromFile("content/models/box/BoxTextured.gltf",
-    //                                 "mdlTest");
-
-  core::world.loadModelFromFile("content/models/test/scene.gltf",
-                                "mdlTest");
-
-  WModel* pTestModel = core::world.getModel("mdlTest");
-  core::renderer.bindPrimitive(pTestModel->getPrimitives(),
-                               pModel->getPrimitiveBindsIndex());
-  // ----------------------------
+  pStatic = core::actors.createStatic("Box1");
+  pStatic->setModel(core::world.getModel("mdlBox1"));
+  core::renderer.bindEntity(pStatic);
+  pStatic->setScale(2.2f);
+  pStatic->setLocation(4.0f, -0.2f, -2.0f);
+  pStatic->setRotation({0.5f, 0.32f, 0.1f});
+  //
+  core::renderer.renderView.doEnvironmentPass = true;
+  // ---------------------------- */
 
   RE_LOG(Log, "Launching main event loop.");
 
@@ -114,7 +151,9 @@ TResult core::create() {
 
   RE_LOG(Log, "Rendering module successfully initialized.");
 
-  core::materials.initialize();
+  core::renderer.renderInitFrame();
+
+  core::resources.initialize();
   core::input.initialize(core::window.getWindow());
   core::player.initialize();
 
@@ -127,12 +166,8 @@ void core::destroy() {
   glfwTerminate();
 }
 
-TResult core::drawFrame() {
-  TResult chkResult = RE_OK;
-
-  chkResult = core::renderer.drawFrame();
-
-  return chkResult;
+void core::drawFrame() {
+  core::renderer.renderFrame();
 }
 
 void core::loadCoreConfig(const wchar_t* path) {

@@ -57,10 +57,7 @@
     <ClCompile Include="src\core\managers\actors.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\world\model\primitive_plane.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\core\world\model\primitive.cpp">
+    <ClCompile Include="src\core\model\primitive.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\managers\renderer_logicaldevice.cpp">
@@ -90,7 +87,7 @@
     <ClCompile Include="src\core\managers\ref.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\materials.cpp">
+    <ClCompile Include="src\core\managers\resources_material.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\managers\input_table.cpp">
@@ -102,19 +99,37 @@
     <ClCompile Include="src\core\world\actors\pawn.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\world\model\model.cpp">
+    <ClCompile Include="src\core\model\model.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\managers\world.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\world\model\primitive_custom.cpp">
+    <ClCompile Include="src\core\managers\resources_texture.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\world\model\primitive_sphere.cpp">
+    <ClCompile Include="src\core\model\model_node.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\materials_texture.cpp">
+    <ClCompile Include="src\core\model\model_gltf.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\world\actors\astatic.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\world\actors\entity.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\material\texture.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\material\material.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\stb_image.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\managers\renderer_pipeline.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -155,28 +170,25 @@
     <ClInclude Include="include\define_t.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\primitivegen\primitivedata.h">
+    <ClInclude Include="include\core\model\primitivedata.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\primitivegen\sphere.h">
+    <ClInclude Include="include\core\model\sphere.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\primitivegen\primitivegen_include.h">
+    <ClInclude Include="include\core\model\primitivegen_include.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\primitivegen\plane.h">
+    <ClInclude Include="include\core\model\plane.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\primitivegen\cube.h">
+    <ClInclude Include="include\core\model\cube.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\core\managers\actors.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\model\primitive.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\core\world\model\primitive_plane.h">
+    <ClInclude Include="include\core\model\primitive.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="lib\include\vk_mem_alloc.h">
@@ -200,7 +212,7 @@
     <ClInclude Include="include\core\managers\ref.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\managers\materials.h">
+    <ClInclude Include="include\core\managers\resources.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\define_input.h">
@@ -215,16 +227,22 @@
     <ClInclude Include="lib\include\tinygltf\tiny_gltf.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\model\model.h">
+    <ClInclude Include="include\core\model\model.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\core\managers\world.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\model\primitive_custom.h">
+    <ClInclude Include="include\core\world\actors\static.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\model\primitive_sphere.h">
+    <ClInclude Include="include\core\world\actors\entity.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\material\texture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\material\material.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -254,5 +272,14 @@
     <None Include="development\compileShaders_Win_x64_DEBUG.bat">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="content_src\shaders\fs_pbr.frag" />
+    <None Include="content_src\shaders\fs_skybox.frag" />
+    <None Include="content_src\shaders\vs_pbr.vert" />
+    <None Include="content_src\shaders\vs_skybox.vert" />
+    <None Include="content_src\shaders\vs_environment.vert" />
+    <None Include="content_src\shaders\fs_envFilter.frag" />
+    <None Include="content_src\shaders\fs_envIrradiance.frag" />
+    <None Include="content_src\shaders\vs_brdfLUT.vert" />
+    <None Include="content_src\shaders\fs_brdfLUT.frag" />
   </ItemGroup>
 </Project>

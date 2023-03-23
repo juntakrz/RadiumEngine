@@ -1,7 +1,8 @@
 #include "pch.h"
 #include "core/core.h"
-#include "core/managers/renderer.h"
 #include "core/managers/window.h"
+#include "core/managers/resources.h"
+#include "core/managers/renderer.h"
 
 TResult core::MRenderer::initSwapChain(VkFormat format, VkColorSpaceKHR colorSpace,
                                  VkPresentModeKHR presentMode,
@@ -194,6 +195,11 @@ void core::MRenderer::destroySwapChain() {
     vkDestroyImageView(logicalDevice.device, imageView, nullptr);
   }
 
+  // destroy other framebuffers
+  for (auto fb : system.framebuffers) {
+    vkDestroyFramebuffer(logicalDevice.device, fb.second, nullptr);
+  }
+
   vkDestroySwapchainKHR(logicalDevice.device, swapChain, nullptr);
 }
 
@@ -212,11 +218,10 @@ TResult core::MRenderer::recreateSwapChain() {
   vkDeviceWaitIdle(logicalDevice.device);
 
   destroySwapChain();
-  destroyDepthResources();
 
   chkResult = createSwapChain();
-  if (chkResult = createDepthResources() > finalResult) finalResult = chkResult;
-  if (chkResult = createFramebuffers() > finalResult) finalResult = chkResult;
+  if (chkResult = createDepthTarget() > finalResult) finalResult = chkResult;
+  if (chkResult = createDefaultFramebuffers() > finalResult) finalResult = chkResult;
 
   return finalResult;
 }
@@ -231,35 +236,6 @@ TResult core::MRenderer::createSwapChainImageViews() {
   for (size_t i = 0; i < swapchain.imageViews.size(); ++i) {
     swapchain.imageViews[i] =
         createImageView(swapchain.images[i], swapchain.formatData.format, 1, 1);
-  }
-
-  return RE_OK;
-}
-
-TResult core::MRenderer::createFramebuffers() {
-  RE_LOG(Log, "Creating framebuffers.");
-
-  swapchain.framebuffers.resize(swapchain.imageViews.size());
-
-  for (size_t i = 0; i < swapchain.framebuffers.size(); ++i) {
-    std::vector<VkImageView> attachments = {swapchain.imageViews[i],
-                                            images.depth.view};
-
-    VkFramebufferCreateInfo framebufferInfo{};
-    framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    framebufferInfo.renderPass = system.renderPass;
-    framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-    framebufferInfo.pAttachments = attachments.data();
-    framebufferInfo.width = swapchain.imageExtent.width;
-    framebufferInfo.height = swapchain.imageExtent.height;
-    framebufferInfo.layers = 1;
-
-    if (vkCreateFramebuffer(logicalDevice.device, &framebufferInfo, nullptr,
-                            &swapchain.framebuffers[i]) != VK_SUCCESS) {
-      RE_LOG(Critical, "failed to create frame buffer with index %d.", i);
-
-      return RE_CRITICAL;
-    }
   }
 
   return RE_OK;
