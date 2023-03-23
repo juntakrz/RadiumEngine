@@ -52,10 +52,12 @@ void WModel::Node::setNodeDescriptorSet(bool updateChildren) {
   descriptorSetAllocInfo.pSetLayouts = &layoutMesh;
   descriptorSetAllocInfo.descriptorSetCount = 1;
 
-  if (vkAllocateDescriptorSets(
+  VkResult result;
+  if ((result = vkAllocateDescriptorSets(
          device, &descriptorSetAllocInfo,
-          &pMesh->uniformBufferData.descriptorSet) != VK_SUCCESS) {
-    RE_LOG(Error, "Failed to create node descriptor set.");
+          &pMesh->uniformBufferData.descriptorSet)) != VK_SUCCESS) {
+    RE_LOG(Error, "Failed to create node descriptor set. Vulkan error %d.",
+           result);
     return;
   }
 

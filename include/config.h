@@ -73,7 +73,7 @@ const uint32_t envIrradianceExtent = 64u;
 const VkColorSpaceKHR colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
 const VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 constexpr uint8_t maxFramesInFlight = MAX_FRAMES_IN_FLIGHT;
-constexpr bool applyGLTFLeftHandedFix = true;
+constexpr bool applyGLTFLeftHandedFix = false;
 
 }
 }  // namespace core

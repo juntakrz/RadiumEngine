@@ -142,8 +142,14 @@ std::vector<WModel::Node*>& WModel::getAllNodes() noexcept {
 }
 
 void WModel::update(const glm::mat4& modelMatrix) noexcept {
-  for (auto& it : getRootNodes()) {
-    it->updateNode(modelMatrix);
+  // update skins
+  for (auto& skin : m_pSkins) {
+
+  }
+
+  // update node transformations
+  for (auto& node : getRootNodes()) {
+    node->updateNode(modelMatrix);
   }
 }
 
