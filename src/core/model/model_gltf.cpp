@@ -201,6 +201,7 @@ void WModel::createNode(WModel::Node* pParentNode,
           return;
         }
 
+        // position
         const tinygltf::Accessor& posAccessor =
             gltfModel.accessors[gltfPrimitive.attributes.at("POSITION")];
         const tinygltf::BufferView& posBufferView =

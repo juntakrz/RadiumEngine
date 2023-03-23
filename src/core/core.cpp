@@ -41,20 +41,16 @@ void core::run() {
 
   core::script.loadMap("default");
 
-  // remove this after loadMap improvements
-  RMaterialInfo materialInfo{};
-  materialInfo.name = "default";
-  materialInfo.pipelineFlags = EPipeline::OpaqueCullBack;
-  core::resources.createMaterial(&materialInfo);
-
+  // remove this after loadMap improvements -------- //
   RSamplerInfo samplerInfo{};
-  //core::resources.loadTexture("skyboxCubemap.ktx2", &samplerInfo);
-  core::resources.loadTexture("papermill.ktx", &samplerInfo);
+  core::resources.loadTexture("skyboxCubemap.ktx2", &samplerInfo);
+  //core::resources.loadTexture("papermill.ktx", &samplerInfo);
 
+  RMaterialInfo materialInfo{};
   materialInfo.name = "skybox";
   materialInfo.pipelineFlags = EPipeline::Skybox | EPipeline::MixEnvironment;
-  //materialInfo.textures.baseColor = "skyboxCubemap.ktx2";
-  materialInfo.textures.baseColor = "papermill.ktx";
+  materialInfo.textures.baseColor = "skyboxCubemap.ktx2";
+  //materialInfo.textures.baseColor = "papermill.ktx";
   core::resources.createMaterial(&materialInfo);
 
   // create map models
@@ -74,19 +70,15 @@ void core::run() {
   AStatic* pStatic = core::actors.createStatic("Skybox");
   pStatic->setModel(core::world.getModel("mdlSkybox"));
   core::renderer.bindEntity(pStatic);
-  //pStatic->setScale(100.0f);
-  pStatic->setScale(1.0f);
   pStatic->getModel()->getPrimitives()[0]->pMaterial =
     core::resources.getMaterial("skybox");
-  //core::resources.getMaterial("default")->pipelineFlags =
-     // EPipeline::Environment;
   
   pStatic = core::actors.createStatic("Static01");
   pStatic->setModel(core::world.getModel("mdlGuy"));
   core::renderer.bindEntity(pStatic);
   pStatic->setLocation(0.0f, -1.0f, -0.3f);
   pStatic->setRotation({0.0f, 1.0f, 0.0f}, glm::radians(200.0f));
-  pStatic->setScale(0.7f);
+  pStatic->setScale(0.01f);
 
   pStatic = core::actors.createStatic("Box1");
   pStatic->setModel(core::world.getModel("mdlBox1"));

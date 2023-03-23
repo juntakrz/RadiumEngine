@@ -995,13 +995,6 @@ VkPipelineLayout& core::MRenderer::getPipelineLayout(EPipelineLayout type) {
 
 VkPipeline& core::MRenderer::getPipeline(EPipeline type) {
   // not error checked
-
-  // TODO!!
-  if (type == EPipeline::BlendCullBack) {
-    type = EPipeline::OpaqueCullBack;
-  }
-  // TODO!!
-
   return system.pipelines.at(type);
 }
 
@@ -1011,13 +1004,15 @@ bool core::MRenderer::checkPipeline(uint32_t pipelineFlags,
 }
 
 TResult core::MRenderer::configureRenderPasses() {
+  // NOTE: order of pipeline emplacement is important
+
   // configure main 'scene', PBR render pass
   RRenderPass* pRenderPass = getRenderPass(ERenderPass::PBR);
   pRenderPass->usedLayout = getPipelineLayout(EPipelineLayout::Scene);
+  pRenderPass->usedPipelines.emplace_back(EPipeline::Skybox);
   pRenderPass->usedPipelines.emplace_back(EPipeline::OpaqueCullBack);
   pRenderPass->usedPipelines.emplace_back(EPipeline::OpaqueCullNone);
   pRenderPass->usedPipelines.emplace_back(EPipeline::BlendCullBack);
-  pRenderPass->usedPipelines.emplace_back(EPipeline::Skybox);
 
   // configure 'environment' cubemap render pass
   pRenderPass = getRenderPass(ERenderPass::Environment);

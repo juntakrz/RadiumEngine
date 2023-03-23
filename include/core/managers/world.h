@@ -17,7 +17,7 @@ class MWorld {
   }
 
   // load model from file, .gltf and .glb models are supported
-  TResult loadModelFromFile(const std::string& path, std::string name);
+  TResult loadModelFromFile(const std::string& path, const char* name);
 
   // create a simple model using a chosen primitive and arguments
   TResult createModel(EPrimitiveType type, std::string name, int32_t arg0,

@@ -23,6 +23,12 @@ void core::MResources::initialize() {
   if (loadTexture(RE_WHITETEXTURE, &samplerInfo) != RE_OK) {
     RE_LOG(Error, "Failed to load default white texture.");
   }
+
+  // create default material
+  RMaterialInfo materialInfo{};
+  materialInfo.name = "default";
+  materialInfo.pipelineFlags = EPipeline::OpaqueCullBack;
+  createMaterial(&materialInfo);
 }
 
 RMaterial* core::MResources::createMaterial(
