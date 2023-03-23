@@ -359,9 +359,15 @@ void WModel::createNode(WModel::Node* pParentNode,
           vertex.weight =
               hasSkin ? glm::make_vec4(&pBufferWeights[v * weightByteStride])
                       : glm::vec4(0.0f);
+
           // fix for all zero weights
           if (glm::length(vertex.weight) == 0.0f) {
             vertex.weight = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f);
+          }
+
+          if (core::vulkan::applyGLTFLeftHandedFix) {
+            vertex.pos.x = -vertex.pos.x;
+            vertex.normal.x = -vertex.normal.x;
           }
         }
       }
@@ -409,6 +415,12 @@ void WModel::createNode(WModel::Node* pParentNode,
             RE_LOG(Error, "index component type %d not supported",
                    accessor.componentType);
             return;
+        }
+
+        if (core::vulkan::applyGLTFLeftHandedFix) {
+          for (auto it = indices.begin(); it != indices.end(); it += 3) {
+            std::swap(*it, *(it + 2));
+          }
         }
       }
 
