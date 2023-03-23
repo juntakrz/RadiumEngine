@@ -155,21 +155,25 @@ TResult core::MRenderer::createDescriptorPool() {
   // TODO: rewrite so that descriptorCounts are calculated by objects/textures
   // using map data e.g. max preloaded textures plus 256 for headroom
   poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-  poolSizes[1].descriptorCount = (1536 + 256) * MAX_FRAMES_IN_FLIGHT;
+  poolSizes[1].descriptorCount = 2048 * MAX_FRAMES_IN_FLIGHT;
 
   // model nodes
   // TODO: rewrite so that descriptorCounts are calculated by objects/textures
   // using map data e.g. max preloaded model nodes plus 256 for headroom
   poolSizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  poolSizes[2].descriptorCount = (1024 + 256) * MAX_FRAMES_IN_FLIGHT;
+  poolSizes[2].descriptorCount = 4096 * MAX_FRAMES_IN_FLIGHT;
+
+  uint32_t maxSets = 0;
+  for (uint8_t i = 0; i < poolSizes.size(); ++i) {
+    maxSets += poolSizes[i].descriptorCount;
+  }
+  maxSets += 256; // descriptor set headroom
 
   VkDescriptorPoolCreateInfo poolInfo{};
   poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
   poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
   poolInfo.pPoolSizes = poolSizes.data();
-  poolInfo.maxSets =
-      static_cast<uint32_t>(poolSizes.size()) *
-      (MAX_FRAMES_IN_FLIGHT)*10;  // need to calculate better number
+  poolInfo.maxSets = maxSets;
   poolInfo.flags = 0;
 
   if (vkCreateDescriptorPool(logicalDevice.device, &poolInfo, nullptr,

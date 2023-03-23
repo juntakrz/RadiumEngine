@@ -19,6 +19,18 @@ enum EAlphaMode {
   Blend
 };
 
+enum EAnimationLoadMode {
+  None,
+  // load animations referenced by model from drive if not already loaded
+  OnDemand,
+  // extract animations from model to manager
+  ExtractToManager,
+  // extract animations from model to manager and storage
+  ExtractToManagerAndStorage,
+  // extract animations from model to storage only
+  ExtractToStorageOnly
+};
+
 enum class EBufferMode {  // VkBuffer creation mode
   CPU_UNIFORM,        // create uniform buffer for GPU programs
   CPU_VERTEX,         // create vertex buffer for the iGPU (UNUSED)
@@ -53,7 +65,7 @@ enum EPipeline : uint32_t {
   OpaqueCullBack    = 0b100000,
   OpaqueCullNone    = 0b1000000,
   MaskCullBack      = 0b10000000,
-  BlendCullBack     = 0b100000000,
+  BlendCullNone     = 0b100000000,
 
   // combined pipeline indices for rendering only
   MixEnvironment = EnvFilter + EnvIrradiance
@@ -80,6 +92,8 @@ enum class ERenderPass {
   Environment,
   PBR
 };
+
+enum class ETransformType { Translation, Rotation, Scale, Weight, Undefined };
 
 struct RVkLogicalDevice {
   VkDevice device;
@@ -116,33 +130,6 @@ struct RVkPhysicalDevice {
   RVkQueueFamilyIndices queueFamilyIndices;
   RVkSwapChainInfo swapChainInfo;
   bool bIsValid = false;
-};
-
-class RAsync {
-  std::thread thread;
-  std::mutex mutex;
-  std::condition_variable conditional;
-  TFuncPtr func;
-  bool cue = false;
-  bool execute = true;
-
-  void loop();
-
-public:
-  // example: bindFunction(this, &RClass::method)
-  template <typename C>
-  void bindFunction(C* owner, void (C::*function)()) {
-    func = std::make_unique<OFuncPtr<C>>(owner, function);
-  }
-
-  // bind function before calling start()
-  void start();
-
-  // immediately stop this thread
-  void stop();
-
-  // execute bound function
-  void update();
 };
 
 struct RBuffer {
@@ -292,7 +279,7 @@ struct RSceneUBO {
 struct RMeshUBO {
   glm::mat4 rootMatrix = glm::mat4(1.0f);
   glm::mat4 nodeMatrix = glm::mat4(1.0f);
-  glm::mat4 jointMatrix[RE_MAXJOINTS]{};
+  glm::mat4 jointMatrices[RE_MAXJOINTS]{};
   float jointCount = 0.0f;
 };
 
@@ -328,4 +315,25 @@ struct RMaterialPCB {
   float alphaCutoff;
   float bumpIntensity;
   float materialIntensity;
+};
+
+struct WAnimationInfo {
+  class WModel* pModel;
+  std::string animationName;
+  float startTime = 0.0f;
+  float endTime = std::numeric_limits<float>::max();
+  float speed = 1.0f;
+  bool loop = true;
+  bool bounce = true;
+};
+
+struct WModelConfigInfo {
+  // see EAnimationLoadMode definition for information
+  EAnimationLoadMode animationLoadMode = EAnimationLoadMode::OnDemand;
+  // skeleton name/folder to use for loading/saving if an appropriate load mode is used
+  std::string skeleton = "default";
+  // framerate to sample animations at if extracting
+  float framerate = 15.0f;
+  // speed up extracted animations while sampling, will apply to all
+  float speed = 1.0f;
 };

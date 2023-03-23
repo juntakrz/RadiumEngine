@@ -54,8 +54,8 @@ class ABase {
     return dynamic_cast<T*>(this);
   };
 
-  // returns matrix with all transformations applied
-  virtual glm::mat4& getTransformationMatrix() noexcept;
+  // returns root matrix with all transformations applied
+  virtual glm::mat4& getRootTransformationMatrix() noexcept;
 
   // data set used for transformation calculations
   virtual TransformationData& getTransformData() noexcept;

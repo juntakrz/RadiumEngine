@@ -13,9 +13,9 @@ void ABase::copyVec3ToMatrix(const float* vec3, float* matrixColumn) noexcept {
   _mm_storeu_ps(matrixColumn, dstColumn);
 }
 
-glm::mat4& ABase::getTransformationMatrix() noexcept {
+glm::mat4& ABase::getRootTransformationMatrix() noexcept {
   if (m_transformationData.wasUpdated) {
-    // SRT order
+    // Scale Rotation Translation (SRT) order
 
     // rotate and scale translated matrix
     m_transformationMatrix = glm::scale(m_transformationData.scaling) *

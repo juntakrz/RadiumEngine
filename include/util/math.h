@@ -83,4 +83,15 @@ constexpr std::vector<T> gaussBlurKernel(uint8_t radius, T sigma) noexcept {
 
   return gaussCoef;
 }
+
+// interpolate two 4x4 matrices, function uses FMA3 instruction set
+glm::mat4 interpolate(const glm::mat4& first, const glm::mat4& second,
+                              const float coefficient);
+
+// interpolate two 4x4 matrices, writes directly to external matrix
+void interpolate(const glm::mat4& first, const glm::mat4& second,
+                      const float coefficient, glm::mat4& outMatrix);
+
+float random(float min, float max);
+
 }  // namespace math

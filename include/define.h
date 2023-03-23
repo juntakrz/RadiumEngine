@@ -5,7 +5,8 @@
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_LEFT_HANDED
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#define GLM_FORCE_SSE42
+//#define GLM_FORCE_SSE42
+#define GLM_FORCE_AVX
 #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
 
 // global macros
@@ -30,11 +31,17 @@ constexpr bool bRequireValidationLayers = true;
 #define RE_PATH_DEVCONFIG   TEXT("development/devconfig.json")
 #define RE_PATH_MAP         TEXT("content/maps/")
 #define RE_PATH_TEXTURES    "content/textures/"
-#define RE_DEFAULTTEXTURE   "default/default.ktx2"
-#define RE_WHITETEXTURE     "default/white.ktx2"
-#define RE_BLACKTEXTURE     "default/black.ktx2"
+#define RE_PATH_ANIMATIONS  "content/animations/"
 #define RE_PATH_SHADERS     "content/shaders/"
 #define RE_PATH_SHDRC       "development\\compileShaders_Win_x64_DEBUG.bat"
+
+#define RE_FEXT_ANIMATIONS  ".anm"
+
+#define RE_MAGIC_ANIMATIONS 0x4D4E41
+
+#define RE_DEFAULTTEXTURE   "default/default_baseColor.ktx2"
+#define RE_WHITETEXTURE     "default/white.ktx2"
+#define RE_BLACKTEXTURE     "default/black.ktx2"
 #define RE_MAXTEXTURES      6
 #define RE_NEARZ            0.01f
 #define RE_MAXJOINTS        128u
