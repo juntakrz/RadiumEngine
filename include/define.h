@@ -30,7 +30,7 @@ constexpr bool bRequireValidationLayers = true;
 #define RE_PATH_DEVCONFIG   TEXT("development/devconfig.json")
 #define RE_PATH_MAP         TEXT("content/maps/")
 #define RE_PATH_TEXTURES    "content/textures/"
-#define RE_DEFAULTTEXTURE   "default/default.ktx2"
+#define RE_DEFAULTTEXTURE   "default/default_baseColor.ktx2"
 #define RE_WHITETEXTURE     "default/white.ktx2"
 #define RE_BLACKTEXTURE     "default/black.ktx2"
 #define RE_PATH_SHADERS     "content/shaders/"
