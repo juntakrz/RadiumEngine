@@ -360,6 +360,32 @@ TResult core::MRenderer::createDepthTarget() {
   return RE_OK;
 }
 
+TResult core::MRenderer::createRendererDefaults() {
+  // create default images
+  TResult chkResult = createImageTargets();
+
+  if (chkResult != RE_OK) {
+    return chkResult;
+  }
+
+  // create default camera
+  RCameraInfo cameraInfo{};
+  cameraInfo.FOV = config::FOV;
+  cameraInfo.aspectRatio = config::getAspectRatio();
+  cameraInfo.nearZ = RE_NEARZ;
+  cameraInfo.farZ = config::viewDistance;
+
+  ACamera* pCamera = core::actors.createCamera(RCAM_MAIN, &cameraInfo);
+
+  if (!pCamera) {
+    return RE_CRITICAL;
+  }
+
+  setCamera(pCamera);
+
+  return RE_OK;
+}
+
 TResult core::MRenderer::createCoreCommandPools() {
   RE_LOG(Log, "Creating command pool.");
 
@@ -598,7 +624,7 @@ TResult core::MRenderer::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandPools();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSceneBuffers();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createImageTargets();           // render targets, e.g. front, cube, depth
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createRendererDefaults();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSetLayouts();
 
   if (chkResult <= RE_ERRORLIMIT) chkResult = createRenderPasses();           // A

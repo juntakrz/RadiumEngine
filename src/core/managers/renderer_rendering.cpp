@@ -78,11 +78,6 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
 
   VkPipeline pipeline = getPipeline(pipelineFlag);
 
-  if (pipeline == VK_NULL_HANDLE) {
-    // pipeline wasn't resolved because it probably isn't implemented yet
-    return;
-  }
-
   if (renderView.pCurrentPipeline != pipeline) {
     vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
@@ -473,10 +468,6 @@ void core::MRenderer::renderFrame() {
   submitInfo.signalSemaphoreCount = 1;
   submitInfo.pSignalSemaphores =
       signalSems;  // signal these after rendering is finished
-
-  RTexture* tex0 = core::resources.getTexture(RTGT_ENVFILTER);
-  RTexture* tex1 = core::resources.getTexture(RTGT_ENVIRRAD);
-  RTexture* tex2 = core::resources.getTexture(RTGT_LUTMAP);
 
   // submit an array featuring command buffers to graphics queue and signal
   // fence for CPU to wait for execution

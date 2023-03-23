@@ -18,6 +18,9 @@
 #define RTGT_ENVIRRAD           "RTCube_EnvIrrad"
 #define RTGT_LUTMAP             "RTCube_EnvLUT"
 
+// default camera
+#define RCAM_MAIN               "camMain"
+
 struct RVertex;
 
 namespace config {

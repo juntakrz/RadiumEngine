@@ -143,6 +143,7 @@ class MRenderer {
 
   TResult createImageTargets();
   TResult createDepthTarget();
+  TResult createRendererDefaults();
 
   TResult createCoreCommandPools();
   void destroyCoreCommandPools();

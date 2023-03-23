@@ -48,17 +48,19 @@ void core::run() {
   core::resources.createMaterial(&materialInfo);
 
   RSamplerInfo samplerInfo{};
-  core::resources.loadTexture("skyboxCubemap.ktx2", &samplerInfo);
+  //core::resources.loadTexture("skyboxCubemap.ktx2", &samplerInfo);
+  core::resources.loadTexture("papermill.ktx", &samplerInfo);
 
   materialInfo.name = "skybox";
   materialInfo.pipelineFlags = EPipeline::Skybox | EPipeline::MixEnvironment;
-  materialInfo.textures.baseColor = "skyboxCubemap.ktx2";
+  //materialInfo.textures.baseColor = "skyboxCubemap.ktx2";
+  materialInfo.textures.baseColor = "papermill.ktx";
   core::resources.createMaterial(&materialInfo);
 
   // create map models
   core::world.createModel(EPrimitiveType::Sphere, "mdlSphere", 16, false);
   core::world.createModel(EPrimitiveType::Cube, "mdlSkybox", 1, true);
-  core::world.loadModelFromFile("content/models/test/scene.gltf", "mdlGuy");
+  core::world.loadModelFromFile("content/models/drone/scene.gltf", "mdlGuy");
   core::world.createModel(EPrimitiveType::Cube, "mdlBox1", 1, false);
   //
   
@@ -148,6 +150,8 @@ TResult core::create() {
   RE_CHECK(chkResult);
 
   RE_LOG(Log, "Rendering module successfully initialized.");
+
+  core::renderer.renderInitFrame();
 
   core::resources.initialize();
   core::input.initialize(core::window.getWindow());

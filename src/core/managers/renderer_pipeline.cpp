@@ -995,6 +995,13 @@ VkPipelineLayout& core::MRenderer::getPipelineLayout(EPipelineLayout type) {
 
 VkPipeline& core::MRenderer::getPipeline(EPipeline type) {
   // not error checked
+
+  // TODO!!
+  if (type == EPipeline::BlendCullBack) {
+    type = EPipeline::OpaqueCullBack;
+  }
+  // TODO!!
+
   return system.pipelines.at(type);
 }
 
