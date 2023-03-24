@@ -14,18 +14,34 @@ class WModel {
   struct Node;
 
   // animation data structures
+  struct AnimationKeyframe {
+    union {
+      glm::vec3 translation;
+      glm::quat rotation;
+      glm::vec3 scale;
+      float weight;
+    } motion;
+
+    AnimationKeyframe() { std::memset(this, 0, sizeof(AnimationKeyframe)); }
+  };
+
   struct AnimationChannel {
-    enum EPathType { TRANSLATION, ROTATION, SCALE };
+    enum EPathType { TRANSLATION, ROTATION, SCALE, WEIGHT };
     EPathType path;
-    Node* node;
+    Node* pTargetNode = nullptr;
     uint32_t samplerIndex;
+
+    // keyframe index, transformation data
+    std::vector<AnimationKeyframe> keyframeData;
   };
 
   struct AnimationSampler {
     enum EInterpolationType { LINEAR, STEP, CUBICSPLINE };
     EInterpolationType interpolation;
-    std::vector<float> inputs;
+    std::vector<float> timePoints;
     std::vector<glm::vec4> outputsVec4;
+    float min = 0.0f;
+    float max = 0.0f;
   };
 
   struct Animation {

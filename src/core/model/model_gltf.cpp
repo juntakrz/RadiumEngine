@@ -657,45 +657,47 @@ void WModel::parseMaterials(const std::vector<std::string>& texturePaths) {
 
 void WModel::loadAnimations() {
   const tinygltf::Model& gltfModel = *staging.pInModel;
-  for (const tinygltf::Animation& anim : gltfModel.animations) {
+
+  for (const tinygltf::Animation& gltfAnimation : gltfModel.animations) {
     Animation animation{};
-    animation.name = anim.name;
-    if (anim.name.empty()) {
+    animation.name = gltfAnimation.name;
+    if (gltfAnimation.name.empty()) {
       animation.name = m_name + "_" + std::to_string(m_animations.size());
     }
 
     // Samplers
-    for (auto& samp : anim.samplers) {
+    for (auto& gltfSampler : gltfAnimation.samplers) {
       AnimationSampler sampler{};
 
-      if (samp.interpolation == "LINEAR") {
+      if (gltfSampler.interpolation == "LINEAR") {
         sampler.interpolation = AnimationSampler::EInterpolationType::LINEAR;
       }
-      if (samp.interpolation == "STEP") {
+      if (gltfSampler.interpolation == "STEP") {
         sampler.interpolation = AnimationSampler::EInterpolationType::STEP;
       }
-      if (samp.interpolation == "CUBICSPLINE") {
+      if (gltfSampler.interpolation == "CUBICSPLINE") {
         sampler.interpolation =
             AnimationSampler::EInterpolationType::CUBICSPLINE;
       }
 
-      // Read sampler input time values
+      // Read sampler time point values
       {
-        const tinygltf::Accessor& accessor = gltfModel.accessors[samp.input];
+        const tinygltf::Accessor& accessor =
+            gltfModel.accessors[gltfSampler.input];
         const tinygltf::BufferView& bufferView =
             gltfModel.bufferViews[accessor.bufferView];
         const tinygltf::Buffer& buffer = gltfModel.buffers[bufferView.buffer];
 
         assert(accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT);
 
-        const void* dataPtr =
+        const void* pTimeData =
             &buffer.data[accessor.byteOffset + bufferView.byteOffset];
-        const float* buf = static_cast<const float*>(dataPtr);
+        const float* timeBuffer = static_cast<const float*>(pTimeData);
         for (size_t index = 0; index < accessor.count; index++) {
-          sampler.inputs.emplace_back(buf[index]);
+          sampler.timePoints.emplace_back(timeBuffer[index]);
         }
 
-        for (auto input : sampler.inputs) {
+        for (auto input : sampler.timePoints) {
           if (input < animation.start) {
             animation.start = input;
           };
@@ -703,30 +705,36 @@ void WModel::loadAnimations() {
             animation.end = input;
           }
         }
+
+        if (accessor.minValues.size() && accessor.maxValues.size()) {
+          sampler.min = static_cast<float>(accessor.minValues[0]);
+          sampler.max = static_cast<float>(accessor.maxValues[0]);
+        }
       }
 
       // Read sampler output T/R/S values
       {
-        const tinygltf::Accessor& accessor = gltfModel.accessors[samp.output];
+        /*const tinygltf::Accessor& accessor =
+            gltfModel.accessors[gltfSampler.output];
         const tinygltf::BufferView& bufferView =
             gltfModel.bufferViews[accessor.bufferView];
         const tinygltf::Buffer& buffer = gltfModel.buffers[bufferView.buffer];
 
         assert(accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT);
 
-        const void* dataPtr =
+        const void* pData =
             &buffer.data[accessor.byteOffset + bufferView.byteOffset];
 
         switch (accessor.type) {
           case TINYGLTF_TYPE_VEC3: {
-            const glm::vec3* buf = static_cast<const glm::vec3*>(dataPtr);
+            const glm::vec3* buf = static_cast<const glm::vec3*>(pData);
             for (size_t index = 0; index < accessor.count; index++) {
               sampler.outputsVec4.emplace_back(glm::vec4(buf[index], 0.0f));
             }
             break;
           }
           case TINYGLTF_TYPE_VEC4: {
-            const glm::vec4* buf = static_cast<const glm::vec4*>(dataPtr);
+            const glm::vec4* buf = static_cast<const glm::vec4*>(pData);
             for (size_t index = 0; index < accessor.count; index++) {
               sampler.outputsVec4.emplace_back(buf[index]);
             }
@@ -736,32 +744,36 @@ void WModel::loadAnimations() {
             //std::cout << "unknown type" << std::endl;
             break;
           }
-        }
+        }*/
       }
 
       animation.samplers.emplace_back(sampler);
     }
 
     // Channels
-    for (auto& source : anim.channels) {
+    for (auto& gltfChannel : gltfAnimation.channels) {
       AnimationChannel channel{};
+      const tinygltf::AnimationSampler& gltfSampler =
+          gltfAnimation.samplers[gltfChannel.sampler];
+      const tinygltf::Accessor& accessor =
+          gltfModel.accessors[gltfSampler.output];
+      const tinygltf::BufferView& bufferView =
+          gltfModel.bufferViews[accessor.bufferView];
+      const tinygltf::Buffer& buffer = gltfModel.buffers[bufferView.buffer];
 
-      if (source.target_path == "rotation") {
+      if (gltfChannel.target_path == "rotation") {
         channel.path = AnimationChannel::EPathType::ROTATION;
-      }
-      if (source.target_path == "translation") {
+      } else if (gltfChannel.target_path == "translation") {
         channel.path = AnimationChannel::EPathType::TRANSLATION;
-      }
-      if (source.target_path == "scale") {
+      } else if (gltfChannel.target_path == "scale") {
         channel.path = AnimationChannel::EPathType::SCALE;
+      } else if (gltfChannel.target_path == "weights") {
+        channel.path = AnimationChannel::EPathType::WEIGHT;
       }
-      if (source.target_path == "weights") {
-        //std::cout << "weights not yet supported, skipping channel" << std::endl;
-        continue;
-      }
-      channel.samplerIndex = source.sampler;
-      channel.node = getNode(source.target_node);
-      if (!channel.node) {
+
+      channel.samplerIndex = gltfChannel.sampler;
+      channel.pTargetNode = getNode(gltfChannel.target_node);
+      if (!channel.pTargetNode) {
         continue;
       }
 
