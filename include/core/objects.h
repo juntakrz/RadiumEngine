@@ -53,7 +53,7 @@ enum EPipeline : uint32_t {
   OpaqueCullBack    = 0b100000,
   OpaqueCullNone    = 0b1000000,
   MaskCullBack      = 0b10000000,
-  BlendCullBack     = 0b100000000,
+  BlendCullNone     = 0b100000000,
 
   // combined pipeline indices for rendering only
   MixEnvironment = EnvFilter + EnvIrradiance

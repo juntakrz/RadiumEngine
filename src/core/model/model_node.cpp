@@ -78,6 +78,14 @@ void WModel::Node::setNodeDescriptorSet(bool updateChildren) {
   }
 }
 
+void WModel::Node::propagateTransformation(const glm::mat4& modelMatrix) {
+  nodeOutMatrix = getLocalMatrix() * modelMatrix;
+
+  for (auto& child : pChildren) {
+    child->propagateTransformation(nodeOutMatrix);
+  }
+}
+
 void WModel::Node::updateNode(const glm::mat4& modelMatrix) {
   if (pMesh) {
     glm::mat4 matrix = getMatrix();
@@ -101,6 +109,38 @@ void WModel::Node::updateNode(const glm::mat4& modelMatrix) {
     } else {
       memcpy(pMesh->uniformBufferData.uniformBuffer.allocInfo.pMappedData,
              &pMesh->uniformBlock, sizeof(glm::mat4) * 2u);
+    }
+  }
+
+  for (auto& pChild : pChildren) {
+    pChild->updateNode(modelMatrix);
+  }
+}
+
+
+void WModel::Node::updateNode2(const glm::mat4& modelMatrix) {
+  if (pMesh) {
+    pMesh->uniformBlock.rootMatrix = modelMatrix;
+    pMesh->uniformBlock.nodeMatrix = nodeOutMatrix;
+
+    if (pSkin) {
+      // Update join matrices
+      glm::mat4 inverseTransform = glm::inverse(nodeOutMatrix);
+      size_t numJoints =
+          std::min((uint32_t)pSkin->joints.size(), RE_MAXJOINTS);
+      for (size_t i = 0; i < numJoints; i++) {
+        Node* pJointNode = pSkin->joints[i];
+        glm::mat4 jointMatrix =
+            pJointNode->nodeOutMatrix * pSkin->inverseBindMatrices[i];
+        jointMatrix = inverseTransform * jointMatrix;
+        pMesh->uniformBlock.jointMatrix[i] = jointMatrix;
+      }
+      pMesh->uniformBlock.jointCount = (float)numJoints;
+      memcpy(pMesh->uniformBufferData.uniformBuffer.allocInfo.pMappedData,
+              &pMesh->uniformBlock, sizeof(pMesh->uniformBlock));
+    } else {
+      memcpy(pMesh->uniformBufferData.uniformBuffer.allocInfo.pMappedData,
+              &pMesh->uniformBlock, sizeof(glm::mat4) * 2u);
     }
   }
 

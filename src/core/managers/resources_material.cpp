@@ -92,7 +92,7 @@ RMaterial* core::MResources::createMaterial(
   if (pDesc->pipelineFlags == EPipeline::Null) {
     switch (pDesc->alphaMode) {
       case EAlphaMode::Blend: {
-        newMat.pipelineFlags |= EPipeline::BlendCullBack;
+        newMat.pipelineFlags |= EPipeline::BlendCullNone;
         break;
       }
       case EAlphaMode::Mask: {

@@ -42,6 +42,7 @@ class WModel {
     Node* skeletonRoot = nullptr;
     std::vector<glm::mat4> inverseBindMatrices;
     std::vector<Node*> joints;
+    RBuffer animationBuffer;
   };
 
   struct Mesh {
@@ -87,6 +88,8 @@ class WModel {
     glm::quat rotation = glm::quat(glm::vec3(0.0f));
     glm::vec3 scale = glm::vec3(1.0f);
 
+    glm::mat4 nodeOutMatrix = nodeMatrix;
+
     // transform matrix only for this node
     glm::mat4 getLocalMatrix();
 
@@ -103,6 +106,9 @@ class WModel {
 
     // update transform matrices of this node and its children
     void updateNode(const glm::mat4& modelMatrix);
+    void updateNode2(const glm::mat4& modelMatrix);
+
+    void propagateTransformation(const glm::mat4& modelMatrix);
   };
 
   struct {
@@ -138,6 +144,8 @@ class WModel {
 
   // stored animations (perhaps animations manager is needed?)
   std::vector<Animation> m_animations;
+  int32_t m_animationIndex = 0;
+  float m_animationTimer = 0.0f;
 
   // stored skins
   std::vector<std::unique_ptr<Skin>> m_pSkins;
@@ -174,6 +182,8 @@ class WModel {
   void loadAnimations();
 
   void loadSkins();
+
+  void updateAnimation(int32_t animationIndex);
 
   // Node
 

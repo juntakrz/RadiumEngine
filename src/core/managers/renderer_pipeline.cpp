@@ -875,14 +875,15 @@ TResult core::MRenderer::createGraphicsPipelines() {
   }
 
   // 'Blend' pipeline, similar to PBR singlesided, but with alpha channel
-  rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+  rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
+  //rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
   colorBlendAttachment.blendEnable = VK_TRUE;
 
-  system.pipelines.emplace(EPipeline::BlendCullBack, VK_NULL_HANDLE);
+  system.pipelines.emplace(EPipeline::BlendCullNone, VK_NULL_HANDLE);
 
   if (vkCreateGraphicsPipelines(logicalDevice.device, VK_NULL_HANDLE, 1,
                                 &graphicsPipelineInfo, nullptr,
-                                &getPipeline(BlendCullBack)) != VK_SUCCESS) {
+                                &getPipeline(BlendCullNone)) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create PBR doublesided graphics pipeline.");
 
     return RE_CRITICAL;
@@ -1022,7 +1023,7 @@ TResult core::MRenderer::configureRenderPasses() {
   pRenderPass->usedPipelines.emplace_back(EPipeline::OpaqueCullBack);
   pRenderPass->usedPipelines.emplace_back(EPipeline::OpaqueCullNone);
   pRenderPass->usedPipelines.emplace_back(EPipeline::Skybox);
-  pRenderPass->usedPipelines.emplace_back(EPipeline::BlendCullBack);
+  pRenderPass->usedPipelines.emplace_back(EPipeline::BlendCullNone);
 
   // configure 'environment' cubemap render pass
   pRenderPass = getRenderPass(ERenderPass::Environment);

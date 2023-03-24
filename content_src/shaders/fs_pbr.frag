@@ -167,15 +167,16 @@ void main() {
 	const float emissiveFactor = 1.0;
 	vec3 f0 = vec3(0.04);
 
-	if (material.alphaMask == 1.0f) {
-		if (material.baseColorTextureSet > -1) {
-			baseColor = texture(colorMap, material.baseColorTextureSet == 0 ? inUV0 : inUV1) * material.baseColorFactor;
-		} else {
-			baseColor = material.baseColorFactor;
-		}
-		if (baseColor.a < material.alphaMaskCutoff) {
-			discard;
-		}
+
+	if (material.baseColorTextureSet > -1) {
+		baseColor = texture(colorMap, material.baseColorTextureSet == 0 ? inUV0 : inUV1) * material.baseColorFactor;
+	} else {
+		baseColor = material.baseColorFactor;
+	}
+	
+	// TODO: discard on alphaMask == 1.0 here and depth-sort everything, unless requested by the material
+	if (material.alphaMask > 0.9 && baseColor.a < material.alphaMaskCutoff && material.alphaMaskCutoff < 1.1) {
+		discard;
 	}
 
 	// Metallic and Roughness material properties are packed together
@@ -203,6 +204,10 @@ void main() {
 		baseColor = texture(colorMap, material.baseColorTextureSet == 0 ? inUV0 : inUV1) * material.baseColorFactor;
 	} else {
 		baseColor = material.baseColorFactor;
+	}
+
+	if(baseColor.a < 0.5){
+		discard;
 	}
 
 	baseColor *= inColor0;

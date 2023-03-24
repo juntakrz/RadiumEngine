@@ -733,7 +733,7 @@ void WModel::loadAnimations() {
             break;
           }
           default: {
-            std::cout << "unknown type" << std::endl;
+            //std::cout << "unknown type" << std::endl;
             break;
           }
         }
@@ -756,7 +756,7 @@ void WModel::loadAnimations() {
         channel.path = AnimationChannel::EPathType::SCALE;
       }
       if (source.target_path == "weights") {
-        std::cout << "weights not yet supported, skipping channel" << std::endl;
+        //std::cout << "weights not yet supported, skipping channel" << std::endl;
         continue;
       }
       channel.samplerIndex = source.sampler;
@@ -806,4 +806,14 @@ void WModel::loadSkins() {
              accessor.count * sizeof(glm::mat4));
     }
   }
+}
+
+void WModel::updateAnimation(int32_t animationIndex) {
+  // if switching animation - reset timer
+  if (animationIndex != m_animationIndex) {
+    m_animationTimer = 0.0f;
+    m_animationIndex = animationIndex;
+  }
+
+
 }
