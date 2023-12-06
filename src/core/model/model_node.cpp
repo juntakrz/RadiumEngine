@@ -109,15 +109,15 @@ void WModel::Node::updateNode(const glm::mat4& modelMatrix) {
   }
 }
 
-void WModel::Node::propagateTransformation(const glm::mat4& inMatrix) {
-  transformedNodeMatrix = getLocalMatrix() * inMatrix;
+void WModel::Node::propagateTransformation(const glm::mat4& accumulatedMatrix) {
+  transformedNodeMatrix = getLocalMatrix() * accumulatedMatrix;
 
   for (auto& child : pChildren) {
     child->propagateTransformation(transformedNodeMatrix);
   }
 }
 
-void WModel::Node::updateNode2(const glm::mat4& modelMatrix) {
+void WModel::Node::updateNodeMatrices(const glm::mat4& modelMatrix) {
   if (pMesh) {
     pMesh->uniformBlock.rootMatrix = modelMatrix;
     pMesh->uniformBlock.nodeMatrix = transformedNodeMatrix;

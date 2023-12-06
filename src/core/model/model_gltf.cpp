@@ -693,7 +693,7 @@ void WModel::loadAnimations() {
         const void* pTimeData =
             &buffer.data[accessor.byteOffset + bufferView.byteOffset];
         const float* timeBuffer = static_cast<const float*>(pTimeData);
-        for (size_t index = 0; index < accessor.count; index++) {
+        for (size_t index = 0; index < accessor.count; ++index) {
           sampler.timePoints.emplace_back(timeBuffer[index]);
         }
 
@@ -714,7 +714,7 @@ void WModel::loadAnimations() {
 
       // Read sampler output T/R/S values
       {
-        /*const tinygltf::Accessor& accessor =
+        const tinygltf::Accessor& accessor =
             gltfModel.accessors[gltfSampler.output];
         const tinygltf::BufferView& bufferView =
             gltfModel.bufferViews[accessor.bufferView];
@@ -727,24 +727,29 @@ void WModel::loadAnimations() {
 
         switch (accessor.type) {
           case TINYGLTF_TYPE_VEC3: {
-            const glm::vec3* buf = static_cast<const glm::vec3*>(pData);
-            for (size_t index = 0; index < accessor.count; index++) {
-              sampler.outputsVec4.emplace_back(glm::vec4(buf[index], 0.0f));
+            // can't use glm::vec3 to iterate due to enforced 16 byte alignment for vectors
+            const float* buf = static_cast<const float*>(pData);
+            for (size_t index = 0; index < accessor.count * 3; index += 3) {
+              sampler.outputsVec4.emplace_back(
+                  glm::vec4(buf[index], buf[index + 1], buf[index + 2], 0.0f));
             }
             break;
           }
           case TINYGLTF_TYPE_VEC4: {
             const glm::vec4* buf = static_cast<const glm::vec4*>(pData);
-            for (size_t index = 0; index < accessor.count; index++) {
+            for (size_t index = 0; index < accessor.count; ++index) {
               sampler.outputsVec4.emplace_back(buf[index]);
             }
             break;
           }
           default: {
-            //std::cout << "unknown type" << std::endl;
+            RE_LOG(Warning,
+                   "Unknown or unsupported sampler accessor type %d for model "
+                   "'%s'.",
+                   accessor.type, m_name.c_str());
             break;
           }
-        }*/
+        }
       }
 
       animation.samplers.emplace_back(sampler);
@@ -818,14 +823,4 @@ void WModel::loadSkins() {
              accessor.count * sizeof(glm::mat4));
     }
   }
-}
-
-void WModel::updateAnimation(int32_t animationIndex) {
-  // if switching animation - reset timer
-  if (animationIndex != m_animationIndex) {
-    m_animationTimer = 0.0f;
-    m_animationIndex = animationIndex;
-  }
-
-
 }

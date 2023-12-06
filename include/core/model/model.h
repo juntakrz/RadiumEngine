@@ -109,7 +109,7 @@ class WModel {
     // transform matrix only for this node
     glm::mat4 getLocalMatrix();
 
-    // transform matrix for this node that includes all parent transformations
+    // DEPRECATED: transform matrix for this node that includes all parent transformations
     glm::mat4 getPropagatedMatrix();
 
     Node(WModel::Node* pParentNode, uint32_t index, const std::string& name);
@@ -120,12 +120,14 @@ class WModel {
 
     void setNodeDescriptorSet(bool updateChildren = false);
 
-    // update transform matrices of this node and its children
+    //DEPRECATED
     void updateNode(const glm::mat4& modelMatrix);
-    void updateNode2(const glm::mat4& modelMatrix);
+
+    // update transform matrices of this node and its children
+    void updateNodeMatrices(const glm::mat4& modelMatrix);
 
     // propagate transformation through all nodes and their children
-    void propagateTransformation(const glm::mat4& inMatrix = glm::mat4(1.0f));
+    void propagateTransformation(const glm::mat4& accumulatedMatrix = glm::mat4(1.0f));
   };
 
   struct {
@@ -161,8 +163,14 @@ class WModel {
 
   // stored animations (perhaps animations manager is needed?)
   std::vector<Animation> m_animations;
-  int32_t m_animationIndex = 0;
-  float m_animationTimer = 0.0f;
+
+  struct {
+    int32_t index = 0;
+    float timePoint = 0.0f;
+    float speed = 1.0f;
+    bool enable = false;
+    bool loopCurrent = true;
+  } m_animationSettings;
 
   // stored skins
   std::vector<std::unique_ptr<Skin>> m_pSkins;
@@ -176,6 +184,9 @@ class WModel {
 
   // sorts primitives
   void sortPrimitivesByMaterial();
+
+  // runs an update using pre-set data, call playAnimation method instead
+  void updateAnimation();
 
   // glTF
 
@@ -200,8 +211,6 @@ class WModel {
 
   void loadSkins();
 
-  void updateAnimation(int32_t animationIndex);
-
   // Node
 
   // create simple node with a single empty mesh
@@ -219,6 +228,7 @@ class WModel {
   const std::vector<std::unique_ptr<Node>>& getRootNodes() noexcept;
   std::vector<WModel::Node*>& getAllNodes() noexcept;
 
+  void playAnimation(const int32_t index, const float timePoint = 0.0f, const float speed = 1.0f, const bool loop = true);
   void update(const glm::mat4& modelMatrix) noexcept;
 
   // cleans all primitives and nodes within,
