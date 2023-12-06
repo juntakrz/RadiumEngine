@@ -78,7 +78,7 @@ void core::run() {
   core::renderer.bindEntity(pStatic);
   pStatic->setLocation(0.0f, -1.0f, -0.3f);
   pStatic->setRotation({0.0f, 1.0f, 0.0f}, glm::radians(200.0f));
-  pStatic->setScale(30.01f);
+  pStatic->setScale(35.01f);
 
   pStatic = core::actors.createStatic("Box1");
   pStatic->setModel(core::world.getModel("mdlBox1"));

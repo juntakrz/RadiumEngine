@@ -104,13 +104,13 @@ class WModel {
     glm::quat rotation = glm::quat(glm::vec3(0.0f));
     glm::vec3 scale = glm::vec3(1.0f);
 
-    glm::mat4 nodeOutMatrix = nodeMatrix;
+    glm::mat4 transformedNodeMatrix = nodeMatrix;
 
     // transform matrix only for this node
     glm::mat4 getLocalMatrix();
 
-    // transform matrix for this and parent nodes
-    glm::mat4 getMatrix();
+    // transform matrix for this node that includes all parent transformations
+    glm::mat4 getPropagatedMatrix();
 
     Node(WModel::Node* pParentNode, uint32_t index, const std::string& name);
 
@@ -124,7 +124,8 @@ class WModel {
     void updateNode(const glm::mat4& modelMatrix);
     void updateNode2(const glm::mat4& modelMatrix);
 
-    void propagateTransformation(const glm::mat4& modelMatrix);
+    // propagate transformation through all nodes and their children
+    void propagateTransformation(const glm::mat4& inMatrix = glm::mat4(1.0f));
   };
 
   struct {

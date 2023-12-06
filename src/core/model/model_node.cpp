@@ -78,17 +78,9 @@ void WModel::Node::setNodeDescriptorSet(bool updateChildren) {
   }
 }
 
-void WModel::Node::propagateTransformation(const glm::mat4& modelMatrix) {
-  nodeOutMatrix = getLocalMatrix() * modelMatrix;
-
-  for (auto& child : pChildren) {
-    child->propagateTransformation(nodeOutMatrix);
-  }
-}
-
 void WModel::Node::updateNode(const glm::mat4& modelMatrix) {
   if (pMesh) {
-    glm::mat4 matrix = getMatrix();
+    glm::mat4 matrix = getPropagatedMatrix();
     pMesh->uniformBlock.rootMatrix = modelMatrix;
     pMesh->uniformBlock.nodeMatrix = matrix;
 
@@ -99,7 +91,7 @@ void WModel::Node::updateNode(const glm::mat4& modelMatrix) {
       for (size_t i = 0; i < numJoints; i++) {
         Node* pJointNode = pSkin->joints[i];
         glm::mat4 jointMatrix =
-            pJointNode->getMatrix() * pSkin->inverseBindMatrices[i];
+            pJointNode->getPropagatedMatrix() * pSkin->inverseBindMatrices[i];
         jointMatrix = inverseTransform * jointMatrix;
         pMesh->uniformBlock.jointMatrix[i] = jointMatrix;
       }
@@ -117,20 +109,28 @@ void WModel::Node::updateNode(const glm::mat4& modelMatrix) {
   }
 }
 
+void WModel::Node::propagateTransformation(const glm::mat4& inMatrix) {
+  transformedNodeMatrix = getLocalMatrix() * inMatrix;
+
+  for (auto& child : pChildren) {
+    child->propagateTransformation(transformedNodeMatrix);
+  }
+}
+
 void WModel::Node::updateNode2(const glm::mat4& modelMatrix) {
   if (pMesh) {
     pMesh->uniformBlock.rootMatrix = modelMatrix;
-    pMesh->uniformBlock.nodeMatrix = nodeOutMatrix;
-
+    pMesh->uniformBlock.nodeMatrix = transformedNodeMatrix;
+    
     if (pSkin) {
       // Update joint matrices
-      glm::mat4 inverseTransform = glm::inverse(nodeOutMatrix);
+      glm::mat4 inverseTransform = glm::inverse(transformedNodeMatrix);
       size_t numJoints =
           std::min((uint32_t)pSkin->joints.size(), RE_MAXJOINTS);
       for (size_t i = 0; i < numJoints; i++) {
         Node* pJointNode = pSkin->joints[i];
         glm::mat4 jointMatrix =
-            pJointNode->nodeOutMatrix * pSkin->inverseBindMatrices[i];
+            pJointNode->transformedNodeMatrix * pSkin->inverseBindMatrices[i];
         jointMatrix = inverseTransform * jointMatrix;
         pMesh->uniformBlock.jointMatrix[i] = jointMatrix;
       }
@@ -153,9 +153,12 @@ glm::mat4 WModel::Node::getLocalMatrix() {
          glm::scale(glm::mat4(1.0f), scale) * nodeMatrix;
 }
 
-glm::mat4 WModel::Node::getMatrix() {
+glm::mat4 WModel::Node::getPropagatedMatrix() {
+  // get pretransformed local matrix
   glm::mat4 matrix = getLocalMatrix();
   Node* pParent = pParentNode;
+
+  // retrieve all parent matrices and multiply the current node matrix by them
   while (pParent) {
     matrix = pParent->getLocalMatrix() * matrix;
     pParent = pParent->pParentNode;

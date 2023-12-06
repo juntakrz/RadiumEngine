@@ -149,9 +149,10 @@ void WModel::update(const glm::mat4& modelMatrix) noexcept {
 
   // update node transformations
   for (auto& node : getRootNodes()) {
-    node->propagateTransformation(modelMatrix);
-    node->updateNode(modelMatrix);
-    //node->updateNode2(modelMatrix);
+    node->propagateTransformation();
+    node->updateNode2(modelMatrix);
+
+    //node->updateNode(modelMatrix);
   }
 }
 
