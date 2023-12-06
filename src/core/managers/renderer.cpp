@@ -533,7 +533,7 @@ TResult core::MRenderer::createSyncObjects() {
   // create continuously running threads
   RE_LOG(Log, "Creating entity update thread.");
   sync.asyncUpdateEntities.bindFunction(this, &MRenderer::updateBoundEntities);
-  //sync.asyncUpdateEntities.start();
+  sync.asyncUpdateEntities.start();
 
   return RE_OK;
 }

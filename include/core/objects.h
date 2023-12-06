@@ -118,33 +118,6 @@ struct RVkPhysicalDevice {
   bool bIsValid = false;
 };
 
-class RAsync {
-  std::thread thread;
-  std::mutex mutex;
-  std::condition_variable conditional;
-  TFuncPtr func;
-  bool cue = false;
-  bool execute = true;
-
-  void loop();
-
-public:
-  // example: bindFunction(this, &RClass::method)
-  template <typename C>
-  void bindFunction(C* owner, void (C::*function)()) {
-    func = std::make_unique<OFuncPtr<C>>(owner, function);
-  }
-
-  // bind function before calling start()
-  void start();
-
-  // immediately stop this thread
-  void stop();
-
-  // execute bound function
-  void update();
-};
-
 struct RBuffer {
   VkBuffer buffer;
   VmaAllocation allocation;

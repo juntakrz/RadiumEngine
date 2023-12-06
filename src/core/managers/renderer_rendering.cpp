@@ -440,7 +440,7 @@ void core::MRenderer::renderFrame() {
 
   // main PBR render pass:
   // update view, projection and camera position
-  updateBoundEntities();
+  //updateBoundEntities();
   updateSceneUBO(renderView.frameInFlight);
   renderView.pCurrentRenderPass = getRenderPass(ERenderPass::PBR);
   doRenderPass(cmdBuffer, system.descriptorSets, imageIndex);

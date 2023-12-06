@@ -79,7 +79,7 @@ void processMessage(char level, const char* message, ...) {
       break;
     }
   }
-};
+}
 
 void validate(TResult result) {
   if (result > RE_ERRORLIMIT) {

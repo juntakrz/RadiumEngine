@@ -2,6 +2,7 @@
 
 #include "vk_mem_alloc.h"
 #include "core/objects.h"
+#include "core/async.h"
 #include "common.h"
 #include "core/world/actors/camera.h"
 

@@ -93,7 +93,7 @@ void WModel::Node::updateNode(const glm::mat4& modelMatrix) {
     pMesh->uniformBlock.nodeMatrix = matrix;
 
     if (pSkin) {
-      // Update join matrices
+      // Update joint matrices
       glm::mat4 inverseTransform = glm::inverse(matrix);
       size_t numJoints = std::min((uint32_t)pSkin->joints.size(), RE_MAXJOINTS);
       for (size_t i = 0; i < numJoints; i++) {
@@ -117,14 +117,13 @@ void WModel::Node::updateNode(const glm::mat4& modelMatrix) {
   }
 }
 
-
 void WModel::Node::updateNode2(const glm::mat4& modelMatrix) {
   if (pMesh) {
     pMesh->uniformBlock.rootMatrix = modelMatrix;
     pMesh->uniformBlock.nodeMatrix = nodeOutMatrix;
 
     if (pSkin) {
-      // Update join matrices
+      // Update joint matrices
       glm::mat4 inverseTransform = glm::inverse(nodeOutMatrix);
       size_t numJoints =
           std::min((uint32_t)pSkin->joints.size(), RE_MAXJOINTS);
