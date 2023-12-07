@@ -78,39 +78,8 @@ void WModel::Node::setNodeDescriptorSet(bool updateChildren) {
   }
 }
 
-void WModel::Node::updateNode(const glm::mat4& modelMatrix) {
-  if (pMesh) {
-    glm::mat4 matrix = getPropagatedMatrix();
-    pMesh->uniformBlock.rootMatrix = modelMatrix;
-    pMesh->uniformBlock.nodeMatrix = matrix;
-
-    if (pSkin) {
-      // Update joint matrices
-      glm::mat4 inverseTransform = glm::inverse(matrix);
-      size_t numJoints = std::min((uint32_t)pSkin->joints.size(), RE_MAXJOINTS);
-      for (size_t i = 0; i < numJoints; i++) {
-        Node* pJointNode = pSkin->joints[i];
-        glm::mat4 jointMatrix =
-            pJointNode->getPropagatedMatrix() * pSkin->inverseBindMatrices[i];
-        jointMatrix = inverseTransform * jointMatrix;
-        pMesh->uniformBlock.jointMatrix[i] = jointMatrix;
-      }
-      pMesh->uniformBlock.jointCount = (float)numJoints;
-      memcpy(pMesh->uniformBufferData.uniformBuffer.allocInfo.pMappedData,
-             &pMesh->uniformBlock, sizeof(pMesh->uniformBlock));
-    } else {
-      memcpy(pMesh->uniformBufferData.uniformBuffer.allocInfo.pMappedData,
-             &pMesh->uniformBlock, sizeof(glm::mat4) * 2u);
-    }
-  }
-
-  for (auto& pChild : pChildren) {
-    pChild->updateNode(modelMatrix);
-  }
-}
-
 void WModel::Node::propagateTransformation(const glm::mat4& accumulatedMatrix) {
-  transformedNodeMatrix = getLocalMatrix() * accumulatedMatrix;
+  transformedNodeMatrix = accumulatedMatrix * getLocalMatrix();
 
   for (auto& child : pChildren) {
     child->propagateTransformation(transformedNodeMatrix);
@@ -144,26 +113,13 @@ void WModel::Node::updateNodeMatrices(const glm::mat4& modelMatrix) {
   }
 
   for (auto& pChild : pChildren) {
-    pChild->updateNode(modelMatrix);
+    pChild->updateNodeMatrices(modelMatrix);
   }
 }
 
 glm::mat4 WModel::Node::getLocalMatrix() {
   return glm::translate(glm::mat4(1.0f), translation) * glm::mat4(rotation) *
          glm::scale(glm::mat4(1.0f), scale) * nodeMatrix;
-}
-
-glm::mat4 WModel::Node::getPropagatedMatrix() {
-  // get pretransformed local matrix
-  glm::mat4 matrix = getLocalMatrix();
-  Node* pParent = pParentNode;
-
-  // retrieve all parent matrices and multiply the current node matrix by them
-  while (pParent) {
-    matrix = pParent->getLocalMatrix() * matrix;
-    pParent = pParent->pParentNode;
-  }
-  return matrix;
 }
 
 WModel::Node* WModel::createNode(WModel::Node* pParentNode, uint32_t nodeIndex,

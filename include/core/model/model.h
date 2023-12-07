@@ -109,9 +109,6 @@ class WModel {
     // transform matrix only for this node
     glm::mat4 getLocalMatrix();
 
-    // DEPRECATED: transform matrix for this node that includes all parent transformations
-    glm::mat4 getPropagatedMatrix();
-
     Node(WModel::Node* pParentNode, uint32_t index, const std::string& name);
 
     // allocate uniform buffer for writing transformation data
@@ -120,14 +117,12 @@ class WModel {
 
     void setNodeDescriptorSet(bool updateChildren = false);
 
-    //DEPRECATED
-    void updateNode(const glm::mat4& modelMatrix);
+    // propagate transformation through all nodes and their children
+    void propagateTransformation(
+        const glm::mat4& accumulatedMatrix = glm::mat4(1.0f));
 
     // update transform matrices of this node and its children
     void updateNodeMatrices(const glm::mat4& modelMatrix);
-
-    // propagate transformation through all nodes and their children
-    void propagateTransformation(const glm::mat4& accumulatedMatrix = glm::mat4(1.0f));
   };
 
   struct {

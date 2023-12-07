@@ -170,12 +170,11 @@ TResult core::MWorld::createModel(EPrimitiveType type, std::string name,
 
   for (auto& node : pModel->getRootNodes()) {
     node->setNodeDescriptorSet(true);
-    node->updateNode(glm::mat4(1.0f));
+    node->updateNodeMatrices(glm::mat4(1.0f));
   }
 
   // calculate bounding box extent for the whole mesh based on created primitives
-  /*
-  glm::vec3 minExtent{0.0f}, maxExtent{0.0f};
+  /*glm::vec3 minExtent{0.0f}, maxExtent{0.0f};
   for (const auto& primitive : pNode->pMesh->pPrimitives) {
     if (primitive->getBoundingBoxExtent(minExtent, maxExtent)) {
       pNode->pMesh->extent.min = glm::min(pNode->pMesh->extent.min, minExtent);
