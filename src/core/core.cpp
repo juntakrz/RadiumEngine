@@ -5,6 +5,7 @@
 #include "core/managers/debug.h"
 #include "core/managers/input.h"
 #include "core/managers/actors.h"
+#include "core/managers/animations.h"
 #include "core/managers/player.h"
 #include "core/managers/script.h"
 #include "core/managers/ref.h"
@@ -23,6 +24,7 @@ class core::MPlayer& core::player = MPlayer::get();
 class core::MRef& core::ref = MRef::get();
 class core::MTime& core::time = MTime::get();
 class core::MWorld& core::world = MWorld::get();
+class core::MAnimations& core::animations = MAnimations::get();
 
 void core::run() {
 

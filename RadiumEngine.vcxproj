@@ -161,6 +161,10 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\core\managers\animations.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="src\core\managers\debug.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
@@ -245,6 +249,10 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\core\model\animation.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="src\core\objects.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
@@ -306,6 +314,7 @@
   <ItemGroup>
     <ClInclude Include="include\core\async.h" />
     <ClInclude Include="include\core\core.h" />
+    <ClInclude Include="include\core\managers\animations.h" />
     <ClInclude Include="include\core\managers\common.h" />
     <ClInclude Include="include\core\managers\debug.h" />
     <ClInclude Include="include\core\managers\resources.h" />
@@ -320,6 +329,7 @@
     <ClInclude Include="include\core\managers\world.h" />
     <ClInclude Include="include\core\material\material.h" />
     <ClInclude Include="include\core\material\texture.h" />
+    <ClInclude Include="include\core\model\animation.h" />
     <ClInclude Include="include\core\world\actors\base.h" />
     <ClInclude Include="include\core\world\actors\entity.h" />
     <ClInclude Include="include\core\world\actors\pawn.h" />

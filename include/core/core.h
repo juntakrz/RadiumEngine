@@ -17,6 +17,9 @@ extern class MScript& script;
 // actors manager, manages interactive entities in the 3D world
 extern class MActors& actors;
 
+// animations manager, provides animations to models
+extern class MAnimations& animations;
+
 // debug manager, handles debugger integration
 extern class MDebug& debug;
 

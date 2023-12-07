@@ -8,6 +8,8 @@ class Model;
 class Node;
 }
 
+class WAnimation;
+
 class WModel {
   friend class core::MRenderer;
   friend class core::MWorld;
@@ -156,8 +158,11 @@ class WModel {
   // used materials, for glTF they have the same index as a model
   std::vector<std::string> m_materialList;
 
-  // stored animations (perhaps animations manager is needed?)
+  // SOON TO BE DEPRECATED stored animations (perhaps animations manager is needed?)
   std::vector<Animation> m_animations;
+
+  // stored references to used animations
+  std::unordered_map<std::string, WAnimation*> m_boundAnimations;
 
   struct {
     int32_t index = 0;
@@ -224,6 +229,9 @@ class WModel {
   std::vector<WModel::Node*>& getAllNodes() noexcept;
 
   void playAnimation(const int32_t index, const float timePoint = 0.0f, const float speed = 1.0f, const bool loop = true);
+  // TODO
+  void playAnimation(const char* name, const float timePoint = 0.0f,
+                     const float speed = 1.0f, const bool loop = true);
   void update(const glm::mat4& modelMatrix) noexcept;
 
   // cleans all primitives and nodes within,

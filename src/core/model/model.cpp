@@ -238,6 +238,14 @@ void WModel::playAnimation(const int32_t index, const float timePoint, const flo
   m_animationSettings.enable = true;
 }
 
+void WModel::playAnimation(const char* name, const float timePoint,
+                           const float speed, const bool loop) {
+  m_animationSettings.timePoint = timePoint;
+  m_animationSettings.speed = speed;
+  m_animationSettings.loopCurrent = loop;
+  m_animationSettings.enable = true;
+}
+
 void WModel::update(const glm::mat4& modelMatrix) noexcept {
   // update skins
   //for (auto& skin : m_pSkins) {
