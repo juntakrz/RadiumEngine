@@ -81,6 +81,8 @@ enum class ERenderPass {
   PBR
 };
 
+enum class ETransformType { Translation, Rotation, Scale, Weight, Undefined };
+
 struct RVkLogicalDevice {
   VkDevice device;
 

@@ -208,6 +208,7 @@ class WModel {
   void parseMaterials(const std::vector<std::string>& texturePaths);
 
   void loadAnimations();
+  void loadAnimations2();
 
   void loadSkins();
 

@@ -152,7 +152,7 @@ WModel::Node* WModel::createNode(WModel::Node* pParentNode, uint32_t nodeIndex,
 }
 
 WModel::Node* WModel::getNode(uint32_t index) noexcept {
-  for (auto it : m_pLinearNodes) {
+  for (WModel::Node* it : m_pLinearNodes) {
     if (it->index == index) {
       return it;
     }
