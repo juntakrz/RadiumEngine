@@ -83,24 +83,30 @@ TResult WModel::createModel(const char* name, const tinygltf::Model* pInModel) {
     return RE_ERROR;
   }
 
-  if (gltfModel.animations.size() > 0) {
-    loadAnimations();
-    loadAnimations2();
-  }
   loadSkins();
 
   for (auto node : m_pLinearNodes) {
     // Assign skins
     if (node->skinIndex > -1) {
       node->pSkin = m_pSkins[node->skinIndex].get();
+
+      // set joint count for every instance of a skin
+      if (node->pSkin) {
+        size_t jointCount =
+            std::min((uint32_t)node->pSkin->joints.size(), RE_MAXJOINTS);
+        node->pMesh->uniformBlock.jointCount = (float)jointCount;     
+      }
     }
+
     // Initial pose
-    if (node->pMesh) {
-      node->updateNodeMatrices(glm::mat4(1.0f));
-    }
+    update(glm::mat4(1.0f));
 
     // no need to update children, they are accessed anyway
     node->setNodeDescriptorSet(false);
+  }
+
+  if (gltfModel.animations.size() > 0) {
+    extractAnimations(15.0f, 1.0f);
   }
 
   sortPrimitivesByMaterial();
@@ -791,9 +797,8 @@ void WModel::loadAnimations() {
   }
 }
 
-// WIP: for each animation via samplers and channels retrieve stored transformation values at a framerate-modified time value and apply them to all related nodes
-// then update animation and retrieve all the resulting accumulated matrices - and store those in a freshly created animation
-void WModel::loadAnimations2() {
+
+void WModel::extractAnimations(const float framerate, const float speed) {
   const tinygltf::Model& gltfModel = *staging.pInModel;
 
   for (int32_t i = 0; i < gltfModel.animations.size(); ++i) {
@@ -802,8 +807,8 @@ void WModel::loadAnimations2() {
     WAnimation* pAnimation = nullptr;
     const size_t animationDataEntries = gltfAnimation.samplers.size();
 
-    float start = std::numeric_limits<float>::max();
-    float end = std::numeric_limits<float>::min();
+    float startTime = std::numeric_limits<float>::max();
+    float endTime = std::numeric_limits<float>::min();
 
     if (gltfAnimation.name.empty()) {
       animationName = m_name + "_" + std::to_string(i);
@@ -811,7 +816,12 @@ void WModel::loadAnimations2() {
       animationName = gltfAnimation.name;
     }
 
-    pAnimation = core::animations.createAnimation(animationName, 15);
+    pAnimation = core::animations.createAnimation(animationName);
+
+    // skip adding animation if a similarly named one already exists
+    if (!pAnimation) {
+      continue;
+    }
 
     // staging transform block containing node id and all its frames
     auto& stagingTransformData = pAnimation->getStagingTransformData();
@@ -857,11 +867,11 @@ void WModel::loadAnimations2() {
         StagingTransformFrameEntry.timeStamp = pTimeDataView[index];
 
         // update start and end time of this animation
-        if (StagingTransformFrameEntry.timeStamp < start) {
-          start = StagingTransformFrameEntry.timeStamp;
+        if (StagingTransformFrameEntry.timeStamp < startTime) {
+          startTime = StagingTransformFrameEntry.timeStamp;
         };
-        if (StagingTransformFrameEntry.timeStamp > end) {
-          end = StagingTransformFrameEntry.timeStamp;
+        if (StagingTransformFrameEntry.timeStamp > endTime) {
+          endTime = StagingTransformFrameEntry.timeStamp;
         }
 
         if (gltfChannel.target_path == "translation") {
@@ -922,13 +932,11 @@ void WModel::loadAnimations2() {
         }
       }
 
-      // set animation duration, use max value for all nodes
-      const float duration = end - start;
-
-      if (pAnimation->getDuration() < duration) {
-        pAnimation->setDuration(duration);
-      }
+      // set time range of the animation
+      pAnimation->setStagingTimeRange(startTime, endTime);
     }
+
+    pAnimation->resampleKeyFrames(this, framerate, speed);
   }
 }
 

@@ -8,13 +8,23 @@ class Model;
 class Node;
 }
 
+namespace core {
+class MAnimations;
+class MRenderer;
+class MWorld;
+}
+
+class AEntity;
 class WAnimation;
 
 class WModel {
+  friend class core::MAnimations;
   friend class core::MRenderer;
   friend class core::MWorld;
+  friend class AEntity;
   struct Node;
 
+ private:
   // animation data structures
   struct AnimationKeyframe {
     union {
@@ -89,9 +99,9 @@ class WModel {
 
   struct Node {
     std::string name = "$NONAMENODE$";
-    uint32_t index = 0u;
+    int32_t index = 0;
     int32_t skinIndex = -1;
-    
+
     // node hierarchy
     Node* pParentNode = nullptr;
     std::vector<std::unique_ptr<Node>> pChildren;
@@ -99,7 +109,7 @@ class WModel {
     // node contents
     std::unique_ptr<Mesh> pMesh;
     Skin* pSkin = nullptr;
-    
+
     // node transformations
     glm::mat4 nodeMatrix = glm::mat4(1.0f);
     glm::vec3 translation = glm::vec3(0.0f);
@@ -123,8 +133,8 @@ class WModel {
     void propagateTransformation(
         const glm::mat4& accumulatedMatrix = glm::mat4(1.0f));
 
-    // update transform matrices of this node and its children
-    void updateNodeMatrices(const glm::mat4& modelMatrix);
+    void updateStagingNodeMatrices(const glm::mat4& modelMatrix,
+                                   WAnimation* pOutAnimation);
   };
 
   struct {
@@ -143,7 +153,7 @@ class WModel {
   uint32_t m_vertexCount = 0u;
   uint32_t m_indexCount = 0u;
 
-  std::vector<std::unique_ptr<Node>> m_pChildNodes;
+  std::vector<std::unique_ptr<WModel::Node>> m_pChildNodes;
 
   std::vector<WPrimitive*> m_pLinearPrimitives;
   std::vector<WModel::Node*> m_pLinearNodes;
@@ -158,11 +168,15 @@ class WModel {
   // used materials, for glTF they have the same index as a model
   std::vector<std::string> m_materialList;
 
-  // SOON TO BE DEPRECATED stored animations (perhaps animations manager is needed?)
+  // SOON TO BE DEPRECATED stored animations (perhaps animations manager is
+  // needed?)
   std::vector<Animation> m_animations;
 
   // stored references to used animations
-  std::unordered_map<std::string, WAnimation*> m_boundAnimations;
+  std::vector<std::string> m_boundAnimations;
+
+  // currently active animations
+  std::unordered_map<std::string, int32_t> m_playingAnimations;
 
   struct {
     int32_t index = 0;
@@ -176,7 +190,7 @@ class WModel {
   std::vector<std::unique_ptr<Skin>> m_pSkins;
 
  private:
-   // common
+  // common
 
   TResult createStagingBuffers();
   TResult validateStagingData();
@@ -187,6 +201,9 @@ class WModel {
 
   // runs an update using pre-set data, call playAnimation method instead
   void updateAnimation();
+
+  // sets root matrix for all nodes with mesh
+  void update(const glm::mat4& modelMatrix) noexcept;
 
   // glTF
 
@@ -208,7 +225,7 @@ class WModel {
   void parseMaterials(const std::vector<std::string>& texturePaths);
 
   void loadAnimations();
-  void loadAnimations2();
+  void extractAnimations(const float framerate = 15.0f, const float speed = 1.0f);
 
   void loadSkins();
 
@@ -218,22 +235,26 @@ class WModel {
   WModel::Node* createNode(WModel::Node* pParentNode, uint32_t nodeIndex,
                            std::string nodeName);
 
-  WModel::Node* getNode(uint32_t index) noexcept;
-
  public:
   const char* getName();
   uint32_t getVertexCount() { return m_vertexCount; }
   uint32_t getIndexCount() { return m_indexCount; }
   const std::vector<WPrimitive*>& getPrimitives();
   std::vector<uint32_t>& getPrimitiveBindsIndex();
-  const std::vector<std::unique_ptr<Node>>& getRootNodes() noexcept;
+  const std::vector<std::unique_ptr<WModel::Node>>& getRootNodes() noexcept;
   std::vector<WModel::Node*>& getAllNodes() noexcept;
+  WModel::Node* getNode(uint32_t index) noexcept;
 
-  void playAnimation(const int32_t index, const float timePoint = 0.0f, const float speed = 1.0f, const bool loop = true);
-  // TODO
-  void playAnimation(const char* name, const float timePoint = 0.0f,
+  //
+  // DEPRECATED
+  //
+  void playAnimation(const int32_t index, const float timePoint = 0.0f,
                      const float speed = 1.0f, const bool loop = true);
-  void update(const glm::mat4& modelMatrix) noexcept;
+  //
+
+  void bindAnimation(const std::string& name);
+  void playAnimation(const std::string& name, const float startTime = 0.0f,
+                     const float speed = 1.0f, const bool loop = true);
 
   // cleans all primitives and nodes within,
   // model itself won't get destroyed on its own

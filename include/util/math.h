@@ -83,4 +83,8 @@ constexpr std::vector<T> gaussBlurKernel(uint8_t radius, T sigma) noexcept {
 
   return gaussCoef;
 }
+
+glm::mat4 interpolate(const glm::mat4& first, const glm::mat4& second,
+                              const float coefficient);
+
 }  // namespace math

@@ -1,19 +1,24 @@
 #include "pch.h"
 #include "core/core.h"
+#include "core/managers/animations.h"
 #include "core/managers/time.h"
 #include "core/world/actors/entity.h"
 #include "core/model/model.h"
 #include "core/managers/renderer.h"
 
-// runs in a second thread
+// runs in a dedicated thread
 void core::MRenderer::updateBoundEntities() {
   AEntity* pEntity = nullptr;
+
+  // update animation matrices
+  core::animations.runAnimationQueue();
 
   for (auto& bindInfo : system.bindings) {
     if ((pEntity = bindInfo.pEntity) == nullptr) {
       continue;
     }
 
+    // update model matrices
     pEntity->updateModel();
   }
 }

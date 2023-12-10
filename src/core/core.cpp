@@ -58,9 +58,10 @@ void core::run() {
   // create map models
   core::world.createModel(EPrimitiveType::Sphere, "mdlSphere", 16, false);
   core::world.createModel(EPrimitiveType::Cube, "mdlSkybox", 1, true);
-  //core::world.loadModelFromFile("content/models/wc3guy/scene.gltf", "mdlGuy");
-  core::world.loadModelFromFile("content/models/windmill/scene.gltf", "mdlGuy");
   core::world.createModel(EPrimitiveType::Cube, "mdlBox1", 1, false);
+
+  core::world.loadModelFromFile("content/models/wc3guy/scene.gltf", "mdlGuy");
+  //core::world.loadModelFromFile("content/models/windmill/scene.gltf", "mdlGuy");
   //
   
   // create entities
@@ -82,8 +83,12 @@ void core::run() {
   pStatic->setLocation(0.0f, -1.0f, -0.3f);
   pStatic->setRotation({0.0f, 1.0f, 0.0f}, glm::radians(100.0f));
   pStatic->setScale(0.32f);
-  //pStatic->getModel()->playAnimation(0, 0.0f, 0.5f, true);
-  pStatic->getModel()->playAnimation(0, 0.0f, 0.02f, true);
+
+  //pStatic->getModel()->bindAnimation("Windy day");
+  //pStatic->getModel()->playAnimation("Windy day");
+  
+  pStatic->getModel()->bindAnimation("SwordAndShieldIdle");
+  pStatic->getModel()->playAnimation("SwordAndShieldIdle");
 
   pStatic = core::actors.createStatic("Box1");
   pStatic->setModel(core::world.getModel("mdlBox1"));

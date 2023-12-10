@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "core/core.h"
 #include "core/managers/renderer.h"
+#include "core/model/animation.h"
 #include "core/model/model.h"
 
 WModel::Node::Node(WModel::Node* pParent, uint32_t index,
@@ -86,16 +87,19 @@ void WModel::Node::propagateTransformation(const glm::mat4& accumulatedMatrix) {
   }
 }
 
-void WModel::Node::updateNodeMatrices(const glm::mat4& modelMatrix) {
+void WModel::Node::updateStagingNodeMatrices(const glm::mat4& modelMatrix,
+                                             WAnimation* pOutAnimation) {
   if (pMesh) {
     pMesh->uniformBlock.rootMatrix = modelMatrix;
     pMesh->uniformBlock.nodeMatrix = transformedNodeMatrix;
-    
+
+    // node has mesh, store a reference to it in an animation
+    pOutAnimation->addNodeReference(this->name, this->index);
+
     if (pSkin) {
       // Update joint matrices
       glm::mat4 inverseTransform = glm::inverse(transformedNodeMatrix);
-      size_t numJoints =
-          std::min((uint32_t)pSkin->joints.size(), RE_MAXJOINTS);
+      size_t numJoints = std::min((uint32_t)pSkin->joints.size(), RE_MAXJOINTS);
       for (size_t i = 0; i < numJoints; i++) {
         Node* pJointNode = pSkin->joints[i];
         glm::mat4 jointMatrix =
@@ -105,15 +109,15 @@ void WModel::Node::updateNodeMatrices(const glm::mat4& modelMatrix) {
       }
       pMesh->uniformBlock.jointCount = (float)numJoints;
       memcpy(pMesh->uniformBufferData.uniformBuffer.allocInfo.pMappedData,
-              &pMesh->uniformBlock, sizeof(pMesh->uniformBlock));
+             &pMesh->uniformBlock, sizeof(pMesh->uniformBlock));
     } else {
       memcpy(pMesh->uniformBufferData.uniformBuffer.allocInfo.pMappedData,
-              &pMesh->uniformBlock, sizeof(glm::mat4) * 2u);
+             &pMesh->uniformBlock, sizeof(glm::mat4) * 2u);
     }
   }
 
   for (auto& pChild : pChildren) {
-    pChild->updateNodeMatrices(modelMatrix);
+    pChild->updateStagingNodeMatrices(modelMatrix, pOutAnimation);
   }
 }
 
@@ -151,18 +155,6 @@ WModel::Node* WModel::createNode(WModel::Node* pParentNode, uint32_t nodeIndex,
   return pNode;
 }
 
-WModel::Node* WModel::getNode(uint32_t index) noexcept {
-  for (WModel::Node* it : m_pLinearNodes) {
-    if (it->index == index) {
-      return it;
-    }
-  }
-
-  RE_LOG(Error, "Node with index %d not found for the model \"%s\".", index,
-         m_name.c_str());
-  return nullptr;
-}
-
 void WModel::destroyNode(std::unique_ptr<WModel::Node>& pNode) {
   if (!pNode->pChildren.empty()) {
     for (auto& pChildNode : pNode->pChildren) {
@@ -185,4 +177,16 @@ void WModel::destroyNode(std::unique_ptr<WModel::Node>& pNode) {
   }
 
   pNode.reset();
+}
+
+WModel::Node* WModel::getNode(uint32_t index) noexcept {
+  for (WModel::Node* it : m_pLinearNodes) {
+    if (it->index == index) {
+      return it;
+    }
+  }
+
+  RE_LOG(Error, "Node with index %d not found for the model \"%s\".", index,
+         m_name.c_str());
+  return nullptr;
 }

@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "core/core.h"
+#include "core/managers/animations.h"
 #include "core/managers/renderer.h"
 #include "core/managers/resources.h"
 #include "core/managers/time.h"
@@ -238,33 +239,70 @@ void WModel::playAnimation(const int32_t index, const float timePoint, const flo
   m_animationSettings.enable = true;
 }
 
-void WModel::playAnimation(const char* name, const float timePoint,
-                           const float speed, const bool loop) {
-  m_animationSettings.timePoint = timePoint;
-  m_animationSettings.speed = speed;
-  m_animationSettings.loopCurrent = loop;
-  m_animationSettings.enable = true;
+void WModel::update(const glm::mat4& modelMatrix) noexcept {
+  for (auto& node : getAllNodes()) {
+    if (node->pMesh) {
+      node->pMesh->uniformBlock.rootMatrix = modelMatrix;
+
+      if (node->pSkin) {
+        memcpy(
+            node->pMesh->uniformBufferData.uniformBuffer.allocInfo.pMappedData,
+            &node->pMesh->uniformBlock, sizeof(node->pMesh->uniformBlock));
+      } else {
+        memcpy(
+            node->pMesh->uniformBufferData.uniformBuffer.allocInfo.pMappedData,
+            &node->pMesh->uniformBlock, sizeof(glm::mat4) * 2u);
+      }
+    }
+  }
 }
 
-void WModel::update(const glm::mat4& modelMatrix) noexcept {
-  // update skins
-  //for (auto& skin : m_pSkins) {
-
-  //}
-
-  // update animation
-  updateAnimation();
-
-  // update node transformations
-  for (auto& node : getRootNodes()) {
-    // propagate node transformation accumulating from parent to children
-    node->propagateTransformation();
-
-    // set root and propagated transformation matrices and update joint matrices
-    node->updateNodeMatrices(modelMatrix);
-
-    //node->updateNode(modelMatrix);
+void WModel::bindAnimation(const std::string& name) {
+  for (const auto& boundAnimation : m_boundAnimations) {
+    if (boundAnimation == name) {
+      return;
+    }
   }
+
+  WAnimation* pAnimation = core::animations.getAnimation(name);
+
+  if (!pAnimation) {
+    RE_LOG(Error,
+           "Failed to bind animation '%s' to model '%s'. Animation not found.",
+           name.c_str(), m_name.c_str());
+    return;
+  }
+
+  if (!pAnimation->validateModel(this)) {
+    RE_LOG(Error,
+           "Failed to bind animation '%s' to model '%s'. Model has an "
+           "incompatible node structure.",
+           name.c_str(), m_name.c_str());
+    return;
+  }
+
+  m_boundAnimations.emplace_back(name);
+}
+
+void WModel::playAnimation(const std::string& name, const float startTime,
+                           const float speed, const bool loop) {
+  for (const auto& boundAnimation : m_boundAnimations) {
+    if (boundAnimation == name) {
+      WAnimationPayload payload;
+      payload.animationName = name;
+      payload.pModel = this;
+      payload.startTime = startTime;
+      payload.speed = speed;
+      payload.loop = loop;
+
+      m_playingAnimations[name] = core::animations.addAnimationToQueue(payload);
+
+      return;
+    }
+  }
+
+  RE_LOG(Error, "Can't play animation '%s' as it was not bound to model '%s'.",
+         name.c_str(), m_name.c_str());
 }
 
 TResult WModel::clean() {

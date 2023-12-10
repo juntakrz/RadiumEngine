@@ -304,3 +304,11 @@ struct RMaterialPCB {
   float bumpIntensity;
   float materialIntensity;
 };
+
+struct WAnimationPayload {
+  class WModel* pModel;
+  std::string animationName;
+  float startTime = 0.0f;
+  float speed = 1.0f;
+  bool loop = true;
+};
