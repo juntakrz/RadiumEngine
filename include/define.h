@@ -31,11 +31,15 @@ constexpr bool bRequireValidationLayers = true;
 #define RE_PATH_DEVCONFIG   TEXT("development/devconfig.json")
 #define RE_PATH_MAP         TEXT("content/maps/")
 #define RE_PATH_TEXTURES    "content/textures/"
+#define RE_PATH_ANIMATIONS  "content/animations/"
+#define RE_PATH_SHADERS     "content/shaders/"
+#define RE_PATH_SHDRC       "development\\compileShaders_Win_x64_DEBUG.bat"
+
+#define RE_FEXT_ANIMATIONS  ".anm"
+
 #define RE_DEFAULTTEXTURE   "default/default_baseColor.ktx2"
 #define RE_WHITETEXTURE     "default/white.ktx2"
 #define RE_BLACKTEXTURE     "default/black.ktx2"
-#define RE_PATH_SHADERS     "content/shaders/"
-#define RE_PATH_SHDRC       "development\\compileShaders_Win_x64_DEBUG.bat"
 #define RE_MAXTEXTURES      6
 #define RE_NEARZ            0.01f
 #define RE_MAXJOINTS        128u

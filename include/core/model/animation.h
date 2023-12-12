@@ -2,9 +2,15 @@
 
 #include "core/objects.h"
 
+namespace core {
+class MAnimations;
+}
+
 class WModel;
 
 class WAnimation {
+  friend class core::MAnimations;
+
  private:
   struct StagingTransformFrame {
     float timeStamp = 0.0f;
@@ -51,7 +57,8 @@ class WAnimation {
   std::unordered_map<int32_t, std::vector<KeyFrame>> m_nodeKeyFrames;
 
   void processFrame(WModel* pModel, const float time);
-  void addKeyFrame(const int32_t nodeIndex, const float timeStamp, const RMeshUBO& meshUBO);
+  void addKeyFrame(const int32_t nodeIndex, const float timeStamp,
+                   const RMeshUBO& meshUBO);
 
  public:
   WAnimation(const std::string& name) : m_name(name){};
@@ -71,7 +78,7 @@ class WAnimation {
   void clearStagingTransformData();
 
   void resampleKeyFrames(WModel* pModel, const float framerate,
-                                const float speed = 1.0f);
+                         const float speed = 1.0f);
 
   // check if the model has all the required nodes for this animation
   // the number of nodes in this animation is allowed to be lower
@@ -79,5 +86,6 @@ class WAnimation {
   bool validateModel(WModel* pModel);
 
   const std::vector<WAnimation::AnimatedNode>& getAnimatedNodes();
-  const std::vector<WAnimation::KeyFrame>* getNodeKeyFrames(const int32_t nodeIndex);
+  const std::vector<WAnimation::KeyFrame>* getNodeKeyFrames(
+      const int32_t nodeIndex);
 };

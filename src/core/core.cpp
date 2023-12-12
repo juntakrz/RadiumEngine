@@ -96,6 +96,8 @@ void core::run() {
   pStatic->setScale(2.2f);
   pStatic->setLocation(4.0f, -0.2f, -2.0f);
   pStatic->setRotation({0.5f, 0.32f, 0.1f});
+
+  core::animations.saveAnimation("SwordAndShieldIdle", "SwordAndShieldIdle");
   //
   core::renderer.renderView.doEnvironmentPass = true;
   // ---------------------------- */

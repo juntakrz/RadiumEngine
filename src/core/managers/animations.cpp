@@ -91,7 +91,7 @@ void core::MAnimations::runAnimationQueue() {
       // write interpolated frame data directly to node's mesh uniform block
       for (size_t i = 0; i < nodeKeyFrames->size() - 1; ++i) {
         // if we are at the last frame - use first frame for interpolation
-        //const size_t iAux = (i == nodeKeyFrames->size() - 1) ? 0 : i + 1;
+        // const size_t iAux = (i == nodeKeyFrames->size() - 1) ? 0 : i + 1;
 
         if ((queueEntry.time >= nodeKeyFrames->at(i).timeStamp) &&
             (queueEntry.time <= nodeKeyFrames->at(i + 1).timeStamp)) {
@@ -102,16 +102,16 @@ void core::MAnimations::runAnimationQueue() {
                nodeKeyFrames->at(i).timeStamp);
 
           if (u <= 1.0f) {
-            pNode->pMesh->uniformBlock.nodeMatrix =
-                math::interpolate(nodeKeyFrames->at(i).nodeMatrix,
-                                 nodeKeyFrames->at(i + 1).nodeMatrix, u);
+            math::interpolate(nodeKeyFrames->at(i).nodeMatrix,
+                              nodeKeyFrames->at(i + 1).nodeMatrix, u,
+                              pNode->pMesh->uniformBlock.nodeMatrix);
 
             const size_t jointCount = nodeKeyFrames->at(i).jointMatrices.size();
 
             for (int32_t j = 0; j < jointCount; ++j) {
-              pNode->pMesh->uniformBlock.jointMatrix[j] = math::interpolate(
-                  nodeKeyFrames->at(i).jointMatrices[j],
-                  nodeKeyFrames->at(i + 1).jointMatrices[j], u);
+              math::interpolate(nodeKeyFrames->at(i).jointMatrices[j],
+                                nodeKeyFrames->at(i + 1).jointMatrices[j], u,
+                                pNode->pMesh->uniformBlock.jointMatrix[j]);
             }
 
             pNode->pMesh->uniformBlock.jointCount = (float)jointCount;

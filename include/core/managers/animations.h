@@ -5,6 +5,25 @@
 namespace core {
 class MAnimations {
  private:
+  struct FileANMNodeDescriptor {
+    int32_t chunkBytes = 0;
+    int32_t nodeIndex = 0;
+    int32_t keyFrameCount = 0;
+    int32_t jointCount = 0;
+    int32_t nodeNameBytes = 0;
+    std::string nodeName = "";
+    std::vector<WAnimation::KeyFrame> keyFrameData;
+  };
+
+  struct FileANM {
+    const int32_t magicNumber = 0x4D4E41;
+    int32_t headerBytes = 0;
+    int32_t dataBytes = 0;
+    int32_t animatedNodeCount = 0;
+    int32_t animationNameBytes = 0;
+    std::string animationName = "";
+    std::vector<FileANMNodeDescriptor> nodeData;
+  };
 
   struct QueueEntry {
     WModel* pModel;
@@ -41,6 +60,9 @@ class MAnimations {
   void removeAnimation(const std::string& name);
   WAnimation* getAnimation(const std::string& name);
   void clearAllAnimations();
+  TResult saveAnimation(const std::string& animation,
+                        const std::string& filename,
+                        const std::string skeleton = "default");
 
   // must not be used standalone, use WModel::playAnimation() instead
   int32_t addAnimationToQueue(WAnimationPayload payload);
