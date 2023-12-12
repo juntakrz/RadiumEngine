@@ -6,7 +6,9 @@
 
 #include "tiny_gltf.h"
 
-TResult WModel::createModel(const char* name, const tinygltf::Model* pInModel) {
+TResult WModel::createModel(const char* name, const tinygltf::Model* pInModel,
+                            const bool tryExtractAnimations,
+                            const float framerate, const float speed) {
   if (!pInModel) {
     RE_LOG(Error,
            "Failed to create model, no glTF source was provided for \"%s\".",
@@ -94,7 +96,7 @@ TResult WModel::createModel(const char* name, const tinygltf::Model* pInModel) {
       if (node->pSkin) {
         size_t jointCount =
             std::min((uint32_t)node->pSkin->joints.size(), RE_MAXJOINTS);
-        node->pMesh->uniformBlock.jointCount = (float)jointCount;     
+        node->pMesh->uniformBlock.jointCount = (float)jointCount;
       }
     }
 
@@ -105,8 +107,8 @@ TResult WModel::createModel(const char* name, const tinygltf::Model* pInModel) {
     node->setNodeDescriptorSet(false);
   }
 
-  if (gltfModel.animations.size() > 0) {
-    extractAnimations(15.0f, 1.0f);
+  if (gltfModel.animations.size() > 0 && tryExtractAnimations) {
+    extractAnimations(framerate, speed);
   }
 
   sortPrimitivesByMaterial();

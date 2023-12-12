@@ -37,6 +37,8 @@ constexpr bool bRequireValidationLayers = true;
 
 #define RE_FEXT_ANIMATIONS  ".anm"
 
+#define RE_MAGIC_ANIMATIONS 0x4D4E41
+
 #define RE_DEFAULTTEXTURE   "default/default_baseColor.ktx2"
 #define RE_WHITETEXTURE     "default/white.ktx2"
 #define RE_BLACKTEXTURE     "default/black.ktx2"

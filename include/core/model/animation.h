@@ -59,6 +59,9 @@ class WAnimation {
   void processFrame(WModel* pModel, const float time);
   void addKeyFrame(const int32_t nodeIndex, const float timeStamp,
                    const RMeshUBO& meshUBO);
+  void addKeyFrame(const int32_t nodeIndex, const float timeStamp,
+                   const glm::mat4& nodeMatrix,
+                   const std::vector<glm::mat4>& jointMatrices);
 
  public:
   WAnimation(const std::string& name) : m_name(name){};

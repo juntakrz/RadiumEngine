@@ -91,6 +91,12 @@ void WAnimation::addKeyFrame(const int32_t nodeIndex, const float timeStamp,
   }
 }
 
+void WAnimation::addKeyFrame(const int32_t nodeIndex, const float timeStamp,
+                             const glm::mat4& nodeMatrix,
+                             const std::vector<glm::mat4>& jointMatrices) {
+  m_nodeKeyFrames[nodeIndex].emplace_back(timeStamp, nodeMatrix, jointMatrices);
+}
+
 //
 // PUBLIC
 //
@@ -113,12 +119,14 @@ bool WAnimation::addNodeReference(const std::string& name, const int32_t index) 
   for (const auto& node : m_animatedNodes) {
     if (node.name == name && node.index == index) {
       return false;
-    } else if (node.name == name || node.index == index) {
-      RE_LOG(Warning,
-             "Failed to add node to animation '%s' because either its name or "
-             "index is duplicated. A model may be corrupted.");
-      return false;
-    }
+    } else if (node.name.compare(name) || node.index == index) {
+        RE_LOG(
+            Warning,
+            "Failed to add node to animation '%s' because either its name or "
+            "index is duplicated. A model may be corrupted.",
+            m_name.c_str());
+        return false;
+      }
   }
 
   m_animatedNodes.emplace_back(name, index);

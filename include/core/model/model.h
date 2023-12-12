@@ -152,7 +152,9 @@ class WModel {
 
   // glTF
 
-  TResult createModel(const char* name, const tinygltf::Model* pInModel);
+  TResult createModel(const char* name, const tinygltf::Model* pInModel,
+                      const bool tryExtractAnimations = false,
+                      const float framerate = 15.0f, const float speed = 1.0f);
 
   void prepareStagingData();
 

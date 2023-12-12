@@ -221,7 +221,7 @@ class MRenderer {
 
   VkPipelineShaderStageCreateInfo loadShader(const char* path,
                                              VkShaderStageFlagBits stage);
-  VkShaderModule createShaderModule(std::vector<uint8_t>& shaderCode);
+  VkShaderModule createShaderModule(std::vector<char>& shaderCode);
 
   TResult checkInstanceValidationLayers();
   std::vector<const char*> getRequiredInstanceExtensions();

@@ -60,7 +60,7 @@ void core::run() {
   core::world.createModel(EPrimitiveType::Cube, "mdlSkybox", 1, true);
   core::world.createModel(EPrimitiveType::Cube, "mdlBox1", 1, false);
 
-  core::world.loadModelFromFile("content/models/wc3guy/scene.gltf", "mdlGuy");
+  core::world.loadModelFromFile("content/models/wc3guy/scene.gltf", "mdlGuy", false);
   //core::world.loadModelFromFile("content/models/windmill/scene.gltf", "mdlGuy");
   //
   
@@ -86,6 +86,8 @@ void core::run() {
 
   //pStatic->getModel()->bindAnimation("Windy day");
   //pStatic->getModel()->playAnimation("Windy day");
+
+  core::animations.loadAnimation("SwordAndShieldIdle");
   
   pStatic->getModel()->bindAnimation("SwordAndShieldIdle");
   pStatic->getModel()->playAnimation("SwordAndShieldIdle");
@@ -97,7 +99,7 @@ void core::run() {
   pStatic->setLocation(4.0f, -0.2f, -2.0f);
   pStatic->setRotation({0.5f, 0.32f, 0.1f});
 
-  core::animations.saveAnimation("SwordAndShieldIdle", "SwordAndShieldIdle");
+  //core::animations.saveAnimation("SwordAndShieldIdle", "SwordAndShieldIdle");
   //
   core::renderer.renderView.doEnvironmentPass = true;
   // ---------------------------- */

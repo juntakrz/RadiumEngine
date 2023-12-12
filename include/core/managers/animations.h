@@ -16,10 +16,12 @@ class MAnimations {
   };
 
   struct FileANM {
-    const int32_t magicNumber = 0x4D4E41;
+    const int32_t magicNumber = RE_MAGIC_ANIMATIONS;
     int32_t headerBytes = 0;
     int32_t dataBytes = 0;
     int32_t animatedNodeCount = 0;
+    float framerate = 0.0f;
+    float duration = 0.0f;
     int32_t animationNameBytes = 0;
     std::string animationName = "";
     std::vector<FileANMNodeDescriptor> nodeData;
@@ -60,13 +62,15 @@ class MAnimations {
   void removeAnimation(const std::string& name);
   WAnimation* getAnimation(const std::string& name);
   void clearAllAnimations();
-  TResult saveAnimation(const std::string& animation,
-                        const std::string& filename,
+  // load animation from file .anm, optionally rename it before adding
+  TResult loadAnimation(std::string filename,
+                        const std::string optionalNewName = "",
+                        const std::string skeleton = "default");
+  TResult saveAnimation(const std::string animation, std::string filename,
                         const std::string skeleton = "default");
 
   // must not be used standalone, use WModel::playAnimation() instead
   int32_t addAnimationToQueue(WAnimationPayload payload);
-  void removeAnimationFromQueue(const int32_t queueIndex);
   void runAnimationQueue();
   void cleanupQueue();
 };

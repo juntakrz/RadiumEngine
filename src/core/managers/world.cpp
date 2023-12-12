@@ -25,7 +25,10 @@ bool loadImageData(tinygltf::Image* image, const int image_idx,
 core::MWorld::MWorld() { RE_LOG(Log, "Initializing world manager."); }
 
 TResult core::MWorld::loadModelFromFile(const std::string& path,
-                                        const char* name) {
+                                        const char* name,
+                                        const bool tryExtractAnimations,
+                                        const float framerate,
+                                        const float speed) {
   tinygltf::Model gltfModel;
   tinygltf::TinyGLTF gltfContext;
   std::string error, warning;
@@ -71,7 +74,8 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
   m_models.at(name) = std::make_unique<WModel>();
   pModel = m_models.at(name).get();
 
-  result = pModel->createModel(name, &gltfModel);
+  result = pModel->createModel(name, &gltfModel, tryExtractAnimations,
+                               framerate, speed);
 
   return result;
 }
