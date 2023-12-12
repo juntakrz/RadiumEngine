@@ -41,8 +41,6 @@ class WAnimation {
   // frames per second
   float m_framerate = 15.0f;
 
-  int32_t m_totalFrameSamples = 0;
-
   // animation duration in seconds
   float m_duration = 0.0f;
 
@@ -82,6 +80,4 @@ class WAnimation {
 
   const std::vector<WAnimation::AnimatedNode>& getAnimatedNodes();
   const std::vector<WAnimation::KeyFrame>* getNodeKeyFrames(const int32_t nodeIndex);
-
-  void clear();
 };

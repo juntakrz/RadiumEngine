@@ -937,6 +937,7 @@ void WModel::extractAnimations(const float framerate, const float speed) {
     }
 
     pAnimation->resampleKeyFrames(this, framerate, speed);
+    pAnimation->clearStagingTransformData();
   }
 }
 

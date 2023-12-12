@@ -169,6 +169,7 @@ WAnimation::getStagingTransformData() {
 }
 
 void WAnimation::clearStagingTransformData() {
+  stagingData.duration = 0.0f;
   stagingData.startTimeStamp = 0.0f;
   stagingData.endTimeStamp = 0.0f;
   stagingData.transformData.clear();
@@ -194,6 +195,8 @@ void WAnimation::resampleKeyFrames(WModel* pModel, const float framerate,
     processFrame(pModel, time);
     time += timeStep;
   }
+
+  m_framerate = framerate;
 
   // get final animation duration
   float resampledDuration = 0.0f;
@@ -252,10 +255,4 @@ const std::vector<WAnimation::KeyFrame>* WAnimation::getNodeKeyFrames(
   }
 
   return &m_nodeKeyFrames.at(nodeIndex);
-}
-
-void WAnimation::clear() {
-  m_nodeKeyFrames.clear();
-  m_duration = 0.0f;
-  m_name = "$EMPTYANIMATION";
 }
