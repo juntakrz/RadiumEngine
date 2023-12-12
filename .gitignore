@@ -3,5 +3,6 @@ x64/*
 content/shaders/*.spv
 content/models/*
 content/textures/*
+content/animations/*
 *.exe
 !content/textures/default

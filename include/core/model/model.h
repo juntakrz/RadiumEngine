@@ -25,46 +25,6 @@ class WModel {
   struct Node;
 
  private:
-  // animation data structures
-  struct AnimationKeyframe {
-    union {
-      glm::vec3 translation;
-      glm::quat rotation;
-      glm::vec3 scale;
-      float weight;
-    } motion;
-
-    AnimationKeyframe() { std::memset(this, 0, sizeof(AnimationKeyframe)); }
-  };
-
-  struct AnimationChannel {
-    enum EPathType { TRANSLATION, ROTATION, SCALE, WEIGHT };
-    EPathType path;
-    Node* pTargetNode = nullptr;
-    uint32_t samplerIndex;
-
-    // keyframe index, transformation data
-    std::vector<AnimationKeyframe> keyframeData;
-  };
-
-  struct AnimationSampler {
-    enum EInterpolationType { LINEAR, STEP, CUBICSPLINE };
-    EInterpolationType interpolation;
-    std::vector<float> timePoints;
-    std::vector<glm::vec4> outputsVec4;
-    float min = 0.0f;
-    float max = 0.0f;
-  };
-
-  struct Animation {
-    std::string name;
-    std::vector<AnimationSampler> samplers;
-    std::vector<AnimationChannel> channels;
-    float start = std::numeric_limits<float>::max();
-    float end = std::numeric_limits<float>::min();
-  };
-
-  // model data structures
   struct Skin {
     std::string name;
     Node* skeletonRoot = nullptr;
@@ -110,12 +70,12 @@ class WModel {
     std::unique_ptr<Mesh> pMesh;
     Skin* pSkin = nullptr;
 
-    // node transformations
+    // node transformations (used only when resampling glTF animations)
     glm::mat4 nodeMatrix = glm::mat4(1.0f);
     glm::vec3 translation = glm::vec3(0.0f);
     glm::quat rotation = glm::quat(glm::vec3(0.0f));
     glm::vec3 scale = glm::vec3(1.0f);
-
+    
     glm::mat4 transformedNodeMatrix = nodeMatrix;
 
     // transform matrix only for this node
@@ -168,23 +128,11 @@ class WModel {
   // used materials, for glTF they have the same index as a model
   std::vector<std::string> m_materialList;
 
-  // SOON TO BE DEPRECATED stored animations (perhaps animations manager is
-  // needed?)
-  std::vector<Animation> m_animations;
-
   // stored references to used animations
   std::vector<std::string> m_boundAnimations;
 
   // currently active animations
   std::unordered_map<std::string, int32_t> m_playingAnimations;
-
-  struct {
-    int32_t index = 0;
-    float timePoint = 0.0f;
-    float speed = 1.0f;
-    bool enable = false;
-    bool loopCurrent = true;
-  } m_animationSettings;
 
   // stored skins
   std::vector<std::unique_ptr<Skin>> m_pSkins;
@@ -198,9 +146,6 @@ class WModel {
 
   // sorts primitives
   void sortPrimitivesByMaterial();
-
-  // runs an update using pre-set data, call playAnimation method instead
-  void updateAnimation();
 
   // sets root matrix for all nodes with mesh
   void update(const glm::mat4& modelMatrix) noexcept;
@@ -224,7 +169,6 @@ class WModel {
   // returned vector index corresponds to primitive material index of glTF
   void parseMaterials(const std::vector<std::string>& texturePaths);
 
-  void loadAnimations();
   void extractAnimations(const float framerate = 15.0f, const float speed = 1.0f);
 
   void loadSkins();
@@ -244,13 +188,6 @@ class WModel {
   const std::vector<std::unique_ptr<WModel::Node>>& getRootNodes() noexcept;
   std::vector<WModel::Node*>& getAllNodes() noexcept;
   WModel::Node* getNode(uint32_t index) noexcept;
-
-  //
-  // DEPRECATED
-  //
-  void playAnimation(const int32_t index, const float timePoint = 0.0f,
-                     const float speed = 1.0f, const bool loop = true);
-  //
 
   void bindAnimation(const std::string& name);
   void playAnimation(const std::string& name, const float startTime = 0.0f,
