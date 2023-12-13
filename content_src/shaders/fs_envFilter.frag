@@ -12,7 +12,7 @@ layout (push_constant) uniform envPCB {
 
 const float M_PI = 3.141592653589793;
 
-// Based omn http://byteblacksmith.com/improvements-to-the-canonical-one-liner-glsl-rand-for-opengl-es-2-0/
+// Based on http://byteblacksmith.com/improvements-to-the-canonical-one-liner-glsl-rand-for-opengl-es-2-0/
 float random(vec2 co)
 {
 	float a = 12.9898;

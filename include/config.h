@@ -74,7 +74,9 @@ const VkColorSpaceKHR colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
 const VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 constexpr uint8_t maxFramesInFlight = MAX_FRAMES_IN_FLIGHT;
 
-constexpr bool bFlipViewPortY = true;    // for OpenGL / Direct3D vertex coordinate compatibility
+constexpr uint8_t animationSampleRate = 30;
+constexpr bool applyGLTFLeftHandedFix = false;    // currently ok for static models, but has issues with skin
+
 }
 }  // namespace core
 

@@ -1,19 +1,24 @@
 #include "pch.h"
 #include "core/core.h"
+#include "core/managers/animations.h"
 #include "core/managers/time.h"
 #include "core/world/actors/entity.h"
 #include "core/model/model.h"
 #include "core/managers/renderer.h"
 
-// runs in a second thread
+// runs in a dedicated thread
 void core::MRenderer::updateBoundEntities() {
   AEntity* pEntity = nullptr;
+
+  // update animation matrices
+  core::animations.runAnimationQueue();
 
   for (auto& bindInfo : system.bindings) {
     if ((pEntity = bindInfo.pEntity) == nullptr) {
       continue;
     }
 
+    // update model matrices
     pEntity->updateModel();
   }
 }
@@ -231,10 +236,8 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
         layerOffset = layerSize * j;
 
         viewport.width = static_cast<float>(dimension * std::pow(0.5f, i));
-        float height = static_cast<float>(dimension * std::pow(0.5f, i));
-
-        viewport.height = core::vulkan::bFlipViewPortY ? -height : height;
-        viewport.y = core::vulkan::bFlipViewPortY ? height : 0;
+        viewport.height = -static_cast<float>(dimension * std::pow(0.5f, i));
+        viewport.y = viewport.width;
 
         vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
@@ -269,7 +272,7 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
         copyRegion.dstSubresource.mipLevel = i;
         copyRegion.dstSubresource.baseArrayLayer = j;
         copyRegion.extent.width = static_cast<uint32_t>(viewport.width);
-        copyRegion.extent.height = static_cast<uint32_t>(height);
+        copyRegion.extent.height = static_cast<uint32_t>(-viewport.height);
 
         vkCmdCopyImage(commandBuffer, pTexture->texture.image,
                        pTexture->texture.imageLayout, pCubemap->texture.image,
@@ -283,10 +286,6 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
     // switch image layout of the current cubemap to be used in future shaders
     setImageLayout(commandBuffer, pCubemap,
                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, dstRange);
-
-    /*if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
-      RE_LOG(Error, "Failed to end writing to command buffer.");
-    }*/
 
     flushCommandBuffer(commandBuffer, ECmdType::Graphics);
   }
@@ -314,7 +313,8 @@ void core::MRenderer::generateLUTMap() {
 
   VkViewport viewport{};
   viewport.width = core::vulkan::LUTExtent;
-  viewport.height = viewport.width;
+  viewport.height = -viewport.width;
+  viewport.y = viewport.width;
   viewport.minDepth = 0.0f;
   viewport.maxDepth = 1.0f;
 
@@ -345,6 +345,7 @@ void core::MRenderer::generateLUTMap() {
 
   float timeSpent = core::time.tickTimer();
 
+  // fix this
   RE_LOG(Log, "Generating BRDF LUT map took %.2f milliseconds.", timeSpent);
 }
 
@@ -444,6 +445,7 @@ void core::MRenderer::renderFrame() {
 
   // main PBR render pass:
   // update view, projection and camera position
+  //updateBoundEntities();
   updateSceneUBO(renderView.frameInFlight);
   renderView.pCurrentRenderPass = getRenderPass(ERenderPass::PBR);
   doRenderPass(cmdBuffer, system.descriptorSets, imageIndex);

@@ -10,19 +10,32 @@ core::MResources::MResources() {
 void core::MResources::initialize() {
   RE_LOG(Log, "Initializing materials manager data.");
 
-  // create null texture
+  // create the "default" material
   RSamplerInfo samplerInfo{};
-  if (loadTexture(RE_DEFAULTTEXTURE, &samplerInfo) != RE_OK) {
-    RE_LOG(Error, "Failed to load default texture.");
-  }
 
-  if (loadTexture(RE_BLACKTEXTURE, &samplerInfo) != RE_OK) {
-    RE_LOG(Error, "Failed to load default black texture.");
-  }
+  loadTexture(RE_DEFAULTTEXTURE, &samplerInfo);
+  loadTexture("default/default_normal.ktx2", &samplerInfo);
+  loadTexture("default/default_metallicRoughness.ktx2", &samplerInfo);
+  loadTexture("default/default_occlusion.ktx2", &samplerInfo);
 
-  if (loadTexture(RE_WHITETEXTURE, &samplerInfo) != RE_OK) {
-    RE_LOG(Error, "Failed to load default white texture.");
-  }
+  loadTexture(RE_BLACKTEXTURE, &samplerInfo);
+  loadTexture(RE_WHITETEXTURE, &samplerInfo);
+
+  // create default material
+  RMaterialInfo materialInfo{};
+  materialInfo.name = "default";
+  materialInfo.pipelineFlags = EPipeline::OpaqueCullBack;
+  materialInfo.textures.baseColor = RE_DEFAULTTEXTURE;
+  materialInfo.textures.normal = "default/default_normal.ktx2";
+  materialInfo.textures.metalRoughness =
+      "default/default_metallicRoughness.ktx2";
+  materialInfo.textures.occlusion = "default/default_occlusion.ktx2";
+  materialInfo.texCoordSets.baseColor = 0;
+  materialInfo.texCoordSets.normal = 0;
+  materialInfo.texCoordSets.metalRoughness = 0;
+  materialInfo.texCoordSets.occlusion = 0;
+
+  createMaterial(&materialInfo);
 }
 
 RMaterial* core::MResources::createMaterial(
@@ -79,7 +92,7 @@ RMaterial* core::MResources::createMaterial(
   if (pDesc->pipelineFlags == EPipeline::Null) {
     switch (pDesc->alphaMode) {
       case EAlphaMode::Blend: {
-        newMat.pipelineFlags |= EPipeline::BlendCullBack;
+        newMat.pipelineFlags |= EPipeline::BlendCullNone;
         break;
       }
       case EAlphaMode::Mask: {

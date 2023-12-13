@@ -5,6 +5,7 @@
 #include "core/managers/debug.h"
 #include "core/managers/input.h"
 #include "core/managers/actors.h"
+#include "core/managers/animations.h"
 #include "core/managers/player.h"
 #include "core/managers/script.h"
 #include "core/managers/ref.h"
@@ -23,6 +24,7 @@ class core::MPlayer& core::player = MPlayer::get();
 class core::MRef& core::ref = MRef::get();
 class core::MTime& core::time = MTime::get();
 class core::MWorld& core::world = MWorld::get();
+class core::MAnimations& core::animations = MAnimations::get();
 
 void core::run() {
 
@@ -41,59 +43,66 @@ void core::run() {
 
   core::script.loadMap("default");
 
-  // remove this after loadMap improvements
-  RMaterialInfo materialInfo{};
-  materialInfo.name = "default";
-  materialInfo.pipelineFlags = EPipeline::OpaqueCullBack;
-  core::resources.createMaterial(&materialInfo);
-
+  // remove this after loadMap improvements -------- //
   RSamplerInfo samplerInfo{};
-  //core::resources.loadTexture("skyboxCubemap.ktx2", &samplerInfo);
-  core::resources.loadTexture("papermill.ktx", &samplerInfo);
+  core::resources.loadTexture("skyboxCubemap.ktx2", &samplerInfo);
+  //core::resources.loadTexture("papermill.ktx", &samplerInfo);
 
+  RMaterialInfo materialInfo{};
   materialInfo.name = "skybox";
   materialInfo.pipelineFlags = EPipeline::Skybox | EPipeline::MixEnvironment;
-  //materialInfo.textures.baseColor = "skyboxCubemap.ktx2";
-  materialInfo.textures.baseColor = "papermill.ktx";
+  materialInfo.textures.baseColor = "skyboxCubemap.ktx2";
+  //materialInfo.textures.baseColor = "papermill.ktx";
   core::resources.createMaterial(&materialInfo);
 
   // create map models
   core::world.createModel(EPrimitiveType::Sphere, "mdlSphere", 16, false);
   core::world.createModel(EPrimitiveType::Cube, "mdlSkybox", 1, true);
-  core::world.loadModelFromFile("content/models/drone/scene.gltf", "mdlGuy");
   core::world.createModel(EPrimitiveType::Cube, "mdlBox1", 1, false);
+
+  WModelConfigInfo modelConfigInfo{};
+  modelConfigInfo.animationLoadMode = EAnimationLoadMode::None;
+
+  core::world.loadModelFromFile("content/models/wc3guy/scene.gltf", "mdlGuy", &modelConfigInfo);
+  //core::world.loadModelFromFile("content/models/windmill/scene.gltf", "mdlGuy");
   //
   
   // create entities
   core::actors.createPawn("sphere0");
   APawn* pPawn = core::actors.getPawn("sphere0");
   pPawn->setModel(core::world.getModel("mdlSphere"));
-  core::renderer.bindEntity(pPawn);
+  //core::renderer.bindEntity(pPawn);
   pPawn->setLocation(-3.0f, 0.0f, 2.0f);
 
   AStatic* pStatic = core::actors.createStatic("Skybox");
   pStatic->setModel(core::world.getModel("mdlSkybox"));
   core::renderer.bindEntity(pStatic);
-  //pStatic->setScale(100.0f);
-  pStatic->setScale(1.0f);
   pStatic->getModel()->getPrimitives()[0]->pMaterial =
     core::resources.getMaterial("skybox");
-  //core::resources.getMaterial("default")->pipelineFlags =
-     // EPipeline::Environment;
   
   pStatic = core::actors.createStatic("Static01");
   pStatic->setModel(core::world.getModel("mdlGuy"));
   core::renderer.bindEntity(pStatic);
   pStatic->setLocation(0.0f, -1.0f, -0.3f);
-  pStatic->setRotation({0.0f, 1.0f, 0.0f}, glm::radians(200.0f));
-  pStatic->setScale(0.7f);
+  pStatic->setRotation({0.0f, 1.0f, 0.0f}, glm::radians(100.0f));
+  pStatic->setScale(0.32f);
+
+  //pStatic->getModel()->bindAnimation("Windy day");
+  //pStatic->getModel()->playAnimation("Windy day");
+
+  core::animations.loadAnimation("Idle");
+  
+  pStatic->getModel()->bindAnimation("Idle");
+  pStatic->getModel()->playAnimation("Idle");
 
   pStatic = core::actors.createStatic("Box1");
   pStatic->setModel(core::world.getModel("mdlBox1"));
-  core::renderer.bindEntity(pStatic);
+  //core::renderer.bindEntity(pStatic);
   pStatic->setScale(2.2f);
   pStatic->setLocation(4.0f, -0.2f, -2.0f);
   pStatic->setRotation({0.5f, 0.32f, 0.1f});
+
+  //core::animations.saveAnimation("SwordAndShieldIdle", "SwordAndShieldIdle");
   //
   core::renderer.renderView.doEnvironmentPass = true;
   // ---------------------------- */

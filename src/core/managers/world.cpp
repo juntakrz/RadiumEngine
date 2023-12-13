@@ -25,7 +25,8 @@ bool loadImageData(tinygltf::Image* image, const int image_idx,
 core::MWorld::MWorld() { RE_LOG(Log, "Initializing world manager."); }
 
 TResult core::MWorld::loadModelFromFile(const std::string& path,
-                                        std::string name) {
+                                        const char* name,
+                                        const WModelConfigInfo* pConfigInfo) {
   tinygltf::Model gltfModel;
   tinygltf::TinyGLTF gltfContext;
   std::string error, warning;
@@ -33,7 +34,7 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
   bool bIsBinary = false, bIsModelLoaded = false;
   TResult result;
 
-  RE_LOG(Log, "Loading model \"%s\" from \"%s\".", name.c_str(), path.c_str());
+  RE_LOG(Log, "Loading model \"%s\" from \"%s\".", name, path.c_str());
 
   gltfContext.SetImageLoader(core::callback::loadImageData, nullptr);
 
@@ -64,14 +65,14 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
         Error,
         "Failed to add model \"%s\" to the world - a model with the same name "
         "already exists.",
-        name.c_str());
+        name);
     return RE_ERROR;
   }
 
   m_models.at(name) = std::make_unique<WModel>();
   pModel = m_models.at(name).get();
 
-  result = pModel->createModel(name.c_str(), &gltfModel);
+  result = pModel->createModel(name, &gltfModel, pConfigInfo);
 
   return result;
 }
@@ -170,12 +171,12 @@ TResult core::MWorld::createModel(EPrimitiveType type, std::string name,
 
   for (auto& node : pModel->getRootNodes()) {
     node->setNodeDescriptorSet(true);
-    node->updateNode(glm::mat4(1.0f));
   }
 
+  pModel->update(glm::mat4(1.0f));
+
   // calculate bounding box extent for the whole mesh based on created primitives
-  /*
-  glm::vec3 minExtent{0.0f}, maxExtent{0.0f};
+  /*glm::vec3 minExtent{0.0f}, maxExtent{0.0f};
   for (const auto& primitive : pNode->pMesh->pPrimitives) {
     if (primitive->getBoundingBoxExtent(minExtent, maxExtent)) {
       pNode->pMesh->extent.min = glm::min(pNode->pMesh->extent.min, minExtent);

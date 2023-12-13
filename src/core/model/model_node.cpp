@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "core/core.h"
 #include "core/managers/renderer.h"
+#include "core/model/animation.h"
 #include "core/model/model.h"
 
 WModel::Node::Node(WModel::Node* pParent, uint32_t index,
@@ -52,10 +53,12 @@ void WModel::Node::setNodeDescriptorSet(bool updateChildren) {
   descriptorSetAllocInfo.pSetLayouts = &layoutMesh;
   descriptorSetAllocInfo.descriptorSetCount = 1;
 
-  if (vkAllocateDescriptorSets(
+  VkResult result;
+  if ((result = vkAllocateDescriptorSets(
          device, &descriptorSetAllocInfo,
-          &pMesh->uniformBufferData.descriptorSet) != VK_SUCCESS) {
-    RE_LOG(Error, "Failed to create node descriptor set.");
+          &pMesh->uniformBufferData.descriptorSet)) != VK_SUCCESS) {
+    RE_LOG(Error, "Failed to create node descriptor set. Vulkan error %d.",
+           result);
     return;
   }
 
@@ -76,22 +79,33 @@ void WModel::Node::setNodeDescriptorSet(bool updateChildren) {
   }
 }
 
-void WModel::Node::updateNode(const glm::mat4& modelMatrix) {
+void WModel::Node::propagateTransformation(const glm::mat4& accumulatedMatrix) {
+  transformedNodeMatrix = accumulatedMatrix * getLocalMatrix();
+
+  for (auto& child : pChildren) {
+    child->propagateTransformation(transformedNodeMatrix);
+  }
+}
+
+void WModel::Node::updateStagingNodeMatrices(const glm::mat4& modelMatrix,
+                                             WAnimation* pOutAnimation) {
   if (pMesh) {
-    glm::mat4 matrix = getMatrix();
     pMesh->uniformBlock.rootMatrix = modelMatrix;
-    pMesh->uniformBlock.nodeMatrix = matrix;
+    pMesh->uniformBlock.nodeMatrix = transformedNodeMatrix;
+
+    // node has mesh, store a reference to it in an animation
+    pOutAnimation->addNodeReference(this->name, this->index);
 
     if (pSkin) {
-      // Update join matrices
-      glm::mat4 inverseTransform = glm::inverse(matrix);
+      // Update joint matrices
+      glm::mat4 inverseTransform = glm::inverse(transformedNodeMatrix);
       size_t numJoints = std::min((uint32_t)pSkin->joints.size(), RE_MAXJOINTS);
       for (size_t i = 0; i < numJoints; i++) {
         Node* pJointNode = pSkin->joints[i];
         glm::mat4 jointMatrix =
-            pJointNode->getMatrix() * pSkin->inverseBindMatrices[i];
+            pJointNode->transformedNodeMatrix * pSkin->inverseBindMatrices[i];
         jointMatrix = inverseTransform * jointMatrix;
-        pMesh->uniformBlock.jointMatrix[i] = jointMatrix;
+        pMesh->uniformBlock.jointMatrices[i] = jointMatrix;
       }
       pMesh->uniformBlock.jointCount = (float)numJoints;
       memcpy(pMesh->uniformBufferData.uniformBuffer.allocInfo.pMappedData,
@@ -103,23 +117,13 @@ void WModel::Node::updateNode(const glm::mat4& modelMatrix) {
   }
 
   for (auto& pChild : pChildren) {
-    pChild->updateNode(modelMatrix);
+    pChild->updateStagingNodeMatrices(modelMatrix, pOutAnimation);
   }
 }
 
 glm::mat4 WModel::Node::getLocalMatrix() {
   return glm::translate(glm::mat4(1.0f), translation) * glm::mat4(rotation) *
          glm::scale(glm::mat4(1.0f), scale) * nodeMatrix;
-}
-
-glm::mat4 WModel::Node::getMatrix() {
-  glm::mat4 matrix = getLocalMatrix();
-  Node* pParent = pParentNode;
-  while (pParent) {
-    matrix = pParent->getLocalMatrix() * matrix;
-    pParent = pParent->pParentNode;
-  }
-  return matrix;
 }
 
 WModel::Node* WModel::createNode(WModel::Node* pParentNode, uint32_t nodeIndex,
@@ -151,18 +155,6 @@ WModel::Node* WModel::createNode(WModel::Node* pParentNode, uint32_t nodeIndex,
   return pNode;
 }
 
-WModel::Node* WModel::getNode(uint32_t index) noexcept {
-  for (auto it : m_pLinearNodes) {
-    if (it->index == index) {
-      return it;
-    }
-  }
-
-  RE_LOG(Error, "Node with index %d not found for the model \"%s\".", index,
-         m_name.c_str());
-  return nullptr;
-}
-
 void WModel::destroyNode(std::unique_ptr<WModel::Node>& pNode) {
   if (!pNode->pChildren.empty()) {
     for (auto& pChildNode : pNode->pChildren) {
@@ -185,4 +177,16 @@ void WModel::destroyNode(std::unique_ptr<WModel::Node>& pNode) {
   }
 
   pNode.reset();
+}
+
+WModel::Node* WModel::getNode(uint32_t index) noexcept {
+  for (WModel::Node* it : m_pLinearNodes) {
+    if (it->index == index) {
+      return it;
+    }
+  }
+
+  RE_LOG(Error, "Node with index %d not found for the model \"%s\".", index,
+         m_name.c_str());
+  return nullptr;
 }

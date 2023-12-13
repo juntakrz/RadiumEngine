@@ -38,7 +38,7 @@ TResult core::MRenderer::setDepthStencilFormat() {
 VkPipelineShaderStageCreateInfo core::MRenderer::loadShader(
     const char* path, VkShaderStageFlagBits stage) {
   std::string fullPath = RE_PATH_SHADERS + std::string(path);
-  std::vector<uint8_t> shaderCode = util::readFile(fullPath.c_str());
+  std::vector<char> shaderCode = util::readFile(fullPath.c_str());
 
   VkPipelineShaderStageCreateInfo stageCreateInfo{};
   stageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -50,7 +50,7 @@ VkPipelineShaderStageCreateInfo core::MRenderer::loadShader(
 }
 
 VkShaderModule core::MRenderer::createShaderModule(
-    std::vector<uint8_t>& shaderCode) {
+    std::vector<char>& shaderCode) {
   VkShaderModuleCreateInfo smInfo{};
   smInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
   smInfo.codeSize = shaderCode.size();

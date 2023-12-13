@@ -10,7 +10,7 @@ WModel* AEntity::getModel() { return m_pModel; }
 
 void AEntity::updateModel() {
   if (m_pModel) {
-    m_pModel->update(getTransformationMatrix());
+    m_pModel->update(getRootTransformationMatrix());
   }
 }
 

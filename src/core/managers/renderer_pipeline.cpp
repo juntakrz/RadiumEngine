@@ -631,13 +631,9 @@ TResult core::MRenderer::createGraphicsPipelines() {
   // set main viewport
   VkViewport& viewport = getRenderPass(ERenderPass::PBR)->viewport;
   viewport.x = 0.0f;
-  viewport.y = (core::vulkan::bFlipViewPortY)
-                   ? static_cast<float>(swapchain.imageExtent.height)
-                   : 0.0f;
+  viewport.y = static_cast<float>(swapchain.imageExtent.height);
   viewport.width = static_cast<float>(swapchain.imageExtent.width);
-  viewport.height = (core::vulkan::bFlipViewPortY)
-                        ? -static_cast<float>(swapchain.imageExtent.height)
-                        : static_cast<float>(swapchain.imageExtent.height);
+  viewport.height = -viewport.y;
   viewport.minDepth = 0.0f;
   viewport.maxDepth = 1.0f;
 
@@ -693,7 +689,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
   colorBlendAttachment.colorWriteMask =
       VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
       VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-  colorBlendAttachment.blendEnable = VK_TRUE;
+  colorBlendAttachment.blendEnable = VK_FALSE;
   colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
   colorBlendAttachment.dstColorBlendFactor =
       VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
@@ -878,6 +874,21 @@ TResult core::MRenderer::createGraphicsPipelines() {
     return RE_CRITICAL;
   }
 
+  // 'Blend' pipeline, similar to PBR singlesided, but with alpha channel
+  rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
+  //rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+  colorBlendAttachment.blendEnable = VK_TRUE;
+
+  system.pipelines.emplace(EPipeline::BlendCullNone, VK_NULL_HANDLE);
+
+  if (vkCreateGraphicsPipelines(logicalDevice.device, VK_NULL_HANDLE, 1,
+                                &graphicsPipelineInfo, nullptr,
+                                &getPipeline(BlendCullNone)) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to create PBR doublesided graphics pipeline.");
+
+    return RE_CRITICAL;
+  }
+
   for (auto stage : shaderStages) {
     vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
   }
@@ -995,13 +1006,6 @@ VkPipelineLayout& core::MRenderer::getPipelineLayout(EPipelineLayout type) {
 
 VkPipeline& core::MRenderer::getPipeline(EPipeline type) {
   // not error checked
-
-  // TODO!!
-  if (type == EPipeline::BlendCullBack) {
-    type = EPipeline::OpaqueCullBack;
-  }
-  // TODO!!
-
   return system.pipelines.at(type);
 }
 
@@ -1011,13 +1015,15 @@ bool core::MRenderer::checkPipeline(uint32_t pipelineFlags,
 }
 
 TResult core::MRenderer::configureRenderPasses() {
+  // NOTE: order of pipeline emplacement is important
+
   // configure main 'scene', PBR render pass
   RRenderPass* pRenderPass = getRenderPass(ERenderPass::PBR);
   pRenderPass->usedLayout = getPipelineLayout(EPipelineLayout::Scene);
   pRenderPass->usedPipelines.emplace_back(EPipeline::OpaqueCullBack);
   pRenderPass->usedPipelines.emplace_back(EPipeline::OpaqueCullNone);
-  pRenderPass->usedPipelines.emplace_back(EPipeline::BlendCullBack);
   pRenderPass->usedPipelines.emplace_back(EPipeline::Skybox);
+  pRenderPass->usedPipelines.emplace_back(EPipeline::BlendCullNone);
 
   // configure 'environment' cubemap render pass
   pRenderPass = getRenderPass(ERenderPass::Environment);
@@ -1026,11 +1032,8 @@ TResult core::MRenderer::configureRenderPasses() {
   pRenderPass->usedPipelines.emplace_back(EPipeline::EnvIrradiance);
   pRenderPass->viewport.width =
       static_cast<float>(core::vulkan::envFilterExtent);
-  pRenderPass->viewport.height = core::vulkan::bFlipViewPortY
-                                     ? -pRenderPass->viewport.width
-                                     : pRenderPass->viewport.width;
-  pRenderPass->viewport.y =
-      core::vulkan::bFlipViewPortY ? pRenderPass->viewport.width : 0;
+  pRenderPass->viewport.height = -pRenderPass->viewport.width;
+  pRenderPass->viewport.y = pRenderPass->viewport.width;
 
   return RE_OK;
 }

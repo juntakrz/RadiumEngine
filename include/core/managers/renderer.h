@@ -2,6 +2,7 @@
 
 #include "vk_mem_alloc.h"
 #include "core/objects.h"
+#include "core/async.h"
 #include "common.h"
 #include "core/world/actors/camera.h"
 
@@ -220,7 +221,7 @@ class MRenderer {
 
   VkPipelineShaderStageCreateInfo loadShader(const char* path,
                                              VkShaderStageFlagBits stage);
-  VkShaderModule createShaderModule(std::vector<uint8_t>& shaderCode);
+  VkShaderModule createShaderModule(std::vector<char>& shaderCode);
 
   TResult checkInstanceValidationLayers();
   std::vector<const char*> getRequiredInstanceExtensions();
