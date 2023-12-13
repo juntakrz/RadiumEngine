@@ -30,11 +30,15 @@ class MAnimations {
   struct QueueEntry {
     WModel* pModel;
     WAnimation* pAnimation;
+    float startTime = 0.0f;
+    float endTime = std::numeric_limits<float>::max();
     float time = 0.0f;
+    float duration = 0.0f;
     float speed = 1.0f;
     bool loop = true;
+    bool bounce = false;
+    bool isReversed = false;
     int32_t queueIndex = 0;
-    bool remove = false;
   };
 
   // stores all loaded animations
@@ -70,7 +74,7 @@ class MAnimations {
                         const std::string skeleton = "default");
 
   // must not be used standalone, use WModel::playAnimation() instead
-  int32_t addAnimationToQueue(WAnimationPayload payload);
+  int32_t addAnimationToQueue(const WAnimationInfo* pAnimationInfo);
   void runAnimationQueue();
   void cleanupQueue();
 };

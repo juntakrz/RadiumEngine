@@ -33,3 +33,10 @@ void math::interpolate(const glm::mat4& first, const glm::mat4& second,
     outMatrix[i].data = outPass;
   }
 }
+
+float math::random(float min, float max) {
+  std::random_device rd;
+  std::mt19937 mt(rd());
+  std::uniform_real_distribution<float> dist(min, max);
+  return dist(mt);
+}

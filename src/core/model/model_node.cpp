@@ -105,7 +105,7 @@ void WModel::Node::updateStagingNodeMatrices(const glm::mat4& modelMatrix,
         glm::mat4 jointMatrix =
             pJointNode->transformedNodeMatrix * pSkin->inverseBindMatrices[i];
         jointMatrix = inverseTransform * jointMatrix;
-        pMesh->uniformBlock.jointMatrix[i] = jointMatrix;
+        pMesh->uniformBlock.jointMatrices[i] = jointMatrix;
       }
       pMesh->uniformBlock.jointCount = (float)numJoints;
       memcpy(pMesh->uniformBufferData.uniformBuffer.allocInfo.pMappedData,

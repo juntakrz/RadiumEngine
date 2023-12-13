@@ -161,6 +161,23 @@ void WModel::update(const glm::mat4& modelMatrix) noexcept {
   }
 }
 
+void WModel::resetUniformBlockData() {
+  for (auto& pNode : getAllNodes()) {
+    this;
+    if (pNode->pMesh) {
+      pNode->pMesh->uniformBlock.nodeMatrix = glm::mat4(1.0f);
+
+      if (pNode->pSkin) {
+        for (int32_t i = 0; i < pNode->pSkin->joints.size(); ++i) {
+          pNode->pMesh->uniformBlock.jointMatrices[i] = glm::mat4(1.0f);
+        }
+      }
+    }
+  }
+
+  update(glm::mat4(1.0f));
+}
+
 void WModel::bindAnimation(const std::string& name) {
   for (const auto& boundAnimation : m_boundAnimations) {
     if (boundAnimation == name) {
@@ -188,18 +205,24 @@ void WModel::bindAnimation(const std::string& name) {
   m_boundAnimations.emplace_back(name);
 }
 
-void WModel::playAnimation(const std::string& name, const float startTime,
-                           const float speed, const bool loop) {
+void WModel::playAnimation(const std::string& name, const float speed,
+                           const bool loop, const bool isReversed) {
   for (const auto& boundAnimation : m_boundAnimations) {
     if (boundAnimation == name) {
-      WAnimationPayload payload;
-      payload.animationName = name;
-      payload.pModel = this;
-      payload.startTime = startTime;
-      payload.speed = speed;
-      payload.loop = loop;
+      WAnimationInfo animationInfo;
+      animationInfo.animationName = name;
+      animationInfo.pModel = this;
+      animationInfo.speed = speed;
+      animationInfo.loop = loop;
 
-      m_playingAnimations[name] = core::animations.addAnimationToQueue(payload);
+      if (isReversed) {
+        const float endTime = animationInfo.endTime;
+        animationInfo.endTime = animationInfo.startTime;
+        animationInfo.startTime = endTime;
+      }
+
+      m_playingAnimations[name] =
+          core::animations.addAnimationToQueue(&animationInfo);
 
       return;
     }
@@ -207,6 +230,23 @@ void WModel::playAnimation(const std::string& name, const float startTime,
 
   RE_LOG(Error, "Can't play animation '%s' as it was not bound to model '%s'.",
          name.c_str(), m_name.c_str());
+}
+
+void WModel::playAnimation(const WAnimationInfo* pAnimationInfo) {
+  if (!pAnimationInfo) {
+    RE_LOG(Error, "Failed to play animation for '%s', no data was provided.",
+           m_name.c_str());
+    return;
+  }
+
+  for (const auto& boundAnimation : m_boundAnimations) {
+    if (boundAnimation == pAnimationInfo->animationName) {
+      m_playingAnimations[pAnimationInfo->animationName] =
+          core::animations.addAnimationToQueue(pAnimationInfo);
+
+      return;
+    }
+  }
 }
 
 TResult WModel::clean() {

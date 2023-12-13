@@ -7,8 +7,7 @@
 #include "tiny_gltf.h"
 
 TResult WModel::createModel(const char* name, const tinygltf::Model* pInModel,
-                            const bool tryExtractAnimations,
-                            const float framerate, const float speed) {
+                            const WModelConfigInfo* pConfigInfo) {
   if (!pInModel) {
     RE_LOG(Error,
            "Failed to create model, no glTF source was provided for \"%s\".",
@@ -107,11 +106,16 @@ TResult WModel::createModel(const char* name, const tinygltf::Model* pInModel,
     node->setNodeDescriptorSet(false);
   }
 
-  if (gltfModel.animations.size() > 0 && tryExtractAnimations) {
-    extractAnimations(framerate, speed);
+  if (pConfigInfo &&
+      pConfigInfo->animationLoadMode > EAnimationLoadMode::OnDemand) {
+    if (gltfModel.animations.size() > 0) {
+      extractAnimations(pConfigInfo);
+    }
   }
 
   sortPrimitivesByMaterial();
+
+  resetUniformBlockData();
 
   return createStagingBuffers();
 }
@@ -665,7 +669,16 @@ void WModel::parseMaterials(const std::vector<std::string>& texturePaths) {
   }
 }
 
-void WModel::extractAnimations(const float framerate, const float speed) {
+void WModel::extractAnimations(const WModelConfigInfo* pConfigInfo) {
+  if (!pConfigInfo) {
+    RE_LOG(Error,
+           "Unable to extract animations from model '%s', the required "
+           "information is missing.",
+           m_name.c_str());
+
+    return;
+  }
+
   const tinygltf::Model& gltfModel = *staging.pInModel;
 
   for (int32_t i = 0; i < gltfModel.animations.size(); ++i) {
@@ -803,8 +816,20 @@ void WModel::extractAnimations(const float framerate, const float speed) {
       pAnimation->setStagingTimeRange(startTime, endTime);
     }
 
-    pAnimation->resampleKeyFrames(this, framerate, speed);
+    pAnimation->resampleKeyFrames(this, pConfigInfo->framerate,
+                                  pConfigInfo->speed);
     pAnimation->clearStagingTransformData();
+
+    if (pConfigInfo->animationLoadMode >
+        EAnimationLoadMode::ExtractToManagerAndStorage) {
+      core::animations.saveAnimation(
+          pAnimation->getName(), pAnimation->getName(), pConfigInfo->skeleton);
+
+      if (pConfigInfo->animationLoadMode ==
+          EAnimationLoadMode::ExtractToStorageOnly) {
+        core::animations.removeAnimation(pAnimation->getName());
+      }
+    }
   }
 }
 

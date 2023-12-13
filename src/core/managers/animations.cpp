@@ -32,8 +32,6 @@ void core::MAnimations::removeAnimation(const std::string& name) {
 
 WAnimation* core::MAnimations::getAnimation(const std::string& name) {
   if (m_animations.find(name) == m_animations.end()) {
-    RE_LOG(Error, "Failed to get animation '%s'. It does not exist.",
-           name.c_str());
     return nullptr;
   }
 
@@ -42,30 +40,58 @@ WAnimation* core::MAnimations::getAnimation(const std::string& name) {
 
 void core::MAnimations::clearAllAnimations() { m_animations.clear(); }
 
-int32_t core::MAnimations::addAnimationToQueue(WAnimationPayload payload) {
+int32_t core::MAnimations::addAnimationToQueue(const WAnimationInfo* pAnimationInfo) {
+  if (!pAnimationInfo) {
+    RE_LOG(Error, "Failed to add animation to queue, no data was provided.");
+    return -1;
+  }
 
-  // if a similar entry already exists - simply update it instead of creating a new one
-  for (auto& queuedAnimation : m_animationQueue) {
-    if (queuedAnimation.pModel == payload.pModel &&
-        queuedAnimation.pAnimation->getName() == payload.animationName) {
-      queuedAnimation.time = payload.startTime;
-      queuedAnimation.speed = payload.speed;
-      queuedAnimation.loop = payload.loop;
+  // if a similar entry already exists - simply update it instead of creating a
+  // new one
+  QueueEntry* pExistingEntry = nullptr;
 
-      return queuedAnimation.queueIndex;
+  for (QueueEntry& queuedAnimation : m_animationQueue) {
+    if (queuedAnimation.pModel == pAnimationInfo->pModel &&
+        queuedAnimation.pAnimation->getName() == pAnimationInfo->animationName) {
+
+      pExistingEntry = &queuedAnimation;
     }
   }
 
-  QueueEntry entry;
-  entry.pModel = payload.pModel;
-  entry.pAnimation = m_animations.at(payload.animationName).get();
-  entry.time = payload.startTime;
-  entry.speed = payload.speed;
-  entry.loop = payload.loop;
-  entry.queueIndex = m_availableQueueIndex;
+  WAnimation* pAnimation = m_animations.at(pAnimationInfo->animationName).get();
+  const float duration = pAnimation->m_duration;
 
-  m_animationQueue.emplace_back(entry);
-  ++m_availableQueueIndex;
+  QueueEntry entry;
+  entry.pModel = pAnimationInfo->pModel;
+  entry.pAnimation = pAnimation;
+  entry.startTime = (pAnimationInfo->startTime > duration)
+                        ? duration
+                        : pAnimationInfo->startTime;
+  entry.endTime =
+      (pAnimationInfo->endTime > duration) ? duration : pAnimationInfo->endTime;
+  entry.speed = pAnimationInfo->speed;
+  entry.loop = pAnimationInfo->loop;
+  entry.isReversed = entry.startTime > entry.endTime;
+  entry.time = entry.startTime;
+
+  if (entry.isReversed) {
+    const float endTime = entry.endTime;
+    entry.endTime = entry.startTime;
+    entry.startTime = endTime;
+  }
+
+  entry.duration = entry.endTime - entry.startTime;
+  entry.bounce = pAnimationInfo->bounce;
+  entry.queueIndex =
+      (pExistingEntry) ? pExistingEntry->queueIndex : m_availableQueueIndex;
+
+  if (!pExistingEntry) {
+    m_animationQueue.emplace_back(entry);
+    ++m_availableQueueIndex;
+  } else {
+    entry.time = pExistingEntry->time;
+    memcpy(pExistingEntry, &entry, sizeof(entry));
+  }
 
   return entry.queueIndex;
 }
@@ -111,7 +137,7 @@ void core::MAnimations::runAnimationQueue() {
             for (int32_t j = 0; j < jointCount; ++j) {
               math::interpolate(nodeKeyFrames->at(i).jointMatrices[j],
                                 nodeKeyFrames->at(i + 1).jointMatrices[j], u,
-                                pNode->pMesh->uniformBlock.jointMatrix[j]);
+                                pNode->pMesh->uniformBlock.jointMatrices[j]);
             }
 
             pNode->pMesh->uniformBlock.jointCount = (float)jointCount;
@@ -123,12 +149,25 @@ void core::MAnimations::runAnimationQueue() {
       }
     }
 
-    queueEntry.time += core::time.getDeltaTime() * queueEntry.speed;
+    const float timeStep = core::time.getDeltaTime() * queueEntry.speed;
+    queueEntry.time += (queueEntry.isReversed) ? -timeStep : timeStep;
 
-    if (queueEntry.time > queueEntry.pAnimation->getDuration()) {
+    if ((!queueEntry.isReversed && queueEntry.time > queueEntry.endTime) ||
+        (queueEntry.isReversed && queueEntry.time < queueEntry.startTime)) {
       switch (queueEntry.loop) {
         case true: {
-          queueEntry.time -= queueEntry.pAnimation->getDuration();
+          switch (queueEntry.bounce) {
+            case true: {
+              queueEntry.isReversed = !queueEntry.isReversed;
+              break;
+            }
+            case false: {
+              queueEntry.time -= (queueEntry.isReversed) ? -queueEntry.duration
+                                                         : queueEntry.duration;
+              break;
+            }
+          }
+
           break;
         }
         case false: {

@@ -180,7 +180,7 @@ TResult core::MAnimations::saveAnimation(const std::string animation,
   const WAnimation* pAnimation = getAnimation(animation);
 
   if (!pAnimation) {
-    RE_LOG(Error, "Failed to save animation '%s'. Not found.",
+    RE_LOG(Error, "Failed to save animation '%s'. Animation not found.",
            animation.c_str());
     return RE_ERROR;
   }

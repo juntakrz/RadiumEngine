@@ -150,11 +150,4 @@ std::wstring toWString(const char* string) {
 
   return newWStr;
 }
-
-float random(float min, float max) {
-  std::random_device rd;
-  std::mt19937 mt(rd());
-  std::uniform_real_distribution<float> dist(min, max);
-  return dist(mt);
-}
 }  // namespace util

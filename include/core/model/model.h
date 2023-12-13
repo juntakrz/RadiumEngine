@@ -150,11 +150,13 @@ class WModel {
   // sets root matrix for all nodes with mesh
   void update(const glm::mat4& modelMatrix) noexcept;
 
+  // resets all transformation matrices stored in uniform blocks to identity
+  void resetUniformBlockData();
+
   // glTF
 
   TResult createModel(const char* name, const tinygltf::Model* pInModel,
-                      const bool tryExtractAnimations = false,
-                      const float framerate = 15.0f, const float speed = 1.0f);
+                      const WModelConfigInfo* pConfigInfo = nullptr);
 
   void prepareStagingData();
 
@@ -171,7 +173,7 @@ class WModel {
   // returned vector index corresponds to primitive material index of glTF
   void parseMaterials(const std::vector<std::string>& texturePaths);
 
-  void extractAnimations(const float framerate = 15.0f, const float speed = 1.0f);
+  void extractAnimations(const WModelConfigInfo* pConfigInfo);
 
   void loadSkins();
 
@@ -191,9 +193,14 @@ class WModel {
   std::vector<WModel::Node*>& getAllNodes() noexcept;
   WModel::Node* getNode(uint32_t index) noexcept;
 
+  // check if model can have the animation assigned and bind it
   void bindAnimation(const std::string& name);
-  void playAnimation(const std::string& name, const float startTime = 0.0f,
-                     const float speed = 1.0f, const bool loop = true);
+
+  // simplified version of playAnimation
+  void playAnimation(const std::string& name, const float speed = 1.0f,
+                     const bool loop = true, const bool isReversed = false);
+
+  void playAnimation(const WAnimationInfo* pAnimationInfo);
 
   // cleans all primitives and nodes within,
   // model itself won't get destroyed on its own

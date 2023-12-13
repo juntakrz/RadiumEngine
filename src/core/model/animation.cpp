@@ -87,7 +87,7 @@ void WAnimation::addKeyFrame(const int32_t nodeIndex, const float timeStamp,
   const int32_t jointCount = static_cast<int32_t>(meshUBO.jointCount);
 
   for (int32_t i = 0; i < jointCount; ++i) {
-    keyframe.jointMatrices.emplace_back(meshUBO.jointMatrix[i]);
+    keyframe.jointMatrices.emplace_back(meshUBO.jointMatrices[i]);
   }
 }
 
@@ -115,18 +115,16 @@ void WAnimation::setDuration(const float duration) { m_duration = duration; }
 
 const float WAnimation::getDuration() const { return m_duration; }
 
-bool WAnimation::addNodeReference(const std::string& name, const int32_t index) {
+bool WAnimation::addNodeReference(const std::string& name,
+                                  const int32_t index) {
   for (const auto& node : m_animatedNodes) {
-    if (node.name == name && node.index == index) {
+    if (strcmp(node.name.c_str(), name.c_str()) == 0) {
       return false;
-    } else if (node.name.compare(name) || node.index == index) {
-        RE_LOG(
-            Warning,
-            "Failed to add node to animation '%s' because either its name or "
-            "index is duplicated. A model may be corrupted.",
-            m_name.c_str());
-        return false;
-      }
+    }
+
+    if (node.index == index) {
+      return false;
+    }
   }
 
   m_animatedNodes.emplace_back(name, index);
@@ -234,7 +232,8 @@ bool WAnimation::validateModel(WModel* pModel) {
 
   for (const auto& animatedNode : m_animatedNodes) {
     for (const auto& node : nodeVector) {
-      if (node->index == animatedNode.index) {
+      if (node->index == animatedNode.index &&
+          strcmp(node->name.c_str(), animatedNode.name.c_str()) == 0) {
         ++matches;
       }
     }
