@@ -50,12 +50,12 @@ TResult core::MResources::loadTexture(const std::string& filePath,
   }
 
   // prepare freshly created texture structure
-  RTexture* newTexture = &m_textures.at(filePath);
-  newTexture->name = filePath;
-  newTexture->isKTX = true;
+  RTexture* pNewTexture = &m_textures.at(filePath);
+  pNewTexture->name = filePath;
+  pNewTexture->isKTX = true;
 
   ktxResult = ktxTexture_VkUploadEx(
-      pKTXTexture, deviceInfo, &newTexture->texture, VK_IMAGE_TILING_OPTIMAL,
+      pKTXTexture, deviceInfo, &pNewTexture->texture, VK_IMAGE_TILING_OPTIMAL,
       VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
   if (ktxResult != KTX_SUCCESS) {
@@ -68,18 +68,18 @@ TResult core::MResources::loadTexture(const std::string& filePath,
   ktxTexture_Destroy(pKTXTexture);
   ktxVulkanDeviceInfo_Destruct(deviceInfo);
 
-  if (newTexture->createImageView() != RE_OK) {
+  if (pNewTexture->createImageView() != RE_OK) {
     revert(filePath.c_str());
     return RE_ERROR;
   }
 
-  if (newTexture->createSampler(pSamplerInfo) != RE_OK) {
+  if (pNewTexture->createSampler(pSamplerInfo) != RE_OK) {
     revert(filePath.c_str());
     return RE_ERROR;
   }
 
   if (pSamplerInfo) {
-    if (newTexture->createDescriptor() != RE_OK) {
+    if (pNewTexture->createDescriptor() != RE_OK) {
       revert(filePath.c_str());
       return RE_ERROR;
     }
@@ -200,7 +200,7 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
   createInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   createInfo.extent = {pInfo->width, pInfo->height, 1};
   createInfo.mipLevels = pInfo->mipLevels;
-  createInfo.arrayLayers = pInfo->asCubemap ? 6u : 1u;
+  createInfo.arrayLayers = pInfo->asCubemap ? 6u : pInfo->layerCount;
   createInfo.tiling = pInfo->tiling;
   createInfo.usage = pInfo->usageFlags;
   createInfo.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -236,6 +236,10 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
     case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL: {
       subRange.aspectMask =
           VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+      break;
+    }
+    case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL: {
+      subRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
       break;
     }
     default: {
@@ -321,6 +325,24 @@ TResult core::MResources::writeTexture(RTexture* pTexture, void* pData,
   core::renderer.flushCommandBuffer(cmdBuffer, ECmdType::Graphics, true);
 
   return RE_OK;
+}
+
+bool core::MResources::destroyTexture(const char* name, bool force) noexcept {
+  // TODO: maybe should check if texture is used by a material here and avoid
+  // destroying it unless explicitly forced
+
+  // TODO: make sure it is actually deleted from memory
+  if (m_textures.find(name) != m_textures.end()) {
+    m_textures.erase(name);
+
+#ifndef NDEBUG
+    RE_LOG(Log, "Destroyed texture '%s'.", name);
+#endif
+
+    return true;
+  }
+
+  return false;
 }
 
 RTexture* core::MResources::getTexture(

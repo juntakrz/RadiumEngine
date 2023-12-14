@@ -21,7 +21,7 @@ TResult core::MScript::loadMap(const char* mapName) {
   const std::wstring objPath = mapPath + L"objects.json";
   const std::wstring commPath = mapPath + L"commands.json";
 
-  // parse cameras
+  jsonParseLights(jsonLoad(lightPath.c_str(), "lightData"));
   jsonParseCameras(jsonLoad(camPath.c_str(), "cameraData"));
 
   // TODO: parse everything else
@@ -78,36 +78,46 @@ TResult core::MScript::jsonRemove(const char* jsonId) {
 
 void core::MScript::clearAllScripts() { m_jsons.clear(); }
 
-void core::MScript::jsonParseCameras(const json* cameraData) noexcept {
+void core::MScript::jsonParseCameras(const json* pCameraData) noexcept {
   
-  if (!cameraData) {
-    RE_LOG(Error, "no camera data was provided for map parser.");
+  if (!pCameraData) {
+    RE_LOG(Error, "No camera data was provided for map parser.");
     return;
   }
 
   std::string activatedCamera = "";
+  std::string sunCamera = "";
 
-  for (const auto& it : cameraData->at("cameras")) {
+  for (const auto& it : pCameraData->at("cameras")) {
     // create camera if it doesn't exist
     if (it.contains("name")) {
       std::string name = it.at("name");
 
-      if (name == "$ACTIVE") {
+      // get active camera
+      if (name == "$ACTIVECAMERA$") {
         if (it.contains("activate")) {
           activatedCamera = it.at("activate");
           continue;
         }
       }
 
-      float pos[3] = {0.0f, 0.0f, 0.0f};
+      // get sun / shadow projecting camera
+      if (name == "$SUNCAMERA$") {
+        if (it.contains("activate")) {
+          sunCamera = it.at("activate");
+          continue;
+        }
+      }
+
+      float translation[3] = {0.0f, 0.0f, 0.0f};
       float rotation[3] = {0.0f, 0.0f, 0.0f};
       float upVector[3] = {0.0f, 1.0f, 0.0f};
 
       ACamera* newCamera = core::actors.createCamera(name.c_str(), nullptr);
 
       // set camera position
-      if (it.contains("position")) {
-        it.at("position").get_to(pos);
+      if (it.contains("translation")) {
+        it.at("translation").get_to(translation);
       }
 
       if (it.contains("rotation")) {
@@ -118,7 +128,7 @@ void core::MScript::jsonParseCameras(const json* cameraData) noexcept {
         it.at("upVector").get_to(upVector);
       }
 
-      newCamera->setLocation({pos[0], pos[1], pos[2]});
+      newCamera->setLocation({translation[0], translation[1], translation[2]});
       newCamera->setRotation({rotation[0], rotation[1], rotation[2]});
       newCamera->setUpVector({upVector[0], upVector[1], upVector[2]});
 
@@ -132,13 +142,17 @@ void core::MScript::jsonParseCameras(const json* cameraData) noexcept {
         float vars[4];
         it.at("mode").at("variables").get_to(vars);
 
-        if (it.at("mode").at("view") == "orthographic") {
-          //DF.Camera(name)->SetAsOrthographic(vars[0], vars[1], vars[2],
-            //                                 vars[3]);
+        if (it.at("mode").at("view") == "perspective") {
+          newCamera->setPerspective(vars[0], vars[1] * config::getAspectRatio(),
+                                    vars[2], vars[3]);
         }
 
-        if (it.at("mode").at("view") == "perspective") {
-          newCamera->setPerspective(vars[0], vars[1], vars[2], vars[3]);
+        if (it.at("mode").at("view") == "orthographic") {
+          // force aspect ratio to square if it's a shadow casting camera
+          if (newCamera->getName() != sunCamera) {
+            vars[1] *= config::getAspectRatio();
+          }
+          newCamera->setOrthographic(vars[0], vars[1], vars[2], vars[3]);
         }
       }
 
@@ -152,11 +166,71 @@ void core::MScript::jsonParseCameras(const json* cameraData) noexcept {
     // TODO: make this a separate thing in a map config
     core::player.controlActor(core::renderer.getCamera());
   }
+
+  if (sunCamera != "") {
+    core::renderer.setSunCamera(sunCamera.c_str());
+  }
 }
 
-void core::MScript::jsonParseMaterials(const json* materialData) noexcept {}
+void core::MScript::jsonParseMaterials(const json* pMaterialData) noexcept {}
 
-void core::MScript::jsonParseLights(const json* lightData) noexcept {}
+void core::MScript::jsonParseLights(const json* pLightData) noexcept {
+  if (!pLightData) {
+    RE_LOG(Error, "no light data was provided for map parser.");
+    return;
+  }
+
+  std::vector<std::string> lightNames;
+  std::vector<RLightInfo> lightInfo;
+  int32_t type = 0;
+  float translation[3] = {};
+  float direction[3] = {};
+  float color[3] = {};
+
+  for (const auto& it : pLightData->at("lights")) {
+    if (it.contains("name")) {
+      lightNames.emplace_back(it.at("name"));
+      lightInfo.emplace_back();
+
+      RLightInfo& info = lightInfo.back();
+
+      if (it.contains("type")) {
+        it.at("type").type();   // invalid type detected unless this is called
+        it.at("type").get_to(type);
+
+        info.type = ELightType(type);
+      }
+
+      if (it.contains("translation")) {
+        it.at("translation").get_to(translation);
+
+        info.translation = {translation[0], translation[1], translation[2]};
+      }
+
+      if (it.contains("direction")) {
+        it.at("direction").get_to(direction);
+
+        info.direction = {direction[0], direction[1], direction[2]};
+      }
+
+      if (it.contains("intensity")) {
+        it.at("intensity").get_to(info.intensity);
+      }
+
+      if (it.contains("color")) {
+        it.at("color").get_to(color);
+
+        info.color = {color[0], color[1], color[2]};
+      }
+    }
+  }
+
+  for (int32_t i = 0; i < lightNames.size(); ++i) {
+    core::actors.createLight(lightNames[i].c_str(), &lightInfo[i]);
+  }
+
+  core::renderer.queueLightingUBOUpdate();
+}
 
 void core::MScript::jsonParseObjects(const json* objectData) noexcept {}
 

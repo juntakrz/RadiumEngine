@@ -27,24 +27,25 @@ class WModel {
  private:
   struct Skin {
     std::string name;
+    int32_t index;
     Node* skeletonRoot = nullptr;
-    std::vector<glm::mat4> inverseBindMatrices;
     std::vector<Node*> joints;
-    RBuffer animationBuffer;
+    size_t bufferIndex = -1;   // index into skin buffer
+    size_t bufferOffset = -1;  // offset in bytes into skin buffer
+
+    struct {
+      std::vector<glm::mat4> inverseBindMatrices;
+      bool recalculateSkinMatrices = true;
+    } staging;
   };
 
   struct Mesh {
+    int32_t index = -1;
     std::vector<std::unique_ptr<WPrimitive>> pPrimitives;
     std::vector<std::unique_ptr<WPrimitive>> pBoundingBoxes;
 
     // stores mesh and joints transformation matrices
     RMeshUBO uniformBlock;
-
-    struct {
-      RBuffer uniformBuffer;
-      VkDescriptorBufferInfo descriptorBufferInfo{};
-      VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
-    } uniformBufferData;
 
     struct {
       glm::vec3 min = glm::vec3(0.0f);
@@ -59,8 +60,9 @@ class WModel {
 
   struct Node {
     std::string name = "$NONAMENODE$";
-    int32_t index = 0;
+    int32_t index = -1;
     int32_t skinIndex = -1;
+    bool isRequestingTransformBufferUpdate = true;
 
     // node hierarchy
     Node* pParentNode = nullptr;
@@ -71,30 +73,25 @@ class WModel {
     Skin* pSkin = nullptr;
 
     // node transformations (used only when resampling glTF animations)
-    glm::mat4 nodeMatrix = glm::mat4(1.0f);
-    glm::vec3 translation = glm::vec3(0.0f);
-    glm::quat rotation = glm::quat(glm::vec3(0.0f));
-    glm::vec3 scale = glm::vec3(1.0f);
+    struct {
+      glm::mat4 nodeMatrix = glm::mat4(1.0f);
+      glm::vec3 translation = glm::vec3(0.0f);
+      glm::quat rotation = glm::quat(glm::vec3(0.0f));
+      glm::vec3 scale = glm::vec3(1.0f);
+    } staging;
     
-    glm::mat4 transformedNodeMatrix = nodeMatrix;
+    glm::mat4 transformedNodeMatrix = staging.nodeMatrix;
 
     // transform matrix only for this node
     glm::mat4 getLocalMatrix();
 
     Node(WModel::Node* pParentNode, uint32_t index, const std::string& name);
 
-    // allocate uniform buffer for writing transformation data
-    TResult allocateMeshBuffer();
-    void destroyMeshBuffer();
-
-    void setNodeDescriptorSet(bool updateChildren = false);
-
     // propagate transformation through all nodes and their children
     void propagateTransformation(
         const glm::mat4& accumulatedMatrix = glm::mat4(1.0f));
 
-    void updateStagingNodeMatrices(const glm::mat4& modelMatrix,
-                                   WAnimation* pOutAnimation);
+    void updateStagingNodeMatrices(WAnimation* pOutAnimation);
   };
 
   struct {
@@ -110,13 +107,18 @@ class WModel {
 
   std::string m_name = "$NONAMEMODEL$";
 
+  size_t m_sceneVertexOffset = 0u;
+  size_t m_sceneIndexOffset = 0u;
   uint32_t m_vertexCount = 0u;
   uint32_t m_indexCount = 0u;
+  bool m_isBoundToScene = false;
+  int32_t m_meshCount = 0;
 
   std::vector<std::unique_ptr<WModel::Node>> m_pChildNodes;
 
   std::vector<WPrimitive*> m_pLinearPrimitives;
   std::vector<WModel::Node*> m_pLinearNodes;
+  std::vector<WModel::Mesh*> m_pLinearMeshes;
 
   // stores indices for primitive binds in rendering manager
   // TODO: potentially deprecated, but may yet be used for depth sorting
@@ -131,7 +133,7 @@ class WModel {
   // stored references to used animations
   std::vector<std::string> m_boundAnimations;
 
-  // currently active animations
+  // currently active animations (name / index in update queue)
   std::unordered_map<std::string, int32_t> m_playingAnimations;
 
   // stored skins
@@ -147,13 +149,23 @@ class WModel {
   // sorts primitives
   void sortPrimitivesByMaterial();
 
-  // sets root matrix for all nodes with mesh
-  void update(const glm::mat4& modelMatrix) noexcept;
+  // update node transform buffer at node offsets
+  void updateNodeTransformBuffer(int32_t nodeIndex,
+                                 uint32_t bufferOffset) noexcept;
+
+  void updateSkinTransformBuffer() noexcept;
 
   // resets all transformation matrices stored in uniform blocks to identity
   void resetUniformBlockData();
 
+ public:
+  WPrimitive* getPrimitive(const int32_t meshIndex,
+                           const int32_t primitiveIndex);
+  void setPrimitiveMaterial(const int32_t meshIndex,
+                            const int32_t primitiveIndex, const char* material);
+
   // glTF
+ private:
 
   TResult createModel(const char* name, const tinygltf::Model* pInModel,
                       const WModelConfigInfo* pConfigInfo = nullptr);
@@ -191,7 +203,16 @@ class WModel {
   std::vector<uint32_t>& getPrimitiveBindsIndex();
   const std::vector<std::unique_ptr<WModel::Node>>& getRootNodes() noexcept;
   std::vector<WModel::Node*>& getAllNodes() noexcept;
-  WModel::Node* getNode(uint32_t index) noexcept;
+  WModel::Node* getNode(int32_t index) noexcept;
+  WModel::Node* getNodeBySkinIndex(int32_t index) noexcept;
+  int32_t getSkinCount() noexcept;
+  WModel::Skin* getSkin(int32_t skinIndex) noexcept;
+
+  // call to store reference data when model is getting bound to scene buffers
+  void setSceneBindingData(size_t vertexOffset, size_t indexOffset);
+
+  // must be called when removing the model from scene buffers
+  void clearSceneBindingData();
 
   // check if model can have the animation assigned and bind it
   void bindAnimation(const std::string& name);

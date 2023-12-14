@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include "core/model/primitive.h"
+#include "core/world/actors/light.h"
 #include "core/world/actors/pawn.h"
 #include "core/world/actors/static.h"
 
@@ -10,15 +11,28 @@ class ACamera;
 namespace core {
 
 class MActors {
+  friend class MRenderer;
+
  private:
   struct {
     std::unordered_map<std::string, std::unique_ptr<ACamera>> cameras;
+    std::unordered_map<std::string, std::unique_ptr<ALight>> lights;
     std::unordered_map<std::string, std::unique_ptr<APawn>> pawns;
     std::unordered_map<std::string, std::unique_ptr<AStatic>> statics;
   } m_actors;
 
+  struct {
+    std::vector<ACamera*> pCameras;
+    std::vector<ALight*> pLights;
+    std::vector<APawn*> pPawns;
+    std::vector<AStatic*> pStatics;
+  } m_linearActors;
+
  private:
   MActors();
+
+  // method should be called only by renderer
+  void updateLightingUBO(RLightingUBO* pLightingBuffer);
 
  public:
   static MActors& get() {
@@ -29,12 +43,20 @@ class MActors {
   MActors(const MActors&) = delete;
   MActors& operator=(const MActors&) = delete;
 
+  void initialize();
+
   // CAMERA
 
   ACamera* createCamera(const char* name,
                         RCameraInfo* cameraSettings = nullptr);
   TResult destroyCamera(const char* name);
   ACamera* getCamera(const char* name);
+
+  // LIGHT
+
+  ALight* createLight(const char* name, RLightInfo* pInfo = nullptr);
+  TResult destroyLight(const char* name);
+  ALight* getLight(const char* name);
 
   // PAWN
 

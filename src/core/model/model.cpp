@@ -143,21 +143,43 @@ std::vector<WModel::Node*>& WModel::getAllNodes() noexcept {
   return m_pLinearNodes;
 }
 
-void WModel::update(const glm::mat4& modelMatrix) noexcept {
-  for (auto& node : getAllNodes()) {
-    if (node->pMesh) {
-      node->pMesh->uniformBlock.rootMatrix = modelMatrix;
+void WModel::updateNodeTransformBuffer(int32_t nodeIndex,
+                                       uint32_t bufferOffset) noexcept {
+  WModel::Node* pNode = getNode(nodeIndex);
 
-      if (node->pSkin) {
-        memcpy(
-            node->pMesh->uniformBufferData.uniformBuffer.allocInfo.pMappedData,
-            &node->pMesh->uniformBlock, sizeof(node->pMesh->uniformBlock));
-      } else {
-        memcpy(
-            node->pMesh->uniformBufferData.uniformBuffer.allocInfo.pMappedData,
-            &node->pMesh->uniformBlock, sizeof(glm::mat4) * 2u);
-      }
-    }
+  if (!pNode || !pNode->pMesh) {
+    RE_LOG(Error,
+           "Failed to update node transformation buffer for model '%s'. Node "
+           "'%d' does not exist or has no mesh.",
+           m_name.c_str(), nodeIndex);
+    return;
+  }
+
+  if (!pNode->isRequestingTransformBufferUpdate) return;
+
+  int8_t* pMemAddress =
+      static_cast<int8_t*>(core::renderer.getSceneBuffers()
+                                 ->nodeTransformBuffer.allocInfo.pMappedData) +
+      bufferOffset;
+
+  // copy node transform data for vertex shader (node matrix and joint count)
+  memcpy(pMemAddress, &pNode->pMesh->uniformBlock,
+         sizeof(glm::mat4) + sizeof(float));
+
+  pNode->isRequestingTransformBufferUpdate = false;
+}
+
+void WModel::updateSkinTransformBuffer() noexcept {
+  for (auto& pSkin : m_pSkins) {
+    int8_t* pMemAddress =
+        static_cast<int8_t*>(core::renderer.getSceneBuffers()
+                                  ->skinTransformBuffer.allocInfo.pMappedData) +
+        pSkin->bufferOffset;
+
+    WModel::Node* pNode = getNodeBySkinIndex(pSkin->index);
+
+    memcpy(pMemAddress, pNode->pMesh->uniformBlock.jointMatrices.data(),
+           sizeof(glm::mat4) * pNode->pMesh->uniformBlock.jointMatrices.size());
   }
 }
 
@@ -169,13 +191,74 @@ void WModel::resetUniformBlockData() {
 
       if (pNode->pSkin) {
         for (int32_t i = 0; i < pNode->pSkin->joints.size(); ++i) {
-          pNode->pMesh->uniformBlock.jointMatrices[i] = glm::mat4(1.0f);
+          pNode->pMesh->uniformBlock.nodeMatrix = glm::mat4(1.0f);
         }
       }
     }
   }
+}
 
-  update(glm::mat4(1.0f));
+WPrimitive* WModel::getPrimitive(const int32_t meshIndex,
+                                 const int32_t primitiveIndex) {
+  if (meshIndex < 0 || meshIndex > m_pLinearMeshes.size()) {
+    RE_LOG(Error,
+           "Failed to get primitive for model '%s', mesh index %d, primitive "
+           "index %d. Requested mesh was not found.",
+           m_name.c_str(), meshIndex, primitiveIndex);
+
+    return nullptr;
+  }
+
+  WModel::Mesh* pMesh = m_pLinearMeshes.at(meshIndex);
+
+  if (primitiveIndex < 0 || primitiveIndex > pMesh->pPrimitives.size()) {
+    RE_LOG(Error,
+           "Failed to get primitive for model '%s', mesh index %d, primitive "
+           "index %d. Requested primitive was not found.",
+           m_name.c_str(), meshIndex, primitiveIndex);
+
+    return nullptr;
+  }
+
+  return pMesh->pPrimitives.at(primitiveIndex).get();
+}
+
+void WModel::setPrimitiveMaterial(const int32_t meshIndex,
+                                  const int32_t primitiveIndex,
+                                  const char* material) {
+  WPrimitive* pPrimitive = getPrimitive(meshIndex, primitiveIndex);
+
+  if (!pPrimitive) {
+    RE_LOG(Error,
+           "Failed to set material '%s' for mesh %d, primitive %d of model "
+           "'%s'. Couldn't get the required primitive.",
+           material, meshIndex, primitiveIndex, m_name.c_str());
+    return;
+  }
+
+  RMaterial* pMaterial = core::resources.getMaterial(material);
+
+  if (!pMaterial) {
+    RE_LOG(
+        Error,
+        "Failed to get material '%s' for mesh %d, primitive %d of model '%s'.",
+        material, meshIndex, primitiveIndex, m_name.c_str());
+    return;
+  }
+
+  pPrimitive->pMaterial = pMaterial;
+}
+
+void WModel::setSceneBindingData(size_t vertexOffset, size_t indexOffset) {
+  m_sceneVertexOffset = vertexOffset;
+  m_sceneIndexOffset = indexOffset;
+  m_isBoundToScene = true;
+}
+
+void WModel::clearSceneBindingData() {
+  m_sceneVertexOffset = 0u;
+  m_sceneIndexOffset = 0u;
+  m_isBoundToScene = false;
 }
 
 void WModel::bindAnimation(const std::string& name) {

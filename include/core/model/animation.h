@@ -38,8 +38,8 @@ class WAnimation {
 
   struct KeyFrame {
     float timeStamp = 0.0f;
-    glm::mat4 nodeMatrix = glm::mat4(1.0f);
-    std::vector<glm::mat4> jointMatrices;
+    std::unordered_map<int32_t, glm::mat4> nodeMatrices;
+    std::vector<std::vector<glm::mat4>> skinMatrices;
   };
 
   std::string m_name = "$EMPTYANIMATION$";
@@ -53,15 +53,11 @@ class WAnimation {
   // contains node index and name that this animation affects
   std::vector<AnimatedNode> m_animatedNodes;
 
-  // contains node index and all its keyframes
-  std::unordered_map<int32_t, std::vector<KeyFrame>> m_nodeKeyFrames;
+  // contains time stamps and animated node matrices
+  std::vector<KeyFrame> m_keyFrames;
 
   void processFrame(WModel* pModel, const float time);
-  void addKeyFrame(const int32_t nodeIndex, const float timeStamp,
-                   const RMeshUBO& meshUBO);
-  void addKeyFrame(const int32_t nodeIndex, const float timeStamp,
-                   const glm::mat4& nodeMatrix,
-                   const std::vector<glm::mat4>& jointMatrices);
+  void addKeyFrame(WModel* pModel, const float timeStamp);
 
  public:
   WAnimation(const std::string& name) : m_name(name){};
@@ -82,6 +78,7 @@ class WAnimation {
 
   void resampleKeyFrames(WModel* pModel, const float framerate,
                          const float speed = 1.0f);
+  const std::vector<KeyFrame>& getKeyFrames();
 
   // check if the model has all the required nodes for this animation
   // the number of nodes in this animation is allowed to be lower
@@ -89,6 +86,4 @@ class WAnimation {
   bool validateModel(WModel* pModel);
 
   const std::vector<WAnimation::AnimatedNode>& getAnimatedNodes();
-  const std::vector<WAnimation::KeyFrame>* getNodeKeyFrames(
-      const int32_t nodeIndex);
 };

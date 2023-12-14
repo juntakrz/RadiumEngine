@@ -8,77 +8,6 @@ WModel::Node::Node(WModel::Node* pParent, uint32_t index,
                    const std::string& name)
     : pParentNode(pParent), index(index), name(name) {}
 
-TResult WModel::Node::allocateMeshBuffer() {
-  if (!pMesh) {
-    RE_LOG(Error, "Failed to allocate mesh buffer - mesh was not created yet.");
-    return RE_ERROR;
-  }
-
-  // prepare buffer and memory to store model/mesh/joints transformation matrix
-  VkDeviceSize bufferSize = sizeof(pMesh->uniformBlock);
-  core::renderer.createBuffer(EBufferMode::CPU_UNIFORM, bufferSize,
-                              pMesh->uniformBufferData.uniformBuffer, nullptr);
-  pMesh->uniformBufferData.descriptorBufferInfo = {
-      pMesh->uniformBufferData.uniformBuffer.buffer, 0, bufferSize};
-
-  return RE_OK;
-}
-
-void WModel::Node::destroyMeshBuffer() {
-  if (!pMesh) {
-    return;
-  }
-
-  vmaDestroyBuffer(core::renderer.memAlloc,
-                   pMesh->uniformBufferData.uniformBuffer.buffer,
-                   pMesh->uniformBufferData.uniformBuffer.allocation);
-}
-
-void WModel::Node::setNodeDescriptorSet(bool updateChildren) {
-  if (!pMesh) {
-    // most likely a joint node
-    return;
-  }
-
-  VkDevice device = core::renderer.logicalDevice.device;
-
-  // create node/mesh descriptor set
-  VkDescriptorSetLayout layoutMesh =
-      core::renderer.getDescriptorSetLayout(EDescriptorSetLayout::Mesh);
-
-  VkDescriptorSetAllocateInfo descriptorSetAllocInfo{};
-  descriptorSetAllocInfo.sType =
-      VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-  descriptorSetAllocInfo.descriptorPool = core::renderer.getDescriptorPool();
-  descriptorSetAllocInfo.pSetLayouts = &layoutMesh;
-  descriptorSetAllocInfo.descriptorSetCount = 1;
-
-  VkResult result;
-  if ((result = vkAllocateDescriptorSets(
-         device, &descriptorSetAllocInfo,
-          &pMesh->uniformBufferData.descriptorSet)) != VK_SUCCESS) {
-    RE_LOG(Error, "Failed to create node descriptor set. Vulkan error %d.",
-           result);
-    return;
-  }
-
-  VkWriteDescriptorSet writeDescriptorSet{};
-  writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-  writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  writeDescriptorSet.descriptorCount = 1;
-  writeDescriptorSet.dstSet = pMesh->uniformBufferData.descriptorSet;
-  writeDescriptorSet.dstBinding = 0;
-  writeDescriptorSet.pBufferInfo = &pMesh->uniformBufferData.descriptorBufferInfo;
-
-  vkUpdateDescriptorSets(device, 1, &writeDescriptorSet, 0, nullptr);
-
-  if (updateChildren) {
-    for (auto& child : pChildren) {
-      child->setNodeDescriptorSet(updateChildren);
-    }
-  }
-}
-
 void WModel::Node::propagateTransformation(const glm::mat4& accumulatedMatrix) {
   transformedNodeMatrix = accumulatedMatrix * getLocalMatrix();
 
@@ -87,43 +16,36 @@ void WModel::Node::propagateTransformation(const glm::mat4& accumulatedMatrix) {
   }
 }
 
-void WModel::Node::updateStagingNodeMatrices(const glm::mat4& modelMatrix,
-                                             WAnimation* pOutAnimation) {
+void WModel::Node::updateStagingNodeMatrices(WAnimation* pOutAnimation) {
   if (pMesh) {
-    pMesh->uniformBlock.rootMatrix = modelMatrix;
     pMesh->uniformBlock.nodeMatrix = transformedNodeMatrix;
 
     // node has mesh, store a reference to it in an animation
     pOutAnimation->addNodeReference(this->name, this->index);
 
-    if (pSkin) {
+    if (pSkin && pSkin->staging.recalculateSkinMatrices) {
       // Update joint matrices
-      glm::mat4 inverseTransform = glm::inverse(transformedNodeMatrix);
       size_t numJoints = std::min((uint32_t)pSkin->joints.size(), RE_MAXJOINTS);
+
       for (size_t i = 0; i < numJoints; i++) {
-        Node* pJointNode = pSkin->joints[i];
-        glm::mat4 jointMatrix =
-            pJointNode->transformedNodeMatrix * pSkin->inverseBindMatrices[i];
-        jointMatrix = inverseTransform * jointMatrix;
+        glm::mat4 jointMatrix = pSkin->joints[i]->transformedNodeMatrix *
+                                pSkin->staging.inverseBindMatrices[i];
         pMesh->uniformBlock.jointMatrices[i] = jointMatrix;
       }
       pMesh->uniformBlock.jointCount = (float)numJoints;
-      memcpy(pMesh->uniformBufferData.uniformBuffer.allocInfo.pMappedData,
-             &pMesh->uniformBlock, sizeof(pMesh->uniformBlock));
-    } else {
-      memcpy(pMesh->uniformBufferData.uniformBuffer.allocInfo.pMappedData,
-             &pMesh->uniformBlock, sizeof(glm::mat4) * 2u);
+      pSkin->staging.recalculateSkinMatrices = false;
     }
   }
 
   for (auto& pChild : pChildren) {
-    pChild->updateStagingNodeMatrices(modelMatrix, pOutAnimation);
+    pChild->updateStagingNodeMatrices(pOutAnimation);
   }
 }
 
 glm::mat4 WModel::Node::getLocalMatrix() {
-  return glm::translate(glm::mat4(1.0f), translation) * glm::mat4(rotation) *
-         glm::scale(glm::mat4(1.0f), scale) * nodeMatrix;
+  return glm::translate(glm::mat4(1.0f), staging.translation) *
+         glm::mat4(staging.rotation) *
+         glm::scale(glm::mat4(1.0f), staging.scale) * staging.nodeMatrix;
 }
 
 WModel::Node* WModel::createNode(WModel::Node* pParentNode, uint32_t nodeIndex,
@@ -147,10 +69,7 @@ WModel::Node* WModel::createNode(WModel::Node* pParentNode, uint32_t nodeIndex,
   }
 
   pNode->name = nodeName;
-  pNode->nodeMatrix = glm::mat4(1.0f);
-
-  pNode->pMesh = std::make_unique<WModel::Mesh>();
-  pNode->allocateMeshBuffer();
+  pNode->staging.nodeMatrix = glm::mat4(1.0f);
 
   return pNode;
 }
@@ -170,7 +89,6 @@ void WModel::destroyNode(std::unique_ptr<WModel::Node>& pNode) {
       }
     }
 
-    pNode->destroyMeshBuffer();
     pNode->pChildren.clear();
     pNode->pMesh->pPrimitives.clear();
     pNode->pMesh.reset();
@@ -179,7 +97,7 @@ void WModel::destroyNode(std::unique_ptr<WModel::Node>& pNode) {
   pNode.reset();
 }
 
-WModel::Node* WModel::getNode(uint32_t index) noexcept {
+WModel::Node* WModel::getNode(int32_t index) noexcept {
   for (WModel::Node* it : m_pLinearNodes) {
     if (it->index == index) {
       return it;
@@ -189,4 +107,20 @@ WModel::Node* WModel::getNode(uint32_t index) noexcept {
   RE_LOG(Error, "Node with index %d not found for the model \"%s\".", index,
          m_name.c_str());
   return nullptr;
+}
+
+WModel::Node* WModel::getNodeBySkinIndex(int32_t index) noexcept {
+  for (auto& pNode : m_pLinearNodes) {
+    if (pNode->skinIndex == index) return pNode;
+  }
+
+  return nullptr;
+}
+
+int32_t WModel::getSkinCount() noexcept {
+  return static_cast<int32_t>(m_pSkins.size());
+}
+
+WModel::Skin* WModel::getSkin(int32_t skinIndex) noexcept {
+  return m_pSkins[skinIndex].get();
 }

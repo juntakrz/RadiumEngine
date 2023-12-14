@@ -27,14 +27,14 @@ void WAnimation::processFrame(WModel* pModel, const float time) {
               glm::vec4 translation =
                   glm::mix(transformBlock.frameData[i].transformData,
                            transformBlock.frameData[i + 1].transformData, u);
-              pNode->translation = glm::vec3(translation);
+              pNode->staging.translation = glm::vec3(translation);
               break;
             }
             case ETransformType::Scale: {
               glm::vec4 scale =
                   glm::mix(transformBlock.frameData[i].transformData,
                            transformBlock.frameData[i + 1].transformData, u);
-              pNode->scale = glm::vec3(scale);
+              pNode->staging.scale = glm::vec3(scale);
               break;
             }
             case ETransformType::Rotation: {
@@ -50,7 +50,7 @@ void WAnimation::processFrame(WModel* pModel, const float time) {
               q2.z = transformBlock.frameData[i + 1].transformData.z;
               q2.w = transformBlock.frameData[i + 1].transformData.w;
 
-              pNode->rotation = glm::normalize(glm::slerp(q1, q2, u));
+              pNode->staging.rotation = glm::normalize(glm::slerp(q1, q2, u));
               break;
             }
           }
@@ -61,40 +61,43 @@ void WAnimation::processFrame(WModel* pModel, const float time) {
     }
   }
 
+  for (int32_t j = 0; j < pModel->getSkinCount(); ++j) {
+    pModel->getSkin(j)->staging.recalculateSkinMatrices = true;
+  }
+
   // create accumulated matrices for every node
   for (auto& rootNode : pModel->getRootNodes()) {
     // propagate node transformation accumulating from parent to children
     rootNode->propagateTransformation();
 
     // set root and propagated transformation matrices and update joint matrices
-    rootNode->updateStagingNodeMatrices(glm::mat4(1.0f), this);
+    rootNode->updateStagingNodeMatrices(this);
   }
 
   // create a keyframe using accumulated matrices
-  for (auto& node : pModel->getAllNodes()) {
-    if (node->pMesh) {
-      addKeyFrame(node->index, time - stagingData.startTimeStamp,
-                  node->pMesh->uniformBlock);
+  addKeyFrame(pModel, time - stagingData.startTimeStamp);
+}
+
+void WAnimation::addKeyFrame(WModel* pModel, const float timeStamp) {
+  m_keyFrames.emplace_back(timeStamp);
+
+  KeyFrame& keyFrame = m_keyFrames.back();
+  const int32_t skinCount = pModel->getSkinCount();
+  keyFrame.skinMatrices.resize(skinCount);
+
+  for (const auto& pNode : pModel->getAllNodes()) {
+    if (pNode->pMesh) {
+      keyFrame.nodeMatrices[pNode->index] =
+          pNode->pMesh->uniformBlock.nodeMatrix;
+
+      if (pNode->pSkin) {
+        if (keyFrame.skinMatrices[pNode->pSkin->index].empty()) {
+          keyFrame.skinMatrices[pNode->pSkin->index] =
+              pNode->pMesh->uniformBlock.jointMatrices;
+        }
+      }
     }
   }
-}
-
-void WAnimation::addKeyFrame(const int32_t nodeIndex, const float timeStamp,
-                             const RMeshUBO& meshUBO) {
-  m_nodeKeyFrames[nodeIndex].emplace_back(timeStamp, meshUBO.nodeMatrix);
-
-  KeyFrame& keyframe = m_nodeKeyFrames[nodeIndex].back();
-  const int32_t jointCount = static_cast<int32_t>(meshUBO.jointCount);
-
-  for (int32_t i = 0; i < jointCount; ++i) {
-    keyframe.jointMatrices.emplace_back(meshUBO.jointMatrices[i]);
-  }
-}
-
-void WAnimation::addKeyFrame(const int32_t nodeIndex, const float timeStamp,
-                             const glm::mat4& nodeMatrix,
-                             const std::vector<glm::mat4>& jointMatrices) {
-  m_nodeKeyFrames[nodeIndex].emplace_back(timeStamp, nodeMatrix, jointMatrices);
 }
 
 //
@@ -195,7 +198,7 @@ void WAnimation::resampleKeyFrames(WModel* pModel, const float framerate,
   const float timeStep = 1.0f / framerate * 1.0f;
   float time = stagingData.startTimeStamp;
 
-  m_nodeKeyFrames.clear();
+  m_keyFrames.clear();
 
   while (time < stagingData.endTimeStamp) {
     processFrame(pModel, time);
@@ -207,8 +210,8 @@ void WAnimation::resampleKeyFrames(WModel* pModel, const float framerate,
   // get final animation duration
   float resampledDuration = 0.0f;
 
-  for (const auto& keyFrameVector : m_nodeKeyFrames) {
-    const float lastFrameTime = keyFrameVector.second.back().timeStamp;
+  for (const auto& keyFrame : m_keyFrames) {
+    const float lastFrameTime = keyFrame.timeStamp;
 
     if (resampledDuration < lastFrameTime) {
       resampledDuration = lastFrameTime;
@@ -216,6 +219,10 @@ void WAnimation::resampleKeyFrames(WModel* pModel, const float framerate,
   }
 
   m_duration = resampledDuration;
+}
+
+const std::vector<WAnimation::KeyFrame>& WAnimation::getKeyFrames() {
+  return m_keyFrames;
 }
 
 bool WAnimation::validateModel(WModel* pModel) {
@@ -248,18 +255,4 @@ bool WAnimation::validateModel(WModel* pModel) {
 
 const std::vector<WAnimation::AnimatedNode>& WAnimation::getAnimatedNodes() {
   return m_animatedNodes;
-}
-
-const std::vector<WAnimation::KeyFrame>* WAnimation::getNodeKeyFrames(
-    const int32_t nodeIndex) {
-  if (m_nodeKeyFrames.find(nodeIndex) == m_nodeKeyFrames.end()) {
-    RE_LOG(Error,
-           "Failed to get node keyframes for animation '%s'. Node with index '%d' "
-           "does not exist.",
-           m_name.c_str(), nodeIndex);
-
-    return nullptr;
-  }
-
-  return &m_nodeKeyFrames.at(nodeIndex);
 }

@@ -3,8 +3,16 @@
 #include "util/math.h"
 #include "core/core.h"
 #include "core/model/model.h"
+#include "core/world/actors/base.h"
+#include "core/managers/renderer.h"
 #include "core/managers/time.h"
 #include "core/managers/animations.h"
+
+core::MAnimations::MAnimations() {
+  m_rootTransformBufferIndices.resize(config::scene::entityBudget);
+  m_nodeTransformBufferIndices.resize(config::scene::nodeBudget);
+  m_skinTransformBufferIndices.resize(config::scene::entityBudget);
+}
 
 WAnimation* core::MAnimations::createAnimation(const std::string& name) {
   if (m_animations.find(name) == m_animations.end()) {
@@ -98,49 +106,50 @@ int32_t core::MAnimations::addAnimationToQueue(const WAnimationInfo* pAnimationI
 
 void core::MAnimations::runAnimationQueue() {
   cleanupQueue();
-
+  
   for (auto& queueEntry : m_animationQueue) {
     // get a list of all nodes affected by the animation
     const auto& animatedNodes = queueEntry.pAnimation->getAnimatedNodes();
+    const auto& keyFrames = queueEntry.pAnimation->getKeyFrames();
 
     for (const auto& node : animatedNodes) {
-      const auto& nodeKeyFrames =
-          queueEntry.pAnimation->getNodeKeyFrames(node.index);
-
       WModel::Node* pNode = queueEntry.pModel->getNode(node.index);
 
-      if (!nodeKeyFrames || !pNode) {
+      if (keyFrames.empty() || !pNode) {
         m_cleanupQueue.emplace_back(queueEntry.queueIndex);
         break;
       }
 
-      // write interpolated frame data directly to node's mesh uniform block
-      for (size_t i = 0; i < nodeKeyFrames->size() - 1; ++i) {
-        // if we are at the last frame - use first frame for interpolation
-        // const size_t iAux = (i == nodeKeyFrames->size() - 1) ? 0 : i + 1;
+      const int32_t skinIndex = pNode->skinIndex;
+      const bool hasSkin = !keyFrames.at(0).skinMatrices.empty();
 
-        if ((queueEntry.time >= nodeKeyFrames->at(i).timeStamp) &&
-            (queueEntry.time <= nodeKeyFrames->at(i + 1).timeStamp)) {
+      // write interpolated frame data directly to node's mesh uniform block
+      for (size_t i = 0; i < keyFrames.size() - 1; ++i) {
+        if ((queueEntry.time >= keyFrames.at(i).timeStamp) &&
+            (queueEntry.time <= keyFrames.at(i + 1).timeStamp)) {
           // get interpolation coefficient based on time between frames
           float u =
-              std::max(0.0f, queueEntry.time - nodeKeyFrames->at(i).timeStamp) /
-              (nodeKeyFrames->at(i + 1).timeStamp -
-               nodeKeyFrames->at(i).timeStamp);
+              std::max(0.0f, queueEntry.time - keyFrames.at(i).timeStamp) /
+              (keyFrames.at(i + 1).timeStamp - keyFrames.at(i).timeStamp);
 
           if (u <= 1.0f) {
-            math::interpolate(nodeKeyFrames->at(i).nodeMatrix,
-                              nodeKeyFrames->at(i + 1).nodeMatrix, u,
-                              pNode->pMesh->uniformBlock.nodeMatrix);
+            math::interpolate(keyFrames.at(i).nodeMatrices.at(node.index),
+                              keyFrames.at(i + 1).nodeMatrices.at(node.index),
+                              u, pNode->pMesh->uniformBlock.nodeMatrix);
 
-            const size_t jointCount = nodeKeyFrames->at(i).jointMatrices.size();
+            if (hasSkin) {
+              const size_t jointCount =
+                  keyFrames.at(i).skinMatrices.at(skinIndex).size();
 
-            for (int32_t j = 0; j < jointCount; ++j) {
-              math::interpolate(nodeKeyFrames->at(i).jointMatrices[j],
-                                nodeKeyFrames->at(i + 1).jointMatrices[j], u,
-                                pNode->pMesh->uniformBlock.jointMatrices[j]);
+              for (int32_t j = 0; j < jointCount; ++j) {
+                math::interpolate(
+                    keyFrames.at(i).skinMatrices[skinIndex][j],
+                    keyFrames.at(i + 1).skinMatrices[skinIndex][j], u,
+                    pNode->pMesh->uniformBlock.jointMatrices[j]);
+              }
+
+              pNode->pMesh->uniformBlock.jointCount = (float)jointCount;
             }
-
-            pNode->pMesh->uniformBlock.jointCount = (float)jointCount;
 
             // frame update finished, exit loop
             break;
@@ -185,4 +194,65 @@ void core::MAnimations::cleanupQueue() {
   }
 
   m_cleanupQueue.clear();
+}
+
+bool core::MAnimations::getOrRegisterActorOffsetIndex(AEntity* pActor,
+                                                      size_t& outIndex) {
+  size_t freeIndex = -1;
+
+  for (size_t i = 0; i < m_rootTransformBufferIndices.size(); ++i) {
+    if (m_rootTransformBufferIndices[i] == nullptr && freeIndex == -1) {
+      freeIndex = i;
+    }
+
+    if (m_rootTransformBufferIndices[i] == pActor) {
+      outIndex = i;
+      return false; // actor is already registered
+    }
+  }
+
+  m_rootTransformBufferIndices[freeIndex] = pActor;
+  outIndex = freeIndex;
+  return true;  // registered actor to the first free index
+}
+
+bool core::MAnimations::getOrRegisterNodeOffsetIndex(
+    AEntity::AnimatedNodeBinding* pNode, size_t& outIndex) {
+  size_t freeIndex = -1;
+
+  for (size_t i = 0; i < m_rootTransformBufferIndices.size(); ++i) {
+    if (m_nodeTransformBufferIndices[i] == nullptr && freeIndex == -1) {
+      freeIndex = i;
+    }
+
+    if (m_nodeTransformBufferIndices[i] == pNode) {
+      outIndex = i;
+      return false;  // node is already registered
+    }
+  }
+
+  m_nodeTransformBufferIndices[freeIndex] = pNode;
+  outIndex = freeIndex;
+  return true;  // registered node to the first free index
+}
+
+bool core::MAnimations::getOrRegisterSkinOffsetIndex(WModel::Skin* pSkin,
+                                                     size_t& outIndex) {
+  size_t freeIndex = -1;
+
+  for (size_t i = 0; i < m_skinTransformBufferIndices.size(); ++i) {
+    if (m_skinTransformBufferIndices[i] == nullptr && freeIndex == -1) {
+      freeIndex = i;
+    }
+
+    if (m_skinTransformBufferIndices[i] == pSkin) {
+      outIndex = i;
+      return false;  // skin is already registered
+    }
+  }
+
+  m_skinTransformBufferIndices[freeIndex] = pSkin;
+  outIndex = freeIndex;
+
+  return true;  // registered skin to the first free index
 }

@@ -8,10 +8,13 @@ layout(binding = 0) uniform UBOView {
 	mat4 projection;
 } scene;
 
-layout (set = 1, binding = 0) uniform UBOMesh {
+layout (set = 1, binding = 0) uniform UBOMesh0 {
 	mat4 rootMatrix;
+} rootTransform;
+
+layout (set = 1, binding = 1) uniform UBOMesh1 {
 	mat4 nodeMatrix;
-} mesh;
+} nodeTransform;
 
 out gl_PerVertex {
 	vec4 gl_Position;
@@ -26,7 +29,7 @@ void main()
 	view[3][1] = 0.0;
 	view[3][2] = 0.0;
 	
-	vec4 worldPos = mesh.rootMatrix * mesh.nodeMatrix * vec4(inPos, 1.0);
+	vec4 worldPos = rootTransform.rootMatrix * nodeTransform.nodeMatrix * vec4(inPos, 1.0);
 	worldPos = scene.projection * view * worldPos;
 
 	gl_Position = worldPos.xyww;

@@ -6,7 +6,7 @@
 TResult core::MAnimations::loadAnimation(std::string filename,
                                          const std::string optionalNewName,
                                          const std::string skeleton) {
-  if (filename.empty()) {
+  /*if (filename.empty()) {
     RE_LOG(Error, "Failed to load animation, no filename was provided.");
     return RE_ERROR;
   }
@@ -168,7 +168,7 @@ TResult core::MAnimations::loadAnimation(std::string filename,
       pAnimation->addKeyFrame(inNode.nodeIndex, inKeyFrame.timeStamp,
                               inKeyFrame.nodeMatrix, inKeyFrame.jointMatrices);
     }
-  }
+  }*/
 
   return RE_OK;
 }
@@ -212,11 +212,11 @@ TResult core::MAnimations::saveAnimation(const std::string animation,
     int32_t chunkSize = 0;
 
     exportNodeData.nodeIndex = nodeIndex;
-    exportNodeData.keyFrameData = pAnimation->m_nodeKeyFrames.at(nodeIndex);
+    //exportNodeData.keyFrameData = pAnimation->m_nodeKeyFrames.at(nodeIndex);
     exportNodeData.keyFrameCount =
         static_cast<int32_t>(exportNodeData.keyFrameData.size());
-    exportNodeData.jointCount = static_cast<int32_t>(
-        exportNodeData.keyFrameData.at(0).jointMatrices.size());
+    /*exportNodeData.jointCount = static_cast<int32_t>(
+        exportNodeData.keyFrameData.at(0).jointMatrices.size());*/
 
     chunkSize += sizeof(exportNodeData.nodeIndex);
     chunkSize += sizeof(exportNodeData.keyFrameCount);
@@ -234,7 +234,7 @@ TResult core::MAnimations::saveAnimation(const std::string animation,
     for (int32_t j = 0; j < exportNodeData.keyFrameCount; ++j) {
       const auto& keyFrame = exportNodeData.keyFrameData[j];
       chunkSize += sizeof(keyFrame.timeStamp);
-      chunkSize += sizeof(keyFrame.nodeMatrix);
+      //chunkSize += sizeof(keyFrame.nodeMatrix);
       chunkSize += nodeJointDataSize;
     }
 
@@ -272,13 +272,13 @@ TResult core::MAnimations::saveAnimation(const std::string animation,
       memcpy(&pOutData[address], &keyFrame.timeStamp, sizeof(float));
       address += sizeof(float);
 
-      memcpy(&pOutData[address], &keyFrame.nodeMatrix, sizeof(glm::mat4));
+      //memcpy(&pOutData[address], &keyFrame.nodeMatrix, sizeof(glm::mat4));
       address += sizeof(glm::mat4);
 
       // add transformation matrices for joints
       for (int32_t m = 0; m < outFile.nodeData[k].jointCount; ++m) {
-        memcpy(&pOutData[address], &keyFrame.jointMatrices[m],
-               sizeof(glm::mat4));
+        /*memcpy(&pOutData[address], &keyFrame.jointMatrices[m],
+               sizeof(glm::mat4));*/
         address += sizeof(glm::mat4);
       }
     }
