@@ -122,8 +122,9 @@ void WModel::Node::updateStagingNodeMatrices(const glm::mat4& modelMatrix,
 }
 
 glm::mat4 WModel::Node::getLocalMatrix() {
-  return glm::translate(glm::mat4(1.0f), translation) * glm::mat4(rotation) *
-         glm::scale(glm::mat4(1.0f), scale) * nodeMatrix;
+  return glm::translate(glm::mat4(1.0f), staging.translation) *
+         glm::mat4(staging.rotation) *
+         glm::scale(glm::mat4(1.0f), staging.scale) * staging.nodeMatrix;
 }
 
 WModel::Node* WModel::createNode(WModel::Node* pParentNode, uint32_t nodeIndex,
@@ -147,7 +148,7 @@ WModel::Node* WModel::createNode(WModel::Node* pParentNode, uint32_t nodeIndex,
   }
 
   pNode->name = nodeName;
-  pNode->nodeMatrix = glm::mat4(1.0f);
+  pNode->staging.nodeMatrix = glm::mat4(1.0f);
 
   pNode->pMesh = std::make_unique<WModel::Mesh>();
   pNode->allocateMeshBuffer();

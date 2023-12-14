@@ -8,7 +8,6 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
   // layout: shader binding / descriptor type / count / shader stage / immutable
   // samplers
 
-  
   // dummy descriptor set layout
   {
     system.descriptorSetLayouts.emplace(EDescriptorSetLayout::Dummy,
@@ -20,8 +19,8 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
 
     if (vkCreateDescriptorSetLayout(
             logicalDevice.device, &setLayoutCreateInfo, nullptr,
-            &system.descriptorSetLayouts.at(
-                EDescriptorSetLayout::Dummy)) != VK_SUCCESS) {
+            &system.descriptorSetLayouts.at(EDescriptorSetLayout::Dummy)) !=
+        VK_SUCCESS) {
       RE_LOG(Critical, "Failed to create dummy descriptor set layout.");
       return RE_CRITICAL;
     }
@@ -313,13 +312,13 @@ TResult core::MRenderer::createDescriptorSets() {
 #endif
 
     for (uint32_t j = 0; j < MAX_FRAMES_IN_FLIGHT; ++j) {
-      VkDescriptorBufferInfo infoEnvironment;
+      VkDescriptorBufferInfo infoEnvironment{};
       infoEnvironment.buffer = environment.transformBuffers[j].buffer;
       infoEnvironment.offset = 0;
       infoEnvironment.range = sizeof(REnvironmentUBO);
 
       // lighting data for descriptor set
-      VkDescriptorBufferInfo infoLighting;
+      VkDescriptorBufferInfo infoLighting{};
       infoLighting.buffer = lighting.buffers[j].buffer;
       infoLighting.offset = 0;
       infoLighting.range = sizeof(RLightingUBO);
@@ -637,7 +636,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
   viewport.minDepth = 0.0f;
   viewport.maxDepth = 1.0f;
 
-  VkRect2D scissor{};
+  VkRect2D& scissor = getRenderPass(ERenderPass::PBR)->scissor;
   scissor.offset = {0, 0};
   scissor.extent = swapchain.imageExtent;
 
@@ -853,9 +852,9 @@ TResult core::MRenderer::createGraphicsPipelines() {
 
   system.pipelines.emplace(EPipeline::OpaqueCullBack, VK_NULL_HANDLE);
 
-  if (vkCreateGraphicsPipelines(logicalDevice.device, VK_NULL_HANDLE, 1,
-                                &graphicsPipelineInfo, nullptr,
-                                &getPipeline(OpaqueCullBack)) != VK_SUCCESS) {
+  if (vkCreateGraphicsPipelines(
+          logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
+          nullptr, &getPipeline(EPipeline::OpaqueCullBack)) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create PBR graphics pipeline.");
 
     return RE_CRITICAL;
@@ -866,9 +865,9 @@ TResult core::MRenderer::createGraphicsPipelines() {
 
   system.pipelines.emplace(EPipeline::OpaqueCullNone, VK_NULL_HANDLE);
 
-  if (vkCreateGraphicsPipelines(logicalDevice.device, VK_NULL_HANDLE, 1,
-                                &graphicsPipelineInfo, nullptr,
-                                &getPipeline(OpaqueCullNone)) != VK_SUCCESS) {
+  if (vkCreateGraphicsPipelines(
+          logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
+          nullptr, &getPipeline(EPipeline::OpaqueCullNone)) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create PBR doublesided graphics pipeline.");
 
     return RE_CRITICAL;
@@ -876,14 +875,13 @@ TResult core::MRenderer::createGraphicsPipelines() {
 
   // 'Blend' pipeline, similar to PBR singlesided, but with alpha channel
   rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
-  //rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
   colorBlendAttachment.blendEnable = VK_TRUE;
 
   system.pipelines.emplace(EPipeline::BlendCullNone, VK_NULL_HANDLE);
 
-  if (vkCreateGraphicsPipelines(logicalDevice.device, VK_NULL_HANDLE, 1,
-                                &graphicsPipelineInfo, nullptr,
-                                &getPipeline(BlendCullNone)) != VK_SUCCESS) {
+  if (vkCreateGraphicsPipelines(
+          logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
+          nullptr, &getPipeline(EPipeline::BlendCullNone)) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create PBR doublesided graphics pipeline.");
 
     return RE_CRITICAL;
@@ -902,9 +900,9 @@ TResult core::MRenderer::createGraphicsPipelines() {
 
   system.pipelines.emplace(EPipeline::Skybox, VK_NULL_HANDLE);
 
-  if (vkCreateGraphicsPipelines(logicalDevice.device, VK_NULL_HANDLE, 1,
-                                &graphicsPipelineInfo, nullptr,
-                                &getPipeline(Skybox)) != VK_SUCCESS) {
+  if (vkCreateGraphicsPipelines(
+          logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
+          nullptr, &getPipeline(EPipeline::Skybox)) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create skybox graphics pipeline.");
 
     return RE_CRITICAL;
@@ -923,6 +921,8 @@ TResult core::MRenderer::createGraphicsPipelines() {
 
   graphicsPipelineInfo.layout = getPipelineLayout(EPipelineLayout::Environment);
   graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::Environment);
+  scissor = getRenderPass(ERenderPass::Environment)->scissor;
+  scissor.offset = {0, 0};
 
   if (vkCreateGraphicsPipelines(
           logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,

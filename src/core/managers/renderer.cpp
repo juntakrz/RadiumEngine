@@ -153,21 +153,21 @@ TResult core::MRenderer::createDescriptorPool() {
 
   // materials and textures
   // TODO: rewrite so that descriptorCounts are calculated by objects/textures
-  // using map data e.g. max preloaded textures plus 256 for headroom
+  // using map data e.g. max textures that are going to be loaded
   poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-  poolSizes[1].descriptorCount = 2048 * MAX_FRAMES_IN_FLIGHT;
+  poolSizes[1].descriptorCount = 2000 * MAX_FRAMES_IN_FLIGHT;
 
   // model nodes
   // TODO: rewrite so that descriptorCounts are calculated by objects/textures
-  // using map data e.g. max preloaded model nodes plus 256 for headroom
+  // using map data e.g. max unique model nodes that are going to be loaded
   poolSizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  poolSizes[2].descriptorCount = 4096 * MAX_FRAMES_IN_FLIGHT;
+  poolSizes[2].descriptorCount = 2000 * MAX_FRAMES_IN_FLIGHT;
 
   uint32_t maxSets = 0;
   for (uint8_t i = 0; i < poolSizes.size(); ++i) {
     maxSets += poolSizes[i].descriptorCount;
   }
-  maxSets += 256; // descriptor set headroom
+  maxSets += 100;  // descriptor set headroom
 
   VkDescriptorPoolCreateInfo poolInfo{};
   poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -574,7 +574,6 @@ void core::MRenderer::setEnvironmentUBO() {
       glm::rotate(glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));   // Z-
 
   for (uint8_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-
     uint8_t* memAddress = static_cast<uint8_t*>(
         environment.transformBuffers[i].allocInfo.pMappedData);
 
@@ -634,7 +633,7 @@ TResult core::MRenderer::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createRenderPasses();           // A
   if (chkResult <= RE_ERRORLIMIT) chkResult = createGraphicsPipelines();      // B
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDefaultFramebuffers();    // C
-  if (chkResult <= RE_ERRORLIMIT) chkResult = configureRenderPasses();        // connect A, B, C together
+  if (chkResult <= RE_ERRORLIMIT) chkResult = configureRenderPasses();        // tie A, B, C together
 
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createUniformBuffers();

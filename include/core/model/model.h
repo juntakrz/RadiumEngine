@@ -71,12 +71,14 @@ class WModel {
     Skin* pSkin = nullptr;
 
     // node transformations (used only when resampling glTF animations)
-    glm::mat4 nodeMatrix = glm::mat4(1.0f);
-    glm::vec3 translation = glm::vec3(0.0f);
-    glm::quat rotation = glm::quat(glm::vec3(0.0f));
-    glm::vec3 scale = glm::vec3(1.0f);
+    struct {
+      glm::mat4 nodeMatrix = glm::mat4(1.0f);
+      glm::vec3 translation = glm::vec3(0.0f);
+      glm::quat rotation = glm::quat(glm::vec3(0.0f));
+      glm::vec3 scale = glm::vec3(1.0f);
+    } staging;
     
-    glm::mat4 transformedNodeMatrix = nodeMatrix;
+    glm::mat4 transformedNodeMatrix = staging.nodeMatrix;
 
     // transform matrix only for this node
     glm::mat4 getLocalMatrix();

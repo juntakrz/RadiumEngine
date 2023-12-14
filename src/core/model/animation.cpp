@@ -27,14 +27,14 @@ void WAnimation::processFrame(WModel* pModel, const float time) {
               glm::vec4 translation =
                   glm::mix(transformBlock.frameData[i].transformData,
                            transformBlock.frameData[i + 1].transformData, u);
-              pNode->translation = glm::vec3(translation);
+              pNode->staging.translation = glm::vec3(translation);
               break;
             }
             case ETransformType::Scale: {
               glm::vec4 scale =
                   glm::mix(transformBlock.frameData[i].transformData,
                            transformBlock.frameData[i + 1].transformData, u);
-              pNode->scale = glm::vec3(scale);
+              pNode->staging.scale = glm::vec3(scale);
               break;
             }
             case ETransformType::Rotation: {
@@ -50,7 +50,7 @@ void WAnimation::processFrame(WModel* pModel, const float time) {
               q2.z = transformBlock.frameData[i + 1].transformData.z;
               q2.w = transformBlock.frameData[i + 1].transformData.w;
 
-              pNode->rotation = glm::normalize(glm::slerp(q1, q2, u));
+              pNode->staging.rotation = glm::normalize(glm::slerp(q1, q2, u));
               break;
             }
           }

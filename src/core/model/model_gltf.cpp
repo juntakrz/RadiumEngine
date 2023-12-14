@@ -143,24 +143,24 @@ void WModel::createNode(WModel::Node* pParentNode,
   }
 
   pNode->skinIndex = gltfNode.skin;
-  pNode->nodeMatrix = glm::mat4(1.0f);
+  pNode->staging.nodeMatrix = glm::mat4(1.0f);
 
   // general local node matrix
   if (gltfNode.translation.size() == 3) {
-    pNode->translation = glm::make_vec3(gltfNode.translation.data());
+    pNode->staging.translation = glm::make_vec3(gltfNode.translation.data());
   }
 
   if (gltfNode.rotation.size() == 4) {
     glm::quat q = glm::make_quat(gltfNode.rotation.data());
-    pNode->rotation = glm::mat4(q);   // why if both are quaternions? check later
+    pNode->staging.rotation = glm::mat4(q);   // why if both are quaternions? check later
   }
 
   if (gltfNode.scale.size() == 3) {
-    pNode->scale = glm::make_vec3(gltfNode.scale.data());
+    pNode->staging.scale = glm::make_vec3(gltfNode.scale.data());
   }
 
   if (gltfNode.matrix.size() == 14) {
-    pNode->nodeMatrix = glm::make_mat4x4(gltfNode.matrix.data());
+    pNode->staging.nodeMatrix = glm::make_mat4x4(gltfNode.matrix.data());
   }
 
   // recursively create node children

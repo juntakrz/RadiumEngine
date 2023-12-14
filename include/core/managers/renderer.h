@@ -23,7 +23,7 @@ class MRenderer {
     std::vector<VkCommandBuffer> buffersTransfer;
   } command;
 
-  struct REnvironmentInfo {
+  struct REnvironmentData {
     REnvironmentPCB envPushBlock;
     std::vector<VkDescriptorSet> envDescriptorSets;
     VkDescriptorSet LUTDescriptorSet;

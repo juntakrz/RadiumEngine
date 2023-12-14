@@ -143,6 +143,7 @@ struct RRenderPass {
   std::vector<EPipeline> usedPipelines;
   VkPipelineLayout usedLayout;
   VkViewport viewport;
+  VkRect2D scissor;
 };
 
 // expanding KTX structure
@@ -324,7 +325,7 @@ struct WAnimationInfo {
   float endTime = std::numeric_limits<float>::max();
   float speed = 1.0f;
   bool loop = true;
-  bool bounce = true;
+  bool bounce = false;
 };
 
 struct WModelConfigInfo {

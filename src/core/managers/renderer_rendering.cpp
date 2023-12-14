@@ -126,7 +126,6 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
 }
 
 void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
-
   // initial variables
   uint32_t dynamicOffset = 0, mipLevels = 0, dimension = 0;
   size_t layerOffset = 0;
@@ -136,16 +135,6 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   RTexture* pTexture = core::resources.getTexture(RTGT_ENVSRC);
   RTexture* pCubemap = nullptr;
   environment.envPushBlock.samples = 32u;
-
-  std::array<EPipeline, 2> pipelines = {EPipeline::EnvFilter,
-                                        EPipeline::EnvIrradiance};
-
-  VkViewport viewport{};
-  viewport.minDepth = 0.0f;
-  viewport.maxDepth = 1.0f;
-
-  VkRect2D scissor{};
-  scissor.offset = {0, 0};
 
   // source render target range for layout transitions
   VkImageSubresourceRange srcRange{};
@@ -175,14 +164,14 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   copyRegion.extent.depth = pTexture->texture.depth;
 
   // environment render pass
-  renderView.pCurrentRenderPass = getRenderPass(ERenderPass::Environment);
+  RRenderPass* pRenderPass = getRenderPass(ERenderPass::Environment);
+  renderView.pCurrentRenderPass = pRenderPass;
 
   system.renderPassBeginInfo.renderPass =
       renderView.pCurrentRenderPass->renderPass;
 
-  for (uint32_t k = 0; k < pipelines.size(); ++k) {
-
-    switch (pipelines[k]) {
+  for (uint32_t k = 0; k < pRenderPass->usedPipelines.size(); ++k) {
+    switch (pRenderPass->usedPipelines[k]) {
       case EPipeline::EnvFilter: {
         system.renderPassBeginInfo.renderArea.extent = {
             core::vulkan::envFilterExtent, core::vulkan::envFilterExtent};
@@ -191,7 +180,8 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
       }
       case EPipeline::EnvIrradiance: {
         system.renderPassBeginInfo.renderArea.extent = {
-            core::vulkan::envIrradianceExtent, core::vulkan::envIrradianceExtent};
+            core::vulkan::envIrradianceExtent,
+            core::vulkan::envIrradianceExtent};
         pCubemap = core::resources.getTexture(RTGT_ENVIRRAD);
         break;
       }
@@ -219,6 +209,7 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
     setImageLayout(commandBuffer, pCubemap,
                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dstRange);
 
+    VkRect2D& scissor = getRenderPass(ERenderPass::Environment)->scissor;
     scissor.extent.width = dimension;
     scissor.extent.height = dimension;
 
@@ -229,6 +220,8 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
                            &offset);
     vkCmdBindIndexBuffer(commandBuffer, scene.indexBuffer.buffer, 0,
                          VK_INDEX_TYPE_UINT32);
+
+    VkViewport& viewport = getRenderPass(ERenderPass::Environment)->viewport;
 
     for (uint32_t i = 0; i < mipLevels; ++i) {
       for (uint32_t j = 0; j < 6; ++j) {
@@ -250,7 +243,7 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
             &environment.envDescriptorSets[renderView.frameInFlight], 1,
             &dynamicOffset);
 
-        if (pipelines[k] == EPipeline::EnvFilter) {
+        if (pRenderPass->usedPipelines[k] == EPipeline::EnvFilter) {
           // global set of push constants is used instead of per material ones
           environment.envPushBlock.roughness =
               (float)i / (float)(mipLevels - 1);
@@ -261,7 +254,7 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
               &environment.envPushBlock);
         }
 
-        drawBoundEntities(commandBuffer, pipelines[k]);
+        drawBoundEntities(commandBuffer, pRenderPass->usedPipelines[k]);
 
         vkCmdEndRenderPass(commandBuffer);
 
