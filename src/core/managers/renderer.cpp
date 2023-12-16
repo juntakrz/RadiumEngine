@@ -244,6 +244,8 @@ void core::MRenderer::destroyUniformBuffers() {
 TResult core::MRenderer::createImageTargets() {
   RTexture* pNewTexture = nullptr;
   RTextureInfo textureInfo{};
+  environment.destinationRanges.resize(2);
+  environment.destinationTextures.resize(2);
 
   // front target texture used as a source for environment cubemap sides
   std::string rtName = RTGT_ENVSRC;
@@ -265,6 +267,28 @@ TResult core::MRenderer::createImageTargets() {
     RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
     return RE_CRITICAL;
   }
+
+  // set subresource range for future copying from this render target
+  environment.sourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  environment.sourceRange.baseArrayLayer = 0;
+  environment.sourceRange.layerCount = pNewTexture->texture.layerCount;
+  environment.sourceRange.baseMipLevel = 0;
+  environment.sourceRange.levelCount = pNewTexture->texture.levelCount;
+
+  environment.copyRegion.srcSubresource.aspectMask =
+      VK_IMAGE_ASPECT_COLOR_BIT;
+  environment.copyRegion.srcSubresource.baseArrayLayer = 0;
+  environment.copyRegion.srcSubresource.layerCount = 1;
+  environment.copyRegion.srcSubresource.mipLevel = 0;
+  environment.copyRegion.srcOffset = {0, 0, 0};
+
+  environment.copyRegion.dstSubresource.aspectMask =
+      VK_IMAGE_ASPECT_COLOR_BIT;
+  environment.copyRegion.dstSubresource.layerCount = 1;
+  environment.copyRegion.dstOffset = {0, 0, 0};
+  environment.copyRegion.extent.depth = pNewTexture->texture.depth;
+
+  environment.pSourceTexture = pNewTexture;
 
   // target for BRDF LUT generation
   rtName = RTGT_LUTMAP;
@@ -299,6 +323,7 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags =
+      VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
       VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
@@ -307,6 +332,14 @@ TResult core::MRenderer::createImageTargets() {
     RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
     return RE_CRITICAL;
   }
+
+  environment.destinationRanges[0].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  environment.destinationRanges[0].baseArrayLayer = 0;
+  environment.destinationRanges[0].layerCount = pNewTexture->texture.layerCount;
+  environment.destinationRanges[0].baseMipLevel = 0;
+  environment.destinationRanges[0].levelCount = pNewTexture->texture.levelCount;
+
+  environment.destinationTextures[0] = pNewTexture;
 
   rtName = RTGT_ENVIRRAD;
   dimension = core::vulkan::envIrradianceExtent;
@@ -324,6 +357,18 @@ TResult core::MRenderer::createImageTargets() {
     RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
     return RE_CRITICAL;
   }
+
+  environment.destinationRanges[1].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  environment.destinationRanges[1].baseArrayLayer = 0;
+  environment.destinationRanges[1].layerCount = pNewTexture->texture.layerCount;
+  environment.destinationRanges[1].baseMipLevel = 0;
+  environment.destinationRanges[1].levelCount = pNewTexture->texture.levelCount;
+
+  environment.destinationTextures[1] = pNewTexture;
+
+  // set environment push block defaults
+  environment.envPushBlock.samples = 32u;
+  environment.envPushBlock.roughness = 0.0f;
 
   return createDepthTarget();
 }

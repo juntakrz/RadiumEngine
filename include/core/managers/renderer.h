@@ -19,7 +19,7 @@ class MRenderer {
     VkCommandPool poolCompute;
     VkCommandPool poolTransfer;
     std::vector<VkCommandBuffer> buffersGraphics;
-    std::vector<VkCommandBuffer> buffersCompute;  // no code for this yet
+    std::vector<VkCommandBuffer> buffersCompute;  // TODO: not implemented yet
     std::vector<VkCommandBuffer> buffersTransfer;
   } command;
 
@@ -27,9 +27,13 @@ class MRenderer {
     REnvironmentPCB envPushBlock;
     std::vector<VkDescriptorSet> envDescriptorSets;
     VkDescriptorSet LUTDescriptorSet;
-
     std::vector<RBuffer> transformBuffers;
     VkDeviceSize transformOffset = 0u;
+    RTexture* pSourceTexture;
+    VkImageSubresourceRange sourceRange;
+    std::vector<RTexture*> destinationTextures;
+    std::vector<VkImageSubresourceRange> destinationRanges;
+    VkImageCopy copyRegion;
   } environment;
 
   struct {
@@ -254,6 +258,8 @@ class MRenderer {
   void setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
                       VkImageLayout oldLayout, VkImageLayout newLayout,
                       VkImageSubresourceRange subresourceRange);
+
+  TResult generateMipMaps(RTexture* pTexture, int32_t mipLevels);
 
   VkCommandPool getCommandPool(ECmdType type);
   VkQueue getCommandQueue(ECmdType type);

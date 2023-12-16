@@ -492,6 +492,13 @@ void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
                                      VkImageLayout oldLayout,
                                      VkImageLayout newLayout,
                                      VkImageSubresourceRange subresourceRange) {
+  if (newLayout == oldLayout) {
+#ifndef NDEBUG
+    RE_LOG(Warning, "Trying to convert texture to the same image layout.");
+#endif
+    return;
+  }
+
   // Create an image barrier object
   VkImageMemoryBarrier imageMemoryBarrier = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
@@ -610,6 +617,15 @@ void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
   // Add the barrier to the passed command buffer
   vkCmdPipelineBarrier(cmdBuffer, srcStageFlags, destStageFlags, 0, 0,
                                NULL, 0, NULL, 1, &imageMemoryBarrier);
+}
+
+TResult core::MRenderer::generateMipMaps(RTexture* pTexture, int32_t mipLevels) {
+  if (!pTexture) {
+    RE_LOG(Error, "Can't generate mip maps, no texture was provided.");
+    return RE_ERROR;
+  }
+
+  return RE_OK;
 }
 
 VkCommandPool core::MRenderer::getCommandPool(ECmdType type) {

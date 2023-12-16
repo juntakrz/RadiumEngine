@@ -132,36 +132,7 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   size_t layerSize = core::vulkan::envFilterExtent *
                      core::vulkan::envFilterExtent *
                      8;  // 16 bpp RGBA = 8 bytes
-  RTexture* pTexture = core::resources.getTexture(RTGT_ENVSRC);
   RTexture* pCubemap = nullptr;
-  environment.envPushBlock.samples = 32u;
-
-  // source render target range for layout transitions
-  VkImageSubresourceRange srcRange{};
-  srcRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  srcRange.baseArrayLayer = 0;
-  srcRange.layerCount = pTexture->texture.layerCount;
-  srcRange.baseMipLevel = 0;
-  srcRange.levelCount = pTexture->texture.levelCount;
-
-  // layers and levels will be filled during cubemap layout transition
-  VkImageSubresourceRange dstRange{};
-  dstRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  dstRange.baseArrayLayer = 0;
-  dstRange.baseMipLevel = 0;
-
-  // copy to cubemap setup
-  VkImageCopy copyRegion{};
-  copyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  copyRegion.srcSubresource.baseArrayLayer = 0;
-  copyRegion.srcSubresource.layerCount = 1;
-  copyRegion.srcSubresource.mipLevel = 0;
-  copyRegion.srcOffset = {0, 0, 0};
-
-  copyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  copyRegion.dstSubresource.layerCount = 1;
-  copyRegion.dstOffset = {0, 0, 0};
-  copyRegion.extent.depth = pTexture->texture.depth;
 
   // environment render pass
   RRenderPass* pRenderPass = getRenderPass(ERenderPass::Environment);
@@ -170,19 +141,21 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   system.renderPassBeginInfo.renderPass =
       renderView.pCurrentRenderPass->renderPass;
 
+  // render targets must be stored in the same sequence as their related
+  // pipelines
   for (uint32_t k = 0; k < pRenderPass->usedPipelines.size(); ++k) {
     switch (pRenderPass->usedPipelines[k]) {
       case EPipeline::EnvFilter: {
         system.renderPassBeginInfo.renderArea.extent = {
             core::vulkan::envFilterExtent, core::vulkan::envFilterExtent};
-        pCubemap = core::resources.getTexture(RTGT_ENVFILTER);
+        pCubemap = environment.destinationTextures[k];  // RTGT_ENVFILTER
         break;
       }
       case EPipeline::EnvIrradiance: {
         system.renderPassBeginInfo.renderArea.extent = {
             core::vulkan::envIrradianceExtent,
             core::vulkan::envIrradianceExtent};
-        pCubemap = core::resources.getTexture(RTGT_ENVIRRAD);
+        pCubemap = environment.destinationTextures[k];  // RTGT_ENVIRRAD
         break;
       }
     }
@@ -203,11 +176,9 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
       return;
     }
 
-    dstRange.layerCount = pCubemap->texture.layerCount;
-    dstRange.levelCount = pCubemap->texture.levelCount;
-
     setImageLayout(commandBuffer, pCubemap,
-                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dstRange);
+                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                   environment.destinationRanges[k]);
 
     VkRect2D& scissor = getRenderPass(ERenderPass::Environment)->scissor;
     scissor.extent.width = dimension;
@@ -222,63 +193,75 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
                          VK_INDEX_TYPE_UINT32);
 
     VkViewport& viewport = getRenderPass(ERenderPass::Environment)->viewport;
+    viewport.width = static_cast<float>(dimension);
+    viewport.height = -static_cast<float>(dimension);
+    viewport.y = viewport.width;
 
-    for (uint32_t i = 0; i < mipLevels; ++i) {
-      for (uint32_t j = 0; j < 6; ++j) {
-        dynamicOffset = static_cast<uint32_t>(environment.transformOffset * j);
-        layerOffset = layerSize * j;
+    environment.copyRegion.dstSubresource.mipLevel = 0;
+    environment.copyRegion.extent.width = static_cast<uint32_t>(viewport.width);
+    environment.copyRegion.extent.height =
+        static_cast<uint32_t>(-viewport.height);
 
-        viewport.width = static_cast<float>(dimension * std::pow(0.5f, i));
-        viewport.height = -static_cast<float>(dimension * std::pow(0.5f, i));
-        viewport.y = viewport.width;
+    // generate default image layers
+    for (uint32_t j = 0; j < 6; ++j) {
+      dynamicOffset = static_cast<uint32_t>(environment.transformOffset * j);
+      layerOffset = layerSize * j;
 
-        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+      vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
-        vkCmdBeginRenderPass(commandBuffer, &system.renderPassBeginInfo,
-                             VK_SUBPASS_CONTENTS_INLINE);
+      vkCmdBeginRenderPass(commandBuffer, &system.renderPassBeginInfo,
+                           VK_SUBPASS_CONTENTS_INLINE);
 
-        vkCmdBindDescriptorSets(
-            commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-            renderView.pCurrentRenderPass->usedLayout, 0, 1,
-            &environment.envDescriptorSets[renderView.frameInFlight], 1,
-            &dynamicOffset);
+      vkCmdBindDescriptorSets(
+          commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+          renderView.pCurrentRenderPass->usedLayout, 0, 1,
+          &environment.envDescriptorSets[renderView.frameInFlight], 1,
+          &dynamicOffset);
 
-        if (pRenderPass->usedPipelines[k] == EPipeline::EnvFilter) {
-          // global set of push constants is used instead of per material ones
-          environment.envPushBlock.roughness =
-              (float)i / (float)(mipLevels - 1);
+      if (pRenderPass->usedPipelines[k] == EPipeline::EnvFilter) {
+        // global set of push constants is used instead of per material ones
+        // environment.envPushBlock.roughness = (float)i / (float)(mipLevels -
+        // 1);
 
-          vkCmdPushConstants(
-              commandBuffer, renderView.pCurrentRenderPass->usedLayout,
-              VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(REnvironmentPCB),
-              &environment.envPushBlock);
-        }
-
-        drawBoundEntities(commandBuffer, pRenderPass->usedPipelines[k]);
-
-        vkCmdEndRenderPass(commandBuffer);
-
-        setImageLayout(commandBuffer, pTexture,
-                       VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, srcRange);
-
-        // go through cubemap layers and copy front render target
-        copyRegion.dstSubresource.mipLevel = i;
-        copyRegion.dstSubresource.baseArrayLayer = j;
-        copyRegion.extent.width = static_cast<uint32_t>(viewport.width);
-        copyRegion.extent.height = static_cast<uint32_t>(-viewport.height);
-
-        vkCmdCopyImage(commandBuffer, pTexture->texture.image,
-                       pTexture->texture.imageLayout, pCubemap->texture.image,
-                       pCubemap->texture.imageLayout, 1, &copyRegion);
-
-        setImageLayout(commandBuffer, pTexture,
-                       VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, srcRange);
+        vkCmdPushConstants(commandBuffer,
+                           renderView.pCurrentRenderPass->usedLayout,
+                           VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                           sizeof(REnvironmentPCB), &environment.envPushBlock);
       }
+
+      drawBoundEntities(commandBuffer, pRenderPass->usedPipelines[k]);
+
+      vkCmdEndRenderPass(commandBuffer);
+
+      setImageLayout(commandBuffer, environment.pSourceTexture,
+                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                     environment.sourceRange);
+
+      // go through cubemap layers and copy front render target
+      environment.copyRegion.dstSubresource.baseArrayLayer = j;
+
+      vkCmdCopyImage(commandBuffer, environment.pSourceTexture->texture.image,
+                     environment.pSourceTexture->texture.imageLayout,
+                     pCubemap->texture.image, pCubemap->texture.imageLayout, 1,
+                     &environment.copyRegion);
+
+      setImageLayout(commandBuffer, environment.pSourceTexture,
+                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                     environment.sourceRange);
+    }
+
+    // generate mipmaps
+    for (uint32_t i = 1; i < mipLevels; ++i) {
+      /*viewport.width = static_cast<float>(dimension * std::pow(0.5f, i));
+      viewport.height = -static_cast<float>(dimension * std::pow(0.5f, i));
+      viewport.y = viewport.width;*/
+      environment.copyRegion.dstSubresource.mipLevel = i;
     }
 
     // switch image layout of the current cubemap to be used in future shaders
     setImageLayout(commandBuffer, pCubemap,
-                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, dstRange);
+                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                   environment.destinationRanges[k]);
 
     flushCommandBuffer(commandBuffer, ECmdType::Graphics);
   }

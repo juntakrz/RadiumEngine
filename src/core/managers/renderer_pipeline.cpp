@@ -200,18 +200,6 @@ TResult core::MRenderer::createDescriptorSets() {
     RE_LOG(Log, "Populating renderer descriptor sets.");
 #endif
 
-    // TODO: maybe needs a better workaround / solution
-    // stepping ahead environment texture descriptors to update sets without errors
-    RTexture* pTexture = core::resources.getTexture(RTGT_ENVFILTER);
-    pTexture->texture.descriptor.imageLayout =
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    pTexture = core::resources.getTexture(RTGT_ENVIRRAD);
-    pTexture->texture.descriptor.imageLayout =
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    pTexture = core::resources.getTexture(RTGT_LUTMAP);
-    pTexture->texture.descriptor.imageLayout =
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
     uint32_t descriptorCount = 5u;
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
@@ -251,32 +239,44 @@ TResult core::MRenderer::createDescriptorSets() {
       writeDescriptorSets[1].pBufferInfo = &descriptorBufferInfoLighting;
       
       // environment image data
+
+      // environment maps are created with a layout for accepting data writes
+      // however descriptor sets require info about their final state
+      VkDescriptorImageInfo imageDescriptors[3]{
+          core::resources.getTexture(RTGT_ENVFILTER)->texture.descriptor,
+          core::resources.getTexture(RTGT_ENVIRRAD)->texture.descriptor,
+          core::resources.getTexture(RTGT_LUTMAP)->texture.descriptor};
+
+      for (VkDescriptorImageInfo& imageInfo : imageDescriptors) {
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      }
+
+      // RTGT_ENVFILTER
       writeDescriptorSets[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
       writeDescriptorSets[2].descriptorType =
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
       writeDescriptorSets[2].descriptorCount = 1;
       writeDescriptorSets[2].dstSet = system.descriptorSets[i];
       writeDescriptorSets[2].dstBinding = 2;
-      writeDescriptorSets[2].pImageInfo =
-          &core::resources.getTexture(RTGT_ENVFILTER)->texture.descriptor;
+      writeDescriptorSets[2].pImageInfo = &imageDescriptors[0];
 
+      // RTGT_ENVIRRAD
       writeDescriptorSets[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
       writeDescriptorSets[3].descriptorType =
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
       writeDescriptorSets[3].descriptorCount = 1;
       writeDescriptorSets[3].dstSet = system.descriptorSets[i];
       writeDescriptorSets[3].dstBinding = 3;
-      writeDescriptorSets[3].pImageInfo =
-          &core::resources.getTexture(RTGT_ENVIRRAD)->texture.descriptor;
+      writeDescriptorSets[3].pImageInfo = &imageDescriptors[1];
 
+      // RTGT_LUTMAP
       writeDescriptorSets[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
       writeDescriptorSets[4].descriptorType =
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
       writeDescriptorSets[4].descriptorCount = 1;
       writeDescriptorSets[4].dstSet = system.descriptorSets[i];
       writeDescriptorSets[4].dstBinding = 4;
-      writeDescriptorSets[4].pImageInfo =
-          &core::resources.getTexture(RTGT_LUTMAP)->texture.descriptor;
+      writeDescriptorSets[4].pImageInfo = &imageDescriptors[2];
       
       vkUpdateDescriptorSets(logicalDevice.device, descriptorCount,
                              writeDescriptorSets.data(), 0, nullptr);
@@ -628,23 +628,23 @@ TResult core::MRenderer::createGraphicsPipelines() {
   inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
 
   // set main viewport
-  VkViewport& viewport = getRenderPass(ERenderPass::PBR)->viewport;
-  viewport.x = 0.0f;
-  viewport.y = static_cast<float>(swapchain.imageExtent.height);
-  viewport.width = static_cast<float>(swapchain.imageExtent.width);
-  viewport.height = -viewport.y;
-  viewport.minDepth = 0.0f;
-  viewport.maxDepth = 1.0f;
+  VkViewport* viewport = &getRenderPass(ERenderPass::PBR)->viewport;
+  viewport->x = 0.0f;
+  viewport->y = static_cast<float>(swapchain.imageExtent.height);
+  viewport->width = static_cast<float>(swapchain.imageExtent.width);
+  viewport->height = -viewport->y;
+  viewport->minDepth = 0.0f;
+  viewport->maxDepth = 1.0f;
 
-  VkRect2D& scissor = getRenderPass(ERenderPass::PBR)->scissor;
-  scissor.offset = {0, 0};
-  scissor.extent = swapchain.imageExtent;
+  VkRect2D* scissor = &getRenderPass(ERenderPass::PBR)->scissor;
+  scissor->offset = {0, 0};
+  scissor->extent = swapchain.imageExtent;
 
   VkPipelineViewportStateCreateInfo viewportInfo{};
   viewportInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-  viewportInfo.pViewports = &viewport;
+  viewportInfo.pViewports = viewport;
   viewportInfo.viewportCount = 1;
-  viewportInfo.pScissors = &scissor;
+  viewportInfo.pScissors = scissor;
   viewportInfo.scissorCount = 1;
 
   VkPipelineRasterizationStateCreateInfo rasterizationInfo{};
@@ -921,8 +921,11 @@ TResult core::MRenderer::createGraphicsPipelines() {
 
   graphicsPipelineInfo.layout = getPipelineLayout(EPipelineLayout::Environment);
   graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::Environment);
-  scissor = getRenderPass(ERenderPass::Environment)->scissor;
-  scissor.offset = {0, 0};
+  scissor = &getRenderPass(ERenderPass::Environment)->scissor;
+  scissor->offset = {0, 0};
+  viewport = &getRenderPass(ERenderPass::Environment)->viewport;
+  viewport->minDepth = 0.0f;
+  viewport->maxDepth = 1.0f;
 
   if (vkCreateGraphicsPipelines(
           logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
