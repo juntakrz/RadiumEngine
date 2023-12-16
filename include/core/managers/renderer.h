@@ -259,7 +259,8 @@ class MRenderer {
                       VkImageLayout oldLayout, VkImageLayout newLayout,
                       VkImageSubresourceRange subresourceRange);
 
-  TResult generateMipMaps(RTexture* pTexture, int32_t mipLevels);
+  TResult generateMipMaps(RTexture* pTexture, int32_t mipLevels,
+                          VkFilter filter = VK_FILTER_LINEAR);
 
   VkCommandPool getCommandPool(ECmdType type);
   VkQueue getCommandQueue(ECmdType type);

@@ -50,12 +50,12 @@ TResult core::MResources::loadTexture(const std::string& filePath,
   }
 
   // prepare freshly created texture structure
-  RTexture* newTexture = &m_textures.at(filePath);
-  newTexture->name = filePath;
-  newTexture->isKTX = true;
+  RTexture* pNewTexture = &m_textures.at(filePath);
+  pNewTexture->name = filePath;
+  pNewTexture->isKTX = true;
 
   ktxResult = ktxTexture_VkUploadEx(
-      pKTXTexture, deviceInfo, &newTexture->texture, VK_IMAGE_TILING_OPTIMAL,
+      pKTXTexture, deviceInfo, &pNewTexture->texture, VK_IMAGE_TILING_OPTIMAL,
       VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
   if (ktxResult != KTX_SUCCESS) {
@@ -68,18 +68,18 @@ TResult core::MResources::loadTexture(const std::string& filePath,
   ktxTexture_Destroy(pKTXTexture);
   ktxVulkanDeviceInfo_Destruct(deviceInfo);
 
-  if (newTexture->createImageView() != RE_OK) {
+  if (pNewTexture->createImageView() != RE_OK) {
     revert(filePath.c_str());
     return RE_ERROR;
   }
 
-  if (newTexture->createSampler(pSamplerInfo) != RE_OK) {
+  if (pNewTexture->createSampler(pSamplerInfo) != RE_OK) {
     revert(filePath.c_str());
     return RE_ERROR;
   }
 
   if (pSamplerInfo) {
-    if (newTexture->createDescriptor() != RE_OK) {
+    if (pNewTexture->createDescriptor() != RE_OK) {
       revert(filePath.c_str());
       return RE_ERROR;
     }

@@ -250,20 +250,16 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
                      environment.sourceRange);
     }
 
-    // generate mipmaps
-    for (uint32_t i = 1; i < mipLevels; ++i) {
-      /*viewport.width = static_cast<float>(dimension * std::pow(0.5f, i));
-      viewport.height = -static_cast<float>(dimension * std::pow(0.5f, i));
-      viewport.y = viewport.width;*/
-      environment.copyRegion.dstSubresource.mipLevel = i;
-    }
-
+    
     // switch image layout of the current cubemap to be used in future shaders
-    setImageLayout(commandBuffer, pCubemap,
+    /*setImageLayout(commandBuffer, pCubemap,
                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                   environment.destinationRanges[k]);
+                   environment.destinationRanges[k]);*/
 
     flushCommandBuffer(commandBuffer, ECmdType::Graphics);
+
+    // generate mipmaps
+    generateMipMaps(pCubemap, pCubemap->texture.levelCount);
   }
 
   // no need to render new environment maps every frame
