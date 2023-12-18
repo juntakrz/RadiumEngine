@@ -34,6 +34,12 @@ class MRenderer {
     std::vector<RTexture*> destinationTextures;
     std::vector<VkImageSubresourceRange> destinationRanges;
     VkImageCopy copyRegion;
+
+    struct {
+      uint32_t pipeline = 0; // ENVFILTER or ENVIRRAD
+      uint32_t layer = 0;    // cubemap layer
+      uint32_t mipLevel = 0; // mipmap level
+    } tracking;
   } environment;
 
   struct {
@@ -112,7 +118,9 @@ class MRenderer {
     RRenderPass* pCurrentRenderPass = nullptr;
     uint32_t frameInFlight = 0;
     uint32_t framesRendered = 0;
-    bool doEnvironmentPass = false;           // queue environment cubemaps (re)generation
+    bool doEnvironmentPass = false;         // queue full environment cubemaps (re)generation
+    bool generateEnvironmentMaps = false;   // queue stepped environment cubemaps (re)generation
+    bool isEnvironmentPass = false;         // is in the process of generating environmental maps
 
     void refresh() {
       pCurrentMesh = nullptr;
@@ -262,6 +270,11 @@ class MRenderer {
   TResult generateMipMaps(RTexture* pTexture, int32_t mipLevels,
                           VkFilter filter = VK_FILTER_LINEAR);
 
+  // generates a single mip map from a previous level at a set layer
+  TResult generateSingleMipMap(VkCommandBuffer cmdBuffer, RTexture* pTexture,
+                               uint32_t mipLevel, uint32_t layer = 0,
+                               VkFilter filter = VK_FILTER_LINEAR);
+
   VkCommandPool getCommandPool(ECmdType type);
   VkQueue getCommandQueue(ECmdType type);
 
@@ -399,6 +412,8 @@ class MRenderer {
 
   // renders Environment passes and generates PBR cubemaps for future use
   void renderEnvironmentMaps(VkCommandBuffer commandBuffer);
+
+  void renderEnvironmentMapsStepped(VkCommandBuffer commandBuffer);
 
   // generates BRDF LUT map
   void generateLUTMap();

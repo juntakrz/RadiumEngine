@@ -104,7 +104,8 @@ void core::run() {
 
   //core::animations.saveAnimation("SwordAndShieldIdle", "SwordAndShieldIdle");
   //
-  core::renderer.renderView.doEnvironmentPass = true;
+  //core::renderer.renderView.doEnvironmentPass = true;
+  core::renderer.renderView.generateEnvironmentMaps = true;
   // ---------------------------- */
 
   RE_LOG(Log, "Launching main event loop.");

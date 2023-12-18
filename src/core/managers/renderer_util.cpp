@@ -612,10 +612,10 @@ void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
 
   // Put barrier on top of pipeline.
   VkPipelineStageFlags srcStageFlags = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-  VkPipelineStageFlags destStageFlags = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+  VkPipelineStageFlags dstStageFlags = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 
   // Add the barrier to the passed command buffer
-  vkCmdPipelineBarrier(cmdBuffer, srcStageFlags, destStageFlags, 0, 0,
+  vkCmdPipelineBarrier(cmdBuffer, srcStageFlags, dstStageFlags, 0, 0,
                                NULL, 0, NULL, 1, &imageMemoryBarrier);
 }
 
@@ -627,7 +627,7 @@ TResult core::MRenderer::generateMipMaps(RTexture* pTexture, int32_t mipLevels,
   }
 
   if (mipLevels < 1) {
-    RE_LOG(Warning, "Tried to generate 0 mip maps for texture '%s'. Skipping",
+    RE_LOG(Warning, "Tried to generate 0 mip maps for texture '%s'. Skipping.",
            pTexture->name);
     return RE_WARNING;
   }
@@ -674,7 +674,7 @@ TResult core::MRenderer::generateMipMaps(RTexture* pTexture, int32_t mipLevels,
   blit.dstOffsets[0] = {0, 0, 0};
   blit.dstSubresource.layerCount = 1;
 
-  for (int32_t j = 0; j < range.layerCount; ++j) {
+  for (uint32_t j = 0; j < range.layerCount; ++j) {
     mipWidth = pTexture->texture.width;
     mipHeight = pTexture->texture.height;
 
@@ -733,6 +733,163 @@ TResult core::MRenderer::generateMipMaps(RTexture* pTexture, int32_t mipLevels,
   }
 
   flushCommandBuffer(cmdBuffer, ECmdType::Graphics, true);
+
+  pTexture->texture.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+  return RE_OK;
+}
+
+
+TResult core::MRenderer::generateSingleMipMap(VkCommandBuffer cmdBuffer,
+                                              RTexture* pTexture,
+                                              uint32_t mipLevel, uint32_t layer,
+                                              VkFilter filter) {
+  if (!pTexture) {
+    RE_LOG(Error, "Can't generate mip maps, no texture was provided.");
+    return RE_ERROR;
+  }
+
+  if (mipLevel < 1 || mipLevel > pTexture->texture.levelCount - 1 ||
+      layer < 0 || layer > pTexture->texture.layerCount - 1) {
+    RE_LOG(Error,
+           "Invalid mip map generation parameters for texture '%s'. Skipping.",
+           pTexture->name.c_str());
+    return RE_ERROR;
+  }
+
+  VkPipelineStageFlags srcStageMask = 0;
+
+  switch (pTexture->texture.descriptor.imageLayout) {
+    case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL: {
+      srcStageMask = VK_ACCESS_SHADER_READ_BIT;
+      break;
+    }
+    case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL: {
+      srcStageMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+      break;
+    }
+    default: {
+      RE_LOG(Error,
+             "Unsupported layout for mip map generation for texture '%s'. "
+             "Skipping.",
+             pTexture->name.c_str());
+      return RE_ERROR;
+    }
+  }
+
+  const int32_t mipWidth = pTexture->texture.width / (1 << mipLevel - 1);
+  const int32_t mipHeight = pTexture->texture.height / (1 << mipLevel - 1);
+
+  VkImageMemoryBarrier barrier{};
+  barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  barrier.pNext = NULL;
+  barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  barrier.image = pTexture->texture.image;
+  barrier.subresourceRange.layerCount = 1;
+  barrier.subresourceRange.levelCount = 1;
+  barrier.subresourceRange.baseArrayLayer = layer;
+  barrier.subresourceRange.baseMipLevel = mipLevel - 1;
+  barrier.oldLayout = pTexture->texture.imageLayout;
+  barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+
+  switch (pTexture->texture.imageLayout) {
+    case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL: {
+      barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+      break;
+    }
+    case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL: {
+      barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+      break;
+    }
+    default: {
+      RE_LOG(
+          Error,
+          "Invalid input texture layout when trying to generate a mip map for "
+          "'%s'. Layout must be either VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or "
+          "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL.",
+          pTexture->name.c_str());
+
+      return RE_ERROR;
+    }
+  }
+
+  barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+  if (pTexture->texture.imageFormat != VK_FORMAT_D32_SFLOAT_S8_UINT &&
+      pTexture->texture.imageFormat != VK_FORMAT_D24_UNORM_S8_UINT) {
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  } else {
+    barrier.subresourceRange.aspectMask =
+        VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+  }
+
+  // convert source mip level to TRANSFER SRC layout
+  vkCmdPipelineBarrier(cmdBuffer, srcStageMask,
+                       VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0,
+                       nullptr, 1, &barrier);
+
+  // convert destination mip level to TRANSFER DST layout if differs
+  if (pTexture->texture.imageLayout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+    barrier.subresourceRange.baseMipLevel = mipLevel;
+    barrier.oldLayout = pTexture->texture.imageLayout;
+    barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+    vkCmdPipelineBarrier(cmdBuffer, srcStageMask,
+                         VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0,
+                         nullptr, 1, &barrier);
+  }
+
+  VkImageBlit blit{};
+  blit.srcOffsets[0] = {0, 0, 0};
+  blit.srcSubresource.layerCount = 1;
+  blit.srcOffsets[1] = {mipWidth, mipHeight, 1};
+  blit.srcSubresource.aspectMask = barrier.subresourceRange.aspectMask;
+  blit.srcSubresource.baseArrayLayer = layer;
+  blit.srcSubresource.mipLevel = mipLevel - 1;
+  blit.dstOffsets[0] = {0, 0, 0};
+  blit.dstSubresource.layerCount = 1;
+  blit.dstOffsets[1] = {mipWidth > 1 ? mipWidth / 2 : 1,
+                        mipHeight > 1 ? mipHeight / 2 : 1, 1};
+  blit.dstSubresource.aspectMask = barrier.subresourceRange.aspectMask;
+  blit.dstSubresource.baseArrayLayer = layer;
+  blit.dstSubresource.mipLevel = mipLevel;
+
+  vkCmdBlitImage(cmdBuffer, pTexture->texture.image,
+                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, pTexture->texture.image,
+                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, filter);
+
+  // convert source mip map to its original layout
+  barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+  barrier.newLayout = pTexture->texture.imageLayout;
+  barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+  barrier.subresourceRange.baseMipLevel = mipLevel - 1;
+
+  switch (pTexture->texture.imageLayout) {
+    // leave mip map at 'mipLevel' as is because it already has a valid layout
+    case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL: {
+      barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+      break;
+    }
+    case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL: {
+      barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+      vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                           VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr,
+                           0, nullptr, 1, &barrier);
+
+      barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+      barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+      barrier.subresourceRange.baseMipLevel = mipLevel;
+
+      break;
+    }
+  }
+
+  vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                       VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0,
+                       nullptr, 1, &barrier);
 
   return RE_OK;
 }
