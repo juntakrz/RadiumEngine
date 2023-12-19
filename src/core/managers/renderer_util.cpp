@@ -777,8 +777,8 @@ TResult core::MRenderer::generateSingleMipMap(VkCommandBuffer cmdBuffer,
     }
   }
 
-  const int32_t mipWidth = pTexture->texture.width / (1 << mipLevel - 1);
-  const int32_t mipHeight = pTexture->texture.height / (1 << mipLevel - 1);
+  const int32_t mipWidth = pTexture->texture.width / (1 << (mipLevel - 1));
+  const int32_t mipHeight = pTexture->texture.height / (1 << (mipLevel - 1));
 
   VkImageMemoryBarrier barrier{};
   barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;

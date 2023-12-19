@@ -260,8 +260,10 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   renderView.doEnvironmentPass = false;
 }
 
-void core::MRenderer::renderEnvironmentMapsStepped(
-    VkCommandBuffer commandBuffer) {
+void core::MRenderer::renderEnvironmentMapsSequenced(
+    VkCommandBuffer commandBuffer, int32_t frameInterval) {
+  if (renderView.framesRendered % frameInterval) return;
+
   RTexture* pCubemap = nullptr;
   RRenderPass* pRenderPass = getRenderPass(ERenderPass::Environment);
 
@@ -581,12 +583,8 @@ void core::MRenderer::renderFrame() {
 
   VkCommandBuffer cmdBuffer = command.buffersGraphics[renderView.frameInFlight];
 
-  if (renderView.doEnvironmentPass) {
-    //renderEnvironmentMaps(cmdBuffer);
-  }
-
   if (renderView.generateEnvironmentMaps) {
-    renderEnvironmentMapsStepped(cmdBuffer);
+    renderEnvironmentMapsSequenced(cmdBuffer, RE_ENVINTERVAL);
   }
 
   // main PBR render pass:

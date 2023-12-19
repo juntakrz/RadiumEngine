@@ -38,6 +38,7 @@ constexpr bool bRequireValidationLayers = true;
 #define RE_FEXT_ANIMATIONS  ".anm"
 
 #define RE_MAGIC_ANIMATIONS 0x4D4E41
+#define RE_MAGIC_MODEL      0x4C444D
 
 #define RE_DEFAULTTEXTURE   "default/default_baseColor.ktx2"
 #define RE_WHITETEXTURE     "default/white.ktx2"
@@ -45,12 +46,13 @@ constexpr bool bRequireValidationLayers = true;
 #define RE_MAXTEXTURES      6
 #define RE_NEARZ            0.01f
 #define RE_MAXJOINTS        128u
+#define RE_ENVINTERVAL      10          // interval between environment map rendering steps
 
 // error levels
-#define RE_OK					      0x00		   // success
-#define RE_WARNING          0x01       // result is acceptable, but less than ideal
-#define RE_ERROR			      0x02       // error
-#define RE_CRITICAL         0x03       // unrecoverable error
+#define RE_OK					      0x00		    // success
+#define RE_WARNING          0x01        // result is acceptable, but less than ideal
+#define RE_ERROR			      0x02        // error
+#define RE_CRITICAL         0x03        // unrecoverable error
 
 // log levels
 constexpr char Log =        RE_OK;

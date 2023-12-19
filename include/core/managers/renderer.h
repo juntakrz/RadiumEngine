@@ -410,10 +410,11 @@ class MRenderer {
   void renderPrimitive(VkCommandBuffer cmdBuffer, WPrimitive* pPrimitive,
                        EPipeline pipelineFlag, REntityBindInfo* pBindInfo);
 
-  // renders Environment passes and generates PBR cubemaps for future use
+  // DEPRECATED - generates all environment maps and mipmaps in a single pass
   void renderEnvironmentMaps(VkCommandBuffer commandBuffer);
 
-  void renderEnvironmentMapsStepped(VkCommandBuffer commandBuffer);
+  void renderEnvironmentMapsSequenced(VkCommandBuffer commandBuffer,
+                                      int32_t frameInterval = 1);
 
   // generates BRDF LUT map
   void generateLUTMap();
