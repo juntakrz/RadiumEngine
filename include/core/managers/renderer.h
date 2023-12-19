@@ -34,6 +34,7 @@ class MRenderer {
     std::vector<RTexture*> destinationTextures;
     std::vector<VkImageSubresourceRange> destinationRanges;
     VkImageCopy copyRegion;
+    int32_t genInterval = 3;
 
     struct {
       uint32_t pipeline = 0; // ENVFILTER or ENVIRRAD
@@ -118,9 +119,9 @@ class MRenderer {
     RRenderPass* pCurrentRenderPass = nullptr;
     uint32_t frameInFlight = 0;
     uint32_t framesRendered = 0;
-    bool doEnvironmentPass = false;         // queue full environment cubemaps (re)generation
-    bool generateEnvironmentMaps = false;   // queue stepped environment cubemaps (re)generation
-    bool isEnvironmentPass = false;         // is in the process of generating environmental maps
+    bool generateEnvironmentMapsImmediate = false;  // queue single pass environment map gen (slow)
+    bool generateEnvironmentMaps = false;           // queue sequenced environment map gen (fast)
+    bool isEnvironmentPass = false;                 // is in the process of generating
 
     void refresh() {
       pCurrentMesh = nullptr;

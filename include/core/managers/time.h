@@ -3,7 +3,6 @@
 namespace core {
 
   class MTime {
-    //std::thread coreTimerThread;
     double m_initialTimePoint;
     double m_oldTimePoint;
     double m_currentTimePoint;

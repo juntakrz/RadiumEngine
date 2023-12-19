@@ -104,7 +104,7 @@ void core::run() {
 
   //core::animations.saveAnimation("SwordAndShieldIdle", "SwordAndShieldIdle");
   //
-  //core::renderer.renderView.doEnvironmentPass = true;
+  //core::renderer.renderView.generateEnvironmentMapsImmediate = true;
   core::renderer.renderView.generateEnvironmentMaps = true;
   // ---------------------------- */
 

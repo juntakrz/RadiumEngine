@@ -191,8 +191,7 @@ void core::MRenderer::destroyDescriptorPool() {
 }
 
 TResult core::MRenderer::createUniformBuffers() {
-  // each frame will require a separate buffer, so 2 frames in flight would
-  // require buffers * 2
+  // TODO: dynamic uniform buffers with an offset tied to frame in flight
   view.modelViewProjectionBuffers.resize(MAX_FRAMES_IN_FLIGHT);
   lighting.buffers.resize(MAX_FRAMES_IN_FLIGHT);
 

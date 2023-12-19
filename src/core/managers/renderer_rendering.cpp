@@ -107,7 +107,7 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
                             &pPrimitive->pMaterial->descriptorSet, 0, nullptr);
     
     // environment render pass uses global push constant block for fragment shader
-    if (!renderView.doEnvironmentPass && !renderView.isEnvironmentPass) {
+    if (!renderView.generateEnvironmentMapsImmediate && !renderView.isEnvironmentPass) {
       vkCmdPushConstants(cmdBuffer, renderView.pCurrentRenderPass->usedLayout,
                          VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(RMaterialPCB),
                          &pPrimitive->pMaterial->pushConstantBlock);
@@ -257,7 +257,7 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   }
 
   // no need to render new environment maps every frame
-  renderView.doEnvironmentPass = false;
+  renderView.generateEnvironmentMapsImmediate = false;
 }
 
 void core::MRenderer::renderEnvironmentMapsSequenced(
@@ -584,7 +584,7 @@ void core::MRenderer::renderFrame() {
   VkCommandBuffer cmdBuffer = command.buffersGraphics[renderView.frameInFlight];
 
   if (renderView.generateEnvironmentMaps) {
-    renderEnvironmentMapsSequenced(cmdBuffer, RE_ENVINTERVAL);
+    renderEnvironmentMapsSequenced(cmdBuffer, environment.genInterval);
   }
 
   // main PBR render pass:
@@ -652,7 +652,7 @@ void core::MRenderer::renderFrame() {
 
     return;
   }
-  //renderView.doEnvironmentPass = true;
+
   sync.asyncUpdateEntities.update();
 
   renderView.frameInFlight = ++renderView.frameInFlight % MAX_FRAMES_IN_FLIGHT;
