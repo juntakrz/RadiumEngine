@@ -1062,6 +1062,10 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
 
   copyBuffer(&pModel->staging.indexBuffer, &scene.indexBuffer, &copyInfo);
 
+  // store reference data to model in the scene buffers
+  pModel->setSceneBindingData(scene.currentVertexOffset,
+                              scene.currentIndexOffset);
+
   // add model to rendering queue, store its offsets
   REntityBindInfo bindInfo{};
   bindInfo.pEntity = pEntity;
@@ -1071,6 +1075,17 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
   bindInfo.indexCount = pModel->m_indexCount;
 
   system.bindings.emplace_back(bindInfo);
+
+  // TODO: implement indirect draw command properly
+  VkDrawIndexedIndirectCommand drawCommand{};
+  drawCommand.firstInstance = 0;
+  drawCommand.instanceCount = 1;
+  drawCommand.vertexOffset = scene.currentVertexOffset;
+  drawCommand.firstIndex = scene.currentIndexOffset;
+  drawCommand.indexCount = pModel->m_indexCount;
+
+  system.drawCommands.emplace_back(drawCommand);
+  // TODO
 
   pEntity->setBindingIndex(static_cast<int32_t>(system.bindings.size() - 1));
 

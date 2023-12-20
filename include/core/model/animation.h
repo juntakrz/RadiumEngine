@@ -36,9 +36,15 @@ class WAnimation {
     int32_t index = 0;
   };
 
-  struct KeyFrame {
+  struct KeyFrame2 {
     float timeStamp = 0.0f;
     glm::mat4 nodeMatrix = glm::mat4(1.0f);
+    std::vector<glm::mat4> jointMatrices; // TODO: repeating the same joint matrices for each node, wasteful, rework. Maybe each key frame should also contain node index - matrix pair instead
+  };
+
+  struct KeyFrame {
+    float timeStamp = 0.0f;
+    std::unordered_map<int32_t, glm::mat4> nodeMatrices;
     std::vector<glm::mat4> jointMatrices;
   };
 
@@ -54,7 +60,8 @@ class WAnimation {
   std::vector<AnimatedNode> m_animatedNodes;
 
   // contains node index and all its keyframes
-  std::unordered_map<int32_t, std::vector<KeyFrame>> m_nodeKeyFrames;
+  //std::unordered_map<int32_t, std::vector<KeyFrame>> m_nodeKeyFrames;
+  std::vector<KeyFrame> m_keyFrames;
 
   void processFrame(WModel* pModel, const float time);
   void addKeyFrame(const int32_t nodeIndex, const float timeStamp,

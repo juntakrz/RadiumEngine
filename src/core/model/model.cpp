@@ -178,6 +178,18 @@ void WModel::resetUniformBlockData() {
   update(glm::mat4(1.0f));
 }
 
+void WModel::setSceneBindingData(size_t vertexOffset, size_t indexOffset) {
+  m_sceneVertexOffset = vertexOffset;
+  m_sceneIndexOffset = indexOffset;
+  m_isBoundToScene = true;
+}
+
+void WModel::clearSceneBindingData() {
+  m_sceneVertexOffset = 0u;
+  m_sceneIndexOffset = 0u;
+  m_isBoundToScene = false;
+}
+
 void WModel::bindAnimation(const std::string& name) {
   for (const auto& boundAnimation : m_boundAnimations) {
     if (boundAnimation == name) {

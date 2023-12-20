@@ -105,16 +105,18 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
     }
   }
 
-  // model mesh matrices
+  // model transform matrices
+  // 0 - root transform matrices (offset stored in entity)
+  // 1 - node/joint transform matrices (offset stored by animations manager)
   {
     system.descriptorSetLayouts.emplace(EDescriptorSetLayout::Mesh,
                                         VK_NULL_HANDLE);
 
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
-        {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1,
-         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
-        {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT,
-         nullptr}};
+        {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1,
+         VK_SHADER_STAGE_VERTEX_BIT, nullptr},
+        {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1,
+         VK_SHADER_STAGE_VERTEX_BIT, nullptr}};
 
     VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
     setLayoutCreateInfo.sType =
@@ -343,6 +345,68 @@ TResult core::MRenderer::createDescriptorSets() {
                              static_cast<uint32_t>(writeSets.size()),
                              writeSets.data(), 0, nullptr);
     }
+  }
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Creating mesh transformation descriptor set.");
+#endif
+
+  {
+    VkDevice device = core::renderer.logicalDevice.device;
+
+    VkDescriptorSetLayout meshLayout =
+        getDescriptorSetLayout(EDescriptorSetLayout::Mesh);
+
+    VkDescriptorSetAllocateInfo descriptorSetAllocInfo{};
+    descriptorSetAllocInfo.sType =
+        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    descriptorSetAllocInfo.descriptorPool = core::renderer.getDescriptorPool();
+    descriptorSetAllocInfo.pSetLayouts = &meshLayout;
+    descriptorSetAllocInfo.descriptorSetCount = 1;
+
+    VkResult result;
+    if ((result = vkAllocateDescriptorSets(
+             device, &descriptorSetAllocInfo,
+             &scene.transformSet)) != VK_SUCCESS) {
+      RE_LOG(Error,
+             "Failed to create mesh transformation descriptor set. Vulkan "
+             "error %d.",
+             result);
+      return;
+    }
+
+    #ifndef NDEBUG
+    RE_LOG(Log, "Populating mesh transformation descriptor set.");
+#endif
+
+    VkDescriptorBufferInfo rootMatrixBufferInfo{};
+    rootMatrixBufferInfo.buffer = scene.rootTransformBuffer.buffer;
+    rootMatrixBufferInfo.offset = 0;
+    rootMatrixBufferInfo.range = sizeof(glm::mat4); // root matrix
+
+    VkDescriptorBufferInfo nodeMatrixBufferInfo{};
+    nodeMatrixBufferInfo.buffer = scene.nodeTransformBuffer.buffer;
+    nodeMatrixBufferInfo.offset = 0;
+    // node matrix + joint matrix + joint count
+    nodeMatrixBufferInfo.range = sizeof(glm::mat4) * 2 + sizeof(float);
+
+    std::vector<VkWriteDescriptorSet> writeSets(2);
+    writeSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeSets[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    writeSets[0].descriptorCount = 1;
+    writeSets[0].dstSet = scene.transformSet;
+    writeSets[0].dstBinding = 0;
+    writeSets[0].pBufferInfo = &rootMatrixBufferInfo;
+
+    writeSets[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeSets[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    writeSets[1].descriptorCount = 1;
+    writeSets[1].dstSet = scene.transformSet;
+    writeSets[1].dstBinding = 1;
+    writeSets[1].pBufferInfo = &nodeMatrixBufferInfo;
+
+    vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeSets.size()),
+                           writeSets.data(), 0, nullptr);
   }
 
   return RE_OK;

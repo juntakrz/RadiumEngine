@@ -30,7 +30,6 @@ class WModel {
     Node* skeletonRoot = nullptr;
     std::vector<glm::mat4> inverseBindMatrices;
     std::vector<Node*> joints;
-    RBuffer animationBuffer;
   };
 
   struct Mesh {
@@ -112,8 +111,11 @@ class WModel {
 
   std::string m_name = "$NONAMEMODEL$";
 
+  size_t m_sceneVertexOffset = 0u;
+  size_t m_sceneIndexOffset = 0u;
   uint32_t m_vertexCount = 0u;
   uint32_t m_indexCount = 0u;
+  bool m_isBoundToScene = false;
 
   std::vector<std::unique_ptr<WModel::Node>> m_pChildNodes;
 
@@ -133,7 +135,7 @@ class WModel {
   // stored references to used animations
   std::vector<std::string> m_boundAnimations;
 
-  // currently active animations
+  // currently active animations (name / index in update queue)
   std::unordered_map<std::string, int32_t> m_playingAnimations;
 
   // stored skins
@@ -194,6 +196,12 @@ class WModel {
   const std::vector<std::unique_ptr<WModel::Node>>& getRootNodes() noexcept;
   std::vector<WModel::Node*>& getAllNodes() noexcept;
   WModel::Node* getNode(uint32_t index) noexcept;
+
+  // call to store reference data when model is getting bound to scene buffers
+  void setSceneBindingData(size_t vertexOffset, size_t indexOffset);
+
+  // must be called when removing the model from scene buffers
+  void clearSceneBindingData();
 
   // check if model can have the animation assigned and bind it
   void bindAnimation(const std::string& name);

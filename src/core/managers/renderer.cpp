@@ -125,6 +125,18 @@ TResult core::MRenderer::createSceneBuffers() {
   createBuffer(EBufferMode::DGPU_INDEX, config::scene::getIndexBufferSize(),
                scene.indexBuffer, nullptr);
 
+  RE_LOG(Log, "Allocating scene buffer for %d entities with transformation.",
+         config::scene::entityBudget);
+  createBuffer(EBufferMode::CPU_UNIFORM,
+               config::scene::getRootTransformBufferSize(),
+               scene.rootTransformBuffer, nullptr);
+
+  RE_LOG(Log, "Allocating scene buffer for %d unique nodes with transformation.",
+         config::scene::nodeBudget);
+  createBuffer(EBufferMode::CPU_UNIFORM,
+               config::scene::getNodeTransformBufferSize(),
+               scene.nodeTransformBuffer, nullptr);
+
   return RE_OK;
 }
 
@@ -134,6 +146,10 @@ void core::MRenderer::destroySceneBuffers() {
                    scene.vertexBuffer.allocation);
   vmaDestroyBuffer(memAlloc, scene.indexBuffer.buffer,
                    scene.indexBuffer.allocation);
+  vmaDestroyBuffer(memAlloc, scene.rootTransformBuffer.buffer,
+                   scene.rootTransformBuffer.allocation);
+  vmaDestroyBuffer(memAlloc, scene.nodeTransformBuffer.buffer,
+                   scene.nodeTransformBuffer.allocation);
 }
 
 core::MRenderer::RSceneBuffers* core::MRenderer::getSceneBuffers() {

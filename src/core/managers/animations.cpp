@@ -128,9 +128,10 @@ void core::MAnimations::runAnimationQueue() {
                nodeKeyFrames->at(i).timeStamp);
 
           if (u <= 1.0f) {
-            math::interpolate(nodeKeyFrames->at(i).nodeMatrix,
-                              nodeKeyFrames->at(i + 1).nodeMatrix, u,
-                              pNode->pMesh->uniformBlock.nodeMatrix);
+            math::interpolate(
+                nodeKeyFrames->at(i).nodeMatrices.at(node.index),
+                nodeKeyFrames->at(i + 1).nodeMatrices.at(node.index), u,
+                pNode->pMesh->uniformBlock.nodeMatrix);
 
             const size_t jointCount = nodeKeyFrames->at(i).jointMatrices.size();
 
@@ -185,4 +186,8 @@ void core::MAnimations::cleanupQueue() {
   }
 
   m_cleanupQueue.clear();
+}
+
+VkDescriptorSet core::MAnimations::getAnimationDescriptorSet() {
+  return m_animationSet;
 }

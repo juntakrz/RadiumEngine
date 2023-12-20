@@ -35,18 +35,23 @@ extern float pitchLimit;                        // camera pitch limit
 
 // scene buffer values
 namespace scene {
-  // expected unique vertices and indices
-  // that scene vertex and index buffers will be allocated for
-  // TODO: set these through map configuration
-  //
-  // TODO: if ever needed - allocate new scene vertex and index buffers when
-  // buffer overflow happens NOTE: on device 96 bytes per vertex / 4 bytes per index
+// expected unique vertices and indices
+// that scene vertex and index buffers will be allocated for
+// TODO: set these through map configuration
+//
+// TODO: if ever needed - allocate new scene vertex and index buffers when
+// buffer overflow happens NOTE: on device 96 bytes per vertex / 4 bytes per
+// index
 
-  const size_t vertexBudget = 5000000u;    // ~480 MBs for vertex data
-  const size_t indexBudget = 100000000u;   // ~400 MBs for index data
-  size_t getVertexBufferSize();
-  size_t getIndexBufferSize();
-};
+const size_t vertexBudget = 5000000u;   // ~480 MBs for vertex data
+const size_t indexBudget = 100000000u;  // ~400 MBs for index data
+const size_t entityBudget = 10000u;     // ~1.2 MBs for root transformation matrices
+const size_t nodeBudget = 1000000u;     // ~256 MBs for node transformation matrices
+size_t getVertexBufferSize();
+size_t getIndexBufferSize();
+size_t getRootTransformBufferSize();
+size_t getNodeTransformBufferSize();
+};  // namespace scene
 
 float getAspectRatio();
 };  // namespace config

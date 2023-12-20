@@ -51,8 +51,12 @@ class MRenderer {
   struct RSceneBuffers {
     RBuffer vertexBuffer;
     RBuffer indexBuffer;
+    RBuffer rootTransformBuffer;
+    RBuffer nodeTransformBuffer;
     uint32_t currentVertexOffset = 0u;
     uint32_t currentIndexOffset = 0u;
+    uint32_t currentTransformOffset = 0u;
+    VkDescriptorSet transformSet;
   } scene;
 
   // swapchain data
@@ -89,6 +93,7 @@ class MRenderer {
         descriptorSetLayouts;
 
     std::vector<REntityBindInfo> bindings;                            // entities rendered during the current frame
+    std::vector<VkDrawIndexedIndirectCommand> drawCommands;
     std::unordered_map<EPipeline, std::vector<WPrimitive*>> primitivesByPipeline;   // TODO
   } system;
 

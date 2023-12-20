@@ -21,4 +21,12 @@ size_t config::scene::getIndexBufferSize() {
   return sizeof(uint32_t) * indexBudget;
 }
 
+size_t config::scene::getRootTransformBufferSize() {
+  return sizeof(glm::mat4) * 2 * entityBudget;
+}
+
+size_t config::scene::getNodeTransformBufferSize() {
+  return sizeof(glm::mat4) * 4 * entityBudget;
+}
+
 VkFormat core::vulkan::formatDepth;

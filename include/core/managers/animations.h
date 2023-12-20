@@ -51,6 +51,8 @@ class MAnimations {
 
   int32_t m_availableQueueIndex = 0;
 
+  VkDescriptorSet m_animationSet;
+
   MAnimations(){};
 
  public:
@@ -77,5 +79,7 @@ class MAnimations {
   int32_t addAnimationToQueue(const WAnimationInfo* pAnimationInfo);
   void runAnimationQueue();
   void cleanupQueue();
+
+  VkDescriptorSet getAnimationDescriptorSet();
 };
 }  // namespace core
