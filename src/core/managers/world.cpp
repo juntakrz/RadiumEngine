@@ -169,7 +169,7 @@ TResult core::MWorld::createModel(EPrimitiveType type, std::string name,
     primitive->pMaterial = pDefaultMaterial;
   }
 
-  pModel->update(glm::mat4(1.0f));
+  pModel->updateNodeTransformBuffer();
 
   // calculate bounding box extent for the whole mesh based on created primitives
   /*glm::vec3 minExtent{0.0f}, maxExtent{0.0f};

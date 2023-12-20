@@ -3,8 +3,14 @@
 #include "util/math.h"
 #include "core/core.h"
 #include "core/model/model.h"
+#include "core/world/actors/base.h"
 #include "core/managers/time.h"
 #include "core/managers/animations.h"
+
+core::MAnimations::MAnimations() {
+  m_rootTransformBufferIndices.resize(config::scene::entityBudget);
+  m_nodeTransformBufferIndices.resize(config::scene::nodeBudget);
+}
 
 WAnimation* core::MAnimations::createAnimation(const std::string& name) {
   if (m_animations.find(name) == m_animations.end()) {
@@ -188,6 +194,42 @@ void core::MAnimations::cleanupQueue() {
   m_cleanupQueue.clear();
 }
 
-VkDescriptorSet core::MAnimations::getAnimationDescriptorSet() {
-  return m_animationSet;
+bool core::MAnimations::getOrRegisterActorOffsetIndex(AEntity* pActor,
+                                                      size_t& outIndex) {
+  size_t freeIndex = -1;
+
+  for (size_t i = 0; i < m_rootTransformBufferIndices.size(); ++i) {
+    if (m_rootTransformBufferIndices[i] == nullptr && freeIndex == -1) {
+      freeIndex = i;
+    }
+
+    if (m_rootTransformBufferIndices[i] == pActor) {
+      outIndex = i;
+      return false; // actor is already registered
+    }
+  }
+
+  m_rootTransformBufferIndices[freeIndex] = pActor;
+  outIndex = freeIndex;
+  return true;  // registered actor to the first free index
+}
+
+bool core::MAnimations::getOrRegisterNodeOffsetIndex(
+    AEntity::AnimatedNodeBinding* pNode, size_t& outIndex) {
+  size_t freeIndex = -1;
+
+  for (size_t i = 0; i < m_rootTransformBufferIndices.size(); ++i) {
+    if (m_nodeTransformBufferIndices[i] == nullptr && freeIndex == -1) {
+      freeIndex = i;
+    }
+
+    if (m_nodeTransformBufferIndices[i] == pNode) {
+      outIndex = i;
+      return false;  // actor is already registered
+    }
+  }
+
+  m_nodeTransformBufferIndices[freeIndex] = pNode;
+  outIndex = freeIndex;
+  return true;  // registered actor to the first free index
 }

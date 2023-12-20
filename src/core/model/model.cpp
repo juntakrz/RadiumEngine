@@ -143,7 +143,9 @@ std::vector<WModel::Node*>& WModel::getAllNodes() noexcept {
   return m_pLinearNodes;
 }
 
-void WModel::update(const glm::mat4& modelMatrix) noexcept {
+void WModel::updateNodeTransformBuffer() noexcept {
+  // TODO: rewrite to upload transformed node matrices into mesh transform buffer based on stored offsets
+
   for (auto& node : getAllNodes()) {
     if (node->pMesh) {
       if (node->pSkin) {
@@ -173,7 +175,7 @@ void WModel::resetUniformBlockData() {
     }
   }
 
-  update(glm::mat4(1.0f));
+  updateNodeTransformBuffer();
 }
 
 void WModel::setSceneBindingData(size_t vertexOffset, size_t indexOffset) {

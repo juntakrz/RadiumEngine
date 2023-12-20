@@ -100,7 +100,7 @@ TResult WModel::createModel(const char* name, const tinygltf::Model* pInModel,
     }
 
     // Initial pose
-    update(glm::mat4(1.0f));
+    updateNodeTransformBuffer();
   }
 
   if (pConfigInfo &&

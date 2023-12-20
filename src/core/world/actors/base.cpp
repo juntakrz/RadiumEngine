@@ -147,4 +147,6 @@ void ABase::setScalingModifier(float newModifier) {
 
 void ABase::setName(const char* name) { m_name = name; }
 
+const char* ABase::getName() { return m_name.c_str(); }
+
 const EActorType& ABase::typeId() { return m_typeId; }

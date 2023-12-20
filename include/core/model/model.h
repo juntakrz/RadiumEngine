@@ -58,7 +58,7 @@ class WModel {
 
   struct Node {
     std::string name = "$NONAMENODE$";
-    int32_t index = 0;
+    int32_t index = -1;
     int32_t skinIndex = -1;
 
     // node hierarchy
@@ -151,8 +151,8 @@ class WModel {
   // sorts primitives
   void sortPrimitivesByMaterial();
 
-  // sets root matrix for all nodes with mesh
-  void update(const glm::mat4& modelMatrix) noexcept;
+  // update node transform buffer at node offsets
+  void updateNodeTransformBuffer() noexcept;
 
   // resets all transformation matrices stored in uniform blocks to identity
   void resetUniformBlockData();

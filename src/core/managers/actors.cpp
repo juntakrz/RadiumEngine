@@ -70,7 +70,7 @@ APawn* core::MActors::createPawn(const char* name) {
 
 TResult core::MActors::destroyPawn(const char* name) {
   if (m_actors.pawns.contains(name)){
-    if (m_actors.pawns.at(name)->getBindingIndex() > -1) {
+    if (m_actors.pawns.at(name)->getRendererBindingIndex() > -1) {
       RE_LOG(Error,
              "Failed to destroy pawn \"%s\". It is still bound to rendering "
              "pipeline.");
@@ -111,7 +111,7 @@ AStatic* core::MActors::createStatic(const char* name) {
 
 TResult core::MActors::destroyStatic(const char* name) {
   if (m_actors.statics.contains(name)) {
-    if (m_actors.statics.at(name)->getBindingIndex() > -1) {
+    if (m_actors.statics.at(name)->getRendererBindingIndex() > -1) {
       RE_LOG(Error,
              "Failed to destroy static \"%s\". It is still bound to rendering "
              "pipeline.");

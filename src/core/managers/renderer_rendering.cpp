@@ -91,10 +91,14 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
 
   WModel::Node* pNode = reinterpret_cast<WModel::Node*>(pPrimitive->pOwnerNode);
   WModel::Mesh* pMesh = pNode->pMesh.get();
+  AEntity* pEntity = pBindInfo->pEntity;
 
   // mesh descriptor set is at binding 1 (TODO: change from mesh to actor)
   if (renderView.pCurrentMesh != pMesh) {
-    uint32_t dynamicOffsets[2] = {0, 0};    // offsets into root matrix buffer and node matrix buffer
+    uint32_t dynamicOffsets[2] = {
+        pEntity->getRootTransformBufferOffset(),
+        pEntity->getNodeTransformBufferOffset(
+            pNode->index)};  // offsets into root matrix buffer and node matrix buffer
     vkCmdBindDescriptorSets(
         cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentRenderPass->usedLayout,
         1, 1, &scene.transformSet, 2, dynamicOffsets);

@@ -1041,7 +1041,7 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
   }
 
   // check if model is already bound, it shouldn't have valid offsets stored
-  if (pEntity->getBindingIndex() > -1) {
+  if (pEntity->getRendererBindingIndex() > -1) {
     RE_LOG(Error, "Entity is already bound.");
     return -1;
   }
@@ -1087,7 +1087,8 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
   system.drawCommands.emplace_back(drawCommand);
   // TODO
 
-  pEntity->setBindingIndex(static_cast<int32_t>(system.bindings.size() - 1));
+  pEntity->setRendererBindingIndex(
+      static_cast<int32_t>(system.bindings.size() - 1));
 
   // store new offsets into scene buffer data
   scene.currentVertexOffset += pModel->m_vertexCount;
@@ -1117,7 +1118,7 @@ void core::MRenderer::unbindEntity(uint32_t index) {
   }
 #endif
 
-  system.bindings[index].pEntity->setBindingIndex(-1);
+  system.bindings[index].pEntity->setRendererBindingIndex(-1);
   system.bindings[index].pEntity = nullptr;
 }
 

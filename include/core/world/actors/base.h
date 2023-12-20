@@ -91,6 +91,7 @@ class ABase {
   void setScalingModifier(float newModifier);
 
   void setName(const char* name);
+  const char* getName();
 
   const EActorType& typeId();
 };

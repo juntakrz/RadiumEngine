@@ -76,13 +76,14 @@ void core::run() {
 
   AStatic* pStatic = core::actors.createStatic("Skybox");
   pStatic->setModel(core::world.getModel("mdlSkybox"));
-  core::renderer.bindEntity(pStatic);
+  pStatic->bindToRenderer();
+  //core::renderer.bindEntity(pStatic);
   pStatic->getModel()->getPrimitives()[0]->pMaterial =
     core::resources.getMaterial("skybox");
   
   pStatic = core::actors.createStatic("Static01");
   pStatic->setModel(core::world.getModel("mdlGuy"));
-  core::renderer.bindEntity(pStatic);
+  //core::renderer.bindEntity(pStatic);
   pStatic->setLocation(0.0f, -1.0f, -0.3f);
   pStatic->setRotation({0.0f, 1.0f, 0.0f}, glm::radians(100.0f));
   pStatic->setScale(0.32f);
@@ -92,8 +93,8 @@ void core::run() {
 
   //core::animations.loadAnimation("Idle");
   
-  pStatic->getModel()->bindAnimation("Idle");
-  pStatic->getModel()->playAnimation("Idle");
+  //pStatic->getModel()->bindAnimation("Idle");
+  //pStatic->getModel()->playAnimation("Idle");
 
   pStatic = core::actors.createStatic("Box1");
   pStatic->setModel(core::world.getModel("mdlBox1"));
