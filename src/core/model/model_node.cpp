@@ -34,51 +34,6 @@ void WModel::Node::destroyMeshBuffer() {
                    pMesh->uniformBufferData.uniformBuffer.allocation);
 }
 
-void WModel::Node::setNodeDescriptorSet(bool updateChildren) {
-  if (!pMesh) {
-    // most likely a joint node
-    return;
-  }
-
-  VkDevice device = core::renderer.logicalDevice.device;
-
-  // create node/mesh descriptor set
-  VkDescriptorSetLayout layoutMesh =
-      core::renderer.getDescriptorSetLayout(EDescriptorSetLayout::Mesh);
-
-  VkDescriptorSetAllocateInfo descriptorSetAllocInfo{};
-  descriptorSetAllocInfo.sType =
-      VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-  descriptorSetAllocInfo.descriptorPool = core::renderer.getDescriptorPool();
-  descriptorSetAllocInfo.pSetLayouts = &layoutMesh;
-  descriptorSetAllocInfo.descriptorSetCount = 1;
-
-  VkResult result;
-  if ((result = vkAllocateDescriptorSets(
-         device, &descriptorSetAllocInfo,
-          &pMesh->uniformBufferData.descriptorSet)) != VK_SUCCESS) {
-    RE_LOG(Error, "Failed to create node descriptor set. Vulkan error %d.",
-           result);
-    return;
-  }
-
-  VkWriteDescriptorSet writeDescriptorSet{};
-  writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-  writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  writeDescriptorSet.descriptorCount = 1;
-  writeDescriptorSet.dstSet = pMesh->uniformBufferData.descriptorSet;
-  writeDescriptorSet.dstBinding = 0;
-  writeDescriptorSet.pBufferInfo = &pMesh->uniformBufferData.descriptorBufferInfo;
-
-  vkUpdateDescriptorSets(device, 1, &writeDescriptorSet, 0, nullptr);
-
-  if (updateChildren) {
-    for (auto& child : pChildren) {
-      child->setNodeDescriptorSet(updateChildren);
-    }
-  }
-}
-
 void WModel::Node::propagateTransformation(const glm::mat4& accumulatedMatrix) {
   transformedNodeMatrix = accumulatedMatrix * getLocalMatrix();
 
@@ -90,7 +45,6 @@ void WModel::Node::propagateTransformation(const glm::mat4& accumulatedMatrix) {
 void WModel::Node::updateStagingNodeMatrices(const glm::mat4& modelMatrix,
                                              WAnimation* pOutAnimation) {
   if (pMesh) {
-    pMesh->uniformBlock.rootMatrix = modelMatrix;
     pMesh->uniformBlock.nodeMatrix = transformedNodeMatrix;
 
     // node has mesh, store a reference to it in an animation
@@ -105,7 +59,7 @@ void WModel::Node::updateStagingNodeMatrices(const glm::mat4& modelMatrix,
         glm::mat4 jointMatrix =
             pJointNode->transformedNodeMatrix * pSkin->inverseBindMatrices[i];
         jointMatrix = inverseTransform * jointMatrix;
-        pMesh->uniformBlock.jointMatrices[i] = jointMatrix;
+        //pMesh->uniformBlock.jointMatrices[i] = jointMatrix;
       }
       pMesh->uniformBlock.jointCount = (float)numJoints;
       memcpy(pMesh->uniformBufferData.uniformBuffer.allocInfo.pMappedData,

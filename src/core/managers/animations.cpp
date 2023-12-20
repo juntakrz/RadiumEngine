@@ -98,7 +98,7 @@ int32_t core::MAnimations::addAnimationToQueue(const WAnimationInfo* pAnimationI
 
 void core::MAnimations::runAnimationQueue() {
   cleanupQueue();
-
+  /*
   for (auto& queueEntry : m_animationQueue) {
     // get a list of all nodes affected by the animation
     const auto& animatedNodes = queueEntry.pAnimation->getAnimatedNodes();
@@ -177,7 +177,7 @@ void core::MAnimations::runAnimationQueue() {
         }
       }
     }
-  }
+  }*/
 }
 
 void core::MAnimations::cleanupQueue() {

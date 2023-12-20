@@ -169,10 +169,6 @@ TResult core::MWorld::createModel(EPrimitiveType type, std::string name,
     primitive->pMaterial = pDefaultMaterial;
   }
 
-  for (auto& node : pModel->getRootNodes()) {
-    node->setNodeDescriptorSet(true);
-  }
-
   pModel->update(glm::mat4(1.0f));
 
   // calculate bounding box extent for the whole mesh based on created primitives

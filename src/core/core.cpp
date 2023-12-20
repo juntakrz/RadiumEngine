@@ -61,7 +61,7 @@ void core::run() {
   core::world.createModel(EPrimitiveType::Cube, "mdlBox1", 1, false);
 
   WModelConfigInfo modelConfigInfo{};
-  modelConfigInfo.animationLoadMode = EAnimationLoadMode::None;
+  modelConfigInfo.animationLoadMode = EAnimationLoadMode::ExtractToManager;
 
   core::world.loadModelFromFile("content/models/wc3guy/scene.gltf", "mdlGuy", &modelConfigInfo);
   //core::world.loadModelFromFile("content/models/windmill/scene.gltf", "mdlGuy");
@@ -90,7 +90,7 @@ void core::run() {
   //pStatic->getModel()->bindAnimation("Windy day");
   //pStatic->getModel()->playAnimation("Windy day");
 
-  core::animations.loadAnimation("Idle");
+  //core::animations.loadAnimation("Idle");
   
   pStatic->getModel()->bindAnimation("Idle");
   pStatic->getModel()->playAnimation("Idle");

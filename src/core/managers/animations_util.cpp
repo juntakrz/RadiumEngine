@@ -168,9 +168,9 @@ TResult core::MAnimations::loadAnimation(std::string filename,
       pAnimation->addKeyFrame(inNode.nodeIndex, inKeyFrame.timeStamp,
                               inKeyFrame.nodeMatrix, inKeyFrame.jointMatrices);
     }
-  }
+  }*/
 
-  return RE_OK;*/
+  return RE_OK;
 }
 
 

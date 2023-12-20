@@ -146,8 +146,6 @@ std::vector<WModel::Node*>& WModel::getAllNodes() noexcept {
 void WModel::update(const glm::mat4& modelMatrix) noexcept {
   for (auto& node : getAllNodes()) {
     if (node->pMesh) {
-      node->pMesh->uniformBlock.rootMatrix = modelMatrix;
-
       if (node->pSkin) {
         memcpy(
             node->pMesh->uniformBufferData.uniformBuffer.allocInfo.pMappedData,
@@ -169,7 +167,7 @@ void WModel::resetUniformBlockData() {
 
       if (pNode->pSkin) {
         for (int32_t i = 0; i < pNode->pSkin->joints.size(); ++i) {
-          pNode->pMesh->uniformBlock.jointMatrices[i] = glm::mat4(1.0f);
+          //pNode->pMesh->uniformBlock.jointMatrices[i] = glm::mat4(1.0f);
         }
       }
     }

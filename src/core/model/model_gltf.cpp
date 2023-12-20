@@ -101,9 +101,6 @@ TResult WModel::createModel(const char* name, const tinygltf::Model* pInModel,
 
     // Initial pose
     update(glm::mat4(1.0f));
-
-    // no need to update children, they are accessed anyway
-    node->setNodeDescriptorSet(false);
   }
 
   if (pConfigInfo &&

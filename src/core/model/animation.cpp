@@ -81,20 +81,20 @@ void WAnimation::processFrame(WModel* pModel, const float time) {
 
 void WAnimation::addKeyFrame(const int32_t nodeIndex, const float timeStamp,
                              const RMeshUBO& meshUBO) {
-  m_nodeKeyFrames[nodeIndex].emplace_back(timeStamp, meshUBO.nodeMatrix);
-
+  //m_keyFrames.emplace_back(timeStamp, meshUBO.nodeMatrix);
+  /*
   KeyFrame& keyframe = m_nodeKeyFrames[nodeIndex].back();
   const int32_t jointCount = static_cast<int32_t>(meshUBO.jointCount);
 
   for (int32_t i = 0; i < jointCount; ++i) {
     keyframe.jointMatrices.emplace_back(meshUBO.jointMatrices[i]);
-  }
+  }*/
 }
 
 void WAnimation::addKeyFrame(const int32_t nodeIndex, const float timeStamp,
                              const glm::mat4& nodeMatrix,
                              const std::vector<glm::mat4>& jointMatrices) {
-  m_nodeKeyFrames[nodeIndex].emplace_back(timeStamp, nodeMatrix, jointMatrices);
+  //m_nodeKeyFrames[nodeIndex].emplace_back(timeStamp, nodeMatrix, jointMatrices);
 }
 
 //
@@ -195,7 +195,7 @@ void WAnimation::resampleKeyFrames(WModel* pModel, const float framerate,
   const float timeStep = 1.0f / framerate * 1.0f;
   float time = stagingData.startTimeStamp;
 
-  m_nodeKeyFrames.clear();
+  m_keyFrames.clear();
 
   while (time < stagingData.endTimeStamp) {
     processFrame(pModel, time);
@@ -207,8 +207,8 @@ void WAnimation::resampleKeyFrames(WModel* pModel, const float framerate,
   // get final animation duration
   float resampledDuration = 0.0f;
 
-  for (const auto& keyFrameVector : m_nodeKeyFrames) {
-    const float lastFrameTime = keyFrameVector.second.back().timeStamp;
+  for (const auto& keyFrame : m_keyFrames) {
+    const float lastFrameTime = keyFrame.timeStamp;
 
     if (resampledDuration < lastFrameTime) {
       resampledDuration = lastFrameTime;
@@ -248,18 +248,4 @@ bool WAnimation::validateModel(WModel* pModel) {
 
 const std::vector<WAnimation::AnimatedNode>& WAnimation::getAnimatedNodes() {
   return m_animatedNodes;
-}
-
-const std::vector<WAnimation::KeyFrame>* WAnimation::getNodeKeyFrames(
-    const int32_t nodeIndex) {
-  if (m_nodeKeyFrames.find(nodeIndex) == m_nodeKeyFrames.end()) {
-    RE_LOG(Error,
-           "Failed to get node keyframes for animation '%s'. Node with index '%d' "
-           "does not exist.",
-           m_name.c_str(), nodeIndex);
-
-    return nullptr;
-  }
-
-  return &m_nodeKeyFrames.at(nodeIndex);
 }

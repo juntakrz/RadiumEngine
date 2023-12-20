@@ -372,7 +372,7 @@ TResult core::MRenderer::createDescriptorSets() {
              "Failed to create mesh transformation descriptor set. Vulkan "
              "error %d.",
              result);
-      return;
+      return RE_ERROR;
     }
 
     #ifndef NDEBUG

@@ -279,16 +279,8 @@ struct RSceneUBO {
 // mesh and joints transformation uniform buffer object
 // use single dynamic buffer to store per mesh data and offset into it
 struct RMeshUBO {
-  glm::mat4 rootMatrix = glm::mat4(1.0f);
   glm::mat4 nodeMatrix = glm::mat4(1.0f);
   glm::mat4 jointMatrix = glm::mat4(1.0f);
-  float jointCount = 0.0f;
-};
-
-struct RMeshUBO2 {
-  glm::mat4 rootMatrix = glm::mat4(1.0f);
-  glm::mat4 nodeMatrix = glm::mat4(1.0f);
-  glm::mat4 jointMatrices[RE_MAXJOINTS]{};
   float jointCount = 0.0f;
 };
 

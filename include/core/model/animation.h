@@ -96,6 +96,4 @@ class WAnimation {
   bool validateModel(WModel* pModel);
 
   const std::vector<WAnimation::AnimatedNode>& getAnimatedNodes();
-  const std::vector<WAnimation::KeyFrame>* getNodeKeyFrames(
-      const int32_t nodeIndex);
 };

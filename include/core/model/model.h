@@ -88,8 +88,6 @@ class WModel {
     TResult allocateMeshBuffer();
     void destroyMeshBuffer();
 
-    void setNodeDescriptorSet(bool updateChildren = false);
-
     // propagate transformation through all nodes and their children
     void propagateTransformation(
         const glm::mat4& accumulatedMatrix = glm::mat4(1.0f));
@@ -107,6 +105,8 @@ class WModel {
     RBuffer vertexBuffer;
     RBuffer indexBuffer;
     bool isClean = true;
+    // indices in this vector correspond to joint indices in RVertex
+    std::vector<glm::mat4> jointMatrices;
   } staging;
 
   std::string m_name = "$NONAMEMODEL$";
