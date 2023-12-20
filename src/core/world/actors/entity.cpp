@@ -30,17 +30,30 @@ void AEntity::setModel(WModel* pModel) {
 WModel* AEntity::getModel() { return m_pModel; }
 
 void AEntity::updateModel() {
-  // TODO: update rootTransformBuffer at offset with getRootTransformationMatrix()
-  getRootTransformationMatrix();
+  if (m_pModel && m_bindIndex != -1) {
+    uint32_t* pMemAddress =
+        static_cast<uint32_t*>(
+            core::renderer.getSceneBuffers()
+                ->rootTransformBuffer.allocInfo.pMappedData) +
+        m_rootTransformBufferOffset;
 
-  if (m_pModel) {
-    m_pModel->updateNodeTransformBuffer();
+    const glm::mat4* pMatrix = &getRootTransformationMatrix(); 
+
+    memcpy(pMemAddress, pMatrix, sizeof(glm::mat4));
+
+    for (auto& it : m_animatedNodes) {
+      m_pModel->updateNodeTransformBuffer(
+          it.nodeIndex, static_cast<uint32_t>(it.nodeTransformBufferOffset));
+    }
   }
 }
 
 void AEntity::bindToRenderer() {
-  if (m_bindIndex < 0) {
-    RE_LOG(Warning, "Entity \"%s\" is already bound to renderer.", m_name);
+  if (m_bindIndex > -1) {
+    RE_LOG(Warning, "Entity \"%s\" is already bound to renderer.",
+           m_name.c_str());
+
+    return;
   }
 
   m_bindIndex = (int32_t)core::renderer.bindEntity(this);

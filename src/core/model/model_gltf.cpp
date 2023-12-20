@@ -98,9 +98,6 @@ TResult WModel::createModel(const char* name, const tinygltf::Model* pInModel,
         node->pMesh->uniformBlock.jointCount = (float)jointCount;
       }
     }
-
-    // Initial pose
-    updateNodeTransformBuffer();
   }
 
   if (pConfigInfo &&

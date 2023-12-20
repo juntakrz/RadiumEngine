@@ -60,6 +60,7 @@ class WModel {
     std::string name = "$NONAMENODE$";
     int32_t index = -1;
     int32_t skinIndex = -1;
+    bool isRequestingTransformBufferUpdate = true;
 
     // node hierarchy
     Node* pParentNode = nullptr;
@@ -152,7 +153,8 @@ class WModel {
   void sortPrimitivesByMaterial();
 
   // update node transform buffer at node offsets
-  void updateNodeTransformBuffer() noexcept;
+  void updateNodeTransformBuffer(int32_t nodeIndex,
+                                 uint32_t bufferOffset) noexcept;
 
   // resets all transformation matrices stored in uniform blocks to identity
   void resetUniformBlockData();
@@ -195,7 +197,7 @@ class WModel {
   std::vector<uint32_t>& getPrimitiveBindsIndex();
   const std::vector<std::unique_ptr<WModel::Node>>& getRootNodes() noexcept;
   std::vector<WModel::Node*>& getAllNodes() noexcept;
-  WModel::Node* getNode(uint32_t index) noexcept;
+  WModel::Node* getNode(int32_t index) noexcept;
 
   // call to store reference data when model is getting bound to scene buffers
   void setSceneBindingData(size_t vertexOffset, size_t indexOffset);

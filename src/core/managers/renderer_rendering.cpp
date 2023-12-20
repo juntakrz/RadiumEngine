@@ -11,7 +11,7 @@ void core::MRenderer::updateBoundEntities() {
   AEntity* pEntity = nullptr;
 
   // update animation matrices
-  core::animations.runAnimationQueue();
+  //core::animations.runAnimationQueue();
 
   for (auto& bindInfo : system.bindings) {
     if ((pEntity = bindInfo.pEntity) == nullptr) {

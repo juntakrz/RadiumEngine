@@ -134,7 +134,7 @@ void WModel::destroyNode(std::unique_ptr<WModel::Node>& pNode) {
   pNode.reset();
 }
 
-WModel::Node* WModel::getNode(uint32_t index) noexcept {
+WModel::Node* WModel::getNode(int32_t index) noexcept {
   for (WModel::Node* it : m_pLinearNodes) {
     if (it->index == index) {
       return it;

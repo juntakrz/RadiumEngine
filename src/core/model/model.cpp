@@ -143,22 +143,33 @@ std::vector<WModel::Node*>& WModel::getAllNodes() noexcept {
   return m_pLinearNodes;
 }
 
-void WModel::updateNodeTransformBuffer() noexcept {
-  // TODO: rewrite to upload transformed node matrices into mesh transform buffer based on stored offsets
+void WModel::updateNodeTransformBuffer(int32_t nodeIndex,
+                                       uint32_t bufferOffset) noexcept {
+  WModel::Node* pNode = getNode(nodeIndex);
 
-  for (auto& node : getAllNodes()) {
-    if (node->pMesh) {
-      if (node->pSkin) {
-        memcpy(
-            node->pMesh->uniformBufferData.uniformBuffer.allocInfo.pMappedData,
-            &node->pMesh->uniformBlock, sizeof(node->pMesh->uniformBlock));
-      } else {
-        memcpy(
-            node->pMesh->uniformBufferData.uniformBuffer.allocInfo.pMappedData,
-            &node->pMesh->uniformBlock, sizeof(glm::mat4) * 2u);
-      }
-    }
+  if (!pNode || !pNode->pMesh) {
+    RE_LOG(Error,
+           "Failed to update node transformation buffer for model '%s'. Node "
+           "'%d' does not exist or has no mesh.",
+           m_name.c_str(), nodeIndex);
+    return;
   }
+
+  if (!pNode->isRequestingTransformBufferUpdate) return;
+
+  uint32_t* pMemAddress =
+      static_cast<uint32_t*>(core::renderer.getSceneBuffers()
+                                 ->nodeTransformBuffer.allocInfo.pMappedData) +
+      bufferOffset;
+
+  if (pNode->pSkin) {
+    memcpy(pMemAddress, &pNode->pMesh->uniformBlock,
+           sizeof(pNode->pMesh->uniformBlock));
+  } else {
+    memcpy(pMemAddress, &pNode->pMesh->uniformBlock, sizeof(glm::mat4) * 1u);
+  }
+
+  pNode->isRequestingTransformBufferUpdate = false;
 }
 
 void WModel::resetUniformBlockData() {
@@ -169,13 +180,12 @@ void WModel::resetUniformBlockData() {
 
       if (pNode->pSkin) {
         for (int32_t i = 0; i < pNode->pSkin->joints.size(); ++i) {
-          //pNode->pMesh->uniformBlock.jointMatrices[i] = glm::mat4(1.0f);
+          pNode->pMesh->uniformBlock.nodeMatrix = glm::mat4(1.0f);
+          pNode->pMesh->uniformBlock.jointMatrix = glm::mat4(1.0f);
         }
       }
     }
   }
-
-  updateNodeTransformBuffer();
 }
 
 void WModel::setSceneBindingData(size_t vertexOffset, size_t indexOffset) {

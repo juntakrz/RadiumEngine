@@ -103,6 +103,7 @@ AStatic* core::MActors::createStatic(const char* name) {
   };
 
   m_actors.statics.at(name) = std::make_unique<AStatic>();
+  m_actors.statics.at(name)->setName(name);
 
   // should probably add a reference to MRef here?
 
