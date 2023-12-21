@@ -50,7 +50,7 @@ enum class ECmdType {
 enum class EDescriptorSetLayout {
   Scene,
   Material,
-  Mesh,
+  Model,
   Environment,
   Dummy
 };
@@ -95,75 +95,10 @@ enum class ERenderPass {
 
 enum class ETransformType { Translation, Rotation, Scale, Weight, Undefined };
 
-struct RVkLogicalDevice {
-  VkDevice device;
-
-  struct {
-    VkQueue graphics = VK_NULL_HANDLE;
-    VkQueue compute = VK_NULL_HANDLE;
-    VkQueue present = VK_NULL_HANDLE;
-    VkQueue transfer = VK_NULL_HANDLE;
-  } queues;
-};
-
-struct RVkSwapChainInfo {
-  VkSurfaceCapabilitiesKHR capabilities;
-  std::vector<VkSurfaceFormatKHR> formats;
-  std::vector<VkPresentModeKHR> modes;
-};
-
-struct RVkQueueFamilyIndices {
-  std::vector<int32_t> graphics;
-  std::vector<int32_t> compute;
-  std::vector<int32_t> present;
-  std::vector<int32_t> transfer;
-
-  // retrieve first entries for queue family indices
-  std::set<int32_t> getAsSet() const;
-};
-
-struct RVkPhysicalDevice {
-  VkPhysicalDevice device = VK_NULL_HANDLE;
-  VkPhysicalDeviceFeatures features;
-  VkPhysicalDeviceProperties properties;
-  VkPhysicalDeviceMemoryProperties memProperties;
-  RVkQueueFamilyIndices queueFamilyIndices;
-  RVkSwapChainInfo swapChainInfo;
-  bool bIsValid = false;
-};
-
 struct RBuffer {
   VkBuffer buffer;
   VmaAllocation allocation;
   VmaAllocationInfo allocInfo;
-};
-
-struct RRenderPass {
-  VkRenderPass renderPass;
-  std::vector<EPipeline> usedPipelines;
-  VkPipelineLayout usedLayout;
-  VkViewport viewport;
-  VkRect2D scissor;
-};
-
-// expanding KTX structure
-struct RVulkanTexture : public ktxVulkanTexture {
-  VkImageView view;
-  VkSampler sampler;
-  VkDescriptorImageInfo descriptor;
-};
-
-struct RVertex {
-  glm::vec3 pos;        // POSITION
-  glm::vec3 normal;     // NORMAL
-  glm::vec2 tex0;       // TEXCOORD0
-  glm::vec2 tex1;       // TEXCOORD1
-  glm::vec4 joint;      // JOINT
-  glm::vec4 weight;     // WEIGHT
-  glm::vec4 color;      // COLOR      aligned to 96 bytes per vertex on device
-
-  static VkVertexInputBindingDescription getBindingDesc();
-  static std::vector<VkVertexInputAttributeDescription> getAttributeDescs();
 };
 
 struct RCameraInfo {
@@ -171,6 +106,14 @@ struct RCameraInfo {
   float FOV = config::FOV;
   float nearZ = RE_NEARZ;
   float farZ = config::viewDistance;
+};
+
+struct REntityBindInfo {
+  AEntity* pEntity = nullptr;
+  uint32_t vertexOffset = 0u;
+  uint32_t indexOffset = 0u;
+  uint32_t vertexCount = 0u;
+  uint32_t indexCount = 0u;
 };
 
 // used for RMaterial creation in materials manager
@@ -215,6 +158,35 @@ struct RMaterialInfo {
   uint32_t pipelineFlags = EPipeline::Null;
 };
 
+struct RPrimitiveInfo {
+  uint32_t vertexOffset = 0u;
+  uint32_t indexOffset = 0u;
+  uint32_t vertexCount = 0u;
+  uint32_t indexCount = 0u;
+
+  bool createTangentSpaceData = false;
+  std::vector<RVertex>* pVertexData = nullptr;
+  std::vector<uint32_t>* pIndexData = nullptr;
+  void* pOwnerNode = nullptr;
+};
+
+struct RRenderPass {
+  VkRenderPass renderPass;
+  std::vector<EPipeline> usedPipelines;
+  VkPipelineLayout usedLayout;
+  VkViewport viewport;
+  VkRect2D scissor;
+};
+
+// stored by WModel, used to create a valid sampler for a specific texture
+struct RSamplerInfo {
+  VkFilter minFilter = VK_FILTER_LINEAR;
+  VkFilter magFilter = VK_FILTER_LINEAR;
+  VkSamplerAddressMode addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  VkSamplerAddressMode addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  VkSamplerAddressMode addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+};
+
 // used by createTexture()
 struct RTextureInfo {
   std::string name = "";
@@ -230,58 +202,76 @@ struct RTextureInfo {
   VmaMemoryUsage vmaMemoryUsage = VMA_MEMORY_USAGE_AUTO;
 };
 
-struct REntityBindInfo {
-  AEntity* pEntity = nullptr;
-  uint32_t vertexOffset = 0u;
-  uint32_t indexOffset = 0u;
-  uint32_t vertexCount = 0u;
-  uint32_t indexCount = 0u;
+struct RVertex {
+  glm::vec3 pos;     // POSITION
+  glm::vec3 normal;  // NORMAL
+  glm::vec2 tex0;    // TEXCOORD0
+  glm::vec2 tex1;    // TEXCOORD1
+  glm::vec4 joint;   // JOINT
+  glm::vec4 weight;  // WEIGHT
+  glm::vec4 color;   // COLOR      aligned to 96 bytes per vertex on device
+
+  static VkVertexInputBindingDescription getBindingDesc();
+  static std::vector<VkVertexInputAttributeDescription> getAttributeDescs();
 };
 
-struct RPrimitiveInfo {
-  uint32_t vertexOffset = 0u;
-  uint32_t indexOffset = 0u;
-  uint32_t vertexCount = 0u;
-  uint32_t indexCount = 0u;
+struct RVkLogicalDevice {
+  VkDevice device;
 
-  bool createTangentSpaceData = false;
-  std::vector<RVertex>* pVertexData = nullptr;
-  std::vector<uint32_t>* pIndexData = nullptr;
-  void* pOwnerNode = nullptr;
+  struct {
+    VkQueue graphics = VK_NULL_HANDLE;
+    VkQueue compute = VK_NULL_HANDLE;
+    VkQueue present = VK_NULL_HANDLE;
+    VkQueue transfer = VK_NULL_HANDLE;
+  } queues;
 };
 
-// stored by WModel, used to create a valid sampler for a specific texture
-struct RSamplerInfo {
-  VkFilter minFilter = VK_FILTER_LINEAR;
-  VkFilter magFilter = VK_FILTER_LINEAR;
-  VkSamplerAddressMode addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-  VkSamplerAddressMode addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-  VkSamplerAddressMode addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+struct RVkQueueFamilyIndices {
+  std::vector<int32_t> graphics;
+  std::vector<int32_t> compute;
+  std::vector<int32_t> present;
+  std::vector<int32_t> transfer;
+
+  // retrieve first entries for queue family indices
+  std::set<int32_t> getAsSet() const;
+};
+
+struct RVkSwapChainInfo {
+  VkSurfaceCapabilitiesKHR capabilities;
+  std::vector<VkSurfaceFormatKHR> formats;
+  std::vector<VkPresentModeKHR> modes;
+};
+
+struct RVkPhysicalDevice {
+  VkPhysicalDevice device = VK_NULL_HANDLE;
+  VkPhysicalDeviceFeatures features;
+  VkPhysicalDeviceProperties properties;
+  VkPhysicalDeviceMemoryProperties memProperties;
+  RVkQueueFamilyIndices queueFamilyIndices;
+  RVkSwapChainInfo swapChainInfo;
+  bool bIsValid = false;
+};
+
+// expanding KTX structure
+struct RVulkanTexture : public ktxVulkanTexture {
+  VkImageView view;
+  VkSampler sampler;
+  VkDescriptorImageInfo descriptor;
 };
 
 //
 // uniform buffer objects and push contant blocks
 // 
 
+struct REnvironmentPCB {
+  float roughness;
+  uint32_t samples;
+};
+
 // camera rotation UBO for environment map generation
 struct REnvironmentUBO {
   glm::mat4 view;
   glm::mat4 projection;
-};
-
-// camera and view matrix UBO for vertex shader
-struct RSceneUBO {
-  alignas(16) glm::mat4 view = glm::mat4(1.0f);
-  alignas(16) glm::mat4 projection = glm::mat4(1.0f);
-  alignas(16) glm::vec3 cameraPosition = glm::vec3(0.0f);
-};
-
-// mesh and joints transformation uniform buffer object
-// use single dynamic buffer to store per mesh data and offset into it
-struct RMeshUBO {
-  glm::mat4 nodeMatrix = glm::mat4(1.0f);
-  glm::mat4 jointMatrix = glm::mat4(1.0f);
-  float jointCount = 0.0f;
 };
 
 // lighting data uniform buffer object
@@ -291,11 +281,6 @@ struct RLightingUBO {
   float gamma = 2.2f;
   float prefilteredCubeMipLevels;
   float scaleIBLAmbient = 1.0f;
-};
-
-struct REnvironmentPCB {
-  float roughness;
-  uint32_t samples;
 };
 
 // push constant block used by RMaterial
@@ -316,6 +301,20 @@ struct RMaterialPCB {
   float alphaCutoff;
   float bumpIntensity;
   float materialIntensity;
+};
+
+// mesh transformation uniform buffer object
+// use single dynamic buffer to store per mesh data and offset into it
+struct RMeshUBO {
+  glm::mat4 nodeMatrix = glm::mat4(1.0f);
+  float jointCount = 0.0f;
+};
+
+// camera and view matrix UBO for vertex shader
+struct RSceneUBO {
+  alignas(16) glm::mat4 view = glm::mat4(1.0f);
+  alignas(16) glm::mat4 projection = glm::mat4(1.0f);
+  alignas(16) glm::vec3 cameraPosition = glm::vec3(0.0f);
 };
 
 struct WAnimationInfo {

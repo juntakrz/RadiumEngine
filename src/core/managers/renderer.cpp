@@ -137,6 +137,13 @@ TResult core::MRenderer::createSceneBuffers() {
                config::scene::getNodeTransformBufferSize(),
                scene.nodeTransformBuffer, nullptr);
 
+  RE_LOG(Log,
+         "Allocating scene buffer for %d unique skins.",
+         config::scene::entityBudget);
+  createBuffer(EBufferMode::CPU_UNIFORM,
+               config::scene::getSkinTransformBufferSize(),
+               scene.skinTransformBuffer, nullptr);
+
   return RE_OK;
 }
 
@@ -150,6 +157,8 @@ void core::MRenderer::destroySceneBuffers() {
                    scene.rootTransformBuffer.allocation);
   vmaDestroyBuffer(memAlloc, scene.nodeTransformBuffer.buffer,
                    scene.nodeTransformBuffer.allocation);
+  vmaDestroyBuffer(memAlloc, scene.skinTransformBuffer.buffer,
+                   scene.skinTransformBuffer.allocation);
 }
 
 core::MRenderer::RSceneBuffers* core::MRenderer::getSceneBuffers() {

@@ -43,14 +43,15 @@ namespace scene {
 // buffer overflow happens NOTE: on device 96 bytes per vertex / 4 bytes per
 // index
 
-const size_t vertexBudget = 5000000u;   // ~480 MBs for vertex data
-const size_t indexBudget = 100000000u;  // ~400 MBs for index data
-const size_t entityBudget = 10000u;     // ~1.2 MBs for root transformation matrices
-const size_t nodeBudget = 1000000u;     // ~256 MBs for node transformation matrices
+const size_t vertexBudget = 5000000u;             // ~480 MBs for vertex data
+const size_t indexBudget = 100000000u;            // ~400 MBs for index data
+const size_t entityBudget = 10000u;               // ~0.6 MBs for root transformation matrices
+const size_t nodeBudget = 100u * entityBudget;    // ~128 MBs for node transformation matrices
 size_t getVertexBufferSize();
 size_t getIndexBufferSize();
 size_t getRootTransformBufferSize();
 size_t getNodeTransformBufferSize();
+size_t getSkinTransformBufferSize();             // ~80 MBs for joint transformation matrices
 };  // namespace scene
 
 float getAspectRatio();

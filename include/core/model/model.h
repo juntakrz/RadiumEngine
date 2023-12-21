@@ -27,6 +27,7 @@ class WModel {
  private:
   struct Skin {
     std::string name;
+    int32_t index;
     Node* skeletonRoot = nullptr;
     std::vector<glm::mat4> inverseBindMatrices;
     std::vector<Node*> joints;
@@ -106,8 +107,6 @@ class WModel {
     RBuffer vertexBuffer;
     RBuffer indexBuffer;
     bool isClean = true;
-    // indices in this vector correspond to joint indices in RVertex
-    std::vector<glm::mat4> jointMatrices;
   } staging;
 
   std::string m_name = "$NONAMEMODEL$";

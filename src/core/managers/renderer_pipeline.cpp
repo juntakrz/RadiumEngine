@@ -106,16 +106,19 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
   }
 
   // model transform matrices
-  // 0 - root transform matrices (offset stored in entity)
-  // 1 - node/joint transform matrices (offset stored by animations manager)
+  // 0 - model transform matrices (offset stored in entity)
+  // 1 - per node transform matrices (offset SHOULD BE stored by animations manager)
+  // 2 - per model inverse bind matrices (offset SHOULD BE stored by animations manager)
   {
-    system.descriptorSetLayouts.emplace(EDescriptorSetLayout::Mesh,
+    system.descriptorSetLayouts.emplace(EDescriptorSetLayout::Model,
                                         VK_NULL_HANDLE);
 
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
         {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1,
          VK_SHADER_STAGE_VERTEX_BIT, nullptr},
         {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1,
+         VK_SHADER_STAGE_VERTEX_BIT, nullptr},
+        {2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1,
          VK_SHADER_STAGE_VERTEX_BIT, nullptr}};
 
     VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
@@ -127,9 +130,9 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
 
     if (vkCreateDescriptorSetLayout(
             logicalDevice.device, &setLayoutCreateInfo, nullptr,
-            &system.descriptorSetLayouts.at(EDescriptorSetLayout::Mesh)) !=
+            &system.descriptorSetLayouts.at(EDescriptorSetLayout::Model)) !=
         VK_SUCCESS) {
-      RE_LOG(Critical, "Failed to create model node descriptor set layout.");
+      RE_LOG(Critical, "Failed to create model descriptor set layout.");
       return RE_CRITICAL;
     }
   }
@@ -348,14 +351,14 @@ TResult core::MRenderer::createDescriptorSets() {
   }
 
 #ifndef NDEBUG
-  RE_LOG(Log, "Creating mesh transformation descriptor set.");
+  RE_LOG(Log, "Creating model transformation descriptor set.");
 #endif
 
   {
     VkDevice device = core::renderer.logicalDevice.device;
 
     VkDescriptorSetLayout meshLayout =
-        getDescriptorSetLayout(EDescriptorSetLayout::Mesh);
+        getDescriptorSetLayout(EDescriptorSetLayout::Model);
 
     VkDescriptorSetAllocateInfo descriptorSetAllocInfo{};
     descriptorSetAllocInfo.sType =
@@ -369,14 +372,14 @@ TResult core::MRenderer::createDescriptorSets() {
              device, &descriptorSetAllocInfo,
              &scene.transformSet)) != VK_SUCCESS) {
       RE_LOG(Error,
-             "Failed to create mesh transformation descriptor set. Vulkan "
+             "Failed to create model transformation descriptor set. Vulkan "
              "error %d.",
              result);
       return RE_ERROR;
     }
 
     #ifndef NDEBUG
-    RE_LOG(Log, "Populating mesh transformation descriptor set.");
+    RE_LOG(Log, "Populating model transformation descriptor set.");
 #endif
 
     VkDescriptorBufferInfo rootMatrixBufferInfo{};
@@ -387,10 +390,16 @@ TResult core::MRenderer::createDescriptorSets() {
     VkDescriptorBufferInfo nodeMatrixBufferInfo{};
     nodeMatrixBufferInfo.buffer = scene.nodeTransformBuffer.buffer;
     nodeMatrixBufferInfo.offset = 0;
-    // node matrix + joint matrix + joint count
-    nodeMatrixBufferInfo.range = sizeof(glm::mat4) * 2 + sizeof(float);
+    // node matrix + joint count
+    nodeMatrixBufferInfo.range = sizeof(glm::mat4) + sizeof(float);
 
-    std::vector<VkWriteDescriptorSet> writeSets(2);
+    VkDescriptorBufferInfo skinningMatricesBufferInfo{};
+    skinningMatricesBufferInfo.buffer = scene.skinTransformBuffer.buffer;
+    skinningMatricesBufferInfo.offset = 0;
+    // RE_MAXJOINTS matrices
+    skinningMatricesBufferInfo.range = sizeof(glm::mat4) * RE_MAXJOINTS;
+
+    std::vector<VkWriteDescriptorSet> writeSets(3);
     writeSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     writeSets[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     writeSets[0].descriptorCount = 1;
@@ -404,6 +413,13 @@ TResult core::MRenderer::createDescriptorSets() {
     writeSets[1].dstSet = scene.transformSet;
     writeSets[1].dstBinding = 1;
     writeSets[1].pBufferInfo = &nodeMatrixBufferInfo;
+
+    writeSets[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeSets[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    writeSets[2].descriptorCount = 1;
+    writeSets[2].dstSet = scene.transformSet;
+    writeSets[2].dstBinding = 2;
+    writeSets[2].pBufferInfo = &skinningMatricesBufferInfo;
 
     vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeSets.size()),
                            writeSets.data(), 0, nullptr);
@@ -799,7 +815,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
   // pipeline layout for the main 'scene'
   std::vector<VkDescriptorSetLayout> descriptorSetLayouts{
       getDescriptorSetLayout(EDescriptorSetLayout::Scene),    // 0
-      getDescriptorSetLayout(EDescriptorSetLayout::Mesh),     // 1
+      getDescriptorSetLayout(EDescriptorSetLayout::Model),     // 1
       getDescriptorSetLayout(EDescriptorSetLayout::Material)  // 2
   };
 
@@ -829,7 +845,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
   descriptorSetLayouts.clear();
   descriptorSetLayouts = {
       getDescriptorSetLayout(EDescriptorSetLayout::Environment),  // 0
-      getDescriptorSetLayout(EDescriptorSetLayout::Mesh),         // 1
+      getDescriptorSetLayout(EDescriptorSetLayout::Model),         // 1
       getDescriptorSetLayout(EDescriptorSetLayout::Material)      // 2
   };
 

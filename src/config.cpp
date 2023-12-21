@@ -22,11 +22,15 @@ size_t config::scene::getIndexBufferSize() {
 }
 
 size_t config::scene::getRootTransformBufferSize() {
-  return sizeof(glm::mat4) * 2 * entityBudget;
+  return sizeof(glm::mat4) * entityBudget;
 }
 
 size_t config::scene::getNodeTransformBufferSize() {
-  return sizeof(glm::mat4) * 4 * entityBudget;
+  return sizeof(glm::mat4) * 2 * nodeBudget;
+}
+
+size_t config::scene::getSkinTransformBufferSize() {
+  return sizeof(glm::mat4) * RE_MAXJOINTS * entityBudget;
 }
 
 VkFormat core::vulkan::formatDepth;

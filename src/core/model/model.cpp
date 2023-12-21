@@ -181,7 +181,6 @@ void WModel::resetUniformBlockData() {
       if (pNode->pSkin) {
         for (int32_t i = 0; i < pNode->pSkin->joints.size(); ++i) {
           pNode->pMesh->uniformBlock.nodeMatrix = glm::mat4(1.0f);
-          pNode->pMesh->uniformBlock.jointMatrix = glm::mat4(1.0f);
         }
       }
     }

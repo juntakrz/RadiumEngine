@@ -53,9 +53,9 @@ class MRenderer {
     RBuffer indexBuffer;
     RBuffer rootTransformBuffer;
     RBuffer nodeTransformBuffer;
+    RBuffer skinTransformBuffer;
     uint32_t currentVertexOffset = 0u;
     uint32_t currentIndexOffset = 0u;
-    uint32_t currentTransformOffset = 0u;
     VkDescriptorSet transformSet;
   } scene;
 

@@ -829,19 +829,21 @@ void WModel::extractAnimations(const WModelConfigInfo* pConfigInfo) {
 
 void WModel::loadSkins() {
   const tinygltf::Model& gltfModel = *staging.pInModel;
+  int32_t index = 0;
 
-  for (const tinygltf::Skin& source : gltfModel.skins) {
+  for (const tinygltf::Skin& skin : gltfModel.skins) {
     m_pSkins.emplace_back(std::make_unique<Skin>());
     Skin* pSkin = m_pSkins.back().get();
-    pSkin->name = source.name;
+    pSkin->name = skin.name;
+    pSkin->index = index;
 
     // Find skeleton root node
-    if (source.skeleton > -1) {
-      pSkin->skeletonRoot = getNode(source.skeleton);
+    if (skin.skeleton > -1) {
+      pSkin->skeletonRoot = getNode(skin.skeleton);
     }
 
     // Find joint nodes
-    for (int jointIndex : source.joints) {
+    for (int jointIndex : skin.joints) {
       Node* pNode = getNode(jointIndex);
       if (pNode) {
         pSkin->joints.emplace_back(pNode);
@@ -849,9 +851,9 @@ void WModel::loadSkins() {
     }
 
     // Get inverse bind matrices from buffer
-    if (source.inverseBindMatrices > -1) {
+    if (skin.inverseBindMatrices > -1) {
       const tinygltf::Accessor& accessor =
-          gltfModel.accessors[source.inverseBindMatrices];
+          gltfModel.accessors[skin.inverseBindMatrices];
       const tinygltf::BufferView& bufferView =
           gltfModel.bufferViews[accessor.bufferView];
       const tinygltf::Buffer& buffer = gltfModel.buffers[bufferView.buffer];
@@ -860,5 +862,7 @@ void WModel::loadSkins() {
              &buffer.data[accessor.byteOffset + bufferView.byteOffset],
              accessor.count * sizeof(glm::mat4));
     }
+
+    ++index;
   }
 }

@@ -76,7 +76,7 @@ void AEntity::bindToRenderer() {
     core::animations.getOrRegisterNodeOffsetIndex(
         &animatedNode, animatedNode.nodeTransformBufferIndex);
     animatedNode.nodeTransformBufferOffset =
-        sizeof(glm::mat4) * 4 * animatedNode.nodeTransformBufferIndex;
+        sizeof(glm::mat4) * 2 * animatedNode.nodeTransformBufferIndex;
   }
 }
 
