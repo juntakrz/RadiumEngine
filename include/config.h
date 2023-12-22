@@ -43,15 +43,15 @@ namespace scene {
 // buffer overflow happens NOTE: on device 96 bytes per vertex / 4 bytes per
 // index
 
-const size_t vertexBudget = 5000000u;             // ~480 MBs for vertex data
-const size_t indexBudget = 100000000u;            // ~400 MBs for index data
-const size_t entityBudget = 10000u;               // ~0.6 MBs for root transformation matrices
-const size_t nodeBudget = 100u * entityBudget;    // ~128 MBs for node transformation matrices
+const size_t vertexBudget = 5000000u;                   // ~480 MBs for vertex data
+const size_t indexBudget = 100000000u;                  // ~400 MBs for index data
+const size_t entityBudget = 10000u;                     // ~0.6 MBs for root transformation matrices
+const size_t nodeBudget = RE_MAXJOINTS * entityBudget;  // ~164 MBs for node transformation matrices
 size_t getVertexBufferSize();
 size_t getIndexBufferSize();
 size_t getRootTransformBufferSize();
 size_t getNodeTransformBufferSize();
-size_t getSkinTransformBufferSize();             // ~80 MBs for joint transformation matrices
+size_t getSkinTransformBufferSize();                    // ~82 MBs for joint transformation matrices
 };  // namespace scene
 
 float getAspectRatio();
@@ -79,8 +79,7 @@ const uint32_t envIrradianceExtent = 64u;
 const VkColorSpaceKHR colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
 const VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 constexpr uint8_t maxFramesInFlight = MAX_FRAMES_IN_FLIGHT;
-
-constexpr uint8_t animationSampleRate = 30;
+extern VkDeviceSize minBufferAlignment;
 constexpr bool applyGLTFLeftHandedFix = false;    // currently ok for static models, but has issues with skin
 
 }

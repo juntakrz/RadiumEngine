@@ -76,7 +76,17 @@ void AEntity::bindToRenderer() {
     core::animations.getOrRegisterNodeOffsetIndex(
         &animatedNode, animatedNode.nodeTransformBufferIndex);
     animatedNode.nodeTransformBufferOffset =
-        sizeof(glm::mat4) * 2 * animatedNode.nodeTransformBufferIndex;
+        RE_NODEDATASIZE * animatedNode.nodeTransformBufferIndex;
+  }
+
+  // register inverse bind matrices
+  // unlike root and node matrices these are not unique per entity
+  for (int32_t i = 0; i < m_pModel->m_pSkins.size(); ++i) {
+    core::animations.getOrRegisterSkinOffsetIndex(
+        m_pModel->m_pSkins[i].get(), m_pModel->m_pSkins[i]->bufferIndex);
+
+    m_pModel->m_pSkins[i]->bufferOffset =
+        m_pModel->m_pSkins[i]->bufferIndex * RE_SKINDATASIZE;
   }
 }
 

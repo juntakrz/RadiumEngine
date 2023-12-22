@@ -29,8 +29,14 @@ class WModel {
     std::string name;
     int32_t index;
     Node* skeletonRoot = nullptr;
-    std::vector<glm::mat4> inverseBindMatrices;
     std::vector<Node*> joints;
+    size_t bufferIndex = -1;   // index into skin buffer
+    size_t bufferOffset = -1;  // offset in bytes into skin buffer
+
+    struct {
+      std::vector<glm::mat4> inverseBindMatrices;
+      bool recalculateSkinMatrices = true;
+    } staging;
   };
 
   struct Mesh {
@@ -39,12 +45,6 @@ class WModel {
 
     // stores mesh and joints transformation matrices
     RMeshUBO uniformBlock;
-
-    struct {
-      RBuffer uniformBuffer;
-      VkDescriptorBufferInfo descriptorBufferInfo{};
-      VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
-    } uniformBufferData;
 
     struct {
       glm::vec3 min = glm::vec3(0.0f);
@@ -86,16 +86,11 @@ class WModel {
 
     Node(WModel::Node* pParentNode, uint32_t index, const std::string& name);
 
-    // allocate uniform buffer for writing transformation data
-    TResult allocateMeshBuffer();
-    void destroyMeshBuffer();
-
     // propagate transformation through all nodes and their children
     void propagateTransformation(
         const glm::mat4& accumulatedMatrix = glm::mat4(1.0f));
 
-    void updateStagingNodeMatrices(const glm::mat4& modelMatrix,
-                                   WAnimation* pOutAnimation);
+    void updateStagingNodeMatrices(WAnimation* pOutAnimation);
   };
 
   struct {
@@ -197,6 +192,8 @@ class WModel {
   const std::vector<std::unique_ptr<WModel::Node>>& getRootNodes() noexcept;
   std::vector<WModel::Node*>& getAllNodes() noexcept;
   WModel::Node* getNode(int32_t index) noexcept;
+  int32_t getSkinCount() noexcept;
+  WModel::Skin* getSkin(int32_t skinIndex) noexcept;
 
   // call to store reference data when model is getting bound to scene buffers
   void setSceneBindingData(size_t vertexOffset, size_t indexOffset);

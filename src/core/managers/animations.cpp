@@ -4,12 +4,14 @@
 #include "core/core.h"
 #include "core/model/model.h"
 #include "core/world/actors/base.h"
+#include "core/managers/renderer.h"
 #include "core/managers/time.h"
 #include "core/managers/animations.h"
 
 core::MAnimations::MAnimations() {
   m_rootTransformBufferIndices.resize(config::scene::entityBudget);
   m_nodeTransformBufferIndices.resize(config::scene::nodeBudget);
+  m_skinTransformBufferIndices.resize(config::scene::entityBudget);
 }
 
 WAnimation* core::MAnimations::createAnimation(const std::string& name) {
@@ -225,11 +227,32 @@ bool core::MAnimations::getOrRegisterNodeOffsetIndex(
 
     if (m_nodeTransformBufferIndices[i] == pNode) {
       outIndex = i;
-      return false;  // actor is already registered
+      return false;  // node is already registered
     }
   }
 
   m_nodeTransformBufferIndices[freeIndex] = pNode;
   outIndex = freeIndex;
-  return true;  // registered actor to the first free index
+  return true;  // registered node to the first free index
+}
+
+bool core::MAnimations::getOrRegisterSkinOffsetIndex(WModel::Skin* pSkin,
+                                                     size_t& outIndex) {
+  size_t freeIndex = -1;
+
+  for (size_t i = 0; i < m_skinTransformBufferIndices.size(); ++i) {
+    if (m_skinTransformBufferIndices[i] == nullptr && freeIndex == -1) {
+      freeIndex = i;
+    }
+
+    if (m_skinTransformBufferIndices[i] == pSkin) {
+      outIndex = i;
+      return false;  // skin is already registered
+    }
+  }
+
+  m_skinTransformBufferIndices[freeIndex] = pSkin;
+  outIndex = freeIndex;
+
+  return true;  // registered skin to the first free index
 }

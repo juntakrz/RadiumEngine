@@ -303,11 +303,10 @@ struct RMaterialPCB {
   float materialIntensity;
 };
 
-// mesh transformation uniform buffer object
-// use single dynamic buffer to store per mesh data and offset into it
 struct RMeshUBO {
   glm::mat4 nodeMatrix = glm::mat4(1.0f);
   float jointCount = 0.0f;
+  std::vector<glm::mat4> jointMatrices;
 };
 
 // camera and view matrix UBO for vertex shader

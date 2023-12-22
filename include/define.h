@@ -46,6 +46,8 @@ constexpr bool bRequireValidationLayers = true;
 #define RE_MAXTEXTURES      6
 #define RE_NEARZ            0.01f
 #define RE_MAXJOINTS        128u
+#define RE_NODEDATASIZE     util::getVulkanAlignedSize(sizeof(glm::mat4) + sizeof(float), core::vulkan::minBufferAlignment)
+#define RE_SKINDATASIZE     util::getVulkanAlignedSize(sizeof(glm::mat4) * RE_MAXJOINTS, core::vulkan::minBufferAlignment)
 
 // error levels
 #define RE_OK					      0x00		    // success

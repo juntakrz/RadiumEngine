@@ -83,7 +83,7 @@ void core::run() {
   
   pStatic = core::actors.createStatic("Static01");
   pStatic->setModel(core::world.getModel("mdlGuy"));
-  //core::renderer.bindEntity(pStatic);
+  pStatic->bindToRenderer();
   pStatic->setLocation(0.0f, -1.0f, -0.3f);
   pStatic->setRotation({0.0f, 1.0f, 0.0f}, glm::radians(100.0f));
   pStatic->setScale(0.32f);

@@ -86,16 +86,20 @@ TResult WModel::createModel(const char* name, const tinygltf::Model* pInModel,
 
   loadSkins();
 
-  for (auto node : m_pLinearNodes) {
+  for (auto pNode : m_pLinearNodes) {
     // Assign skins
-    if (node->skinIndex > -1) {
-      node->pSkin = m_pSkins[node->skinIndex].get();
+    if (pNode->skinIndex > -1) {
+      pNode->pSkin = m_pSkins[pNode->skinIndex].get();
 
       // set joint count for every instance of a skin
-      if (node->pSkin) {
+      if (pNode->pSkin) {
         size_t jointCount =
-            std::min((uint32_t)node->pSkin->joints.size(), RE_MAXJOINTS);
-        node->pMesh->uniformBlock.jointCount = (float)jointCount;
+            std::min((uint32_t)pNode->pSkin->joints.size(), RE_MAXJOINTS);
+        pNode->pMesh->uniformBlock.jointCount = (float)jointCount;
+
+        if (pNode->pMesh->uniformBlock.jointMatrices.empty() && jointCount) {
+          pNode->pMesh->uniformBlock.jointMatrices.resize(jointCount);
+        }
       }
     }
   }
@@ -169,8 +173,7 @@ void WModel::createNode(WModel::Node* pParentNode,
   if (gltfNode.mesh > -1) {
     const tinygltf::Mesh& gltfMesh = gltfModel.meshes[gltfNode.mesh];
     pNode->pMesh = std::make_unique<WModel::Mesh>();
-    // allocate buffer for UBO used for writing mesh transformation data
-    pNode->allocateMeshBuffer();
+
     WModel::Mesh* pMesh = pNode->pMesh.get();
 
     for (size_t j = 0; j < gltfMesh.primitives.size(); ++j) {
@@ -857,8 +860,8 @@ void WModel::loadSkins() {
       const tinygltf::BufferView& bufferView =
           gltfModel.bufferViews[accessor.bufferView];
       const tinygltf::Buffer& buffer = gltfModel.buffers[bufferView.buffer];
-      pSkin->inverseBindMatrices.resize(accessor.count);
-      memcpy(pSkin->inverseBindMatrices.data(),
+      pSkin->staging.inverseBindMatrices.resize(accessor.count);
+      memcpy(pSkin->staging.inverseBindMatrices.data(),
              &buffer.data[accessor.byteOffset + bufferView.byteOffset],
              accessor.count * sizeof(glm::mat4));
     }

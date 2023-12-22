@@ -162,11 +162,14 @@ void WModel::updateNodeTransformBuffer(int32_t nodeIndex,
                                  ->nodeTransformBuffer.allocInfo.pMappedData) +
       bufferOffset;
 
+  // copy node transform data for vertex shader (node matrix and joint count)
+  memcpy(pMemAddress, &pNode->pMesh->uniformBlock,
+         sizeof(glm::mat4) + sizeof(float));
+
+  // TODO: move to a separate method that will update dynamic skin buffer independent of nodes
   if (pNode->pSkin) {
-    memcpy(pMemAddress, &pNode->pMesh->uniformBlock,
-           sizeof(pNode->pMesh->uniformBlock));
-  } else {
-    memcpy(pMemAddress, &pNode->pMesh->uniformBlock, sizeof(glm::mat4) * 1u);
+    memcpy(pMemAddress, pNode->pMesh->uniformBlock.jointMatrices.data(),
+           sizeof(glm::mat4) * pNode->pMesh->uniformBlock.jointMatrices.size());
   }
 
   pNode->isRequestingTransformBufferUpdate = false;

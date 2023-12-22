@@ -8,32 +8,6 @@ WModel::Node::Node(WModel::Node* pParent, uint32_t index,
                    const std::string& name)
     : pParentNode(pParent), index(index), name(name) {}
 
-TResult WModel::Node::allocateMeshBuffer() {
-  if (!pMesh) {
-    RE_LOG(Error, "Failed to allocate mesh buffer - mesh was not created yet.");
-    return RE_ERROR;
-  }
-
-  // prepare buffer and memory to store model/mesh/joints transformation matrix
-  VkDeviceSize bufferSize = sizeof(pMesh->uniformBlock);
-  core::renderer.createBuffer(EBufferMode::CPU_UNIFORM, bufferSize,
-                              pMesh->uniformBufferData.uniformBuffer, nullptr);
-  pMesh->uniformBufferData.descriptorBufferInfo = {
-      pMesh->uniformBufferData.uniformBuffer.buffer, 0, bufferSize};
-
-  return RE_OK;
-}
-
-void WModel::Node::destroyMeshBuffer() {
-  if (!pMesh) {
-    return;
-  }
-
-  vmaDestroyBuffer(core::renderer.memAlloc,
-                   pMesh->uniformBufferData.uniformBuffer.buffer,
-                   pMesh->uniformBufferData.uniformBuffer.allocation);
-}
-
 void WModel::Node::propagateTransformation(const glm::mat4& accumulatedMatrix) {
   transformedNodeMatrix = accumulatedMatrix * getLocalMatrix();
 
@@ -42,36 +16,31 @@ void WModel::Node::propagateTransformation(const glm::mat4& accumulatedMatrix) {
   }
 }
 
-void WModel::Node::updateStagingNodeMatrices(const glm::mat4& modelMatrix,
-                                             WAnimation* pOutAnimation) {
+void WModel::Node::updateStagingNodeMatrices(WAnimation* pOutAnimation) {
   if (pMesh) {
     pMesh->uniformBlock.nodeMatrix = transformedNodeMatrix;
 
     // node has mesh, store a reference to it in an animation
     pOutAnimation->addNodeReference(this->name, this->index);
 
-    if (pSkin) {
+    if (pSkin && pSkin->staging.recalculateSkinMatrices) {
       // Update joint matrices
-      glm::mat4 inverseTransform = glm::inverse(transformedNodeMatrix);
+      glm::mat4 inverseNodeMatrix = glm::inverse(transformedNodeMatrix);
       size_t numJoints = std::min((uint32_t)pSkin->joints.size(), RE_MAXJOINTS);
+
       for (size_t i = 0; i < numJoints; i++) {
-        Node* pJointNode = pSkin->joints[i];
-        glm::mat4 jointMatrix =
-            pJointNode->transformedNodeMatrix * pSkin->inverseBindMatrices[i];
-        jointMatrix = inverseTransform * jointMatrix;
-        //pMesh->uniformBlock.jointMatrices[i] = jointMatrix;
+        glm::mat4 jointMatrix = pSkin->joints[i]->transformedNodeMatrix *
+                                pSkin->staging.inverseBindMatrices[i];
+        jointMatrix = inverseNodeMatrix * jointMatrix;
+        pMesh->uniformBlock.jointMatrices[i] = jointMatrix;
       }
       pMesh->uniformBlock.jointCount = (float)numJoints;
-      memcpy(pMesh->uniformBufferData.uniformBuffer.allocInfo.pMappedData,
-             &pMesh->uniformBlock, sizeof(pMesh->uniformBlock));
-    } else {
-      memcpy(pMesh->uniformBufferData.uniformBuffer.allocInfo.pMappedData,
-             &pMesh->uniformBlock, sizeof(glm::mat4) * 2u);
+      pSkin->staging.recalculateSkinMatrices = false;
     }
   }
 
   for (auto& pChild : pChildren) {
-    pChild->updateStagingNodeMatrices(modelMatrix, pOutAnimation);
+    pChild->updateStagingNodeMatrices(pOutAnimation);
   }
 }
 
@@ -103,9 +72,7 @@ WModel::Node* WModel::createNode(WModel::Node* pParentNode, uint32_t nodeIndex,
 
   pNode->name = nodeName;
   pNode->staging.nodeMatrix = glm::mat4(1.0f);
-
   pNode->pMesh = std::make_unique<WModel::Mesh>();
-  pNode->allocateMeshBuffer();
 
   return pNode;
 }
@@ -125,7 +92,6 @@ void WModel::destroyNode(std::unique_ptr<WModel::Node>& pNode) {
       }
     }
 
-    pNode->destroyMeshBuffer();
     pNode->pChildren.clear();
     pNode->pMesh->pPrimitives.clear();
     pNode->pMesh.reset();
@@ -144,4 +110,12 @@ WModel::Node* WModel::getNode(int32_t index) noexcept {
   RE_LOG(Error, "Node with index %d not found for the model \"%s\".", index,
          m_name.c_str());
   return nullptr;
+}
+
+int32_t WModel::getSkinCount() noexcept {
+  return static_cast<int32_t>(m_pSkins.size());
+}
+
+WModel::Skin* WModel::getSkin(int32_t skinIndex) noexcept {
+  return m_pSkins[skinIndex].get();
 }

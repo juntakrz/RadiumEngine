@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "core/objects.h"
+#include "util/util.h"
 #include "config.h"
 
 const char* config::appTitle = "Radium Engine";
@@ -26,11 +27,12 @@ size_t config::scene::getRootTransformBufferSize() {
 }
 
 size_t config::scene::getNodeTransformBufferSize() {
-  return sizeof(glm::mat4) * 2 * nodeBudget;
+  return RE_NODEDATASIZE * nodeBudget;
 }
 
 size_t config::scene::getSkinTransformBufferSize() {
-  return sizeof(glm::mat4) * RE_MAXJOINTS * entityBudget;
+  return RE_SKINDATASIZE * entityBudget;
 }
 
 VkFormat core::vulkan::formatDepth;
+VkDeviceSize core::vulkan::minBufferAlignment = 64u;

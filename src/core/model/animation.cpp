@@ -61,40 +61,43 @@ void WAnimation::processFrame(WModel* pModel, const float time) {
     }
   }
 
+  for (int32_t j = 0; j < pModel->getSkinCount(); ++j) {
+    pModel->getSkin(j)->staging.recalculateSkinMatrices = true;
+  }
+
   // create accumulated matrices for every node
   for (auto& rootNode : pModel->getRootNodes()) {
     // propagate node transformation accumulating from parent to children
     rootNode->propagateTransformation();
 
     // set root and propagated transformation matrices and update joint matrices
-    rootNode->updateStagingNodeMatrices(glm::mat4(1.0f), this);
+    rootNode->updateStagingNodeMatrices(this);
   }
 
   // create a keyframe using accumulated matrices
-  for (auto& node : pModel->getAllNodes()) {
-    if (node->pMesh) {
-      addKeyFrame(node->index, time - stagingData.startTimeStamp,
-                  node->pMesh->uniformBlock);
+  addKeyFrame(pModel, time - stagingData.startTimeStamp);
+}
+
+void WAnimation::addKeyFrame(WModel* pModel, const float timeStamp) {
+  m_keyFrames.emplace_back(timeStamp);
+
+  KeyFrame& keyFrame = m_keyFrames.back();
+  const int32_t skinCount = pModel->getSkinCount();
+  keyFrame.skinMatrices.resize(skinCount);
+
+  for (const auto& pNode : pModel->getAllNodes()) {
+    if (pNode->pMesh) {
+      keyFrame.nodeMatrices[pNode->index] =
+          pNode->pMesh->uniformBlock.nodeMatrix;
+
+      if (pNode->pSkin) {
+        if (keyFrame.skinMatrices[pNode->pSkin->index].empty()) {
+          keyFrame.skinMatrices[pNode->pSkin->index] =
+              pNode->pMesh->uniformBlock.jointMatrices;
+        }
+      }
     }
   }
-}
-
-void WAnimation::addKeyFrame(const int32_t nodeIndex, const float timeStamp,
-                             const RMeshUBO& meshUBO) {
-  //m_keyFrames.emplace_back(timeStamp, meshUBO.nodeMatrix);
-  /*
-  KeyFrame& keyframe = m_nodeKeyFrames[nodeIndex].back();
-  const int32_t jointCount = static_cast<int32_t>(meshUBO.jointCount);
-
-  for (int32_t i = 0; i < jointCount; ++i) {
-    keyframe.jointMatrices.emplace_back(meshUBO.jointMatrices[i]);
-  }*/
-}
-
-void WAnimation::addKeyFrame(const int32_t nodeIndex, const float timeStamp,
-                             const glm::mat4& nodeMatrix,
-                             const std::vector<glm::mat4>& jointMatrices) {
-  //m_nodeKeyFrames[nodeIndex].emplace_back(timeStamp, nodeMatrix, jointMatrices);
 }
 
 //

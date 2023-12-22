@@ -391,13 +391,13 @@ TResult core::MRenderer::createDescriptorSets() {
     nodeMatrixBufferInfo.buffer = scene.nodeTransformBuffer.buffer;
     nodeMatrixBufferInfo.offset = 0;
     // node matrix + joint count
-    nodeMatrixBufferInfo.range = sizeof(glm::mat4) + sizeof(float);
+    nodeMatrixBufferInfo.range = RE_NODEDATASIZE;
 
     VkDescriptorBufferInfo skinningMatricesBufferInfo{};
     skinningMatricesBufferInfo.buffer = scene.skinTransformBuffer.buffer;
     skinningMatricesBufferInfo.offset = 0;
     // RE_MAXJOINTS matrices
-    skinningMatricesBufferInfo.range = sizeof(glm::mat4) * RE_MAXJOINTS;
+    skinningMatricesBufferInfo.range = RE_SKINDATASIZE;
 
     std::vector<VkWriteDescriptorSet> writeSets(3);
     writeSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

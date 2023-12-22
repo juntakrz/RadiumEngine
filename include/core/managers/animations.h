@@ -59,6 +59,9 @@ class MAnimations {
   // registers index location for entity in root transform buffer
   std::vector<AEntity*> m_rootTransformBufferIndices;
 
+  // registers index location for skin in skin transform buffer
+  std::vector<WModel::Skin*> m_skinTransformBufferIndices;
+
   MAnimations();
 
  public:
@@ -91,5 +94,6 @@ class MAnimations {
   // returns true if node was registered, false if already present
   bool getOrRegisterNodeOffsetIndex(AEntity::AnimatedNodeBinding* pNode,
                                     size_t& outIndex);
+  bool getOrRegisterSkinOffsetIndex(WModel::Skin* pSkin, size_t& outIndex);
 };
 }  // namespace core

@@ -231,10 +231,10 @@ TResult core::MRenderer::createUniformBuffers() {
   }
 
   // create environment buffer
-  VkDeviceSize minBufferAlignment =
+  core::vulkan::minBufferAlignment =
       physicalDevice.properties.limits.minUniformBufferOffsetAlignment;
-  VkDeviceSize alignedSize = (sizeof(REnvironmentUBO) + minBufferAlignment - 1) &
-                         ~(minBufferAlignment - 1);
+  VkDeviceSize alignedSize = util::getVulkanAlignedSize(
+      sizeof(REnvironmentUBO), core::vulkan::minBufferAlignment);
   VkDeviceSize bufferSize = alignedSize * 6;
 
   environment.transformBuffers.resize(MAX_FRAMES_IN_FLIGHT);

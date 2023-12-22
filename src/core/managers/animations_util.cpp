@@ -215,8 +215,8 @@ TResult core::MAnimations::saveAnimation(const std::string animation,
     //exportNodeData.keyFrameData = pAnimation->m_nodeKeyFrames.at(nodeIndex);
     exportNodeData.keyFrameCount =
         static_cast<int32_t>(exportNodeData.keyFrameData.size());
-    exportNodeData.jointCount = static_cast<int32_t>(
-        exportNodeData.keyFrameData.at(0).jointMatrices.size());
+    /*exportNodeData.jointCount = static_cast<int32_t>(
+        exportNodeData.keyFrameData.at(0).jointMatrices.size());*/
 
     chunkSize += sizeof(exportNodeData.nodeIndex);
     chunkSize += sizeof(exportNodeData.keyFrameCount);
@@ -277,8 +277,8 @@ TResult core::MAnimations::saveAnimation(const std::string animation,
 
       // add transformation matrices for joints
       for (int32_t m = 0; m < outFile.nodeData[k].jointCount; ++m) {
-        memcpy(&pOutData[address], &keyFrame.jointMatrices[m],
-               sizeof(glm::mat4));
+        /*memcpy(&pOutData[address], &keyFrame.jointMatrices[m],
+               sizeof(glm::mat4));*/
         address += sizeof(glm::mat4);
       }
     }
