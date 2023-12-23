@@ -78,6 +78,7 @@ class WAnimation {
 
   void resampleKeyFrames(WModel* pModel, const float framerate,
                          const float speed = 1.0f);
+  const std::vector<KeyFrame>& getKeyFrames();
 
   // check if the model has all the required nodes for this animation
   // the number of nodes in this animation is allowed to be lower

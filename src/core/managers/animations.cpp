@@ -106,50 +106,50 @@ int32_t core::MAnimations::addAnimationToQueue(const WAnimationInfo* pAnimationI
 
 void core::MAnimations::runAnimationQueue() {
   cleanupQueue();
-  /*
+  
   for (auto& queueEntry : m_animationQueue) {
     // get a list of all nodes affected by the animation
     const auto& animatedNodes = queueEntry.pAnimation->getAnimatedNodes();
+    const auto& keyFrames = queueEntry.pAnimation->getKeyFrames();
 
     for (const auto& node : animatedNodes) {
-      const auto& nodeKeyFrames =
-          queueEntry.pAnimation->getNodeKeyFrames(node.index);
-
       WModel::Node* pNode = queueEntry.pModel->getNode(node.index);
 
-      if (!nodeKeyFrames || !pNode) {
+      if (keyFrames.empty() || !pNode) {
         m_cleanupQueue.emplace_back(queueEntry.queueIndex);
         break;
       }
 
-      // write interpolated frame data directly to node's mesh uniform block
-      for (size_t i = 0; i < nodeKeyFrames->size() - 1; ++i) {
-        // if we are at the last frame - use first frame for interpolation
-        // const size_t iAux = (i == nodeKeyFrames->size() - 1) ? 0 : i + 1;
+      const int32_t skinIndex = pNode->skinIndex;
+      const bool hasSkin = !keyFrames.at(0).skinMatrices.empty();
 
-        if ((queueEntry.time >= nodeKeyFrames->at(i).timeStamp) &&
-            (queueEntry.time <= nodeKeyFrames->at(i + 1).timeStamp)) {
+      // write interpolated frame data directly to node's mesh uniform block
+      for (size_t i = 0; i < keyFrames.size() - 1; ++i) {
+        if ((queueEntry.time >= keyFrames.at(i).timeStamp) &&
+            (queueEntry.time <= keyFrames.at(i + 1).timeStamp)) {
           // get interpolation coefficient based on time between frames
           float u =
-              std::max(0.0f, queueEntry.time - nodeKeyFrames->at(i).timeStamp) /
-              (nodeKeyFrames->at(i + 1).timeStamp -
-               nodeKeyFrames->at(i).timeStamp);
+              std::max(0.0f, queueEntry.time - keyFrames.at(i).timeStamp) /
+              (keyFrames.at(i + 1).timeStamp - keyFrames.at(i).timeStamp);
 
           if (u <= 1.0f) {
-            math::interpolate(
-                nodeKeyFrames->at(i).nodeMatrices.at(node.index),
-                nodeKeyFrames->at(i + 1).nodeMatrices.at(node.index), u,
-                pNode->pMesh->uniformBlock.nodeMatrix);
+            math::interpolate(keyFrames.at(i).nodeMatrices.at(node.index),
+                              keyFrames.at(i + 1).nodeMatrices.at(node.index),
+                              u, pNode->pMesh->uniformBlock.nodeMatrix);
 
-            const size_t jointCount = nodeKeyFrames->at(i).jointMatrices.size();
+            if (hasSkin) {
+              const size_t jointCount =
+                  keyFrames.at(i).skinMatrices.at(skinIndex).size();
 
-            for (int32_t j = 0; j < jointCount; ++j) {
-              math::interpolate(nodeKeyFrames->at(i).jointMatrices[j],
-                                nodeKeyFrames->at(i + 1).jointMatrices[j], u,
-                                pNode->pMesh->uniformBlock.jointMatrices[j]);
+              for (int32_t j = 0; j < jointCount; ++j) {
+                math::interpolate(
+                    keyFrames.at(i).skinMatrices[skinIndex][j],
+                    keyFrames.at(i + 1).skinMatrices[skinIndex][j], u,
+                    pNode->pMesh->uniformBlock.jointMatrices[j]);
+              }
+
+              pNode->pMesh->uniformBlock.jointCount = (float)jointCount;
             }
-
-            pNode->pMesh->uniformBlock.jointCount = (float)jointCount;
 
             // frame update finished, exit loop
             break;
@@ -185,7 +185,7 @@ void core::MAnimations::runAnimationQueue() {
         }
       }
     }
-  }*/
+  }
 }
 
 void core::MAnimations::cleanupQueue() {

@@ -150,6 +150,8 @@ class WModel {
   void updateNodeTransformBuffer(int32_t nodeIndex,
                                  uint32_t bufferOffset) noexcept;
 
+  void updateSkinTransformBuffer() noexcept;
+
   // resets all transformation matrices stored in uniform blocks to identity
   void resetUniformBlockData();
 
@@ -192,6 +194,7 @@ class WModel {
   const std::vector<std::unique_ptr<WModel::Node>>& getRootNodes() noexcept;
   std::vector<WModel::Node*>& getAllNodes() noexcept;
   WModel::Node* getNode(int32_t index) noexcept;
+  WModel::Node* getNodeBySkinIndex(int32_t index) noexcept;
   int32_t getSkinCount() noexcept;
   WModel::Skin* getSkin(int32_t skinIndex) noexcept;
 

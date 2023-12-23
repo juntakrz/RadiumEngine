@@ -93,8 +93,8 @@ void core::run() {
 
   //core::animations.loadAnimation("Idle");
   
-  //pStatic->getModel()->bindAnimation("Idle");
-  //pStatic->getModel()->playAnimation("Idle");
+  pStatic->getModel()->bindAnimation("Idle");
+  pStatic->getModel()->playAnimation("Idle");
 
   pStatic = core::actors.createStatic("Box1");
   pStatic->setModel(core::world.getModel("mdlBox1"));

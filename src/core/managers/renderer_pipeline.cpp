@@ -390,13 +390,11 @@ TResult core::MRenderer::createDescriptorSets() {
     VkDescriptorBufferInfo nodeMatrixBufferInfo{};
     nodeMatrixBufferInfo.buffer = scene.nodeTransformBuffer.buffer;
     nodeMatrixBufferInfo.offset = 0;
-    // node matrix + joint count
     nodeMatrixBufferInfo.range = RE_NODEDATASIZE;
 
     VkDescriptorBufferInfo skinningMatricesBufferInfo{};
     skinningMatricesBufferInfo.buffer = scene.skinTransformBuffer.buffer;
     skinningMatricesBufferInfo.offset = 0;
-    // RE_MAXJOINTS matrices
     skinningMatricesBufferInfo.range = RE_SKINDATASIZE;
 
     std::vector<VkWriteDescriptorSet> writeSets(3);

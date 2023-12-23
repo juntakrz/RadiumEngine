@@ -221,6 +221,10 @@ void WAnimation::resampleKeyFrames(WModel* pModel, const float framerate,
   m_duration = resampledDuration;
 }
 
+const std::vector<WAnimation::KeyFrame>& WAnimation::getKeyFrames() {
+  return m_keyFrames;
+}
+
 bool WAnimation::validateModel(WModel* pModel) {
   if (!pModel) {
     RE_LOG(

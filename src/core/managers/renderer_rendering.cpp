@@ -11,7 +11,7 @@ void core::MRenderer::updateBoundEntities() {
   AEntity* pEntity = nullptr;
 
   // update animation matrices
-  //core::animations.runAnimationQueue();
+  core::animations.runAnimationQueue();
 
   for (auto& bindInfo : system.bindings) {
     if ((pEntity = bindInfo.pEntity) == nullptr) {
@@ -95,9 +95,11 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
 
   // mesh descriptor set is at binding 1 (TODO: change from mesh to actor)
   if (renderView.pCurrentMesh != pMesh) {
+    uint32_t skinOffset =
+        (pNode->pSkin) ? static_cast<uint32_t>(pNode->pSkin->bufferOffset) : 0u;
     uint32_t dynamicOffsets[3] = {
         pEntity->getRootTransformBufferOffset(),
-        pEntity->getNodeTransformBufferOffset(pNode->index), 0};
+        pEntity->getNodeTransformBufferOffset(pNode->index), skinOffset};
     vkCmdBindDescriptorSets(
         cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentRenderPass->usedLayout,
         1, 1, &scene.transformSet, 3, dynamicOffsets);

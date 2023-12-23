@@ -157,8 +157,8 @@ void WModel::updateNodeTransformBuffer(int32_t nodeIndex,
 
   if (!pNode->isRequestingTransformBufferUpdate) return;
 
-  uint32_t* pMemAddress =
-      static_cast<uint32_t*>(core::renderer.getSceneBuffers()
+  int8_t* pMemAddress =
+      static_cast<int8_t*>(core::renderer.getSceneBuffers()
                                  ->nodeTransformBuffer.allocInfo.pMappedData) +
       bufferOffset;
 
@@ -166,13 +166,21 @@ void WModel::updateNodeTransformBuffer(int32_t nodeIndex,
   memcpy(pMemAddress, &pNode->pMesh->uniformBlock,
          sizeof(glm::mat4) + sizeof(float));
 
-  // TODO: move to a separate method that will update dynamic skin buffer independent of nodes
-  if (pNode->pSkin) {
+  pNode->isRequestingTransformBufferUpdate = false;
+}
+
+void WModel::updateSkinTransformBuffer() noexcept {
+  for (auto& pSkin : m_pSkins) {
+    int8_t* pMemAddress =
+        static_cast<int8_t*>(core::renderer.getSceneBuffers()
+                                  ->skinTransformBuffer.allocInfo.pMappedData) +
+        pSkin->bufferOffset;
+
+    WModel::Node* pNode = getNodeBySkinIndex(pSkin->index);
+
     memcpy(pMemAddress, pNode->pMesh->uniformBlock.jointMatrices.data(),
            sizeof(glm::mat4) * pNode->pMesh->uniformBlock.jointMatrices.size());
   }
-
-  pNode->isRequestingTransformBufferUpdate = false;
 }
 
 void WModel::resetUniformBlockData() {

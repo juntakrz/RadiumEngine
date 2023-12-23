@@ -25,7 +25,8 @@ void WModel::Node::updateStagingNodeMatrices(WAnimation* pOutAnimation) {
 
     if (pSkin && pSkin->staging.recalculateSkinMatrices) {
       // Update joint matrices
-      glm::mat4 inverseNodeMatrix = glm::inverse(transformedNodeMatrix);
+      //glm::mat4 inverseNodeMatrix = glm::inverse(transformedNodeMatrix);
+      glm::mat4 inverseNodeMatrix = transformedNodeMatrix;
       size_t numJoints = std::min((uint32_t)pSkin->joints.size(), RE_MAXJOINTS);
 
       for (size_t i = 0; i < numJoints; i++) {
@@ -109,6 +110,14 @@ WModel::Node* WModel::getNode(int32_t index) noexcept {
 
   RE_LOG(Error, "Node with index %d not found for the model \"%s\".", index,
          m_name.c_str());
+  return nullptr;
+}
+
+WModel::Node* WModel::getNodeBySkinIndex(int32_t index) noexcept {
+  for (auto& pNode : m_pLinearNodes) {
+    if (pNode->skinIndex == index) return pNode;
+  }
+
   return nullptr;
 }
 

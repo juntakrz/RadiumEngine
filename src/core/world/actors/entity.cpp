@@ -31,11 +31,11 @@ WModel* AEntity::getModel() { return m_pModel; }
 
 void AEntity::updateModel() {
   if (m_pModel && m_bindIndex != -1) {
-    uint32_t* pMemAddress =
-        static_cast<uint32_t*>(
+    glm::mat4* pMemAddress =
+        static_cast<glm::mat4*>(
             core::renderer.getSceneBuffers()
                 ->rootTransformBuffer.allocInfo.pMappedData) +
-        m_rootTransformBufferOffset;
+        m_rootTransformBufferIndex;
 
     const glm::mat4* pMatrix = &getRootTransformationMatrix(); 
 
@@ -45,6 +45,8 @@ void AEntity::updateModel() {
       m_pModel->updateNodeTransformBuffer(
           it.nodeIndex, static_cast<uint32_t>(it.nodeTransformBufferOffset));
     }
+
+    m_pModel->updateSkinTransformBuffer();
   }
 }
 
@@ -76,7 +78,7 @@ void AEntity::bindToRenderer() {
     core::animations.getOrRegisterNodeOffsetIndex(
         &animatedNode, animatedNode.nodeTransformBufferIndex);
     animatedNode.nodeTransformBufferOffset =
-        RE_NODEDATASIZE * animatedNode.nodeTransformBufferIndex;
+        animatedNode.nodeTransformBufferIndex * RE_NODEDATASIZE;
   }
 
   // register inverse bind matrices
