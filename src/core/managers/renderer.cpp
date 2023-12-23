@@ -292,6 +292,10 @@ TResult core::MRenderer::createImageTargets() {
     return RE_CRITICAL;
   }
 
+#ifndef NDEBUG
+  RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
+#endif
+
   // set subresource range for future copying from this render target
   environment.sourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   environment.sourceRange.baseArrayLayer = 0;
@@ -324,6 +328,10 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
   textureInfo.usageFlags =
       VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.usageFlags =
+      VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -331,6 +339,31 @@ TResult core::MRenderer::createImageTargets() {
     RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
     return RE_CRITICAL;
   }
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
+#endif
+
+  // target for outputting color image in HDR for future post processing
+  rtName = RTGT_HDR;
+  
+  textureInfo.name = rtName;
+  textureInfo.mipLevels = 1;    // change this for PP downsampling?
+  textureInfo.format = core::vulkan::formatHDR16;
+  textureInfo.width = swapchain.imageExtent.width;
+  textureInfo.height = swapchain.imageExtent.height;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+  pNewTexture = core::resources.createTexture(&textureInfo);
+
+  if (!pNewTexture) {
+    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
+    return RE_CRITICAL;
+  }
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
+#endif
 
   // default cubemap texture as a copy target
   rtName = RTGT_ENVFILTER;
@@ -357,6 +390,10 @@ TResult core::MRenderer::createImageTargets() {
     return RE_CRITICAL;
   }
 
+#ifndef NDEBUG
+  RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
+#endif
+
   environment.destinationRanges[0].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   environment.destinationRanges[0].baseArrayLayer = 0;
   environment.destinationRanges[0].layerCount = pNewTexture->texture.layerCount;
@@ -381,6 +418,10 @@ TResult core::MRenderer::createImageTargets() {
     RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
     return RE_CRITICAL;
   }
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
+#endif
 
   environment.destinationRanges[1].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   environment.destinationRanges[1].baseArrayLayer = 0;
@@ -429,6 +470,10 @@ TResult core::MRenderer::createDepthTarget() {
     RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
     return RE_CRITICAL;
   }
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Created depth target '%s'.", rtName.c_str());
+#endif
 
   return RE_OK;
 }

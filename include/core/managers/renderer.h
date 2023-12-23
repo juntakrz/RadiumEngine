@@ -190,7 +190,6 @@ class MRenderer {
   TResult initialize();
   void deinitialize();
 
- public:
   const VkDescriptorSetLayout getDescriptorSetLayout(EDescriptorSetLayout type) const;
   const VkDescriptorPool getDescriptorPool();
 
@@ -235,6 +234,13 @@ class MRenderer {
   //
 
  private:
+  VkRenderPass createRenderPass(VkDevice device, uint32_t colorAttachments,
+                                VkAttachmentDescription* pColorAttachments,
+                                VkAttachmentDescription* pDepthAttachment);
+
+  void setResourceName(VkDevice device, VkObjectType objectType,
+                       uint64_t handle, const char* name);
+
   TResult setDepthStencilFormat();
 
   VkPipelineShaderStageCreateInfo loadShader(const char* path,

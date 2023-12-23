@@ -90,7 +90,8 @@ enum class ERenderPass {
   Null,
   LUTGen,
   Environment,
-  PBR
+  PBR,
+  Depth
 };
 
 enum class ETransformType { Translation, Rotation, Scale, Weight, Undefined };

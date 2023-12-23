@@ -9,6 +9,108 @@
 
 // PRIVATE
 
+VkRenderPass core::MRenderer::createRenderPass(
+    VkDevice device, uint32_t colorAttachments,
+    VkAttachmentDescription* pColorAttachments,
+    VkAttachmentDescription* pDepthAttachment) {
+  // we need to put all the color and the depth attachments in the same buffer
+  //
+  VkAttachmentDescription attachments[10];
+  assert(colorAttachments <
+         10);  // make sure we don't overflow the scratch buffer above
+
+  memcpy(attachments, pColorAttachments,
+         sizeof(VkAttachmentDescription) * colorAttachments);
+  if (pDepthAttachment != NULL) {
+    memcpy(&attachments[colorAttachments], pDepthAttachment,
+           sizeof(VkAttachmentDescription));
+  }
+
+  // create references for the attachments
+  //
+  VkAttachmentReference colorReference[10];
+  for (uint32_t i = 0; i < colorAttachments; i++)
+    colorReference[i] = {i, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+
+  VkAttachmentReference depthReference = {
+      colorAttachments, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+
+  // Create subpass
+  //
+  VkSubpassDescription subpassDesc{};
+  subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+  subpassDesc.flags = 0;
+  subpassDesc.inputAttachmentCount = 0;
+  subpassDesc.pInputAttachments = NULL;
+  subpassDesc.colorAttachmentCount = colorAttachments;
+  subpassDesc.pColorAttachments = colorReference;
+  subpassDesc.pResolveAttachments = NULL;
+  subpassDesc.pDepthStencilAttachment =
+      (pDepthAttachment) ? &depthReference : NULL;
+  subpassDesc.preserveAttachmentCount = 0;
+  subpassDesc.pPreserveAttachments = NULL;
+
+  VkSubpassDependency subpassDependency{};
+  subpassDependency.dependencyFlags = 0;
+  subpassDependency.dstAccessMask =
+      VK_ACCESS_SHADER_READ_BIT |
+      ((colorAttachments) ? VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT : 0) |
+      ((pDepthAttachment) ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT : 0);
+  subpassDependency.dstStageMask =
+      VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+      ((colorAttachments) ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT : 0) |
+      ((pDepthAttachment) ? VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                                VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
+                          : 0);
+  subpassDependency.dstSubpass = VK_SUBPASS_EXTERNAL;
+  subpassDependency.srcAccessMask =
+      ((colorAttachments) ? VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT : 0) |
+      ((pDepthAttachment) ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT : 0);
+  subpassDependency.srcStageMask =
+      ((colorAttachments) ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT : 0) |
+      ((pDepthAttachment) ? VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                                VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
+                          : 0);
+  subpassDependency.srcSubpass = 0;
+
+  // Create render pass
+  //
+  VkRenderPassCreateInfo renderPassInfo{};
+  renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+  renderPassInfo.pNext = NULL;
+  renderPassInfo.attachmentCount = colorAttachments;
+  if (pDepthAttachment != NULL) renderPassInfo.attachmentCount++;
+  renderPassInfo.pAttachments = attachments;
+  renderPassInfo.subpassCount = 1;
+  renderPassInfo.pSubpasses = &subpassDesc;
+  renderPassInfo.dependencyCount = 1;
+  renderPassInfo.pDependencies = &subpassDependency;
+
+  VkRenderPass renderPass;
+  VkResult result =
+      vkCreateRenderPass(device, &renderPassInfo, NULL, &renderPass);
+  assert(result == VK_SUCCESS);
+
+  /*setResourceName(device, VK_OBJECT_TYPE_RENDER_PASS, (uint64_t)renderPass,
+                  "CreateRenderPass");*/
+
+  return renderPass;
+}
+
+void core::MRenderer::setResourceName(VkDevice device, VkObjectType objectType,
+                                      uint64_t handle, const char* name) {
+  /*if (s_vkSetDebugUtilsObjectName && handle && name) {
+    std::unique_lock<std::mutex> lock(s_mutex);
+
+    VkDebugUtilsObjectNameInfoEXT nameInfo = {};
+    nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+    nameInfo.objectType = objectType;
+    nameInfo.objectHandle = handle;
+    nameInfo.pObjectName = name;
+    s_vkSetDebugUtilsObjectName(device, &nameInfo);
+  }*/
+}
+
 TResult core::MRenderer::setDepthStencilFormat() {
   std::vector<VkFormat> depthFormats = {
       VK_FORMAT_D32_SFLOAT_S8_UINT,

@@ -519,28 +519,21 @@ TResult core::MRenderer::createRenderPasses() {
   system.renderPasses.emplace(passType, RRenderPass{});
 
   VkAttachmentDescription colorAttachment{};
-  colorAttachment.format = swapchain.formatData.format;
+  //colorAttachment.format = swapchain.formatData.format;
+  colorAttachment.format = core::vulkan::formatHDR16;
   colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
   colorAttachment.loadOp =
       VK_ATTACHMENT_LOAD_OP_CLEAR;  // clearing contents on new frame
   colorAttachment.storeOp =
-      VK_ATTACHMENT_STORE_OP_STORE;  // storing contents in memory while
-                                     // rendering
+      VK_ATTACHMENT_STORE_OP_STORE; // storing contents in memory while rendering
   colorAttachment.stencilLoadOp =
       VK_ATTACHMENT_LOAD_OP_DONT_CARE;  // ignore stencil buffer
   colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
   colorAttachment.initialLayout =
-      VK_IMAGE_LAYOUT_UNDEFINED;  // not important, since it's cleared at the
-                                  // frame start
+      VK_IMAGE_LAYOUT_UNDEFINED;    // not important, since it's cleared at the
+                                    // frame start
   colorAttachment.finalLayout =
       VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;  // swap chain image to be presented
-
-  VkAttachmentReference colorAttachmentRef{};
-  colorAttachmentRef.attachment =
-      0;  // index of an attachment in attachmentdesc array (also vertex shader
-          // output index)
-  colorAttachmentRef.layout =
-      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;  // the layout will be an image
 
   VkAttachmentDescription depthAttachment{};
   depthAttachment.format = core::vulkan::formatDepth;
@@ -553,99 +546,48 @@ TResult core::MRenderer::createRenderPasses() {
   depthAttachment.finalLayout =
       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-  VkAttachmentReference depthAttachmentRef{};
-  depthAttachmentRef.attachment = 1;
-  depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-  VkSubpassDescription subpassDesc{};
-  subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-  subpassDesc.colorAttachmentCount = 1;
-  subpassDesc.pColorAttachments = &colorAttachmentRef;
-  subpassDesc.pDepthStencilAttachment = &depthAttachmentRef;
-
-  VkSubpassDependency dependency{};  // makes subpass wait for color
-                                     // attachment-type image to be acquired
-  dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-  dependency.dstSubpass = 0;
-  dependency.srcStageMask =
-      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-      VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;  // wait for external subpass
-                                                   // to be of color attachment
-  dependency.srcAccessMask = NULL;
-  dependency.dstStageMask =
-      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-      VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;  // wait until we can write to
-                                                   // color attachment
-  dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-                             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-  std::vector<VkAttachmentDescription> attachments = {colorAttachment,
-                                                      depthAttachment};
-
-  VkRenderPassCreateInfo renderPassInfo{};
-  renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-  renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-  renderPassInfo.pAttachments = attachments.data();
-  renderPassInfo.subpassCount = 1;
-  renderPassInfo.pSubpasses = &subpassDesc;
-  renderPassInfo.dependencyCount = 1;
-  renderPassInfo.pDependencies = &dependency;
-
-  if (vkCreateRenderPass(logicalDevice.device, &renderPassInfo, nullptr,
-                         &getVkRenderPass(passType)) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create render pass E%d.", passType);
-
-    return RE_CRITICAL;
-  }
+  VkRenderPass newRenderPass = createRenderPass(
+      logicalDevice.device, 1, &colorAttachment, &depthAttachment);
+  system.renderPasses.at(passType).renderPass = newRenderPass;
 
   //
   // CUBEMAP render pass
   //
-  passType = ERenderPass::Environment;
-  attachments.clear();
 
+  passType = ERenderPass::Environment;
   system.renderPasses.emplace(passType, RRenderPass{});
+  RE_LOG(Log, "Creating render pass E%d", passType);
 
   colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
   colorAttachment.format = core::vulkan::formatHDR16;
-  subpassDesc.pDepthStencilAttachment = nullptr;
-  attachments = {colorAttachment};
-  dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-                            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-  dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-  renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-  renderPassInfo.pAttachments = attachments.data();
-
-  if (vkCreateRenderPass(logicalDevice.device, &renderPassInfo, nullptr,
-                         &getVkRenderPass(passType)) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create render pass E%d.", passType);
-
-    return RE_CRITICAL;
-  }
+  newRenderPass =
+      createRenderPass(logicalDevice.device, 1, &colorAttachment, nullptr);
+  system.renderPasses.at(passType).renderPass = newRenderPass;
 
   //
   // BRDF LUT render pass
   //
   passType = ERenderPass::LUTGen;
-  attachments.clear();
-
   system.renderPasses.emplace(passType, RRenderPass{});
+  RE_LOG(Log, "Creating render pass E%d", passType);
 
   colorAttachment.format = core::vulkan::formatLUT;
-  attachments = {colorAttachment};
-  renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-  renderPassInfo.pAttachments = attachments.data();
-  renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-  renderPassInfo.pAttachments = attachments.data();
+  newRenderPass =
+      createRenderPass(logicalDevice.device, 1, &colorAttachment, nullptr);
+  system.renderPasses.at(passType).renderPass = newRenderPass;
 
-  if (vkCreateRenderPass(logicalDevice.device, &renderPassInfo, nullptr,
-                         &getVkRenderPass(passType)) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create render pass E%d.", passType);
+  //
+  // TODO: Deferred rendering depth pass
+  //
+  passType = ERenderPass::Depth;
+  system.renderPasses.emplace(passType, RRenderPass{});
+  RE_LOG(Log, "Creating render pass E%d", passType);
 
-    return RE_CRITICAL;
-  }
+  newRenderPass =
+      createRenderPass(logicalDevice.device, 0, nullptr, &depthAttachment);
+  system.renderPasses.at(passType).renderPass = newRenderPass;
 
   // setup default render pass begin info
   system.clearColors[0].color = {0.0f, 0.0f, 0.0f, 1.0f};

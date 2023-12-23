@@ -14,6 +14,7 @@
 // render targets
 #define RTGT_DEPTH              "RT2D_Depth"        // depth render target
 #define RTGT_ENVSRC             "RT2D_EnvSrc"       // source texture for environment cubemaps
+#define RTGT_HDR                "RT2D_HDR"          // render target for 16 bit color output
 #define RTGT_ENVFILTER          "RTCube_EnvFilter"
 #define RTGT_ENVIRRAD           "RTCube_EnvIrrad"
 #define RTGT_LUTMAP             "RTCube_EnvLUT"
