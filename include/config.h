@@ -21,10 +21,12 @@
 #define RTGT_ENVIRRAD           "RTCube_EnvIrrad"
 #define RTGT_LUTMAP             "RTCube_EnvLUT"
 
-#define RTGT_GPBR               "RT2D_GPBR"         // render target for combined PBR output
-#define RTGT_GPOS               "RT2D_GPos"         // fragment world space position output
-#define RTGT_GDIFF              "RT2D_GDiffuse"     // (GBuffer) diffuse output
-#define RTGT_GNORMAL            "RT2D_GNormal"      // (GBuffer) normals output
+#define RTGT_GPBR               "RT2D_GPBR"         // render target for combined G-Buffer PBR output
+#define RTGT_GPOSITION          "RT2D_GPosition"    // fragment world space position output
+#define RTGT_GDIFFUSE           "RT2D_GDiffuse"     // diffuse output
+#define RTGT_GNORMAL            "RT2D_GNormal"      // normals output
+#define RTGT_GPHYSICAL          "RT2D_GPhysical"    // physical properties output
+#define RTGT_GEMISSIVE          "RT2D_GEmissive"    // emissive color output
 
 // default camera
 #define RCAM_MAIN               "camMain"

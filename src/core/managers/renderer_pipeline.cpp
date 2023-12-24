@@ -457,10 +457,12 @@ TResult core::MRenderer::createDefaultFramebuffers() {
 
   TResult chkResult;
   std::vector<std::string> attachmentNames;
-  attachmentNames.emplace_back(RTGT_GPOS);    // 0
-  attachmentNames.emplace_back(RTGT_GNORMAL); // 1
-  attachmentNames.emplace_back(RTGT_GDIFF);   // 2
-  attachmentNames.emplace_back(RTGT_DEPTH);   // Z buffer target
+  attachmentNames.emplace_back(RTGT_GPOSITION); // 0
+  attachmentNames.emplace_back(RTGT_GDIFFUSE);  // 1
+  attachmentNames.emplace_back(RTGT_GNORMAL);   // 2
+  attachmentNames.emplace_back(RTGT_GPHYSICAL); // 3
+  attachmentNames.emplace_back(RTGT_GEMISSIVE); // 4
+  attachmentNames.emplace_back(RTGT_DEPTH);     // depth buffer target
 
   if (chkResult = createFramebuffer(ERenderPass::Deferred, attachmentNames,
                                     RFB_DEFERRED) != RE_OK) {
@@ -742,9 +744,9 @@ TResult core::MRenderer::createGraphicsPipelines() {
 
   // pipeline layout for the main 'scene'
   std::vector<VkDescriptorSetLayout> descriptorSetLayouts{
-      getDescriptorSetLayout(EDescriptorSetLayout::Scene),    // 0
-      getDescriptorSetLayout(EDescriptorSetLayout::Model),     // 1
-      getDescriptorSetLayout(EDescriptorSetLayout::Material)  // 2
+      getDescriptorSetLayout(EDescriptorSetLayout::Scene),      // 0
+      getDescriptorSetLayout(EDescriptorSetLayout::Model),      // 1
+      getDescriptorSetLayout(EDescriptorSetLayout::Material)    // 2
   };
 
   VkPipelineLayoutCreateInfo layoutInfo{};
@@ -773,7 +775,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
   descriptorSetLayouts.clear();
   descriptorSetLayouts = {
       getDescriptorSetLayout(EDescriptorSetLayout::Environment),  // 0
-      getDescriptorSetLayout(EDescriptorSetLayout::Model),         // 1
+      getDescriptorSetLayout(EDescriptorSetLayout::Model),        // 1
       getDescriptorSetLayout(EDescriptorSetLayout::Material)      // 2
   };
 
@@ -1026,10 +1028,18 @@ bool core::MRenderer::checkPipeline(uint32_t pipelineFlags,
 }
 
 TResult core::MRenderer::configureRenderPasses() {
-  // NOTE: order of pipeline emplacement is important
+  // NOTE: order of pipeline 'emplacement' is important
 
   // configure main 'scene', PBR render pass
   RRenderPass* pRenderPass = getRenderPass(ERenderPass::PBR);
+  pRenderPass->usedLayout = getPipelineLayout(EPipelineLayout::Scene);
+  pRenderPass->usedPipelines.emplace_back(EPipeline::OpaqueCullBack);
+  pRenderPass->usedPipelines.emplace_back(EPipeline::OpaqueCullNone);
+  pRenderPass->usedPipelines.emplace_back(EPipeline::Skybox);
+  pRenderPass->usedPipelines.emplace_back(EPipeline::BlendCullNone);
+
+  // configure deferred render pass that generates G buffer targets
+  pRenderPass = getRenderPass(ERenderPass::Deferred);
   pRenderPass->usedLayout = getPipelineLayout(EPipelineLayout::Scene);
   pRenderPass->usedPipelines.emplace_back(EPipeline::OpaqueCullBack);
   pRenderPass->usedPipelines.emplace_back(EPipeline::OpaqueCullNone);

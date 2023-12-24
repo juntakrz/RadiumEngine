@@ -419,9 +419,11 @@ TResult core::MRenderer::createImageTargets() {
 TResult core::MRenderer::createGBufferRenderTargets() {
   std::vector<std::string> targetNames;
 
-  targetNames.emplace_back(RTGT_GPOS);
-  targetNames.emplace_back(RTGT_GDIFF);
+  targetNames.emplace_back(RTGT_GPOSITION);
+  targetNames.emplace_back(RTGT_GDIFFUSE);
   targetNames.emplace_back(RTGT_GNORMAL);
+  targetNames.emplace_back(RTGT_GPHYSICAL);
+  targetNames.emplace_back(RTGT_GEMISSIVE);
   targetNames.emplace_back(RTGT_GPBR);
 
   for (const auto& targetName : targetNames) {
