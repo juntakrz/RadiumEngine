@@ -328,31 +328,9 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
   textureInfo.usageFlags =
       VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags =
       VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-  pNewTexture = core::resources.createTexture(&textureInfo);
-
-  if (!pNewTexture) {
-    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
-    return RE_CRITICAL;
-  }
-
-#ifndef NDEBUG
-  RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
-#endif
-
-  // target for outputting color image in HDR for future post processing
-  rtName = RTGT_HDR;
-  
-  textureInfo.name = rtName;
-  textureInfo.mipLevels = 1;    // change this for PP downsampling?
-  textureInfo.format = core::vulkan::formatHDR16;
-  textureInfo.width = swapchain.imageExtent.width;
-  textureInfo.height = swapchain.imageExtent.height;
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -434,6 +412,24 @@ TResult core::MRenderer::createImageTargets() {
   // set environment push block defaults
   environment.envPushBlock.samples = 32u;
   environment.envPushBlock.roughness = 0.0f;
+
+  return createGBufferRenderTargets();
+}
+
+TResult core::MRenderer::createGBufferRenderTargets() {
+  std::vector<std::string> targetNames;
+
+  targetNames.emplace_back(RTGT_GPOS);
+  targetNames.emplace_back(RTGT_GDIFF);
+  targetNames.emplace_back(RTGT_GNORMAL);
+  targetNames.emplace_back(RTGT_GPBR);
+
+  for (const auto& targetName : targetNames) {
+    core::resources.destroyTexture(targetName.c_str(), true);
+    if (!createFragmentRenderTarget(targetName.c_str())) {
+      return RE_CRITICAL;
+    }
+  }
 
   return createDepthTarget();
 }

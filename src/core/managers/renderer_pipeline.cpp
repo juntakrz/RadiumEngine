@@ -456,56 +456,25 @@ TResult core::MRenderer::createDefaultFramebuffers() {
   }
 
   TResult chkResult;
-  
-  if (chkResult = createFramebuffer(ERenderPass::Environment, RTGT_ENVSRC,
+  std::vector<std::string> attachmentNames;
+  attachmentNames.emplace_back(RTGT_GPOS);    // 0
+  attachmentNames.emplace_back(RTGT_GNORMAL); // 1
+  attachmentNames.emplace_back(RTGT_GDIFF);   // 2
+  attachmentNames.emplace_back(RTGT_DEPTH);   // Z buffer target
+
+  if (chkResult = createFramebuffer(ERenderPass::Deferred, attachmentNames,
+                                    RFB_DEFERRED) != RE_OK) {
+    return chkResult;
+  }
+
+  // framebuffer for rendering environment map source
+  if (chkResult = createFramebuffer(ERenderPass::Environment, {RTGT_ENVSRC},
                                     RFB_ENV) != RE_OK) {
     return chkResult;
   };
 
-  return createFramebuffer(ERenderPass::LUTGen, RTGT_LUTMAP, RFB_LUT);
-}
-
-TResult core::MRenderer::createFramebuffer(ERenderPass renderPass,
-                                           const char* targetTextureName,
-                                           const char* framebufferName) {
-  // create render-to-texture framebuffer
-  RTexture* fbTarget = core::resources.getTexture(targetTextureName);
-
-  if (!fbTarget) {
-    RE_LOG(Error,
-           "Failed to create framebuffer %s, target texture %s wasn't found.",
-           framebufferName, targetTextureName);
-    return RE_ERROR;
-  }
-
-  std::string fbName = framebufferName;
-
-  VkFramebufferCreateInfo framebufferInfo{};
-  framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-  framebufferInfo.renderPass = getVkRenderPass(renderPass);
-  framebufferInfo.attachmentCount = 1;
-  framebufferInfo.pAttachments = &fbTarget->texture.view;
-  framebufferInfo.width = fbTarget->texture.width;
-  framebufferInfo.height = fbTarget->texture.height;
-  framebufferInfo.layers = fbTarget->texture.layerCount;
-
-  if (!system.framebuffers.try_emplace(fbName).second) {
-#ifndef NDEBUG
-    RE_LOG(Warning,
-           "Failed to create framebuffer record for \"%s\". Already exists.",
-           fbName.c_str());
-#endif
-    return RE_WARNING;
-  }
-
-  if (vkCreateFramebuffer(logicalDevice.device, &framebufferInfo, nullptr,
-                          &system.framebuffers.at(fbName)) != VK_SUCCESS) {
-    RE_LOG(Error, "failed to create framebuffer %s.", fbName.c_str());
-
-    return RE_ERROR;
-  }
-
-  return RE_OK;
+  // framebuffer for generating and storing LUT map
+  return createFramebuffer(ERenderPass::LUTGen, {RTGT_LUTMAP}, RFB_LUT);
 }
 
 TResult core::MRenderer::createRenderPasses() {
@@ -519,8 +488,7 @@ TResult core::MRenderer::createRenderPasses() {
   system.renderPasses.emplace(passType, RRenderPass{});
 
   VkAttachmentDescription colorAttachment{};
-  //colorAttachment.format = swapchain.formatData.format;
-  colorAttachment.format = core::vulkan::formatHDR16;
+  colorAttachment.format = swapchain.formatData.format;
   colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
   colorAttachment.loadOp =
       VK_ATTACHMENT_LOAD_OP_CLEAR;  // clearing contents on new frame
@@ -551,6 +519,26 @@ TResult core::MRenderer::createRenderPasses() {
   system.renderPasses.at(passType).renderPass = newRenderPass;
 
   //
+  // DEFERRED render pass
+  //
+
+  passType = ERenderPass::Deferred;
+  system.renderPasses.emplace(passType, RRenderPass{});
+  RE_LOG(Log, "Creating render pass E%d", passType);
+
+  colorAttachment.format = core::vulkan::formatHDR16;
+  colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+  // deferred render targets: GPOS, GNORMAL, GDIFF, 3 total
+  VkAttachmentDescription deferredColorAttachments[] = {
+      colorAttachment, colorAttachment, colorAttachment};
+
+  newRenderPass = createRenderPass(logicalDevice.device, 3,
+                                   deferredColorAttachments, &depthAttachment);
+  system.renderPasses.at(passType).renderPass = newRenderPass;
+
+  //
   // CUBEMAP render pass
   //
 
@@ -558,9 +546,9 @@ TResult core::MRenderer::createRenderPasses() {
   system.renderPasses.emplace(passType, RRenderPass{});
   RE_LOG(Log, "Creating render pass E%d", passType);
 
+  colorAttachment.format = core::vulkan::formatHDR16;
   colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-  colorAttachment.format = core::vulkan::formatHDR16;
 
   newRenderPass =
       createRenderPass(logicalDevice.device, 1, &colorAttachment, nullptr);
@@ -579,9 +567,9 @@ TResult core::MRenderer::createRenderPasses() {
   system.renderPasses.at(passType).renderPass = newRenderPass;
 
   //
-  // TODO: Deferred rendering depth pass
+  // Shadow render pass
   //
-  passType = ERenderPass::Depth;
+  passType = ERenderPass::Shadow;
   system.renderPasses.emplace(passType, RRenderPass{});
   RE_LOG(Log, "Creating render pass E%d", passType);
 

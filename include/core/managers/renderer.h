@@ -161,6 +161,7 @@ class MRenderer {
   void destroyUniformBuffers();
 
   TResult createImageTargets();
+  TResult createGBufferRenderTargets();
   TResult createDepthTarget();
   TResult createRendererDefaults();
 
@@ -210,9 +211,6 @@ class MRenderer {
   TResult createDescriptorSets();
 
   TResult createDefaultFramebuffers();
-  TResult createFramebuffer(ERenderPass renderPass,
-                            const char* targetTextureName,
-                            const char* framebufferName);
 
   TResult createRenderPasses();
   void destroyRenderPasses();
@@ -237,6 +235,14 @@ class MRenderer {
   VkRenderPass createRenderPass(VkDevice device, uint32_t colorAttachments,
                                 VkAttachmentDescription* pColorAttachments,
                                 VkAttachmentDescription* pDepthAttachment);
+
+  TResult createFramebuffer(ERenderPass renderPass,
+                            const std::vector<std::string>& attachmentNames,
+                            const char* framebufferName);
+
+  // create single layer render target for fragment shader output
+  // uses swapchain resolution
+  RTexture* createFragmentRenderTarget(const char* name);
 
   void setResourceName(VkDevice device, VkObjectType objectType,
                        uint64_t handle, const char* name);
@@ -432,8 +438,9 @@ class MRenderer {
   void generateLUTMap();
 
  public:
-  void doRenderPass(VkCommandBuffer commandBuffer,
-                    std::vector<VkDescriptorSet>& sets, uint32_t imageIndex);
+  void executeRenderPass(VkCommandBuffer commandBuffer, ERenderPass passType,
+                         std::vector<VkDescriptorSet>& sets,
+                         VkFramebuffer framebuffer);
 
   void renderFrame();
   void renderInitFrame();

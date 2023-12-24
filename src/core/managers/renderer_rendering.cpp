@@ -499,13 +499,16 @@ void core::MRenderer::generateLUTMap() {
   RE_LOG(Log, "Generating BRDF LUT map took %.2f milliseconds.", timeSpent);
 }
 
-void core::MRenderer::doRenderPass(VkCommandBuffer commandBuffer,
+void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer, ERenderPass passType,
                                    std::vector<VkDescriptorSet>& sets,
-                                   uint32_t imageIndex) {
+                                   VkFramebuffer framebuffer) {
   VkCommandBufferBeginInfo beginInfo{};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   beginInfo.pInheritanceInfo = nullptr;
   beginInfo.flags = 0;
+
+  renderView.pCurrentRenderPass = getRenderPass(passType);
+  system.renderPassBeginInfo.renderPass = getVkRenderPass(passType);
 
   if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
     RE_LOG(Error, "failure when trying to record command buffer.");
@@ -518,7 +521,7 @@ void core::MRenderer::doRenderPass(VkCommandBuffer commandBuffer,
                                                   config::renderHeight};
 
   // swapchain image index is different from frame in flight
-  system.renderPassBeginInfo.framebuffer = swapchain.framebuffers[imageIndex];
+  system.renderPassBeginInfo.framebuffer = framebuffer;
 
   vkCmdBeginRenderPass(commandBuffer, &system.renderPassBeginInfo,
                        VK_SUBPASS_CONTENTS_INLINE);
@@ -596,8 +599,8 @@ void core::MRenderer::renderFrame() {
   // main PBR render pass:
   // update view, projection and camera position
   updateSceneUBO(renderView.frameInFlight);
-  renderView.pCurrentRenderPass = getRenderPass(ERenderPass::PBR);
-  doRenderPass(cmdBuffer, system.descriptorSets, imageIndex);
+  executeRenderPass(cmdBuffer, ERenderPass::PBR, system.descriptorSets,
+                    swapchain.framebuffers[imageIndex]);
 
   // wait until image to write color data to is acquired
   VkSemaphore waitSems[] = {sync.semImgAvailable[renderView.frameInFlight]};

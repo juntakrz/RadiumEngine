@@ -97,6 +97,115 @@ VkRenderPass core::MRenderer::createRenderPass(
   return renderPass;
 }
 
+TResult core::MRenderer::createFramebuffer(
+    ERenderPass renderPass, const std::vector<std::string>& attachmentNames,
+    const char* framebufferName) {
+#ifndef NDEBUG
+  RE_LOG(Log, "Creating framebuffer '%s' with %d attachments.", framebufferName,
+         attachmentNames.size());
+#endif
+
+  if (attachmentNames.empty()) {
+    RE_LOG(Error,
+           "Failed to create framebuffer '%s'. No texture attachments were "
+           "provided.",
+           framebufferName);
+
+    return RE_ERROR;
+  }
+
+  std::vector<VkImageView> imageViews;
+  uint32_t width = 0, height = 0, layerCount = 0;
+
+  for (const auto& textureName : attachmentNames) {
+    RTexture* fbTarget = core::resources.getTexture(textureName.c_str());
+
+    if (!fbTarget || !fbTarget->texture.view) {
+      RE_LOG(Error,
+             "Failed to retrieve attachment texture '%s' for creating "
+             "framebuffer '%s'.",
+             textureName.c_str(), framebufferName);
+
+      return RE_ERROR;
+    }
+
+    if (!imageViews.empty()) {
+      if (fbTarget->texture.width != width ||
+          fbTarget->texture.height != height ||
+          fbTarget->texture.layerCount != layerCount) {
+        RE_LOG(Error,
+               "Failed to create framebuffer '%s'. Texture dimensions are not "
+               "equal for all attachments.",
+               framebufferName);
+
+        return RE_ERROR;
+      }
+    } else {
+      width = fbTarget->texture.width;
+      height = fbTarget->texture.height;
+      layerCount = fbTarget->texture.layerCount;
+    }
+
+    imageViews.emplace_back(fbTarget->texture.view);
+  }
+
+  std::string fbName = framebufferName;
+
+  VkFramebufferCreateInfo framebufferInfo{};
+  framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+  framebufferInfo.renderPass = getVkRenderPass(renderPass);
+  framebufferInfo.attachmentCount = static_cast<uint32_t>(imageViews.size());
+  framebufferInfo.pAttachments = imageViews.data();
+  framebufferInfo.width = width;
+  framebufferInfo.height = height;
+  framebufferInfo.layers = layerCount;
+
+  if (!system.framebuffers.try_emplace(fbName).second) {
+#ifndef NDEBUG
+    RE_LOG(Warning,
+           "Failed to create framebuffer record for \"%s\". Already exists.",
+           fbName.c_str());
+#endif
+    return RE_WARNING;
+  }
+
+  if (vkCreateFramebuffer(logicalDevice.device, &framebufferInfo, nullptr,
+                          &system.framebuffers.at(fbName)) != VK_SUCCESS) {
+    RE_LOG(Error, "failed to create framebuffer %s.", fbName.c_str());
+
+    return RE_ERROR;
+  }
+
+  return RE_OK;
+}
+
+RTexture* core::MRenderer::createFragmentRenderTarget(const char* name) {
+  RTextureInfo textureInfo{};
+  textureInfo.name = name;
+  textureInfo.format = core::vulkan::formatHDR16;
+  textureInfo.width = swapchain.imageExtent.width;
+  textureInfo.height = swapchain.imageExtent.height;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  textureInfo.usageFlags =
+      VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.usageFlags =
+      VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+  RTexture* pNewTexture = core::resources.createTexture(&textureInfo);
+
+  if (!pNewTexture) {
+    RE_LOG(Error, "Failed to create fragment render target \"%s\".", name);
+    return nullptr;
+  }
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Created fragment render target '%s'.", name);
+#endif
+
+  return pNewTexture;
+}
+
 void core::MRenderer::setResourceName(VkDevice device, VkObjectType objectType,
                                       uint64_t handle, const char* name) {
   /*if (s_vkSetDebugUtilsObjectName && handle && name) {

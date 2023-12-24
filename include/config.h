@@ -8,16 +8,23 @@
 #define MAX_TRANSFER_BUFFERS    2u
 
 // frame buffers
+#define RFB_DEFERRED            "FB_Deferred"
 #define RFB_ENV                 "FB_Env"
 #define RFB_LUT                 "FB_Lut"
 
 // render targets
-#define RTGT_DEPTH              "RT2D_Depth"        // depth render target
+#define RTGT_DEPTH              "RT2D_Depth"        // active camera depth render target
+#define RTGT_SHADOW             "RT2D_Shadow"       // shadow render target
 #define RTGT_ENVSRC             "RT2D_EnvSrc"       // source texture for environment cubemaps
-#define RTGT_HDR                "RT2D_HDR"          // render target for 16 bit color output
+
 #define RTGT_ENVFILTER          "RTCube_EnvFilter"
 #define RTGT_ENVIRRAD           "RTCube_EnvIrrad"
 #define RTGT_LUTMAP             "RTCube_EnvLUT"
+
+#define RTGT_GPBR               "RT2D_GPBR"         // render target for combined PBR output
+#define RTGT_GPOS               "RT2D_GPos"         // fragment world space position output
+#define RTGT_GDIFF              "RT2D_GDiffuse"     // (GBuffer) diffuse output
+#define RTGT_GNORMAL            "RT2D_GNormal"      // (GBuffer) normals output
 
 // default camera
 #define RCAM_MAIN               "camMain"

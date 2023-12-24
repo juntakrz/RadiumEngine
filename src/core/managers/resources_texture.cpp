@@ -323,6 +323,24 @@ TResult core::MResources::writeTexture(RTexture* pTexture, void* pData,
   return RE_OK;
 }
 
+bool core::MResources::destroyTexture(const char* name, bool force) noexcept {
+  // TODO: maybe should check if texture is used by a material here and avoid
+  // destroying it unless explicitly forced
+
+  // TODO: make sure it is actually deleted from memory
+  if (m_textures.find(name) != m_textures.end()) {
+    m_textures.erase(name);
+
+#ifndef NDEBUG
+    RE_LOG(Log, "Destroyed texture '%s'.", name);
+#endif
+
+    return true;
+  }
+
+  return false;
+}
+
 RTexture* core::MResources::getTexture(
     const char* name) noexcept {
   if (m_textures.contains(name)) {

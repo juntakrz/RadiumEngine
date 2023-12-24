@@ -75,7 +75,8 @@ enum class EPipelineLayout {
   Null,
   Scene,
   Environment,
-  LUTGen
+  LUTGen,
+  Shadow
 };
 
 enum class EPrimitiveType {
@@ -91,7 +92,8 @@ enum class ERenderPass {
   LUTGen,
   Environment,
   PBR,
-  Depth
+  Shadow,
+  Deferred
 };
 
 enum class ETransformType { Translation, Rotation, Scale, Weight, Undefined };
