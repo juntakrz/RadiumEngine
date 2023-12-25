@@ -31,6 +31,9 @@
 // default materials
 #define RMAT_GBUFFER            "RMat_GBuffer"      // material storing G buffer targets as textures
 
+// default models
+#define RMDL_RENDERPLANE        "RMdl_RenderPlane"  // a screen-wide plane for rendering to
+
 // default camera
 #define RCAM_MAIN               "camMain"
 

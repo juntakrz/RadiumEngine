@@ -51,6 +51,14 @@ void RMaterial::createDescriptorSet() {
   writeDescriptorSets.resize(writeSize);
 
   for (uint32_t i = 0; i < writeSize; ++i) {
+    // if an image is a color attachment - it's probably a render target that
+    // will be used as a shader data source at some point
+    if (imageDescriptors[i].imageLayout ==
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
+      imageDescriptors[i].imageLayout =
+          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    }
+
     writeDescriptorSets[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     writeDescriptorSets[i].dstSet = descriptorSet;
     writeDescriptorSets[i].dstBinding = i;

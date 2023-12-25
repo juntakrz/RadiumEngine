@@ -24,6 +24,11 @@ bool loadImageData(tinygltf::Image* image, const int image_idx,
 
 core::MWorld::MWorld() { RE_LOG(Log, "Initializing world manager."); }
 
+void core::MWorld::initialize() {
+  createModel(EPrimitiveType::Plane, RMDL_RENDERPLANE, 1, 1);
+  WModel* pModel = getModel(RMDL_RENDERPLANE);
+}
+
 TResult core::MWorld::loadModelFromFile(const std::string& path,
                                         const char* name,
                                         const WModelConfigInfo* pConfigInfo) {

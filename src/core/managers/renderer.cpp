@@ -502,33 +502,6 @@ TResult core::MRenderer::createRendererDefaults() {
   return RE_OK;
 }
 
-TResult core::MRenderer::createDefaultMaterials() {
-  // create G-buffer material physical render target will contain metalness,
-  // roughness and ambient occlusion so occlusion texture will be used as a
-  // source for fragment position instead
-  RMaterialInfo materialInfo{};
-  materialInfo.name = RMAT_GBUFFER;
-  materialInfo.textures.baseColor = RTGT_GDIFFUSE;
-  materialInfo.textures.normal = RTGT_GNORMAL;
-  materialInfo.textures.metalRoughness = RTGT_GPHYSICAL;
-  materialInfo.textures.occlusion = RTGT_GPOSITION;
-  materialInfo.textures.emissive = RTGT_GEMISSIVE;
-  materialInfo.alphaMode = EAlphaMode::Opaque;
-  materialInfo.doubleSided = false;
-  materialInfo.manageTextures = true;
-  materialInfo.pipelineFlags = EPipeline::PBRDeferred;
-
-  RMaterial* gBufferMaterial = core::resources.createMaterial(&materialInfo);
-
-  if (!gBufferMaterial) {
-    RE_LOG(Critical, "Failed to create G-Buffer material.");
-
-    return RE_CRITICAL;
-  }
-
-  return RE_OK;
-}
-
 TResult core::MRenderer::createCoreCommandPools() {
   RE_LOG(Log, "Creating command pool.");
 
@@ -778,8 +751,6 @@ TResult core::MRenderer::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createUniformBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorPool();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSets();
-
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createDefaultMaterials();
 
   return chkResult;
 }

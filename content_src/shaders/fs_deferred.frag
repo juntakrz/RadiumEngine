@@ -66,11 +66,16 @@ vec3 getNormal() {
 void main() {
 	float perceptualRoughness;
 	float metallic;
-	vec3 diffuseColor;
-	vec4 baseColor;
+    vec4 baseColor = vec4(0.0);
+
+	// initialize outgoing data
+	outPosition = vec4(0.0);
+	outColor = vec4(0.0);
+    outNormal = vec4(0.0);
+	outPhysical = vec4(0.0);
+	outEmissive = vec4(0.0);
 	
 	const float emissiveFactor = 1.0;		// TODO: replace with value from material push constant
-	vec3 f0 = vec3(0.04);					// TODO: replace with value from material push constant
 
 	// 1. extract fragment position in world space
 	outPosition = vec4(inWorldPos, 1.0);
@@ -88,8 +93,7 @@ void main() {
 	}
 
 	baseColor *= inColor0;
-	diffuseColor = baseColor.rgb * (vec3(1.0) - f0);
-	outColor = vec4(diffuseColor, baseColor.a);
+	outColor = baseColor;
 
 	// 3. extract normal for this fragment
 	vec3 normal = (material.normalTextureSet > -1) ? getNormal() : normalize(inNormal);
@@ -115,8 +119,8 @@ void main() {
 		metallic = clamp(metallic, 0.0, 1.0);
 	}
 	
-	outPhysical.r = perceptualRoughness;
-	outPhysical.g = metallic;
+	outPhysical.r = metallic;
+	outPhysical.g = perceptualRoughness;
 
 	if (material.occlusionTextureSet > -1) {
 		float ao = texture(aoMap, (material.occlusionTextureSet == 0 ? inUV0 : inUV1)).r;
@@ -124,8 +128,6 @@ void main() {
 	}
 
 	// 5. extract emissive color
-	outEmissive = vec4(0.0);
-	
 	if (material.emissiveTextureSet > -1) {
 		vec3 emissive = texture(emissiveMap, material.emissiveTextureSet == 0 ? inUV0 : inUV1).rgb * emissiveFactor;
 		outEmissive = vec4(emissive, 1.0);

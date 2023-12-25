@@ -163,7 +163,6 @@ class MRenderer {
   TResult createGBufferRenderTargets();
   TResult createDepthTarget();
   TResult createRendererDefaults();
-  TResult createDefaultMaterials();
 
   TResult createCoreCommandPools();
   void destroyCoreCommandPools();

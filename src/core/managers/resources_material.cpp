@@ -36,6 +36,27 @@ void core::MResources::initialize() {
   materialInfo.texCoordSets.occlusion = 0;
 
   createMaterial(&materialInfo);
+
+  // create G-buffer material physical render target will contain metalness,
+  // roughness and ambient occlusion so occlusion texture will be used as a
+  // source for fragment position instead
+  materialInfo = RMaterialInfo{};
+  materialInfo.name = RMAT_GBUFFER;
+  materialInfo.textures.baseColor = RTGT_GDIFFUSE;
+  materialInfo.textures.normal = RTGT_GNORMAL;
+  materialInfo.textures.metalRoughness = RTGT_GPHYSICAL;
+  materialInfo.textures.occlusion = RTGT_GPOSITION;
+  materialInfo.textures.emissive = RTGT_GEMISSIVE;
+  materialInfo.alphaMode = EAlphaMode::Opaque;
+  materialInfo.doubleSided = false;
+  materialInfo.manageTextures = true;
+  materialInfo.pipelineFlags = EPipeline::PBRDeferred;
+
+  if(!createMaterial(&materialInfo)) {
+    RE_LOG(Critical, "Failed to create G-Buffer material.");
+
+    return;
+  }
 }
 
 RMaterial* core::MResources::createMaterial(

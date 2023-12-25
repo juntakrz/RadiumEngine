@@ -165,6 +165,7 @@ TResult core::create() {
   core::renderer.renderInitFrame();
 
   core::resources.initialize();
+  core::world.initialize();
   core::input.initialize(core::window.getWindow());
   core::player.initialize();
 

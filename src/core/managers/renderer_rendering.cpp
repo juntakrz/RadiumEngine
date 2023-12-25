@@ -622,9 +622,6 @@ void core::MRenderer::renderFrame() {
   executeRenderPass(cmdBuffer, ERenderPass::Deferred, system.descriptorSets,
                     system.framebuffers.at(RFB_DEFERRED));
 
-  /*executeRenderPass(cmdBuffer, ERenderPass::PBR, system.descriptorSets,
-                    swapchain.framebuffers[imageIndex]);*/
-
   // wait until image to write color data to is acquired
   VkSemaphore waitSems[] = {sync.semImgAvailable[renderView.frameInFlight]};
   VkSemaphore signalSems[] = {
@@ -693,7 +690,7 @@ void core::MRenderer::renderFrame() {
 
 void core::MRenderer::renderInitFrame() {
   generateLUTMap();
-  renderFrame();
+  //renderFrame();
 }
 
 void core::MRenderer::updateAspectRatio() {

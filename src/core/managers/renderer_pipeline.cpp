@@ -439,7 +439,7 @@ TResult core::MRenderer::createDefaultFramebuffers() {
         swapchain.imageViews[i],
         core::resources.getTexture(RTGT_DEPTH)->texture.view};
 
-    framebufferInfo.renderPass = getVkRenderPass(ERenderPass::PBR);
+    framebufferInfo.renderPass = getVkRenderPass(ERenderPass::Present);
     framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
     framebufferInfo.pAttachments = attachments.data();
     framebufferInfo.width = swapchain.imageExtent.width;
@@ -480,6 +480,7 @@ TResult core::MRenderer::createDefaultFramebuffers() {
 }
 
 TResult core::MRenderer::createRenderPasses() {
+  // lambda for quickly filling common clear values for render targets
   auto fGetClearValues = [](VkClearColorValue colorValue,
                             int8_t colorValueCount,
                             VkClearDepthStencilValue depthValue) {
@@ -493,18 +494,10 @@ TResult core::MRenderer::createRenderPasses() {
     clearValues[colorValueCount].depthStencil = depthValue;
     return clearValues;
   };
-
-  //
-  // MAIN render pass
-  //
-  ERenderPass passType = ERenderPass::PBR;
-
-  RE_LOG(Log, "Creating render pass E%d", passType);
-
-  system.renderPasses.emplace(passType, RRenderPass{});
-
+  
+  // standard info setup
   VkAttachmentDescription colorAttachment{};
-  colorAttachment.format = swapchain.formatData.format;
+  colorAttachment.format = core::vulkan::formatHDR16;
   colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
   colorAttachment.loadOp =
       VK_ATTACHMENT_LOAD_OP_CLEAR;  // clearing contents on new frame
@@ -531,20 +524,14 @@ TResult core::MRenderer::createRenderPasses() {
       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
   // common clear color and clear depth values
-  const VkClearColorValue clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
+  const VkClearColorValue clearColor = {0.0f, 0.0f, 0.0f, 0.0f};
   const VkClearDepthStencilValue clearDepth = {1.0f};
-
-  VkRenderPass newRenderPass = createRenderPass(
-      logicalDevice.device, 1, &colorAttachment, &depthAttachment);
-  system.renderPasses.at(passType).renderPass = newRenderPass;
-  system.renderPasses.at(passType).clearValues =
-      fGetClearValues(clearColor, 1, clearDepth);
 
   //
   // DEFERRED render pass
   //
 
-  passType = ERenderPass::Deferred;
+  ERenderPass passType = ERenderPass::Deferred;
   system.renderPasses.emplace(passType, RRenderPass{});
   RE_LOG(Log, "Creating render pass E%d", passType);
 
@@ -557,11 +544,38 @@ TResult core::MRenderer::createRenderPasses() {
       colorAttachment, colorAttachment, colorAttachment, colorAttachment,
       colorAttachment};
 
-  newRenderPass = createRenderPass(logicalDevice.device, 5,
-                                   deferredColorAttachments, &depthAttachment);
+  VkRenderPass newRenderPass = createRenderPass(
+      logicalDevice.device, 5, deferredColorAttachments, &depthAttachment);
   system.renderPasses.at(passType).renderPass = newRenderPass;
   system.renderPasses.at(passType).clearValues =
       fGetClearValues(clearColor, 5, clearDepth);
+
+  //
+  // PBR render pass
+  //
+  passType = ERenderPass::PBR;
+  system.renderPasses.emplace(passType, RRenderPass{});
+  RE_LOG(Log, "Creating render pass E%d", passType);
+
+  newRenderPass = createRenderPass(
+      logicalDevice.device, 1, &colorAttachment, &depthAttachment);
+  system.renderPasses.at(passType).renderPass = newRenderPass;
+  system.renderPasses.at(passType).clearValues =
+      fGetClearValues(clearColor, 1, clearDepth);
+
+  //
+  // PRESENT render pass
+  //
+  passType = ERenderPass::Present;
+  system.renderPasses.emplace(passType, RRenderPass{});
+  RE_LOG(Log, "Creating render pass E%d", passType);
+
+  colorAttachment.format = core::vulkan::formatLDR;
+  newRenderPass = createRenderPass(logicalDevice.device, 1, &colorAttachment,
+                                   &depthAttachment);
+  system.renderPasses.at(passType).renderPass = newRenderPass;
+  system.renderPasses.at(passType).clearValues =
+      fGetClearValues(clearColor, 1, clearDepth);
 
   //
   // CUBEMAP render pass
@@ -657,32 +671,30 @@ TResult core::MRenderer::createGraphicsPipelines() {
   inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
   inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
 
-  // set main viewport
-  VkViewport* viewport = &getRenderPass(ERenderPass::PBR)->viewport;
-  viewport->x = 0.0f;
-  viewport->y = static_cast<float>(swapchain.imageExtent.height);
-  viewport->width = static_cast<float>(swapchain.imageExtent.width);
-  viewport->height = -viewport->y;
-  viewport->minDepth = 0.0f;
-  viewport->maxDepth = 1.0f;
+  // set viewports and scissors for screen render passes
+  VkViewport viewport{}; 
+  viewport.x = 0.0f;
+  viewport.y = static_cast<float>(swapchain.imageExtent.height);
+  viewport.width = static_cast<float>(swapchain.imageExtent.width);
+  viewport.height = -viewport.y;
+  viewport.minDepth = 0.0f;
+  viewport.maxDepth = 1.0f;
 
-  viewport = &getRenderPass(ERenderPass::Deferred)->viewport;
-  viewport->x = 0.0f;
-  viewport->y = static_cast<float>(swapchain.imageExtent.height);
-  viewport->width = static_cast<float>(swapchain.imageExtent.width);
-  viewport->height = -viewport->y;
-  viewport->minDepth = 0.0f;
-  viewport->maxDepth = 1.0f;
+  getRenderPass(ERenderPass::Deferred)->viewport = viewport;
+  getRenderPass(ERenderPass::PBR)->viewport = viewport;
 
-  VkRect2D* scissor = &getRenderPass(ERenderPass::PBR)->scissor;
-  scissor->offset = {0, 0};
-  scissor->extent = swapchain.imageExtent;
+  VkRect2D scissor{};
+  scissor.offset = {0, 0};
+  scissor.extent = swapchain.imageExtent;
+
+  getRenderPass(ERenderPass::Deferred)->scissor = scissor;
+  getRenderPass(ERenderPass::PBR)->scissor = scissor;
 
   VkPipelineViewportStateCreateInfo viewportInfo{};
   viewportInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-  viewportInfo.pViewports = viewport;
+  viewportInfo.pViewports = &getRenderPass(ERenderPass::PBR)->viewport;
   viewportInfo.viewportCount = 1;
-  viewportInfo.pScissors = scissor;
+  viewportInfo.pScissors = &getRenderPass(ERenderPass::PBR)->scissor;
   viewportInfo.scissorCount = 1;
 
   VkPipelineRasterizationStateCreateInfo rasterizationInfo{};
@@ -892,7 +904,6 @@ TResult core::MRenderer::createGraphicsPipelines() {
   graphicsPipelineInfo.pStages = shaderStages.data();
   graphicsPipelineInfo.pVertexInputState = &vertexInputInfo;
   graphicsPipelineInfo.layout = getPipelineLayout(EPipelineLayout::Scene);
-  //graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::PBR);
   graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::Deferred);
   graphicsPipelineInfo.subpass = 0;  // subpass index for render pass
   graphicsPipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
@@ -908,7 +919,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
     return RE_CRITICAL;
   }
 
-  // 'PBR doublesided' pipeline, uses 'PBR' render pass and 'scene' layout
+  // 'Doublesided' pipeline, uses 'Deferred' render pass and 'scene' layout
   rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
 
   system.pipelines.emplace(EPipeline::OpaqueCullNone, VK_NULL_HANDLE);
@@ -921,7 +932,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
     return RE_CRITICAL;
   }
 
-  // 'Blend' pipeline, similar to PBR singlesided, but with alpha channel
+  // 'Blend' pipeline, similar to singlesided, but with alpha channel
   rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
   colorBlendAttachment.blendEnable = VK_TRUE;
 
@@ -956,7 +967,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
     return RE_CRITICAL;
   }
 
-  for (auto stage : shaderStages) {
+  for (auto& stage : shaderStages) {
     vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
   }
 
@@ -972,11 +983,9 @@ TResult core::MRenderer::createGraphicsPipelines() {
 
   graphicsPipelineInfo.layout = getPipelineLayout(EPipelineLayout::Environment);
   graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::Environment);
-  scissor = &getRenderPass(ERenderPass::Environment)->scissor;
-  scissor->offset = {0, 0};
-  viewport = &getRenderPass(ERenderPass::Environment)->viewport;
-  viewport->minDepth = 0.0f;
-  viewport->maxDepth = 1.0f;
+
+  getRenderPass(ERenderPass::Environment)->viewport = viewport;
+  getRenderPass(ERenderPass::Environment)->scissor = scissor;
 
   if (vkCreateGraphicsPipelines(
           logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
@@ -1071,21 +1080,21 @@ bool core::MRenderer::checkPipeline(uint32_t pipelineFlags,
 TResult core::MRenderer::configureRenderPasses() {
   // NOTE: order of pipeline 'emplacement' is important
 
-  // configure main 'scene', PBR render pass
-  RRenderPass* pRenderPass = getRenderPass(ERenderPass::PBR);
-  pRenderPass->usedLayout = getPipelineLayout(EPipelineLayout::Scene);
-  pRenderPass->usedPipelines.emplace_back(EPipeline::OpaqueCullBack);
-  pRenderPass->usedPipelines.emplace_back(EPipeline::OpaqueCullNone);
-  pRenderPass->usedPipelines.emplace_back(EPipeline::Skybox);
-  pRenderPass->usedPipelines.emplace_back(EPipeline::BlendCullNone);
-
   // configure deferred render pass that generates G buffer targets
-  pRenderPass = getRenderPass(ERenderPass::Deferred);
+  RRenderPass* pRenderPass = getRenderPass(ERenderPass::Deferred);
   pRenderPass->usedLayout = getPipelineLayout(EPipelineLayout::Scene);
   pRenderPass->usedPipelines.emplace_back(EPipeline::OpaqueCullBack);
   pRenderPass->usedPipelines.emplace_back(EPipeline::OpaqueCullNone);
+  pRenderPass->usedPipelines.emplace_back(EPipeline::BlendCullNone);  // TODO: check if there any issues with blending with skybox
+
+  // configure main 'scene', PBR render pass
+  pRenderPass = getRenderPass(ERenderPass::PBR);
+  pRenderPass->usedLayout = getPipelineLayout(EPipelineLayout::Scene);
   pRenderPass->usedPipelines.emplace_back(EPipeline::Skybox);
-  pRenderPass->usedPipelines.emplace_back(EPipeline::BlendCullNone);
+  // TODO: add a PBR processing pipeline that renders a flat plane with alpha
+  // from deferred on top(?) of skybox
+
+  // TODO: add a Output renderpass and pipeline to write final results to swapchain
 
   // configure 'environment' cubemap render pass
   pRenderPass = getRenderPass(ERenderPass::Environment);

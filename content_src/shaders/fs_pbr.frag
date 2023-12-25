@@ -1,10 +1,6 @@
 #version 450
 
-layout (location = 0) in vec3 inWorldPos;
-layout (location = 1) in vec3 inNormal;
 layout (location = 2) in vec2 inUV0;
-layout (location = 3) in vec2 inUV1;
-layout (location = 4) in vec4 inColor0;
 
 // Scene bindings
 
@@ -30,10 +26,10 @@ layout (set = 0, binding = 4) uniform sampler2D BRDFLUTMap;
 // material bindings
 layout (set = 2, binding = 0) uniform sampler2D colorMap;
 layout (set = 2, binding = 1) uniform sampler2D normalMap;
-layout (set = 2, binding = 2) uniform sampler2D physicalDescriptorMap;
-layout (set = 2, binding = 3) uniform sampler2D aoMap;
+layout (set = 2, binding = 2) uniform sampler2D physicalMap;	// r = metalness, g = roughness, b = ambient occlusion
+layout (set = 2, binding = 3) uniform sampler2D aoMap;			// fragment worldspace position RTGT_GPOS
 layout (set = 2, binding = 4) uniform sampler2D emissiveMap;
-layout (set = 2, binding = 5) uniform sampler2D extraMap;		// TODO: implement extra map in shader
+layout (set = 2, binding = 5) uniform sampler2D extraMap;		// unused
 
 layout (push_constant) uniform Material {
 	vec4 baseColorFactor;
@@ -73,22 +69,6 @@ vec4 tonemap(vec4 color) {
 	vec3 outcol = Uncharted2Tonemap(color.rgb * lighting.exposure);
 	outcol = outcol * (1.0 / Uncharted2Tonemap(vec3(11.2)));	
 	return vec4(pow(outcol, vec3(1.0f / lighting.gamma)), color.a);
-}
-
-vec3 getNormal() {
-	vec3 tangentNormal = vec3(vec2(texture(normalMap, material.normalTextureSet == 0 ? inUV0 : inUV1).rg * 2.0 - 1.0), 1.0);
-
-	vec3 q1 = dFdx(inWorldPos);
-	vec3 q2 = dFdy(inWorldPos);
-	vec2 st1 = dFdx(inUV0);
-	vec2 st2 = dFdy(inUV0);
-
-	vec3 N = normalize(inNormal);
-	vec3 T = normalize(q1 * st2.t - q2 * st1.t);
-	vec3 B = -normalize(cross(N, T));
-	mat3 TBN = mat3(T, B, N);
-
-	return normalize(TBN * tangentNormal);
 }
 
 vec3 getDiffuse(vec3 inColor)
@@ -156,63 +136,23 @@ vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, 
 }
 
 void main() {
-	float perceptualRoughness;
-	float metallic;
-	vec3 diffuseColor;
-	vec4 baseColor;
-	
 	const vec3 dirLightPos = {-0.74, 0.6428, 0.1983};
 	const vec3 dirLightColor = vec3(1.0);
 	const float occlusionStrength = 1.0;
 	const float emissiveFactor = 1.0;
 	vec3 f0 = vec3(0.04);
 
+	// retrieve G-buffer data
+	vec4 baseColor = texture(colorMap, inUV0);
+    vec3 normal = texture(normalMap, inUV0).rgb;
+	float perceptualRoughness = texture(physicalMap, inUV0).r;
+	float metallic = texture(physicalMap, inUV0).g;
+	float ao = texture(physicalMap, inUV0).b;
+    vec3 worldPos = texture(aoMap, inUV0).xyz;
+    vec3 emissive = texture(emissiveMap, inUV0).rgb;
 
-	if (material.baseColorTextureSet > -1) {
-		baseColor = texture(colorMap, material.baseColorTextureSet == 0 ? inUV0 : inUV1) * material.baseColorFactor;
-	} else {
-		baseColor = material.baseColorFactor;
-	}
-	
-	// TODO: discard on alphaMask == 1.0 here and depth-sort everything, unless requested by the material
-	if (material.alphaMask > 0.9 && baseColor.a < material.alphaMaskCutoff && material.alphaMaskCutoff < 1.1) {
-		discard;
-	}
-
-	// Metallic and Roughness material properties are packed together
-	// In glTF, these factors can be specified by fixed scalar values
-	// or from a metallic-roughness map
-	perceptualRoughness = material.roughnessFactor;
-	metallic = material.metallicFactor;
-	if (material.physicalDescriptorTextureSet > -1) {
-		// Roughness is stored in the 'g' channel, metallic is stored in the 'b' channel.
-		// This layout intentionally reserves the 'r' channel for (optional) occlusion map data
-		vec4 physicalSample = texture(physicalDescriptorMap, material.physicalDescriptorTextureSet == 0 ? inUV0 : inUV1);
-		physicalSample.g = pow(physicalSample.g, 1.0 / 2.2);
-		physicalSample.b = pow(physicalSample.b, 1.0 / 2.2);
-		perceptualRoughness = physicalSample.g * perceptualRoughness;
-		metallic = physicalSample.b * metallic;
-	} else {
-		perceptualRoughness = clamp(perceptualRoughness, minRoughness, 1.0);
-		metallic = clamp(metallic, 0.0, 1.0);
-	}
-	// Roughness is authored as perceptual roughness; as is convention,
-	// convert to material roughness by squaring the perceptual roughness [2].
-
-	// The albedo may be defined from a base texture or a flat color
-	if (material.baseColorTextureSet > -1) {
-		baseColor = texture(colorMap, material.baseColorTextureSet == 0 ? inUV0 : inUV1) * material.baseColorFactor;
-	} else {
-		baseColor = material.baseColorFactor;
-	}
-
-	if(baseColor.a < 0.5){
-		discard;
-	}
-
-	baseColor *= inColor0;
-
-	diffuseColor = baseColor.rgb * (vec3(1.0) - f0);
+	// do PBR
+	vec3 diffuseColor = baseColor.rgb * (vec3(1.0) - f0);
 	diffuseColor *= 1.0 - metallic;
 		
 	float alphaRoughness = perceptualRoughness * perceptualRoughness;
@@ -228,17 +168,15 @@ void main() {
 	vec3 specularEnvironmentR0 = specularColor.rgb;
 	vec3 specularEnvironmentR90 = vec3(1.0, 1.0, 1.0) * reflectance90;
 
-	vec3 N = (material.normalTextureSet > -1) ? getNormal() : normalize(inNormal);
-
-	vec3 V = normalize(scene.camPos - inWorldPos);  // Vector from surface point to camera
+	vec3 V = normalize(scene.camPos - worldPos);	// Vector from surface point to camera
 	vec3 L = normalize(dirLightPos);				// Vector from surface point to light
 	vec3 H = normalize(L + V);                      // Half vector between both l and v
-	vec3 reflection = -normalize(reflect(V, N));
+	vec3 reflection = -normalize(reflect(V, normal));
 	reflection.y *= -1.0f;
 
-	float NdotL = clamp(dot(N, L), 0.001, 1.0);
-	float NdotV = clamp(abs(dot(N, V)), 0.001, 1.0);
-	float NdotH = clamp(dot(N, H), 0.0, 1.0);
+	float NdotL = clamp(dot(normal, L), 0.001, 1.0);
+	float NdotV = clamp(abs(dot(normal, V)), 0.001, 1.0);
+	float NdotH = clamp(dot(normal, H), 0.0, 1.0);
 	float LdotH = clamp(dot(L, H), 0.0, 1.0);
 	float VdotH = clamp(dot(V, H), 0.0, 1.0);
 
@@ -255,17 +193,9 @@ void main() {
 	vec3 color = NdotL * dirLightColor * (diffuseContrib + specContrib);
 
 	// Calculate lighting contribution from image based lighting source (IBL)
-	color += getIBLContribution(diffuseColor, specularColor, perceptualRoughness, NdotV, N, reflection);
-
-	if (material.occlusionTextureSet > -1) {
-		float ao = texture(aoMap, (material.occlusionTextureSet == 0 ? inUV0 : inUV1)).r;
-		color = mix(color, color * ao, occlusionStrength);
-	}
-
-	if (material.emissiveTextureSet > -1) {
-		vec3 emissive = texture(emissiveMap, material.emissiveTextureSet == 0 ? inUV0 : inUV1).rgb * emissiveFactor;
-		color += emissive;
-	}
+	color += getIBLContribution(diffuseColor, specularColor, perceptualRoughness, NdotV, normal, reflection);
+	color = mix(color, color * ao, occlusionStrength);
+	color += emissive;
 	
 	outColor = vec4(color, baseColor.a);
 }

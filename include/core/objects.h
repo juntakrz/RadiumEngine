@@ -67,6 +67,7 @@ enum EPipeline : uint32_t {
   MaskCullBack      = 0b10000000,
   BlendCullNone     = 0b100000000,
   PBRDeferred       = 0b1000000000,
+  Present           = 0b10000000000,
 
   // combined pipeline indices for rendering only
   MixEnvironment = EnvFilter + EnvIrradiance
@@ -92,9 +93,10 @@ enum class ERenderPass {
   Null,
   LUTGen,
   Environment,
-  PBR,
   Shadow,
-  Deferred
+  Deferred,
+  PBR,
+  Present
 };
 
 enum class ETransformType { Translation, Rotation, Scale, Weight, Undefined };

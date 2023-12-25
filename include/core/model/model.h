@@ -40,6 +40,7 @@ class WModel {
   };
 
   struct Mesh {
+    int32_t index = -1;
     std::vector<std::unique_ptr<WPrimitive>> pPrimitives;
     std::vector<std::unique_ptr<WPrimitive>> pBoundingBoxes;
 
@@ -116,6 +117,7 @@ class WModel {
 
   std::vector<WPrimitive*> m_pLinearPrimitives;
   std::vector<WModel::Node*> m_pLinearNodes;
+  std::vector<WModel::Mesh*> m_pLinearMeshes;
 
   // stores indices for primitive binds in rendering manager
   // TODO: potentially deprecated, but may yet be used for depth sorting
@@ -145,6 +147,11 @@ class WModel {
 
   // sorts primitives
   void sortPrimitivesByMaterial();
+
+  WPrimitive* getPrimitive(const int32_t meshIndex,
+                           const int32_t primitiveIndex);
+  void setPrimitiveMaterial(const int32_t meshIndex,
+                            const int32_t primitiveIndex, const char* material);
 
   // update node transform buffer at node offsets
   void updateNodeTransformBuffer(int32_t nodeIndex,
