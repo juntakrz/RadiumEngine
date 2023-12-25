@@ -514,9 +514,11 @@ void core::MRenderer::generateLUTMap() {
   RE_LOG(Log, "Generating BRDF LUT map took %.2f milliseconds.", timeSpent);
 }
 
-void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer, ERenderPass passType,
-                                   std::vector<VkDescriptorSet>& sets,
-                                   VkFramebuffer framebuffer) {
+void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer,
+                                        ERenderPass passType,
+                                        VkDescriptorSet* pFrameSets,
+                                        const uint32_t setCount,
+                                        VkFramebuffer framebuffer) {
   VkCommandBufferBeginInfo beginInfo{};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   beginInfo.pInheritanceInfo = nullptr;
@@ -561,8 +563,8 @@ void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer, ERenderPa
                        VK_INDEX_TYPE_UINT32);
 
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                          renderView.pCurrentRenderPass->usedLayout, 0, 1,
-                          &sets[renderView.frameInFlight], 0, nullptr);
+                          renderView.pCurrentRenderPass->usedLayout, 0,
+                          setCount, pFrameSets, 0, nullptr);
 
   drawBoundEntities(commandBuffer);
 
@@ -619,8 +621,14 @@ void core::MRenderer::renderFrame() {
   // update view, projection and camera position
   updateSceneUBO(renderView.frameInFlight);
 
-  executeRenderPass(cmdBuffer, ERenderPass::Deferred, system.descriptorSets,
+  VkDescriptorSet frameSets[] = {
+      system.descriptorSets[renderView.frameInFlight]};
+
+  executeRenderPass(cmdBuffer, ERenderPass::Deferred, frameSets, 1,
                     system.framebuffers.at(RFB_DEFERRED));
+
+  executeRenderPass(cmdBuffer, ERenderPass::PBR, frameSets, 1,
+                    system.framebuffers.at(RFB_PBR));
 
   // wait until image to write color data to is acquired
   VkSemaphore waitSems[] = {sync.semImgAvailable[renderView.frameInFlight]};

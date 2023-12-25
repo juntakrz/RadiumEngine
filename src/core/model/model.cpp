@@ -104,47 +104,6 @@ void WModel::sortPrimitivesByMaterial() {
   }
 }
 
-WPrimitive* WModel::getPrimitive(const int32_t meshIndex,
-                                 const int32_t primitiveIndex) {
-  if (meshIndex < 0 || meshIndex > m_pLinearMeshes.size()) {
-    RE_LOG(Error,
-           "Failed to get primitive for model '%s', mesh index %d, primitive "
-           "index %d. Requested mesh was not found.",
-           m_name.c_str(), meshIndex, primitiveIndex);
-
-    return nullptr;
-  }
-
-  WModel::Mesh* pMesh = m_pLinearMeshes.at(meshIndex);
-
-  if (primitiveIndex < 0 || primitiveIndex > pMesh->pPrimitives.size()) {
-    RE_LOG(Error,
-           "Failed to get primitive for model '%s', mesh index %d, primitive "
-           "index %d. Requested primitive was not found.",
-           m_name.c_str(), meshIndex, primitiveIndex);
-
-    return nullptr;
-  }
-
-  return pMesh->pPrimitives.at(primitiveIndex).get();
-}
-
-void WModel::setPrimitiveMaterial(const int32_t meshIndex,
-                                  const int32_t primitiveIndex,
-                                  const char* material) {
-  WPrimitive* pPrimitive = getPrimitive(meshIndex, primitiveIndex);
-
-  if (!pPrimitive) {
-    RE_LOG(Error,
-           "Failed to set material '%s' for mesh %d, primitive %d of model "
-           "'%s'. Couldn't get the required primitive.",
-           material, meshIndex, primitiveIndex, m_name.c_str());
-    return;
-  }
-
-  //
-}
-
 void WModel::prepareStagingData() {
   if (m_vertexCount == 0 || m_indexCount == 0) {
     RE_LOG(Error,
@@ -237,6 +196,57 @@ void WModel::resetUniformBlockData() {
       }
     }
   }
+}
+
+WPrimitive* WModel::getPrimitive(const int32_t meshIndex,
+                                 const int32_t primitiveIndex) {
+  if (meshIndex < 0 || meshIndex > m_pLinearMeshes.size()) {
+    RE_LOG(Error,
+           "Failed to get primitive for model '%s', mesh index %d, primitive "
+           "index %d. Requested mesh was not found.",
+           m_name.c_str(), meshIndex, primitiveIndex);
+
+    return nullptr;
+  }
+
+  WModel::Mesh* pMesh = m_pLinearMeshes.at(meshIndex);
+
+  if (primitiveIndex < 0 || primitiveIndex > pMesh->pPrimitives.size()) {
+    RE_LOG(Error,
+           "Failed to get primitive for model '%s', mesh index %d, primitive "
+           "index %d. Requested primitive was not found.",
+           m_name.c_str(), meshIndex, primitiveIndex);
+
+    return nullptr;
+  }
+
+  return pMesh->pPrimitives.at(primitiveIndex).get();
+}
+
+void WModel::setPrimitiveMaterial(const int32_t meshIndex,
+                                  const int32_t primitiveIndex,
+                                  const char* material) {
+  WPrimitive* pPrimitive = getPrimitive(meshIndex, primitiveIndex);
+
+  if (!pPrimitive) {
+    RE_LOG(Error,
+           "Failed to set material '%s' for mesh %d, primitive %d of model "
+           "'%s'. Couldn't get the required primitive.",
+           material, meshIndex, primitiveIndex, m_name.c_str());
+    return;
+  }
+
+  RMaterial* pMaterial = core::resources.getMaterial(material);
+
+  if (!pMaterial) {
+    RE_LOG(
+        Error,
+        "Failed to get material '%s' for mesh %d, primitive %d of model '%s'.",
+        material, meshIndex, primitiveIndex, m_name.c_str());
+    return;
+  }
+
+  pPrimitive->pMaterial = pMaterial;
 }
 
 void WModel::setSceneBindingData(size_t vertexOffset, size_t indexOffset) {

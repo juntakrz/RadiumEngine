@@ -175,6 +175,9 @@ void WModel::createNode(WModel::Node* pParentNode,
     pNode->pMesh = std::make_unique<WModel::Mesh>();
 
     WModel::Mesh* pMesh = pNode->pMesh.get();
+    pMesh->index = m_meshCount;
+    m_pLinearMeshes.emplace_back(pMesh);
+    ++m_meshCount;
 
     for (size_t j = 0; j < gltfMesh.primitives.size(); ++j) {
       const tinygltf::Primitive& gltfPrimitive = gltfMesh.primitives[j];

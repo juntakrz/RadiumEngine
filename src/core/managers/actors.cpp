@@ -29,10 +29,10 @@ ACamera* core::MActors::createCamera(const char* name,
     return pCamera;
   }
 
-  RE_LOG(Error,
-         "Failed to create camera '%s'. Probably already exists. Attempting to "
-         "find it.",
+#ifndef NDEBUG
+  RE_LOG(Warning, "Failed to create camera '%s'. Probably already exists.",
          name);
+#endif
   return getCamera(name);
 }
 

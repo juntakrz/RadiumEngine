@@ -70,7 +70,6 @@ WModel::Node* WModel::createNode(WModel::Node* pParentNode, uint32_t nodeIndex,
 
   pNode->name = nodeName;
   pNode->staging.nodeMatrix = glm::mat4(1.0f);
-  pNode->pMesh = std::make_unique<WModel::Mesh>();
 
   return pNode;
 }

@@ -469,6 +469,15 @@ TResult core::MRenderer::createDefaultFramebuffers() {
     return chkResult;
   }
 
+  attachmentNames.clear();
+  attachmentNames.emplace_back(RTGT_GPBR);      // 0 - combine G-buffer textures
+  attachmentNames.emplace_back(RTGT_DEPTH);     // depth buffer target
+
+  if (chkResult = createFramebuffer(ERenderPass::PBR, attachmentNames,
+                                    RFB_PBR) != RE_OK) {
+    return chkResult;
+  }
+
   // framebuffer for rendering environment map source
   if (chkResult = createFramebuffer(ERenderPass::Environment, {RTGT_ENVSRC},
                                     RFB_ENV) != RE_OK) {

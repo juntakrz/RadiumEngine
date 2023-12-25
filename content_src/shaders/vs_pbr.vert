@@ -17,7 +17,7 @@ void main(){
 	view[3][1] = 0.0;
 	view[3][2] = 0.0;
 	
-	vec4 worldPos = scene.projection * view * inPos;
+	vec4 worldPos = scene.projection * view * vec4(inPos.xy, 0.0, 1.0);
 
 	gl_Position = worldPos.xyww;
 }

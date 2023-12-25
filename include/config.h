@@ -8,7 +8,8 @@
 #define MAX_TRANSFER_BUFFERS    2u
 
 // frame buffers
-#define RFB_DEFERRED            "FB_Deferred"
+#define RFB_DEFERRED            "FB_Deferred"       // generate G-buffer textures
+#define RFB_PBR                 "FB_PBR"            // combine PBR result of G-buffer textures with skybox
 #define RFB_ENV                 "FB_Env"
 #define RFB_LUT                 "FB_Lut"
 
@@ -29,10 +30,11 @@
 #define RTGT_GEMISSIVE          "RT2D_GEmissive"    // emissive color output
 
 // default materials
-#define RMAT_GBUFFER            "RMat_GBuffer"      // material storing G buffer targets as textures
+#define RMAT_GBUFFER            "RMat_GBuffer"      // material storing G-buffer targets as textures
 
 // default models
 #define RMDL_RENDERPLANE        "RMdl_RenderPlane"  // a screen-wide plane for rendering to
+#define RMDL_SKYBOX             "RMdl_SkyBox"       // default cube skybox using cubemap
 
 // default camera
 #define RCAM_MAIN               "camMain"

@@ -25,8 +25,13 @@ bool loadImageData(tinygltf::Image* image, const int image_idx,
 core::MWorld::MWorld() { RE_LOG(Log, "Initializing world manager."); }
 
 void core::MWorld::initialize() {
+  // create render target plane
   createModel(EPrimitiveType::Plane, RMDL_RENDERPLANE, 1, 1);
   WModel* pModel = getModel(RMDL_RENDERPLANE);
+  pModel->setPrimitiveMaterial(0, 0, RMAT_GBUFFER);
+
+  // create default skybox, will have its material set by load scripts
+  createModel(EPrimitiveType::Cube, RMDL_SKYBOX, 1, true);
 }
 
 TResult core::MWorld::loadModelFromFile(const std::string& path,
@@ -115,8 +120,12 @@ TResult core::MWorld::createModel(EPrimitiveType type, std::string name,
 
   pModel->m_name = name;
   WModel::Node* pNode = pModel->createNode(nullptr, 0, "node_" + name);
-  RE_CHECK(fValidateNode(pNode));
+  pNode->pMesh = std::make_unique<WModel::Mesh>();
+  pNode->pMesh->index = pModel->m_meshCount;
+  pModel->m_pLinearMeshes.emplace_back(pNode->pMesh.get());
+  pModel->m_meshCount++;
   pModel->m_pLinearNodes.emplace_back(pNode);
+  RE_CHECK(fValidateNode(pNode));
 
   RPrimitiveInfo primitiveInfo{};
   primitiveInfo.vertexOffset = pModel->staging.currentVertexOffset;

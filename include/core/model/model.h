@@ -112,6 +112,7 @@ class WModel {
   uint32_t m_vertexCount = 0u;
   uint32_t m_indexCount = 0u;
   bool m_isBoundToScene = false;
+  int32_t m_meshCount = 0;
 
   std::vector<std::unique_ptr<WModel::Node>> m_pChildNodes;
 
@@ -148,11 +149,6 @@ class WModel {
   // sorts primitives
   void sortPrimitivesByMaterial();
 
-  WPrimitive* getPrimitive(const int32_t meshIndex,
-                           const int32_t primitiveIndex);
-  void setPrimitiveMaterial(const int32_t meshIndex,
-                            const int32_t primitiveIndex, const char* material);
-
   // update node transform buffer at node offsets
   void updateNodeTransformBuffer(int32_t nodeIndex,
                                  uint32_t bufferOffset) noexcept;
@@ -162,7 +158,14 @@ class WModel {
   // resets all transformation matrices stored in uniform blocks to identity
   void resetUniformBlockData();
 
+ public:
+  WPrimitive* getPrimitive(const int32_t meshIndex,
+                           const int32_t primitiveIndex);
+  void setPrimitiveMaterial(const int32_t meshIndex,
+                            const int32_t primitiveIndex, const char* material);
+
   // glTF
+ private:
 
   TResult createModel(const char* name, const tinygltf::Model* pInModel,
                       const WModelConfigInfo* pConfigInfo = nullptr);

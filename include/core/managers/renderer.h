@@ -438,7 +438,7 @@ class MRenderer {
 
  public:
   void executeRenderPass(VkCommandBuffer commandBuffer, ERenderPass passType,
-                         std::vector<VkDescriptorSet>& sets,
+                         VkDescriptorSet* pFrameSets, const uint32_t setCount,
                          VkFramebuffer framebuffer);
 
   void renderFrame();

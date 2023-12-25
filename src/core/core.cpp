@@ -52,13 +52,13 @@ void core::run() {
   materialInfo.name = "skybox";
   materialInfo.pipelineFlags = EPipeline::Skybox | EPipeline::MixEnvironment;
   materialInfo.textures.baseColor = "skyboxCubemap.ktx2";
-  //materialInfo.textures.baseColor = "papermill.ktx";
   core::resources.createMaterial(&materialInfo);
 
   // create map models
   core::world.createModel(EPrimitiveType::Sphere, "mdlSphere", 16, false);
-  core::world.createModel(EPrimitiveType::Cube, "mdlSkybox", 1, true);
   core::world.createModel(EPrimitiveType::Cube, "mdlBox1", 1, false);
+
+  core::world.getModel(RMDL_SKYBOX)->setPrimitiveMaterial(0, 0, "skybox");
 
   WModelConfigInfo modelConfigInfo{};
   modelConfigInfo.animationLoadMode = EAnimationLoadMode::ExtractToManager;
@@ -75,11 +75,8 @@ void core::run() {
   pPawn->setLocation(-3.0f, 0.0f, 2.0f);
 
   AStatic* pStatic = core::actors.createStatic("Skybox");
-  pStatic->setModel(core::world.getModel("mdlSkybox"));
+  pStatic->setModel(core::world.getModel(RMDL_SKYBOX));
   pStatic->bindToRenderer();
-  //core::renderer.bindEntity(pStatic);
-  pStatic->getModel()->getPrimitives()[0]->pMaterial =
-    core::resources.getMaterial("skybox");
   
   pStatic = core::actors.createStatic("Static01");
   pStatic->setModel(core::world.getModel("mdlGuy"));
