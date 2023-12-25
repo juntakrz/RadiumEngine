@@ -146,6 +146,10 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
 
   system.renderPassBeginInfo.renderPass =
       renderView.pCurrentRenderPass->renderPass;
+  system.renderPassBeginInfo.pClearValues =
+      renderView.pCurrentRenderPass->clearValues.data();
+  system.renderPassBeginInfo.clearValueCount =
+      static_cast<uint32_t>(renderView.pCurrentRenderPass->clearValues.size());
 
   // render targets must be stored in the same sequence as their related
   // pipelines
@@ -345,6 +349,10 @@ void core::MRenderer::renderEnvironmentMapsSequenced(
 
   system.renderPassBeginInfo.renderPass =
       renderView.pCurrentRenderPass->renderPass;
+  system.renderPassBeginInfo.pClearValues =
+      renderView.pCurrentRenderPass->clearValues.data();
+  system.renderPassBeginInfo.clearValueCount =
+      static_cast<uint32_t>(renderView.pCurrentRenderPass->clearValues.size());
 
   dimension = pCubemap->texture.width;
 
@@ -447,10 +455,17 @@ void core::MRenderer::renderEnvironmentMapsSequenced(
 void core::MRenderer::generateLUTMap() {
   core::time.tickTimer();
 
+  RRenderPass* pRenderPass = getRenderPass(ERenderPass::LUTGen);
+  renderView.pCurrentRenderPass = pRenderPass;
+
   system.renderPassBeginInfo.renderPass = getVkRenderPass(ERenderPass::LUTGen);
   system.renderPassBeginInfo.framebuffer = system.framebuffers.at(RFB_LUT);
   system.renderPassBeginInfo.renderArea.extent = {core::vulkan::LUTExtent,
                                                   core::vulkan::LUTExtent};
+  system.renderPassBeginInfo.pClearValues =
+      renderView.pCurrentRenderPass->clearValues.data();
+  system.renderPassBeginInfo.clearValueCount =
+      static_cast<uint32_t>(renderView.pCurrentRenderPass->clearValues.size());
 
   RTexture* pLUTTexture = core::resources.getTexture(RTGT_LUTMAP);
 
@@ -519,6 +534,10 @@ void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer, ERenderPa
       renderView.pCurrentRenderPass->renderPass;
   system.renderPassBeginInfo.renderArea.extent = {config::renderWidth,
                                                   config::renderHeight};
+  system.renderPassBeginInfo.pClearValues =
+      renderView.pCurrentRenderPass->clearValues.data();
+  system.renderPassBeginInfo.clearValueCount =
+      static_cast<uint32_t>(renderView.pCurrentRenderPass->clearValues.size());
 
   // swapchain image index is different from frame in flight
   system.renderPassBeginInfo.framebuffer = framebuffer;
@@ -599,8 +618,12 @@ void core::MRenderer::renderFrame() {
   // main PBR render pass:
   // update view, projection and camera position
   updateSceneUBO(renderView.frameInFlight);
-  executeRenderPass(cmdBuffer, ERenderPass::PBR, system.descriptorSets,
-                    swapchain.framebuffers[imageIndex]);
+
+  executeRenderPass(cmdBuffer, ERenderPass::Deferred, system.descriptorSets,
+                    system.framebuffers.at(RFB_DEFERRED));
+
+  /*executeRenderPass(cmdBuffer, ERenderPass::PBR, system.descriptorSets,
+                    swapchain.framebuffers[imageIndex]);*/
 
   // wait until image to write color data to is acquired
   VkSemaphore waitSems[] = {sync.semImgAvailable[renderView.frameInFlight]};

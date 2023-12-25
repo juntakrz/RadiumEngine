@@ -85,7 +85,6 @@ class MRenderer {
     std::unordered_map<ERenderPass, RRenderPass> renderPasses;
     VkRenderPassBeginInfo renderPassBeginInfo;
     std::unordered_map<std::string, VkFramebuffer> framebuffers;   // general purpose, swapchain uses its own set
-    std::array<VkClearValue, 2> clearColors;
 
     VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> descriptorSets;
@@ -164,6 +163,7 @@ class MRenderer {
   TResult createGBufferRenderTargets();
   TResult createDepthTarget();
   TResult createRendererDefaults();
+  TResult createDefaultMaterials();
 
   TResult createCoreCommandPools();
   void destroyCoreCommandPools();

@@ -7,6 +7,7 @@ struct RTexture;
 struct RMaterial {
   std::string name;
   uint32_t pipelineFlags = EPipeline::Null;
+  uint8_t textureCount = 0;
 
   std::string shaderVertex, shaderPixel, shaderGeometry;
   RTexture* pBaseColor = nullptr;

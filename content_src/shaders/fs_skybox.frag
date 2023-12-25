@@ -7,7 +7,7 @@ layout (location = 1) in vec4 inColor0;
 
 layout (set = 2, binding = 0) uniform samplerCube colorMap;
 
-layout (location = 0) out vec4 outColor;
+layout (location = 1) out vec4 outColor;
 
 void main() {
 	vec3 color = texture(colorMap, inTexCoord).rgb * inColor0.rgb;

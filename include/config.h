@@ -28,6 +28,9 @@
 #define RTGT_GPHYSICAL          "RT2D_GPhysical"    // physical properties output
 #define RTGT_GEMISSIVE          "RT2D_GEmissive"    // emissive color output
 
+// default materials
+#define RMAT_GBUFFER            "RMat_GBuffer"      // material storing G buffer targets as textures
+
 // default camera
 #define RCAM_MAIN               "camMain"
 

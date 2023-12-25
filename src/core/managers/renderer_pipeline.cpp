@@ -480,6 +480,20 @@ TResult core::MRenderer::createDefaultFramebuffers() {
 }
 
 TResult core::MRenderer::createRenderPasses() {
+  auto fGetClearValues = [](VkClearColorValue colorValue,
+                            int8_t colorValueCount,
+                            VkClearDepthStencilValue depthValue) {
+    std::vector<VkClearValue> clearValues;
+    clearValues.resize(colorValueCount + 1);
+
+    for (int8_t i = 0; i < colorValueCount; ++i) {
+      clearValues[i].color = colorValue;
+    }
+
+    clearValues[colorValueCount].depthStencil = depthValue;
+    return clearValues;
+  };
+
   //
   // MAIN render pass
   //
@@ -516,9 +530,15 @@ TResult core::MRenderer::createRenderPasses() {
   depthAttachment.finalLayout =
       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
+  // common clear color and clear depth values
+  const VkClearColorValue clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
+  const VkClearDepthStencilValue clearDepth = {1.0f};
+
   VkRenderPass newRenderPass = createRenderPass(
       logicalDevice.device, 1, &colorAttachment, &depthAttachment);
   system.renderPasses.at(passType).renderPass = newRenderPass;
+  system.renderPasses.at(passType).clearValues =
+      fGetClearValues(clearColor, 1, clearDepth);
 
   //
   // DEFERRED render pass
@@ -532,13 +552,16 @@ TResult core::MRenderer::createRenderPasses() {
   colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-  // deferred render targets: GPOS, GNORMAL, GDIFF, 3 total
+  // deferred render targets: position, color, normal, physical, emissive
   VkAttachmentDescription deferredColorAttachments[] = {
-      colorAttachment, colorAttachment, colorAttachment};
+      colorAttachment, colorAttachment, colorAttachment, colorAttachment,
+      colorAttachment};
 
-  newRenderPass = createRenderPass(logicalDevice.device, 3,
+  newRenderPass = createRenderPass(logicalDevice.device, 5,
                                    deferredColorAttachments, &depthAttachment);
   system.renderPasses.at(passType).renderPass = newRenderPass;
+  system.renderPasses.at(passType).clearValues =
+      fGetClearValues(clearColor, 5, clearDepth);
 
   //
   // CUBEMAP render pass
@@ -555,6 +578,8 @@ TResult core::MRenderer::createRenderPasses() {
   newRenderPass =
       createRenderPass(logicalDevice.device, 1, &colorAttachment, nullptr);
   system.renderPasses.at(passType).renderPass = newRenderPass;
+  system.renderPasses.at(passType).clearValues =
+      fGetClearValues(clearColor, 1, clearDepth);
 
   //
   // BRDF LUT render pass
@@ -567,6 +592,8 @@ TResult core::MRenderer::createRenderPasses() {
   newRenderPass =
       createRenderPass(logicalDevice.device, 1, &colorAttachment, nullptr);
   system.renderPasses.at(passType).renderPass = newRenderPass;
+  system.renderPasses.at(passType).clearValues =
+      fGetClearValues(clearColor, 1, clearDepth);
 
   //
   // Shadow render pass
@@ -579,16 +606,9 @@ TResult core::MRenderer::createRenderPasses() {
       createRenderPass(logicalDevice.device, 0, nullptr, &depthAttachment);
   system.renderPasses.at(passType).renderPass = newRenderPass;
 
-  // setup default render pass begin info
-  system.clearColors[0].color = {0.0f, 0.0f, 0.0f, 1.0f};
-  system.clearColors[1].depthStencil = {1.0f, 0};
-
   system.renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
   system.renderPassBeginInfo.renderArea.offset = {0, 0};
   system.renderPassBeginInfo.renderArea.extent = swapchain.imageExtent;
-  system.renderPassBeginInfo.pClearValues = system.clearColors.data();
-  system.renderPassBeginInfo.clearValueCount =
-      static_cast<uint32_t>(system.clearColors.size());
 
   // must be set up during frame drawing
   system.renderPassBeginInfo.renderPass = VK_NULL_HANDLE;
@@ -639,6 +659,14 @@ TResult core::MRenderer::createGraphicsPipelines() {
 
   // set main viewport
   VkViewport* viewport = &getRenderPass(ERenderPass::PBR)->viewport;
+  viewport->x = 0.0f;
+  viewport->y = static_cast<float>(swapchain.imageExtent.height);
+  viewport->width = static_cast<float>(swapchain.imageExtent.width);
+  viewport->height = -viewport->y;
+  viewport->minDepth = 0.0f;
+  viewport->maxDepth = 1.0f;
+
+  viewport = &getRenderPass(ERenderPass::Deferred)->viewport;
   viewport->x = 0.0f;
   viewport->y = static_cast<float>(swapchain.imageExtent.height);
   viewport->width = static_cast<float>(swapchain.imageExtent.width);
@@ -839,8 +867,17 @@ TResult core::MRenderer::createGraphicsPipelines() {
 
   // 'PBR single sided' pipeline, uses 'PBR' render pass and 'scene' layout
   std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {
-      loadShader("vs_pbr.spv", VK_SHADER_STAGE_VERTEX_BIT),
-      loadShader("fs_pbr.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
+      //loadShader("vs_pbr.spv", VK_SHADER_STAGE_VERTEX_BIT),
+      //loadShader("fs_pbr.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
+      loadShader("vs_deferred.spv", VK_SHADER_STAGE_VERTEX_BIT),
+      loadShader("fs_deferred.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
+
+  VkPipelineColorBlendAttachmentState colorBlendAttachments[] = {
+      colorBlendAttachment, colorBlendAttachment, colorBlendAttachment,
+      colorBlendAttachment, colorBlendAttachment};
+
+  colorBlendInfo.attachmentCount = 5;
+  colorBlendInfo.pAttachments = colorBlendAttachments;
 
   VkGraphicsPipelineCreateInfo graphicsPipelineInfo{};
   graphicsPipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -855,7 +892,8 @@ TResult core::MRenderer::createGraphicsPipelines() {
   graphicsPipelineInfo.pStages = shaderStages.data();
   graphicsPipelineInfo.pVertexInputState = &vertexInputInfo;
   graphicsPipelineInfo.layout = getPipelineLayout(EPipelineLayout::Scene);
-  graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::PBR);
+  //graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::PBR);
+  graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::Deferred);
   graphicsPipelineInfo.subpass = 0;  // subpass index for render pass
   graphicsPipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
   graphicsPipelineInfo.basePipelineIndex = -1;
@@ -928,6 +966,9 @@ TResult core::MRenderer::createGraphicsPipelines() {
                   loadShader("fs_envFilter.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
 
   system.pipelines.emplace(EPipeline::EnvFilter, VK_NULL_HANDLE);
+
+  colorBlendInfo.attachmentCount = 1;
+  colorBlendInfo.pAttachments = &colorBlendAttachment;
 
   graphicsPipelineInfo.layout = getPipelineLayout(EPipelineLayout::Environment);
   graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::Environment);

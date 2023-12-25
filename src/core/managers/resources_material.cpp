@@ -82,6 +82,14 @@ RMaterial* core::MResources::createMaterial(
   newMat.pushConstantBlock.extraTextureSet =
       newMat.pExtra ? pDesc->texCoordSets.extra : -1;
 
+  // store total number of textures the material has
+  if (newMat.pBaseColor) ++newMat.textureCount;
+  if (newMat.pNormal) ++newMat.textureCount;
+  if (newMat.pMetalRoughness) ++newMat.textureCount;
+  if (newMat.pOcclusion) ++newMat.textureCount;
+  if (newMat.pEmissive) ++newMat.textureCount;
+  if (newMat.pExtra) ++newMat.textureCount;
+
   newMat.pushConstantBlock.bumpIntensity = pDesc->bumpIntensity;
   newMat.pushConstantBlock.materialIntensity = pDesc->materialIntensity;
   newMat.pushConstantBlock.f0 = pDesc->F0;

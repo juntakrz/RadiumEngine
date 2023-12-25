@@ -114,13 +114,18 @@ void main() {
 		perceptualRoughness = clamp(perceptualRoughness, minRoughness, 1.0);
 		metallic = clamp(metallic, 0.0, 1.0);
 	}
+	
+	outPhysical.r = perceptualRoughness;
+	outPhysical.g = metallic;
 
 	if (material.occlusionTextureSet > -1) {
 		float ao = texture(aoMap, (material.occlusionTextureSet == 0 ? inUV0 : inUV1)).r;
-		outPhysical.z = ao;
+		outPhysical.b = ao;
 	}
 
 	// 5. extract emissive color
+	outEmissive = vec4(0.0);
+	
 	if (material.emissiveTextureSet > -1) {
 		vec3 emissive = texture(emissiveMap, material.emissiveTextureSet == 0 ? inUV0 : inUV1).rgb * emissiveFactor;
 		outEmissive = vec4(emissive, 1.0);
