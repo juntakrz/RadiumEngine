@@ -16,7 +16,8 @@ layout (set = 0, binding = 0) uniform UBOScene {
 } scene;
 
 layout (set = 0, binding = 1) uniform UBOLighting {
-	vec4 lightDir;
+	vec4 directLightDirection;
+    vec4 directLightColor;
 	float exposure;
 	float gamma;
 	float prefilteredCubeMipLevels;
@@ -139,8 +140,6 @@ vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, 
 }
 
 void main() {
-	const vec3 dirLightPos = {-0.74, 0.6428, 0.1983};
-	const vec3 dirLightColor = vec3(1.0);
 	const float occlusionStrength = 1.0;
 	const float emissiveFactor = 1.0;
 	vec3 f0 = vec3(0.04);
@@ -171,9 +170,9 @@ void main() {
 	vec3 specularEnvironmentR0 = specularColor.rgb;
 	vec3 specularEnvironmentR90 = vec3(1.0, 1.0, 1.0) * reflectance90;
 
-	vec3 V = normalize(scene.camPos - worldPos);	// Vector from surface point to camera
-	vec3 L = normalize(dirLightPos);				// Vector from surface point to light
-	vec3 H = normalize(L + V);                      // Half vector between both l and v
+	vec3 V = normalize(scene.camPos - worldPos);			// Vector from surface point to camera
+	vec3 L = normalize(lighting.directLightDirection.xyz);	// Vector from surface point to light
+	vec3 H = normalize(L + V);								// Half vector between both l and v
 	vec3 reflection = -normalize(reflect(V, normal));
 	reflection.y *= -1.0f;
 
@@ -193,12 +192,13 @@ void main() {
 	vec3 specContrib = F * G * D / (4.0 * NdotL * NdotV);
 
 	// Obtain final intensity as reflectance (BRDF) scaled by the energy of the light (cosine law)
-	vec3 color = NdotL * dirLightColor * (diffuseContrib + specContrib);
+	vec3 color = NdotL * lighting.directLightColor.rgb * (diffuseContrib + specContrib);
 
 	// Calculate lighting contribution from image based lighting source (IBL)
 	color += getIBLContribution(diffuseColor, specularColor, perceptualRoughness, NdotV, normal, reflection);
 	color = mix(color, color * ao, occlusionStrength);
 	color += emissive;
+    color *= lighting.directLightColor.a;
 	
 	outColor = vec4(color, baseColor.a);
 }

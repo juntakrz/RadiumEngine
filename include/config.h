@@ -44,6 +44,9 @@
 // default camera
 #define RCAM_MAIN               "camMain"
 
+// default light
+#define RLT_DIRECT              "lightSun"
+
 struct RVertex;
 
 namespace config {

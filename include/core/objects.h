@@ -283,7 +283,8 @@ struct REnvironmentUBO {
 
 // lighting data uniform buffer object
 struct RLightingUBO {
-  glm::vec4 lightDir;
+  glm::vec4 directLightDirection;
+  glm::vec4 directLightColor; // alpha is intensity
   float exposure = 4.5f;
   float gamma = 2.2f;
   float prefilteredCubeMipLevels;

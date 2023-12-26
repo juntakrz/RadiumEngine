@@ -159,11 +159,12 @@ TResult core::create() {
 
   RE_LOG(Log, "Rendering module successfully initialized.");
 
-  core::renderer.renderInitFrame();
-
   core::resources.initialize();
   core::world.initialize();
   core::actors.initialize();
+
+  core::renderer.renderInitFrame();
+
   core::input.initialize(core::window.getWindow());
   core::player.initialize();
 

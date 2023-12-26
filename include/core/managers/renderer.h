@@ -12,6 +12,8 @@ struct RTexture;
 namespace core {
 
 class MRenderer {
+  friend class MResources;
+
  private:
   // command buffers and pools data
   struct {

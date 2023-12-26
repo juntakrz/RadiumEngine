@@ -622,8 +622,8 @@ void core::MRenderer::renderFrame() {
   }
 
   // convert G-buffer render targets to color attachments
-  convertRenderTargets(cmdBuffer,
-                       core::resources.getMaterialTextures(RMAT_GBUFFER), true);
+  convertRenderTargets(
+      cmdBuffer, core::resources.getMaterialTextures(RMAT_GBUFFER), true);
 
   executeRenderPass(cmdBuffer, ERenderPass::Deferred, frameSets, 1,
                     system.framebuffers.at(RFB_DEFERRED));
@@ -726,7 +726,7 @@ void core::MRenderer::renderFrame() {
 
 void core::MRenderer::renderInitFrame() {
   generateLUTMap();
-  //renderFrame();
+  renderFrame();
 }
 
 void core::MRenderer::updateAspectRatio() {
