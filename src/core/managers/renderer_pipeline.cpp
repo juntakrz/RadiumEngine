@@ -574,12 +574,14 @@ TResult core::MRenderer::createRenderPasses() {
 
   //
   // PRESENT render pass
-  // the 16 bit float color map is rendered to the compatible 8 bit target
+  // the 16 bit float color map is rendered to the compatible surface target
   passType = ERenderPass::Present;
   system.renderPasses.emplace(passType, RRenderPass{});
   RE_LOG(Log, "Creating render pass E%d", passType);
 
-  colorAttachment.format = core::vulkan::formatLDR;
+  colorAttachment.format = swapchain.formatData.format;
+  colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
   newRenderPass = createRenderPass(logicalDevice.device, 1, &colorAttachment,
                                    &depthAttachment);
   system.renderPasses.at(passType).renderPass = newRenderPass;
@@ -1012,6 +1014,8 @@ TResult core::MRenderer::createGraphicsPipelines() {
                   loadShader("fs_present.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
 
   system.pipelines.emplace(EPipeline::Present, VK_NULL_HANDLE);
+
+  graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::Present);
 
   if (vkCreateGraphicsPipelines(
           logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,

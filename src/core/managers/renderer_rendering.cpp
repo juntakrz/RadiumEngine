@@ -648,7 +648,7 @@ void core::MRenderer::renderFrame() {
       ->setPrimitiveMaterial(0, 0, RMAT_PRESENT);
 
   executeRenderPass(cmdBuffer, ERenderPass::Present, frameSets, 1,
-                    swapchain.framebuffers[renderView.frameInFlight]);
+                    swapchain.framebuffers[imageIndex]);
 
   // convert combined PBR output back to render target
   convertRenderTargets(cmdBuffer, &targets, true);
