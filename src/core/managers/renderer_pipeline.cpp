@@ -1147,8 +1147,8 @@ TResult core::MRenderer::configureRenderPasses() {
   // configure main 'scene', PBR render pass
   pRenderPass = getRenderPass(ERenderPass::PBR);
   pRenderPass->usedLayout = getPipelineLayout(EPipelineLayout::Scene);
+  pRenderPass->usedPipelines.emplace_back(EPipeline::Skybox);
   pRenderPass->usedPipelines.emplace_back(EPipeline::PBRDeferred);
-  //pRenderPass->usedPipelines.emplace_back(EPipeline::Skybox);
 
   pRenderPass = getRenderPass(ERenderPass::Present);
   pRenderPass->usedLayout = getPipelineLayout(EPipelineLayout::Scene);

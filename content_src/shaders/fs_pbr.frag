@@ -6,8 +6,9 @@ layout (location = 2) in vec2 inUV0;
 layout (location = 3) in vec2 inUV1;
 layout (location = 4) in vec4 inColor0;
 
-// Scene bindings
+layout (location = 0) out vec4 outColor;
 
+// Scene bindings
 layout (set = 0, binding = 0) uniform UBOScene {
 	mat4 view;
 	mat4 projection;
@@ -52,8 +53,6 @@ layout (push_constant) uniform Material {
 	float bumpIntensity;
 	float materialIntensity;
 } material;
-
-layout (location = 0) out vec4 outColor;
 
 const float M_PI = 3.141592653589793;
 const float minRoughness = 0.04;
@@ -154,11 +153,6 @@ void main() {
 	float ao = texture(physicalMap, inUV0).b;
     vec3 worldPos = texture(aoMap, inUV0).xyz;
     vec3 emissive = texture(emissiveMap, inUV0).rgb;
-
-	// TODO: move this to depth prepass or anything that will not write to depth if transparent
-	if(baseColor.a < 0.5){
-		discard;
-	}
 
 	// do PBR
 	vec3 diffuseColor = baseColor.rgb * (vec3(1.0) - f0);
