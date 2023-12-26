@@ -41,6 +41,8 @@ class MResources {
   uint32_t getMaterialCount() const noexcept;
   TResult deleteMaterial(const char* name) noexcept;
 
+  std::vector<RTexture*>* getMaterialTextures(const char* name) noexcept;
+
   // TEXTURES
 
   // load texture from KTX file (versions 1 and 2 are supported)

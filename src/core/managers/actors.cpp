@@ -1,11 +1,18 @@
 #include "pch.h"
 #include "core/core.h"
 #include "core/managers/input.h"
+#include "core/managers/world.h"
 #include "core/world/actors/camera.h"
 #include "core/managers/actors.h"
 
 core::MActors::MActors() {
   RE_LOG(Log, "Creating actors manager.");
+}
+
+void core::MActors::initialize() {
+  AStatic* pNewStatic = createStatic(RACT_RENDERPLANE);
+  pNewStatic->setModel(core::world.getModel(RMDL_RENDERPLANE));
+  pNewStatic->bindToRenderer();
 }
 
 ACamera* core::MActors::createCamera(const char* name,

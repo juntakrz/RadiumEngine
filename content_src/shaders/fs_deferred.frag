@@ -121,6 +121,7 @@ void main() {
 	
 	outPhysical.r = metallic;
 	outPhysical.g = perceptualRoughness;
+    outPhysical.b = 1.0;
 
 	if (material.occlusionTextureSet > -1) {
 		float ao = texture(aoMap, (material.occlusionTextureSet == 0 ? inUV0 : inUV1)).r;

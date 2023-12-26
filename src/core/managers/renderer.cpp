@@ -413,6 +413,23 @@ TResult core::MRenderer::createImageTargets() {
   environment.envPushBlock.samples = 32u;
   environment.envPushBlock.roughness = 0.0f;
 
+  // set swapchain subresource copy region
+  swapchain.copyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  swapchain.copyRegion.srcSubresource.baseArrayLayer = 0;
+  swapchain.copyRegion.srcSubresource.layerCount = 1;
+  swapchain.copyRegion.srcSubresource.mipLevel = 0;
+  swapchain.copyRegion.srcOffset = {0, 0, 0};
+
+  swapchain.copyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  swapchain.copyRegion.dstSubresource.baseArrayLayer = 0;
+  swapchain.copyRegion.dstSubresource.layerCount = 1;
+  swapchain.copyRegion.dstSubresource.mipLevel = 0;
+  swapchain.copyRegion.dstOffset = {0, 0, 0};
+
+  swapchain.copyRegion.extent.width = swapchain.imageExtent.width;
+  swapchain.copyRegion.extent.height = swapchain.imageExtent.height;
+  swapchain.copyRegion.extent.depth = 1;
+
   return createGBufferRenderTargets();
 }
 

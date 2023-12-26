@@ -68,6 +68,7 @@ class MRenderer {
     std::vector<VkImage> images;
     std::vector<VkImageView> imageViews;
     std::vector<VkFramebuffer> framebuffers;
+    VkImageCopy copyRegion;
   } swapchain;
 
   // multi-threaded synchronization objects
@@ -91,7 +92,7 @@ class MRenderer {
     std::unordered_map<EDescriptorSetLayout, VkDescriptorSetLayout>
         descriptorSetLayouts;
 
-    std::vector<REntityBindInfo> bindings;                            // entities rendered during the current frame
+    std::vector<REntityBindInfo> bindings;                         // entities rendered during the current frame
     std::vector<VkDrawIndexedIndirectCommand> drawCommands;
     std::unordered_map<EPipeline, std::vector<WPrimitive*>> primitivesByPipeline;   // TODO
   } system;
@@ -276,6 +277,10 @@ class MRenderer {
                             uint32_t width, uint32_t height,
                             uint32_t layerCount);
 
+  TResult copyImage(VkCommandBuffer cmdBuffer, VkImage srcImage,
+                    VkImage dstImage, VkImageLayout srcImageLayout,
+                    VkImageLayout dstImageLayout, VkImageCopy& copyRegion);
+
   void setImageLayout(VkCommandBuffer cmdBuffer, RTexture* pTexture,
                       VkImageLayout newLayout,
                       VkImageSubresourceRange subresourceRange);
@@ -283,6 +288,10 @@ class MRenderer {
   void setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
                       VkImageLayout oldLayout, VkImageLayout newLayout,
                       VkImageSubresourceRange subresourceRange);
+
+  void convertRenderTargets(VkCommandBuffer cmdBuffer,
+                            std::vector<RTexture*>* pInTextures,
+                            bool convertBackToRenderTargets);
 
   TResult generateMipMaps(RTexture* pTexture, int32_t mipLevels,
                           VkFilter filter = VK_FILTER_LINEAR);

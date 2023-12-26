@@ -1,6 +1,10 @@
 #version 450
 
+layout (location = 0) in vec3 inWorldPos;
+layout (location = 1) in vec3 inNormal;
 layout (location = 2) in vec2 inUV0;
+layout (location = 3) in vec2 inUV1;
+layout (location = 4) in vec4 inColor0;
 
 // Scene bindings
 
@@ -150,6 +154,10 @@ void main() {
 	float ao = texture(physicalMap, inUV0).b;
     vec3 worldPos = texture(aoMap, inUV0).xyz;
     vec3 emissive = texture(emissiveMap, inUV0).rgb;
+
+	if(baseColor.a < 0.5){
+		discard;
+	}
 
 	// do PBR
 	vec3 diffuseColor = baseColor.rgb * (vec3(1.0) - f0);

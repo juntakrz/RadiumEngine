@@ -163,6 +163,7 @@ TResult core::create() {
 
   core::resources.initialize();
   core::world.initialize();
+  core::actors.initialize();
   core::input.initialize(core::window.getWindow());
   core::player.initialize();
 

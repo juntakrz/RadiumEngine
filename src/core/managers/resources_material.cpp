@@ -52,8 +52,24 @@ void core::MResources::initialize() {
   materialInfo.manageTextures = true;
   materialInfo.pipelineFlags = EPipeline::PBRDeferred;
 
-  if(!createMaterial(&materialInfo)) {
+  if (!createMaterial(&materialInfo)) {
     RE_LOG(Critical, "Failed to create G-Buffer material.");
+
+    return;
+  }
+
+  // create present material that takes combined output of all render passes as
+  // a shader read only attachment
+  materialInfo = RMaterialInfo{};
+  materialInfo.name = RMAT_PRESENT;
+  materialInfo.textures.baseColor = RTGT_GPBR;
+  materialInfo.alphaMode = EAlphaMode::Opaque;
+  materialInfo.doubleSided = false;
+  materialInfo.manageTextures = true;
+  materialInfo.pipelineFlags = EPipeline::Present;
+
+  if (!createMaterial(&materialInfo)) {
+    RE_LOG(Critical, "Failed to create Vulkan present material.");
 
     return;
   }
@@ -104,12 +120,24 @@ RMaterial* core::MResources::createMaterial(
       newMat.pExtra ? pDesc->texCoordSets.extra : -1;
 
   // store total number of textures the material has
-  if (newMat.pBaseColor) ++newMat.textureCount;
-  if (newMat.pNormal) ++newMat.textureCount;
-  if (newMat.pMetalRoughness) ++newMat.textureCount;
-  if (newMat.pOcclusion) ++newMat.textureCount;
-  if (newMat.pEmissive) ++newMat.textureCount;
-  if (newMat.pExtra) ++newMat.textureCount;
+  if (newMat.pBaseColor) {
+    newMat.pLinearTextures.emplace_back(newMat.pBaseColor);
+  }
+  if (newMat.pNormal) {
+    newMat.pLinearTextures.emplace_back(newMat.pNormal);
+  }
+  if (newMat.pMetalRoughness) {
+    newMat.pLinearTextures.emplace_back(newMat.pMetalRoughness);
+  }
+  if (newMat.pOcclusion) {
+    newMat.pLinearTextures.emplace_back(newMat.pOcclusion);
+  }
+  if (newMat.pEmissive) {
+    newMat.pLinearTextures.emplace_back(newMat.pEmissive);
+  }
+  if (newMat.pExtra) {
+    newMat.pLinearTextures.emplace_back(newMat.pExtra);
+  }
 
   newMat.pushConstantBlock.bumpIntensity = pDesc->bumpIntensity;
   newMat.pushConstantBlock.materialIntensity = pDesc->materialIntensity;
@@ -172,4 +200,17 @@ TResult core::MResources::deleteMaterial(const char* name) noexcept {
 
   RE_LOG(Warning, "Could not delete material \"%\", does not exist.", name);
   return RE_WARNING;
+}
+
+std::vector<RTexture*>* core::MResources::getMaterialTextures(
+    const char* name) noexcept {
+  RMaterial* pMaterial = getMaterial(name);
+
+  if (!pMaterial) {
+    RE_LOG(Error, "Couldn't retrieve textures from requested material '%s'.",
+           name);
+    return nullptr;
+  }
+
+  return &pMaterial->pLinearTextures;
 }

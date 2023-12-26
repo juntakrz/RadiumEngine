@@ -2,6 +2,7 @@
 #include "core/core.h"
 #include "core/managers/animations.h"
 #include "core/managers/time.h"
+#include "core/managers/world.h"
 #include "core/world/actors/entity.h"
 #include "core/model/model.h"
 #include "core/managers/renderer.h"
@@ -519,18 +520,8 @@ void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer,
                                         VkDescriptorSet* pFrameSets,
                                         const uint32_t setCount,
                                         VkFramebuffer framebuffer) {
-  VkCommandBufferBeginInfo beginInfo{};
-  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  beginInfo.pInheritanceInfo = nullptr;
-  beginInfo.flags = 0;
-
   renderView.pCurrentRenderPass = getRenderPass(passType);
   system.renderPassBeginInfo.renderPass = getVkRenderPass(passType);
-
-  if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
-    RE_LOG(Error, "failure when trying to record command buffer.");
-    return;
-  }
 
   system.renderPassBeginInfo.renderPass =
       renderView.pCurrentRenderPass->renderPass;
@@ -569,10 +560,6 @@ void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer,
   drawBoundEntities(commandBuffer);
 
   vkCmdEndRenderPass(commandBuffer);
-
-  if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to end writing to command buffer.");
-  }
 }
 
 void core::MRenderer::renderFrame() {
@@ -617,23 +604,63 @@ void core::MRenderer::renderFrame() {
     renderEnvironmentMapsSequenced(cmdBuffer, environment.genInterval);
   }
 
-  // main PBR render pass:
   // update view, projection and camera position
   updateSceneUBO(renderView.frameInFlight);
 
   VkDescriptorSet frameSets[] = {
       system.descriptorSets[renderView.frameInFlight]};
 
+  VkCommandBufferBeginInfo beginInfo{};
+  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  beginInfo.pInheritanceInfo = nullptr;
+  beginInfo.flags = 0;
+
+  // start recording vulkan command buffer
+  if (vkBeginCommandBuffer(cmdBuffer, &beginInfo) != VK_SUCCESS) {
+    RE_LOG(Error, "failure when trying to record command buffer.");
+    return;
+  }
+
+  // convert G-buffer render targets to color attachments
+  convertRenderTargets(cmdBuffer,
+                       core::resources.getMaterialTextures(RMAT_GBUFFER), true);
+
   executeRenderPass(cmdBuffer, ERenderPass::Deferred, frameSets, 1,
                     system.framebuffers.at(RFB_DEFERRED));
+
+  // convert G-buffer render targets to shader read only sources
+  convertRenderTargets(
+      cmdBuffer, core::resources.getMaterialTextures(RMAT_GBUFFER), false);
+
+  core::world.getModel(RMDL_RENDERPLANE)
+      ->setPrimitiveMaterial(0, 0, RMAT_GBUFFER);
 
   executeRenderPass(cmdBuffer, ERenderPass::PBR, frameSets, 1,
                     system.framebuffers.at(RFB_PBR));
 
+  std::vector<RTexture*> targets;
+  targets.emplace_back(core::resources.getTexture(RTGT_GPBR));
+
+  // convert combined PBR output to shader source
+  convertRenderTargets(cmdBuffer, &targets, false);
+
+  core::world.getModel(RMDL_RENDERPLANE)
+      ->setPrimitiveMaterial(0, 0, RMAT_PRESENT);
+
+  executeRenderPass(cmdBuffer, ERenderPass::Present, frameSets, 1,
+                    swapchain.framebuffers[renderView.frameInFlight]);
+
+  // convert combined PBR output back to render target
+  convertRenderTargets(cmdBuffer, &targets, true);
+
+  // end writing commands and prepare to submit buffer to rendering queue
+  if (vkEndCommandBuffer(cmdBuffer) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to end writing to command buffer.");
+  }
+
   // wait until image to write color data to is acquired
   VkSemaphore waitSems[] = {sync.semImgAvailable[renderView.frameInFlight]};
-  VkSemaphore signalSems[] = {
-      sync.semRenderFinished[renderView.frameInFlight]};
+  VkSemaphore signalSems[] = {sync.semRenderFinished[renderView.frameInFlight]};
   VkPipelineStageFlags waitStages[] = {
       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
@@ -645,8 +672,9 @@ void core::MRenderer::renderFrame() {
       waitStages;  // each stage index corresponds to provided semaphore index
   submitInfo.commandBufferCount = 1;
   submitInfo.pCommandBuffers =
-      &command.buffersGraphics[renderView.frameInFlight];  // submit command buffer
-                                                   // recorded previously
+      &command
+           .buffersGraphics[renderView.frameInFlight];  // submit command buffer
+                                                        // recorded previously
   submitInfo.signalSemaphoreCount = 1;
   submitInfo.pSignalSemaphores =
       signalSems;  // signal these after rendering is finished
@@ -656,7 +684,8 @@ void core::MRenderer::renderFrame() {
   if (vkQueueSubmit(logicalDevice.queues.graphics, 1, &submitInfo,
                     sync.fenceInFlight[renderView.frameInFlight]) !=
       VK_SUCCESS) {
-    RE_LOG(Error, "Failed to submit data to graphics queue.");;
+    RE_LOG(Error, "Failed to submit data to graphics queue.");
+    ;
   }
 
   VkSwapchainKHR swapChains[] = {swapChain};
@@ -676,7 +705,6 @@ void core::MRenderer::renderFrame() {
 
   if (APIResult == VK_ERROR_OUT_OF_DATE_KHR || APIResult == VK_SUBOPTIMAL_KHR ||
       framebufferResized) {
-
     RE_LOG(Warning, "Recreating swap chain, reason: %d", APIResult);
     framebufferResized = false;
     recreateSwapChain();

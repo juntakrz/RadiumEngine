@@ -538,7 +538,7 @@ TResult core::MRenderer::createRenderPasses() {
 
   //
   // DEFERRED render pass
-  //
+  // all models are rendered to 5 separate color maps forming G-buffer
 
   ERenderPass passType = ERenderPass::Deferred;
   system.renderPasses.emplace(passType, RRenderPass{});
@@ -561,7 +561,7 @@ TResult core::MRenderer::createRenderPasses() {
 
   //
   // PBR render pass
-  //
+  // textures from deferred pass are used as a single material
   passType = ERenderPass::PBR;
   system.renderPasses.emplace(passType, RRenderPass{});
   RE_LOG(Log, "Creating render pass E%d", passType);
@@ -574,7 +574,7 @@ TResult core::MRenderer::createRenderPasses() {
 
   //
   // PRESENT render pass
-  //
+  // the 16 bit float color map is rendered to the compatible 8 bit target
   passType = ERenderPass::Present;
   system.renderPasses.emplace(passType, RRenderPass{});
   RE_LOG(Log, "Creating render pass E%d", passType);
@@ -691,6 +691,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
 
   getRenderPass(ERenderPass::Deferred)->viewport = viewport;
   getRenderPass(ERenderPass::PBR)->viewport = viewport;
+  getRenderPass(ERenderPass::Present)->viewport = viewport;
 
   VkRect2D scissor{};
   scissor.offset = {0, 0};
@@ -698,6 +699,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
 
   getRenderPass(ERenderPass::Deferred)->scissor = scissor;
   getRenderPass(ERenderPass::PBR)->scissor = scissor;
+  getRenderPass(ERenderPass::Present)->scissor = scissor;
 
   VkPipelineViewportStateCreateInfo viewportInfo{};
   viewportInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -886,10 +888,8 @@ TResult core::MRenderer::createGraphicsPipelines() {
       static_cast<uint32_t>(attributeDescs.size());
   vertexInputInfo.pVertexAttributeDescriptions = attributeDescs.data();
 
-  // 'PBR single sided' pipeline, uses 'PBR' render pass and 'scene' layout
+  // 'single sided' pipeline, uses 'Deferred' render pass and 'scene' layout
   std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {
-      //loadShader("vs_pbr.spv", VK_SHADER_STAGE_VERTEX_BIT),
-      //loadShader("fs_pbr.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
       loadShader("vs_deferred.spv", VK_SHADER_STAGE_VERTEX_BIT),
       loadShader("fs_deferred.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
 
@@ -959,6 +959,32 @@ TResult core::MRenderer::createGraphicsPipelines() {
     vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
   }
 
+  // 'PBR' pipeline, renders combined G-buffer output to a screen wide plane
+  shaderStages.clear();
+  shaderStages = {loadShader("vs_pbr.spv", VK_SHADER_STAGE_VERTEX_BIT),
+                  loadShader("fs_pbr.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
+
+  graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::PBR);
+
+  rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+
+  colorBlendInfo.attachmentCount = 1;
+  colorBlendInfo.pAttachments = &colorBlendAttachment;
+
+  system.pipelines.emplace(EPipeline::PBRDeferred, VK_NULL_HANDLE);
+
+  if (vkCreateGraphicsPipelines(
+          logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
+          nullptr, &getPipeline(EPipeline::PBRDeferred)) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to create PBR graphics pipeline.");
+
+    return RE_CRITICAL;
+  }
+
+  for (auto stage : shaderStages) {
+    vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
+  }
+
   // 'Skybox' pipeline
   shaderStages.clear();
   shaderStages = {loadShader("vs_skybox.spv", VK_SHADER_STAGE_VERTEX_BIT),
@@ -972,6 +998,25 @@ TResult core::MRenderer::createGraphicsPipelines() {
           logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
           nullptr, &getPipeline(EPipeline::Skybox)) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create skybox graphics pipeline.");
+
+    return RE_CRITICAL;
+  }
+
+  for (auto stage : shaderStages) {
+    vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
+  }
+
+  // 'Present' final output pipeline
+  shaderStages.clear();
+  shaderStages = {loadShader("vs_present.spv", VK_SHADER_STAGE_VERTEX_BIT),
+                  loadShader("fs_present.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
+
+  system.pipelines.emplace(EPipeline::Present, VK_NULL_HANDLE);
+
+  if (vkCreateGraphicsPipelines(
+          logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
+          nullptr, &getPipeline(EPipeline::Present)) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to create Vulkan presentation pipeline.");
 
     return RE_CRITICAL;
   }
@@ -1030,9 +1075,8 @@ TResult core::MRenderer::createGraphicsPipelines() {
 
   // 'EnvLUT' pipeline
   shaderStages.clear();
-  shaderStages = {
-      loadShader("vs_brdfLUT.spv", VK_SHADER_STAGE_VERTEX_BIT),
-      loadShader("fs_brdfLUT.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
+  shaderStages = {loadShader("vs_brdfLUT.spv", VK_SHADER_STAGE_VERTEX_BIT),
+                  loadShader("fs_brdfLUT.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
 
   system.pipelines.emplace(EPipeline::LUTGen, VK_NULL_HANDLE);
 
@@ -1099,11 +1143,12 @@ TResult core::MRenderer::configureRenderPasses() {
   // configure main 'scene', PBR render pass
   pRenderPass = getRenderPass(ERenderPass::PBR);
   pRenderPass->usedLayout = getPipelineLayout(EPipelineLayout::Scene);
-  pRenderPass->usedPipelines.emplace_back(EPipeline::Skybox);
-  // TODO: add a PBR processing pipeline that renders a flat plane with alpha
-  // from deferred on top(?) of skybox
+  pRenderPass->usedPipelines.emplace_back(EPipeline::PBRDeferred);
+  //pRenderPass->usedPipelines.emplace_back(EPipeline::Skybox);
 
-  // TODO: add a Output renderpass and pipeline to write final results to swapchain
+  pRenderPass = getRenderPass(ERenderPass::Present);
+  pRenderPass->usedLayout = getPipelineLayout(EPipelineLayout::Scene);
+  pRenderPass->usedPipelines.emplace_back(EPipeline::Present);
 
   // configure 'environment' cubemap render pass
   pRenderPass = getRenderPass(ERenderPass::Environment);

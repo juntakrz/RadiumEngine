@@ -10,6 +10,7 @@
 // frame buffers
 #define RFB_DEFERRED            "FB_Deferred"       // generate G-buffer textures
 #define RFB_PBR                 "FB_PBR"            // combine PBR result of G-buffer textures with skybox
+#define RFB_PRESENT             "FB_Present"        // convert 16 bit float result to 8 bit presentable image
 #define RFB_ENV                 "FB_Env"
 #define RFB_LUT                 "FB_Lut"
 
@@ -31,10 +32,14 @@
 
 // default materials
 #define RMAT_GBUFFER            "RMat_GBuffer"      // material storing G-buffer targets as textures
+#define RMAT_PRESENT            "RMat_Present"
 
 // default models
 #define RMDL_RENDERPLANE        "RMdl_RenderPlane"  // a screen-wide plane for rendering to
 #define RMDL_SKYBOX             "RMdl_SkyBox"       // default cube skybox using cubemap
+
+// default entities
+#define RACT_RENDERPLANE        "RAct_RenderPlane"  // an entity containing RMDL_RENDERPLANE
 
 // default camera
 #define RCAM_MAIN               "camMain"

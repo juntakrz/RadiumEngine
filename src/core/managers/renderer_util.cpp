@@ -688,6 +688,39 @@ TResult core::MRenderer::copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
   return RE_OK;
 }
 
+TResult core::MRenderer::copyImage(VkCommandBuffer cmdBuffer, VkImage srcImage,
+                                   VkImage dstImage,
+                                   VkImageLayout srcImageLayout,
+                                   VkImageLayout dstImageLayout,
+                                   VkImageCopy& copyRegion) {
+  VkImageSubresourceRange srcRange{};
+  srcRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  srcRange.baseArrayLayer = 0;
+  srcRange.layerCount = 1;
+  srcRange.baseMipLevel = 0;
+  srcRange.levelCount = 1;
+
+  VkImageSubresourceRange dstRange = srcRange;
+
+  setImageLayout(cmdBuffer, srcImage, srcImageLayout,
+                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, srcRange);
+
+  setImageLayout(cmdBuffer, dstImage, dstImageLayout,
+                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dstRange);
+
+  vkCmdCopyImage(cmdBuffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                 dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
+                 &swapchain.copyRegion);
+
+  setImageLayout(cmdBuffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                 srcImageLayout, srcRange);
+
+  setImageLayout(cmdBuffer, dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                 dstImageLayout, dstRange);
+
+  return RE_OK;
+}
+
 void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer,
                                      RTexture* pTexture,
                                      VkImageLayout newLayout,
@@ -816,6 +849,7 @@ void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
     }
     imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
     break;
+
     default:
     /* Value not used by callers, so not supported. */
     assert(KTX_FALSE);
@@ -828,6 +862,28 @@ void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
   // Add the barrier to the passed command buffer
   vkCmdPipelineBarrier(cmdBuffer, srcStageFlags, dstStageFlags, 0, 0,
                                NULL, 0, NULL, 1, &imageMemoryBarrier);
+}
+
+void core::MRenderer::convertRenderTargets(VkCommandBuffer cmdBuffer,
+                                           std::vector<RTexture*>* pInTextures,
+                                           bool convertBackToRenderTargets) {
+  VkImageLayout newLayout = (convertBackToRenderTargets)
+                                ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+  VkImageSubresourceRange range{};
+  range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  range.baseArrayLayer = 0;
+  range.baseMipLevel = 0;
+
+  for (int8_t i = 0; i < pInTextures->size(); ++i) {
+    if (newLayout == pInTextures->at(i)->texture.imageLayout) continue;
+
+    range.layerCount = pInTextures->at(i)->texture.layerCount;
+    range.levelCount = pInTextures->at(i)->texture.levelCount;
+
+    setImageLayout(cmdBuffer, pInTextures->at(i), newLayout, range);
+  }
 }
 
 TResult core::MRenderer::generateMipMaps(RTexture* pTexture, int32_t mipLevels,
