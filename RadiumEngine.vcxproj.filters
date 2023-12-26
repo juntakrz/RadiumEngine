@@ -302,5 +302,9 @@
     <None Include="content_src\shaders\fs_envIrradiance.frag" />
     <None Include="content_src\shaders\vs_brdfLUT.vert" />
     <None Include="content_src\shaders\fs_brdfLUT.frag" />
+    <None Include="content_src\shaders\fs_deferred.frag" />
+    <None Include="content_src\shaders\fs_present.frag" />
+    <None Include="content_src\shaders\vs_deferred.vert" />
+    <None Include="content_src\shaders\vs_present.vert" />
   </ItemGroup>
 </Project>

@@ -149,12 +149,13 @@ void main() {
 	// retrieve G-buffer data
 	vec4 baseColor = texture(colorMap, inUV0);
     vec3 normal = texture(normalMap, inUV0).rgb;
-	float perceptualRoughness = texture(physicalMap, inUV0).r;
-	float metallic = texture(physicalMap, inUV0).g;
+	float metallic = texture(physicalMap, inUV0).r;
+	float perceptualRoughness = texture(physicalMap, inUV0).g;
 	float ao = texture(physicalMap, inUV0).b;
     vec3 worldPos = texture(aoMap, inUV0).xyz;
     vec3 emissive = texture(emissiveMap, inUV0).rgb;
 
+	// TODO: move this to depth prepass or anything that will not write to depth if transparent
 	if(baseColor.a < 0.5){
 		discard;
 	}
