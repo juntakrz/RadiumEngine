@@ -114,7 +114,7 @@
     <ClCompile Include="src\core\model\model_gltf.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\world\actors\astatic.cpp">
+    <ClCompile Include="src\core\world\actors\static.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\world\actors\entity.cpp">
@@ -142,6 +142,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\managers\animations_util.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\world\actors\light.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -264,6 +267,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\core\model\animation.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\world\actors\light.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

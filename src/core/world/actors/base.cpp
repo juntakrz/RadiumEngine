@@ -149,4 +149,8 @@ void ABase::setName(const char* name) { m_name = name; }
 
 const char* ABase::getName() { return m_name.c_str(); }
 
-const EActorType& ABase::typeId() { return m_typeId; }
+const EActorType& ABase::getTypeId() { return m_typeId; }
+
+void ABase::setVisibility(const bool isVisible) { m_isVisible = isVisible; }
+
+const bool ABase::isVisible() { return m_isVisible; }

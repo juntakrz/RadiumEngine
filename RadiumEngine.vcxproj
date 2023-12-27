@@ -145,6 +145,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\core\world\actors\light.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="src/main.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
@@ -266,7 +269,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core\world\actors\astatic.cpp">
+    <ClCompile Include="src\core\world\actors\static.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
@@ -336,6 +339,7 @@
     <ClInclude Include="include\core\model\animation.h" />
     <ClInclude Include="include\core\world\actors\base.h" />
     <ClInclude Include="include\core\world\actors\entity.h" />
+    <ClInclude Include="include\core\world\actors\light.h" />
     <ClInclude Include="include\core\world\actors\pawn.h" />
     <ClInclude Include="include\core\objects.h" />
     <ClInclude Include="include\core\world\actors\static.h" />

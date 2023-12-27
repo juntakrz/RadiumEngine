@@ -38,6 +38,7 @@ class ABase {
   float m_translationModifier = 1.0f;
   float m_rotationModifier = 1.0f;
   float m_scalingModifier = 1.0f;
+  bool m_isVisible = true;
 
  protected:
   ABase(){};
@@ -93,5 +94,8 @@ class ABase {
   void setName(const char* name);
   const char* getName();
 
-  const EActorType& typeId();
+  const EActorType& getTypeId();
+
+  void setVisibility(const bool isVisible);
+  const bool isVisible();
 };

@@ -196,9 +196,12 @@ void core::MRenderer::destroySwapChain() {
   }
 
   // destroy other framebuffers
-  for (auto fb : system.framebuffers) {
+  for (auto& fb : system.framebuffers) {
     vkDestroyFramebuffer(logicalDevice.device, fb.second, nullptr);
   }
+
+  // clear unordered map so framebuffers may be recreated if needed
+  system.framebuffers.clear();
 
   vkDestroySwapchainKHR(logicalDevice.device, swapChain, nullptr);
 }

@@ -6,6 +6,7 @@
 #define RE_ERRORLIMIT           RE_ERROR        // terminate program if some error exceeds this level
 #define MAX_FRAMES_IN_FLIGHT    2u
 #define MAX_TRANSFER_BUFFERS    2u
+#define RE_MAXLIGHTS            32              // includes directional light, always at index 0
 
 // frame buffers
 #define RFB_DEFERRED            "FB_Deferred"       // generate G-buffer textures
@@ -42,10 +43,11 @@
 #define RACT_RENDERPLANE        "RAct_RenderPlane"  // an entity containing RMDL_RENDERPLANE
 
 // default camera
-#define RCAM_MAIN               "camMain"
+#define RCAM_MAIN               "c_Main"
+#define RCAM_SUN                "c_Sun"
 
 // default light
-#define RLT_DIRECT              "lightSun"
+#define RLT_SUN                 "l_Sun"
 
 struct RVertex;
 

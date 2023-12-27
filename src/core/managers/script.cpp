@@ -21,8 +21,8 @@ TResult core::MScript::loadMap(const char* mapName) {
   const std::wstring objPath = mapPath + L"objects.json";
   const std::wstring commPath = mapPath + L"commands.json";
 
-  // parse cameras
   jsonParseCameras(jsonLoad(camPath.c_str(), "cameraData"));
+  jsonParseLights(jsonLoad(lightPath.c_str(), "lightData"));
 
   // TODO: parse everything else
 
@@ -78,16 +78,16 @@ TResult core::MScript::jsonRemove(const char* jsonId) {
 
 void core::MScript::clearAllScripts() { m_jsons.clear(); }
 
-void core::MScript::jsonParseCameras(const json* cameraData) noexcept {
+void core::MScript::jsonParseCameras(const json* pCameraData) noexcept {
   
-  if (!cameraData) {
-    RE_LOG(Error, "no camera data was provided for map parser.");
+  if (!pCameraData) {
+    RE_LOG(Error, "No camera data was provided for map parser.");
     return;
   }
 
   std::string activatedCamera = "";
 
-  for (const auto& it : cameraData->at("cameras")) {
+  for (const auto& it : pCameraData->at("cameras")) {
     // create camera if it doesn't exist
     if (it.contains("name")) {
       std::string name = it.at("name");
@@ -154,9 +154,63 @@ void core::MScript::jsonParseCameras(const json* cameraData) noexcept {
   }
 }
 
-void core::MScript::jsonParseMaterials(const json* materialData) noexcept {}
+void core::MScript::jsonParseMaterials(const json* pMaterialData) noexcept {}
 
-void core::MScript::jsonParseLights(const json* lightData) noexcept {}
+void core::MScript::jsonParseLights(const json* pLightData) noexcept {
+  if (!pLightData) {
+    RE_LOG(Error, "no light data was provided for map parser.");
+    return;
+  }
+
+  std::vector<std::string> lightNames;
+  std::vector<RLightInfo> lightInfo;
+  int32_t type = 0;
+  float position[3] = {};
+  float direction[3] = {};
+  float color[3] = {};
+
+  for (const auto& it : pLightData->at("lights")) {
+    if (it.contains("name")) {
+      lightNames.emplace_back(it.at("name"));
+      lightInfo.emplace_back();
+
+      RLightInfo& info = lightInfo.back();
+
+      if (it.contains("type")) {
+        it.at("type").type();   // invalid type detected unless this is called
+        it.at("type").get_to(type);
+
+        info.type = ELightType(type);
+      }
+
+      if (it.contains("position")) {
+        it.at("position").get_to(position);
+
+        info.position = {position[0], position[1], position[2]};
+      }
+
+      if (it.contains("direction")) {
+        it.at("direction").get_to(direction);
+
+        info.direction = {direction[0], direction[1], direction[2]};
+      }
+
+      if (it.contains("intensity")) {
+        it.at("intensity").get_to(info.intensity);
+      }
+
+      if (it.contains("color")) {
+        it.at("color").get_to(color);
+
+        info.color = {color[0], color[1], color[2]};
+      }
+    }
+  }
+
+  for (int32_t i = 0; i < lightNames.size(); ++i) {
+    core::actors.createLight(lightNames[i].c_str(), &lightInfo[i]);
+  }
+}
 
 void core::MScript::jsonParseObjects(const json* objectData) noexcept {}
 

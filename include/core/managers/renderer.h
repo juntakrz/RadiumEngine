@@ -12,8 +12,6 @@ struct RTexture;
 namespace core {
 
 class MRenderer {
-  friend class MResources;
-
  private:
   // command buffers and pools data
   struct {
@@ -48,6 +46,11 @@ class MRenderer {
   struct {
     std::vector<RBuffer> buffers;
     RLightingUBO data;
+
+    struct {
+      int8_t bufferUpdatesRemaining = 0;
+      bool dataRequiresUpdate = false;
+    } tracking;
   } lighting;
 
   struct RSceneBuffers {
@@ -202,6 +205,9 @@ class MRenderer {
   RSceneBuffers* getSceneBuffers();
 
   RSceneUBO* getSceneUBO();
+
+  void queueLightingUBOUpdate();
+  void updateLightingUBO(const int32_t frameIndex);
 
   //
   // ***PIPELINE

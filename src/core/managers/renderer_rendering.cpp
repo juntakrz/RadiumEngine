@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "core/core.h"
+#include "core/managers/actors.h"
 #include "core/managers/animations.h"
 #include "core/managers/time.h"
 #include "core/managers/world.h"
@@ -606,6 +607,9 @@ void core::MRenderer::renderFrame() {
 
   // update view, projection and camera position
   updateSceneUBO(renderView.frameInFlight);
+
+  // update lighting UBO if required
+  updateLightingUBO(renderView.frameInFlight);
 
   VkDescriptorSet frameSets[] = {
       system.descriptorSets[renderView.frameInFlight]};

@@ -83,7 +83,7 @@ void core::MResources::initialize() {
     writeDescriptorSet.descriptorType =
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     writeDescriptorSet.descriptorCount = 1;
-    writeDescriptorSet.dstSet = core::renderer.system.descriptorSets[i];
+    writeDescriptorSet.dstSet = core::renderer.getDescriptorSet(i);
     writeDescriptorSet.dstBinding = 4;
     writeDescriptorSet.pImageInfo =
         &core::resources.getTexture("default/brdfLUT.ktx2")->texture.descriptor;

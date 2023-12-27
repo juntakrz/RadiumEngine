@@ -811,3 +811,21 @@ const VkDescriptorSet core::MRenderer::getDescriptorSet(
 RSceneUBO* core::MRenderer::getSceneUBO() {
   return &view.worldViewProjectionData;
 }
+
+void core::MRenderer::queueLightingUBOUpdate() {
+  lighting.tracking.bufferUpdatesRemaining = MAX_FRAMES_IN_FLIGHT;
+  lighting.tracking.dataRequiresUpdate = true;
+}
+
+void core::MRenderer::updateLightingUBO(const int32_t frameIndex) {
+  if (lighting.tracking.bufferUpdatesRemaining < 1) return;
+
+  if (lighting.tracking.dataRequiresUpdate) {
+    core::actors.updateLightingUBO(&lighting.data);
+    lighting.tracking.dataRequiresUpdate = false;
+  }
+
+  memcpy(lighting.buffers[frameIndex].allocInfo.pMappedData, &lighting.data,
+         sizeof(RLightingUBO));
+  lighting.tracking.bufferUpdatesRemaining--;
+}

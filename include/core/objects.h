@@ -8,6 +8,7 @@ class AEntity;
 enum class EActorType {  // actor type
   Base,
   Camera,
+  Light,
   Entity,     // unity for types below
   Pawn,       // can be controlled by player input
   Static      // part of the scene not meant to be controlled
@@ -53,6 +54,11 @@ enum class EDescriptorSetLayout {
   Model,
   Environment,
   Dummy
+};
+
+enum class ELightType {
+  Directional,
+  Point
 };
 
 enum EPipeline : uint32_t {
@@ -120,6 +126,14 @@ struct REntityBindInfo {
   uint32_t indexOffset = 0u;
   uint32_t vertexCount = 0u;
   uint32_t indexCount = 0u;
+};
+
+struct RLightInfo {
+  ELightType type = ELightType::Point;
+  glm::vec3 color = {1.0f, 1.0f, 1.0f};
+  float intensity = 1.0f;
+  glm::vec3 direction = {0.0f, 0.0f, 0.0f}; // used by directional light only
+  glm::vec3 position = {0.0f, 0.0f, 0.0f};  // used by point light only, both may be used by spotlight
 };
 
 // used for RMaterial creation in materials manager
@@ -283,8 +297,9 @@ struct REnvironmentUBO {
 
 // lighting data uniform buffer object
 struct RLightingUBO {
-  glm::vec4 directLightDirection;
-  glm::vec4 directLightColor; // alpha is intensity
+  glm::vec4 lightLocations[RE_MAXLIGHTS]; // alpha is type (0 - dir, 1 - point)
+  glm::vec4 lightColors[RE_MAXLIGHTS];    // alpha is intensity
+  float lightCount = 0.0f;
   float exposure = 4.5f;
   float gamma = 2.2f;
   float prefilteredCubeMipLevels;

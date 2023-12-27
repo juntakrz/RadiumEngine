@@ -1,5 +1,7 @@
 #version 450
 
+#define MAX_LIGHTS 32
+
 layout (location = 0) in vec3 inWorldPos;
 layout (location = 1) in vec3 inNormal;
 layout (location = 2) in vec2 inUV0;
@@ -16,8 +18,9 @@ layout (set = 0, binding = 0) uniform UBOScene {
 } scene;
 
 layout (set = 0, binding = 1) uniform UBOLighting {
-	vec4 directLightDirection;
-    vec4 directLightColor;
+	vec4 lightLocations[MAX_LIGHTS];
+    vec4 lightColor[MAX_LIGHTS];
+	float lightCount;
 	float exposure;
 	float gamma;
 	float prefilteredCubeMipLevels;
@@ -115,7 +118,7 @@ float getMicrofacetDistribution(float roughness, float NdotH) {
 vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, float NdotV, vec3 n, vec3 reflection)
 {
 	//float lod = (roughness * lighting.prefilteredCubeMipLevels);
-	float lod = (roughness * 32.0);
+	float lod = (roughness * 16.0);
 
 	// retrieve a scale and bias to F0
 	vec3 brdf = (texture(BRDFLUTMap, vec2(NdotV, 1.0 - roughness))).rgb;
@@ -133,8 +136,8 @@ vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, 
 	vec3 diffuse = diffuseLight * diffuseColor;
 	vec3 specular = specularLight * (specularColor * brdf.x + brdf.y);
 
-	//diffuse *= lighting.scaleIBLAmbient;
-	//specular *= lighting.scaleIBLAmbient;
+	diffuse *= lighting.scaleIBLAmbient;
+	specular *= lighting.scaleIBLAmbient;
 
 	return diffuse + specular;
 }
@@ -171,7 +174,7 @@ void main() {
 	vec3 specularEnvironmentR90 = vec3(1.0, 1.0, 1.0) * reflectance90;
 
 	vec3 V = normalize(scene.camPos - worldPos);			// Vector from surface point to camera
-	vec3 L = normalize(lighting.directLightDirection.xyz);	// Vector from surface point to light
+	vec3 L = normalize(lighting.lightLocations[0].xyz);		// Vector from surface point to light
 	vec3 H = normalize(L + V);								// Half vector between both l and v
 	vec3 reflection = -normalize(reflect(V, normal));
 	reflection.y *= -1.0f;
@@ -192,13 +195,12 @@ void main() {
 	vec3 specContrib = F * G * D / (4.0 * NdotL * NdotV);
 
 	// Obtain final intensity as reflectance (BRDF) scaled by the energy of the light (cosine law)
-	vec3 color = NdotL * lighting.directLightColor.rgb * (diffuseContrib + specContrib);
+	vec3 color = NdotL * lighting.lightColor[0].rgb * (diffuseContrib + specContrib) * lighting.lightColor[0].a;
 
 	// Calculate lighting contribution from image based lighting source (IBL)
 	color += getIBLContribution(diffuseColor, specularColor, perceptualRoughness, NdotV, normal, reflection);
 	color = mix(color, color * ao, occlusionStrength);
 	color += emissive;
-    color *= lighting.directLightColor.a;
 	
 	outColor = vec4(color, baseColor.a);
 }

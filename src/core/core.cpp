@@ -42,6 +42,7 @@ void core::run() {
   RE_LOG(Log, "Successfully initialized engine core.");
 
   core::script.loadMap("default");
+  core::renderer.queueLightingUBOUpdate();
 
   // remove this after loadMap improvements -------- //
   RSamplerInfo samplerInfo{};
