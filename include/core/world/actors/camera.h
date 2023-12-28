@@ -5,6 +5,7 @@
 class ACamera : public ABase {
  protected:
   EActorType m_typeId = EActorType::Camera;
+  ECameraProjection m_projectionType = ECameraProjection::Perspective;
 
   struct {
     glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f);
@@ -38,8 +39,8 @@ class ACamera : public ABase {
                       float farZ) noexcept;
   const glm::vec4& getPerspective() noexcept;
 
-  void setOrthographic(float left, float right, float bottom, float top,
-                       float nearZ, float farZ) noexcept;
+  void setOrthographic(float horizontal, float vertical, float nearZ,
+                       float farZ) noexcept;
 
   // get view matrix for current camera position and rotation
   glm::mat4& getView();

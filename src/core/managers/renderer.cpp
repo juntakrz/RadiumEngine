@@ -504,7 +504,7 @@ TResult core::MRenderer::createRendererDefaults() {
   // create default camera
   RCameraInfo cameraInfo{};
   cameraInfo.FOV = config::FOV;
-  cameraInfo.aspectRatio = config::getAspectRatio();
+  cameraInfo.aspectRatio = 1.0f;
   cameraInfo.nearZ = RE_NEARZ;
   cameraInfo.farZ = config::viewDistance;
 

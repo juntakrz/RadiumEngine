@@ -41,6 +41,11 @@ enum class EBufferMode {  // VkBuffer creation mode
   STAGING             // create staging buffer only
 };
 
+enum class ECameraProjection {
+  Perspective,
+  Orthogtaphic
+};
+
 enum class ECmdType {
   Graphics,
   Compute,
@@ -114,8 +119,8 @@ struct RBuffer {
 };
 
 struct RCameraInfo {
-  float aspectRatio = config::getAspectRatio();
   float FOV = config::FOV;
+  float aspectRatio = 1.0f; // ratio 1.0 corresponds to resolution
   float nearZ = RE_NEARZ;
   float farZ = config::viewDistance;
 };

@@ -8,19 +8,27 @@
 
 void ACamera::setPerspective(float FOV, float aspectRatio, float nearZ,
                              float farZ) noexcept {
+  aspectRatio *= config::getAspectRatio();
+
   m_viewData.perspectiveData = {FOV, aspectRatio, nearZ, farZ};
   m_projection = glm::perspective(
       glm::radians(m_viewData.perspectiveData.x), m_viewData.perspectiveData.y,
       m_viewData.perspectiveData.z, m_viewData.perspectiveData.w);
+  m_projectionType = ECameraProjection::Perspective;
 }
 
 const glm::vec4& ACamera::getPerspective() noexcept {
   return m_viewData.perspectiveData;
 }
 
-void ACamera::setOrthographic(float left, float right, float bottom, float top,
-                              float nearZ, float farZ) noexcept {
-  m_projection = glm::ortho(left, right, bottom, top, nearZ, farZ);
+void ACamera::setOrthographic(float horizontal, float vertical, float nearZ,
+                              float farZ) noexcept {
+  horizontal *= config::getAspectRatio();
+
+  m_viewData.orthographicData = {horizontal, vertical, nearZ, farZ};
+  m_projection =
+      glm::ortho(-horizontal, horizontal, -vertical, vertical, nearZ, farZ);
+  m_projectionType = ECameraProjection::Orthogtaphic;
 }
 
 glm::mat4& ACamera::getView() {
@@ -130,6 +138,8 @@ void ACamera::rotate(const glm::vec3& vector, float angle) noexcept {
 }
 
 void ACamera::setFOV(float FOV) noexcept {
+  if (m_projectionType == ECameraProjection::Orthogtaphic) return;
+
   m_viewData.perspectiveData.x = FOV;
   m_projection = glm::perspective(
       glm::radians(m_viewData.perspectiveData.x), m_viewData.perspectiveData.y,
@@ -137,6 +147,8 @@ void ACamera::setFOV(float FOV) noexcept {
 }
 
 void ACamera::setAspectRatio(float ratio) noexcept {
+  if (m_projectionType == ECameraProjection::Orthogtaphic) return;
+
   m_viewData.perspectiveData.y = ratio;
   m_projection = glm::perspective(
       glm::radians(m_viewData.perspectiveData.x), m_viewData.perspectiveData.y,

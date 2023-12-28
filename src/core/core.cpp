@@ -93,12 +93,12 @@ void core::run() {
   pStatic->getModel()->bindAnimation("Idle");
   pStatic->getModel()->playAnimation("Idle");
 
-  pStatic = core::actors.createStatic("Box1");
+  /*pStatic = core::actors.createStatic("Box1");
   pStatic->setModel(core::world.getModel("mdlBox1"));
-  //core::renderer.bindEntity(pStatic);
+  pStatic->bindToRenderer();
   pStatic->setScale(2.2f);
   pStatic->setLocation(4.0f, -0.2f, -2.0f);
-  pStatic->setRotation({0.5f, 0.32f, 0.1f});
+  pStatic->setRotation({0.5f, 0.32f, 0.1f});*/
 
   pStatic = core::actors.createStatic("StaticCastle");
   pStatic->setModel(core::world.getModel("mdlCastle"));

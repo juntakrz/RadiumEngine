@@ -129,17 +129,15 @@ void core::MScript::jsonParseCameras(const json* pCameraData) noexcept {
       */
 
       if (it.contains("mode")) {
-        if (it.at("mode").at("view") == "orthographic") {
-          float orthoVars[6]{};
-          newCamera->setOrthographic(orthoVars[0], orthoVars[1], orthoVars[2],
-                                     orthoVars[3], orthoVars[4], orthoVars[5]);
-        }
+        float vars[4];
+        it.at("mode").at("variables").get_to(vars);
 
         if (it.at("mode").at("view") == "perspective") {
-          float perspectiveVars[4]{};
-          it.at("mode").at("variables").get_to(perspectiveVars);
-          newCamera->setPerspective(perspectiveVars[0], perspectiveVars[1],
-                                    perspectiveVars[2], perspectiveVars[3]);
+          newCamera->setPerspective(vars[0], vars[1], vars[2], vars[3]);
+        }
+
+        if (it.at("mode").at("view") == "orthographic") {
+          newCamera->setOrthographic(vars[0], vars[1], vars[2], vars[3]);
         }
       }
 
