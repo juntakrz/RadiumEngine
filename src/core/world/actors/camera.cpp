@@ -18,6 +18,11 @@ const glm::vec4& ACamera::getPerspective() noexcept {
   return m_viewData.perspectiveData;
 }
 
+void ACamera::setOrthographic(float left, float right, float bottom, float top,
+                              float nearZ, float farZ) noexcept {
+  m_projection = glm::ortho(left, right, bottom, top, nearZ, farZ);
+}
+
 glm::mat4& ACamera::getView() {
   return m_view = glm::lookAt(
              m_transformationData.translation,

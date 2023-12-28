@@ -343,6 +343,8 @@ class MRenderer {
 
   ACamera* getCamera();
 
+  void setIBLScale(float newScale);
+
   //
   // ***PHYSICAL DEVICE
   //

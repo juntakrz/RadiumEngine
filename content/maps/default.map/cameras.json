@@ -14,7 +14,7 @@
       "rotation": [ 0.0, 0.0, 0.0 ],
       "mode": {
         "view": "orthographic",
-        "variables": [ 8.0, 4.5, 0.001, 100.0 ]
+        "variables": [ -1.0, 1.0, -1.0, 1.0, 0.001, 100.0 ]
       }
     },
 	

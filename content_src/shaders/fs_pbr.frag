@@ -61,21 +61,19 @@ layout (push_constant) uniform Material {
 const float M_PI = 3.141592653589793;
 const float minRoughness = 0.04;
 
-vec3 Uncharted2Tonemap(vec3 color) {
-	float A = 0.15;
-	float B = 0.50;
-	float C = 0.10;
-	float D = 0.20;
-	float E = 0.02;
-	float F = 0.30;
-	float W = 11.2;
-	return ((color*(A*color+C*B)+D*E)/(color*(A*color+B)+D*F))-E/F;
+vec3 ACESTonemap(vec3 x) {
+    float a = 2.51;
+    float b = 0.03;
+    float c = 2.43;
+    float d = 0.59;
+    float e = 0.14;
+
+    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
 }
 
 vec4 tonemap(vec4 color) {
-	vec3 outcol = Uncharted2Tonemap(color.rgb * lighting.exposure);
-	outcol = outcol * (1.0 / Uncharted2Tonemap(vec3(11.2)));	
-	return vec4(pow(outcol, vec3(1.0f / lighting.gamma)), color.a);
+	vec3 outColor = ACESTonemap(color.rgb);
+	return vec4(pow(outColor, vec3(1.0f / lighting.gamma)), color.a);
 }
 
 vec3 getDiffuse(vec3 inColor)

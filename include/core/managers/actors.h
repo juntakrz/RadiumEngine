@@ -29,6 +29,8 @@ class MActors {
 
  private:
   MActors();
+
+  // method should be called only by renderer
   void updateLightingUBO(RLightingUBO* pLightingBuffer);
 
  public:

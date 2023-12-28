@@ -1,13 +1,13 @@
 {
   "lights": {
 
-    "l_Sun": {
-      "name": "l_Sun",
+    "L_Sun": {
+      "name": "L_Sun",
       "type": 0,
       "position": [ 0.0, 0.0, 0.0 ],
       "direction": [ -15.0, 7.0, -2.0 ],
       "color": [ 1.0, 1.0, 1.0 ],
-      "intensity": 2.2
+      "intensity": 1.6
     },
 
     "pointLight0": {
@@ -16,6 +16,15 @@
       "position": [ -0.7, 0.25, 2.0 ],
       "direction": [ 0.0, 0.0, 0.0 ],
       "color": [ -0.5, 0.25, 1.5 ],
+      "intensity": 0.05
+    },
+	
+	"pointLight1": {
+      "name": "pointLight1",
+      "type": 1,
+      "position": [ 0.7, 0.55, 2.0 ],
+      "direction": [ 0.0, 0.0, 0.0 ],
+      "color": [ 2.2, 0.0, 0.0 ],
       "intensity": 0.05
     }
   }

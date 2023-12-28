@@ -297,7 +297,7 @@ struct REnvironmentUBO {
 
 // lighting data uniform buffer object
 struct RLightingUBO {
-  glm::vec4 lightLocations[RE_MAXLIGHTS]; // alpha is type (0 - dir, 1 - point)
+  glm::vec4 lightLocations[RE_MAXLIGHTS]; // w is unused
   glm::vec4 lightColors[RE_MAXLIGHTS];    // alpha is intensity
   float lightCount = 0.0f;
   float exposure = 4.5f;

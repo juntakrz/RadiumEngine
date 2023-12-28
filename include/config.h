@@ -43,11 +43,11 @@
 #define RACT_RENDERPLANE        "RAct_RenderPlane"  // an entity containing RMDL_RENDERPLANE
 
 // default camera
-#define RCAM_MAIN               "c_Main"
-#define RCAM_SUN                "c_Sun"
+#define RCAM_MAIN               "C_Main"
+#define RCAM_SUN                "C_Sun"
 
 // default light
-#define RLT_SUN                 "l_Sun"
+#define RLT_SUN                 "L_Sun"
 
 struct RVertex;
 

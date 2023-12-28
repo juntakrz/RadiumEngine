@@ -42,7 +42,6 @@ void core::run() {
   RE_LOG(Log, "Successfully initialized engine core.");
 
   core::script.loadMap("default");
-  core::renderer.queueLightingUBOUpdate();
 
   // remove this after loadMap improvements -------- //
   RSamplerInfo samplerInfo{};
@@ -65,7 +64,7 @@ void core::run() {
   modelConfigInfo.animationLoadMode = EAnimationLoadMode::ExtractToManager;
 
   core::world.loadModelFromFile("content/models/wc3guy/scene.gltf", "mdlGuy", &modelConfigInfo);
-  //core::world.loadModelFromFile("content/models/windmill/scene.gltf", "mdlGuy");
+  core::world.loadModelFromFile("content/models/castle/scene.gltf", "mdlCastle");
   //
   
   // create entities
@@ -100,6 +99,13 @@ void core::run() {
   pStatic->setScale(2.2f);
   pStatic->setLocation(4.0f, -0.2f, -2.0f);
   pStatic->setRotation({0.5f, 0.32f, 0.1f});
+
+  pStatic = core::actors.createStatic("StaticCastle");
+  pStatic->setModel(core::world.getModel("mdlCastle"));
+  pStatic->bindToRenderer();
+  pStatic->setLocation(0.0f, 6.17f, 12.0f);
+  pStatic->setRotation({-0.5f, -0.4f, 0.0f});
+  pStatic->setScale(2.0f);
 
   //core::animations.saveAnimation("SwordAndShieldIdle", "SwordAndShieldIdle");
   //

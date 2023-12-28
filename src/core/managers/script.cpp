@@ -129,16 +129,17 @@ void core::MScript::jsonParseCameras(const json* pCameraData) noexcept {
       */
 
       if (it.contains("mode")) {
-        float vars[4];
-        it.at("mode").at("variables").get_to(vars);
-
         if (it.at("mode").at("view") == "orthographic") {
-          //DF.Camera(name)->SetAsOrthographic(vars[0], vars[1], vars[2],
-            //                                 vars[3]);
+          float orthoVars[6]{};
+          newCamera->setOrthographic(orthoVars[0], orthoVars[1], orthoVars[2],
+                                     orthoVars[3], orthoVars[4], orthoVars[5]);
         }
 
         if (it.at("mode").at("view") == "perspective") {
-          newCamera->setPerspective(vars[0], vars[1], vars[2], vars[3]);
+          float perspectiveVars[4]{};
+          it.at("mode").at("variables").get_to(perspectiveVars);
+          newCamera->setPerspective(perspectiveVars[0], perspectiveVars[1],
+                                    perspectiveVars[2], perspectiveVars[3]);
         }
       }
 
@@ -210,6 +211,8 @@ void core::MScript::jsonParseLights(const json* pLightData) noexcept {
   for (int32_t i = 0; i < lightNames.size(); ++i) {
     core::actors.createLight(lightNames[i].c_str(), &lightInfo[i]);
   }
+
+  core::renderer.queueLightingUBOUpdate();
 }
 
 void core::MScript::jsonParseObjects(const json* objectData) noexcept {}

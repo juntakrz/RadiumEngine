@@ -1413,3 +1413,8 @@ void core::MRenderer::setCamera(ACamera* pCamera) {
 }
 
 ACamera* core::MRenderer::getCamera() { return view.pActiveCamera; }
+
+void core::MRenderer::setIBLScale(float newScale) {
+  lighting.data.scaleIBLAmbient = newScale;
+  lighting.tracking.bufferUpdatesRemaining = MAX_FRAMES_IN_FLIGHT;
+}

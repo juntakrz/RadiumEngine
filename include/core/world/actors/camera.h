@@ -38,6 +38,9 @@ class ACamera : public ABase {
                       float farZ) noexcept;
   const glm::vec4& getPerspective() noexcept;
 
+  void setOrthographic(float left, float right, float bottom, float top,
+                       float nearZ, float farZ) noexcept;
+
   // get view matrix for current camera position and rotation
   glm::mat4& getView();
 
