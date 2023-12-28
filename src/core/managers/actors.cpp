@@ -115,7 +115,7 @@ ALight* core::MActors::createLight(const char* name, RLightInfo* pInfo) {
     m_actors.lights.at(name)->setLightType(pInfo->type);
     m_actors.lights.at(name)->setLightColor(pInfo->color);
     m_actors.lights.at(name)->setLightIntensity(pInfo->intensity);
-    m_actors.lights.at(name)->setLocation(pInfo->position);
+    m_actors.lights.at(name)->setLocation(pInfo->translation);
     m_actors.lights.at(name)->setRotation(pInfo->direction);
   }
 

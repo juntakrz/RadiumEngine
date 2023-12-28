@@ -34,11 +34,13 @@ void ACamera::setOrthographic(float horizontal, float vertical, float nearZ,
 glm::mat4& ACamera::getView() {
   return m_view = glm::lookAt(
              m_transformationData.translation,
-             m_transformationData.translation + m_viewData.focusPoint,
+             m_transformationData.translation + m_transformationData.forwardVector,
              m_viewData.upVector);
 }
 
 glm::mat4& ACamera::getProjection() { return m_projection; }
+
+ECameraProjection ACamera::getProjectionType() { return m_projectionType; }
 
 void ACamera::setUpVector(float x, float y, float z) noexcept {
   m_viewData.upVector = {x, y, z};
@@ -48,10 +50,30 @@ void ACamera::setUpVector(const glm::vec3& upVector) noexcept {
   m_viewData.upVector = upVector;
 }
 
+void ACamera::setLookAtTarget(ABase* pTarget, const bool useForwardVector,
+                              const bool attach) noexcept {
+  if (!pTarget) {
+    RE_LOG(Error,
+           "Failed to set lookAt target for '%s'. No target was provided.",
+           m_name.c_str());
+    return;
+  }
+
+  m_transformationData.forwardVector = pTarget->getLocation() - m_transformationData.translation;
+
+  if (attach) {
+    attachTo(pTarget, true, false, true);
+  }
+}
+
 void ACamera::translate(const glm::vec3& delta) noexcept {
   glm::vec3 moveDirection = glm::rotate(m_transformationData.rotation, delta);
   m_transformationData.translation +=
       moveDirection * m_translationModifier * core::time.getDeltaTime();
+
+  m_transformationData.lastTranslationDelta = moveDirection;
+
+  updateAttachments();
 }
 
 void ACamera::setRotation(float x, float y, float z) noexcept {
@@ -67,31 +89,36 @@ void ACamera::setRotation(const glm::vec3& newRotation) noexcept {
       glm::quat(glm::vec3(m_pitch, newRotation.y, newRotation.z));
   m_transformationData.rotation = m_transformationData.initial.rotation;
 
-  switch (m_viewData.bAnchorFocusPoint) {
+  switch (m_viewData.anchorFocusPoint) {
     case true: {
       // code for when the camera should be rotated around its focus point
       break;
     }
     case false: {
-      m_viewData.focusPoint = glm::rotate(m_transformationData.rotation,
-                                          m_transformationData.frontVector);
+      m_transformationData.forwardVector = glm::rotate(m_transformationData.rotation,
+                                          m_transformationData.initial.forwardVector);
     }
   }
+
+  updateAttachments();
 }
 
 void ACamera::setRotation(const glm::quat& newRotation) noexcept {
   m_transformationData.rotation = newRotation;
 
-  switch (m_viewData.bAnchorFocusPoint) {
+  switch (m_viewData.anchorFocusPoint) {
     case true: {
       // code for when the camera should be rotated around its focus point
       break;
     }
     case false: {
-      m_viewData.focusPoint = glm::rotate(m_transformationData.rotation,
-                                          m_transformationData.frontVector);
+      m_transformationData.forwardVector =
+          glm::rotate(m_transformationData.rotation,
+                      m_transformationData.initial.forwardVector);
     }
   }
+
+  updateAttachments();
 }
 
 void ACamera::rotate(const glm::vec3& vector, float angle) noexcept {
@@ -125,16 +152,19 @@ void ACamera::rotate(const glm::vec3& vector, float angle) noexcept {
     }
   }
 
-  switch (m_viewData.bAnchorFocusPoint) {
+  switch (m_viewData.anchorFocusPoint) {
     case true: {
       // code for when the camera should be rotated around its focus point
       break;
     }
     case false: {
-      m_viewData.focusPoint = glm::rotate(m_transformationData.rotation,
-                                          m_transformationData.frontVector);
+      m_transformationData.forwardVector =
+          glm::rotate(m_transformationData.rotation,
+                      m_transformationData.initial.forwardVector);
     }
   }
+
+  updateAttachments();
 }
 
 void ACamera::setFOV(float FOV) noexcept {

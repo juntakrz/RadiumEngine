@@ -20,18 +20,24 @@ class ABase {
     glm::vec3 translation = {0.0f, 0.0f, 0.0f};
     glm::quat rotation = {0.0f, 0.0f, 0.0f, 0.0f};
     glm::vec3 scaling = {1.0f, 1.0f, 1.0f};
-    glm::vec3 frontVector = {0.0f, 0.0f, 1.0f};
+    glm::vec3 forwardVector = {0.0f, 0.0f, 1.0f};
+
+    glm::vec3 lastTranslationDelta = {0.0f, 0.0f, 0.0f};
+    glm::quat lastRotationDelta = {0.0f, 0.0f, 0.0f, 0.0f};
 
     struct {
       // initial data defined by Set* methods
       glm::vec3 translation = {0.0f, 0.0f, 0.0f};
       glm::quat rotation = {0.0f, 0.0f, 0.0f, 1.0f};
       glm::vec3 scaling = {1.0f, 1.0f, 1.0f};
+      glm::vec3 forwardVector = {0.0f, 0.0f, 1.0f};
     } initial;
 
     // was transformation data changed
     bool wasUpdated = false;
   } m_transformationData;
+
+  std::vector<WAttachmentInfo> m_pAttachments;
 
   glm::mat4 m_transformationMatrix = glm::mat4(1.0f);
 
@@ -46,6 +52,8 @@ class ABase {
 
   // SIMD stuff, no error checks
   void copyVec3ToMatrix(const float* vec3, float* matrixColumn) noexcept;
+
+  virtual void updateAttachments();
 
  public:
   // try to get this actor as its real subclass
@@ -87,15 +95,18 @@ class ABase {
 
   virtual void scale(const glm::vec3& delta) noexcept;
 
-  void setTranslationModifier(float newModifier);
-  void setRotationModifier(float newModifier);
-  void setScalingModifier(float newModifier);
+  virtual void setTranslationModifier(float newModifier);
+  virtual void setRotationModifier(float newModifier);
+  virtual void setScalingModifier(float newModifier);
 
-  void setName(const char* name);
-  const char* getName();
+  virtual void setName(const char* name);
+  virtual const char* getName();
 
-  const EActorType& getTypeId();
+  virtual const EActorType& getTypeId();
 
-  void setVisibility(const bool isVisible);
-  const bool isVisible();
+  virtual void setVisibility(const bool isVisible);
+  virtual const bool isVisible();
+
+  virtual void attachTo(ABase* pTarget, const bool toTranslation,
+                        const bool toRotation, const bool toForwardVector);
 };

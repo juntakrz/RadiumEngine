@@ -30,11 +30,11 @@ void core::run() {
 
   loadCoreConfig();
 
-  #ifndef NDEBUG
+#ifndef NDEBUG
   loadDevelopmentConfig();
   core::debug.compileDebugShaders();
   core::debug.initializeRenderDoc();
-  #endif
+#endif
 
   RE_LOG(Log, "Creating renderer.");
   RE_CHECK(core::create());
@@ -92,13 +92,6 @@ void core::run() {
   
   pStatic->getModel()->bindAnimation("Idle");
   pStatic->getModel()->playAnimation("Idle");
-
-  /*pStatic = core::actors.createStatic("Box1");
-  pStatic->setModel(core::world.getModel("mdlBox1"));
-  pStatic->bindToRenderer();
-  pStatic->setScale(2.2f);
-  pStatic->setLocation(4.0f, -0.2f, -2.0f);
-  pStatic->setRotation({0.5f, 0.32f, 0.1f});*/
 
   pStatic = core::actors.createStatic("StaticCastle");
   pStatic->setModel(core::world.getModel("mdlCastle"));
@@ -174,6 +167,11 @@ TResult core::create() {
 
   core::input.initialize(core::window.getWindow());
   core::player.initialize();
+
+  
+#ifndef NDEBUG
+  core::renderer.debug_initialize();
+#endif
 
   return chkResult;
 }

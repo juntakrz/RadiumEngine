@@ -3,6 +3,7 @@
 #include "vk_mem_alloc.h"
 #include "config.h"
 
+class ABase;
 class AEntity;
 
 enum class EActorType {  // actor type
@@ -137,8 +138,8 @@ struct RLightInfo {
   ELightType type = ELightType::Point;
   glm::vec3 color = {1.0f, 1.0f, 1.0f};
   float intensity = 1.0f;
-  glm::vec3 direction = {0.0f, 0.0f, 0.0f}; // used by directional light only
-  glm::vec3 position = {0.0f, 0.0f, 0.0f};  // used by point light only, both may be used by spotlight
+  glm::vec3 direction = {0.0f, 0.0f, 0.0f};   // used by directional light only
+  glm::vec3 translation = {0.0f, 0.0f, 0.0f}; // used by point light only, both may be used by spotlight
 };
 
 // used for RMaterial creation in materials manager
@@ -352,6 +353,13 @@ struct WAnimationInfo {
   float speed = 1.0f;
   bool loop = true;
   bool bounce = false;
+};
+
+struct WAttachmentInfo {
+  ABase* pAttached = nullptr;
+  bool attachTranslation = true;
+  bool attachRotation = true;
+  bool attachToForwardVector = false;
 };
 
 struct WModelConfigInfo {

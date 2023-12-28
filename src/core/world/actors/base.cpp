@@ -13,6 +13,18 @@ void ABase::copyVec3ToMatrix(const float* vec3, float* matrixColumn) noexcept {
   _mm_storeu_ps(matrixColumn, dstColumn);
 }
 
+void ABase::updateAttachments() {
+  for (auto& pAttachment : m_pAttachments) {
+    if (pAttachment.attachTranslation) {
+      pAttachment.pAttached->translate(
+          m_transformationData.lastTranslationDelta);
+    }
+  }
+
+  // reset deltas after updating attachments
+  m_transformationData.lastTranslationDelta = glm::vec3(0.0f);
+}
+
 glm::mat4& ABase::getRootTransformationMatrix() noexcept {
   if (m_transformationData.wasUpdated) {
     // Scale Rotation Translation (SRT) order
@@ -24,6 +36,8 @@ glm::mat4& ABase::getRootTransformationMatrix() noexcept {
     // use SIMD to add translation data without creating the new matrix
     copyVec3ToMatrix(&m_transformationData.translation.x,
                      &m_transformationMatrix[3][0]);
+
+    updateAttachments();
 
     m_transformationData.wasUpdated = false;
   }
@@ -54,9 +68,10 @@ void ABase::setLocation(const glm::vec3& pos) noexcept {
 glm::vec3& ABase::getLocation() noexcept { return m_transformationData.translation; }
 
 void ABase::translate(const glm::vec3& delta) noexcept {
-  m_transformationData.translation +=
+  m_transformationData.lastTranslationDelta =
       delta * m_translationModifier * core::time.getDeltaTime();
-
+  m_transformationData.translation += m_transformationData.lastTranslationDelta;
+      
   m_transformationData.wasUpdated = true;
 }
 
@@ -154,3 +169,26 @@ const EActorType& ABase::getTypeId() { return m_typeId; }
 void ABase::setVisibility(const bool isVisible) { m_isVisible = isVisible; }
 
 const bool ABase::isVisible() { return m_isVisible; }
+
+void ABase::attachTo(ABase* pTarget, const bool toTranslation,
+                     const bool toRotation, const bool toForwardVector) {
+  if (!pTarget) {
+    RE_LOG(Error, "Failed to attach '%s' to target. No target was provided.",
+           m_name.c_str());
+    return;
+  }
+
+  if (!toTranslation && !toRotation) {
+    RE_LOG(Error,
+           "Unable to attach '%s' to '%s' because no valid attachment "
+           "parameters were provided.",
+           m_name.c_str(), pTarget->m_name.c_str());
+    return;
+  }
+
+  pTarget->m_pAttachments.emplace_back();
+  pTarget->m_pAttachments.back().pAttached = this;
+  pTarget->m_pAttachments.back().attachTranslation = toTranslation;
+  pTarget->m_pAttachments.back().attachRotation = toRotation;
+  pTarget->m_pAttachments.back().attachToForwardVector = toForwardVector;
+}

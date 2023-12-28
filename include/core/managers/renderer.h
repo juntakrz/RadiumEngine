@@ -106,6 +106,7 @@ class MRenderer {
   struct {
     RCameraInfo cameraSettings;
     ACamera* pActiveCamera = nullptr;
+    ACamera* pSunCamera = nullptr;
     std::vector<RBuffer> modelViewProjectionBuffers;
     RSceneUBO worldViewProjectionData;
   } view;
@@ -341,6 +342,10 @@ class MRenderer {
   void setCamera(const char* name);
   void setCamera(ACamera* pCamera);
 
+  void setSunCamera(const char* name);
+  void setSunCamera(ACamera* pCamera);
+
+  // get current renderer camera
   ACamera* getCamera();
 
   void setIBLScale(float newScale);
@@ -429,6 +434,16 @@ class MRenderer {
 
  private:
   TResult createSwapChainImageViews();
+
+  //
+  // ***DEBUG
+  //
+ public:
+  void debug_initialize();
+
+ private:
+  void debug_viewMainCamera();
+  void debug_viewSunCamera();
 
   //
   // ***RENDERING

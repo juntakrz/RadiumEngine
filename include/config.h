@@ -60,6 +60,7 @@ extern float viewDistance;                      // aka FarZ
 extern float FOV;
 extern bool bDevMode;
 extern float pitchLimit;                        // camera pitch limit
+extern uint32_t shadowResolution;
 
 // scene buffer values
 namespace scene {
@@ -71,7 +72,7 @@ namespace scene {
 // buffer overflow happens NOTE: on device 96 bytes per vertex / 4 bytes per
 // index
 
-const size_t vertexBudget = 5000000u;                   // ~480 MBs for vertex data
+const size_t vertexBudget = 10000000u;                  // ~960 MBs for vertex data
 const size_t indexBudget = 100000000u;                  // ~400 MBs for index data
 const size_t entityBudget = 10000u;                     // ~0.6 MBs for root transformation matrices
 const size_t nodeBudget = RE_MAXJOINTS * entityBudget;  // ~164 MBs for node transformation matrices

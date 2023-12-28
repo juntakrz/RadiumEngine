@@ -9,12 +9,16 @@ class ACamera : public ABase {
 
   struct {
     glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f);
-    glm::vec3 focusPoint = glm::vec3(0.0f, 0.0f, 1.0f);
     glm::vec4 perspectiveData;
     glm::vec4 orthographicData;
-    bool bAnchorFocusPoint = false;  // rotate around focus point if true
-    ABase* targetActor = nullptr;    // use this actor as a focus point
+    bool anchorFocusPoint = false;
   } m_viewData;
+
+  struct {
+    bool followTarget = false;      // camera will translate together with its target
+    bool useForwardVector = false;  // look at forward vector of the target
+    ABase* pTarget = nullptr;
+  } m_target;
 
   glm::mat4 m_view;        // view matrix
   glm::mat4 m_projection;  // projection matrix
@@ -48,11 +52,13 @@ class ACamera : public ABase {
   // get projection matrix using currently selected camera mode
   glm::mat4& getProjection();
 
+  ECameraProjection getProjectionType();
+
   void setUpVector(float x, float y, float z) noexcept;
   void setUpVector(const glm::vec3& upVector) noexcept;
 
-  void setAnchorPoint(float x, float y, float z) noexcept;
-  void setAnchorPoint(glm::vec3& newAnchorPoint) noexcept;
+  void setLookAtTarget(ABase* pTarget, const bool useForwardVector,
+                       const bool attach) noexcept;
 
   virtual void translate(const glm::vec3& delta) noexcept override;
 

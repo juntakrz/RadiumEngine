@@ -1396,6 +1396,7 @@ void core::MRenderer::setCamera(const char* name) {
 #ifndef NDEBUG
     RE_LOG(Log, "Selecting camera '%s'.", name);
 #endif
+
     view.pActiveCamera = pCamera;
     return;
   }
@@ -1410,6 +1411,52 @@ void core::MRenderer::setCamera(ACamera* pCamera) {
   }
 
   RE_LOG(Error, "Failed to set camera, received nullptr.");
+}
+
+void core::MRenderer::setSunCamera(const char* name) {
+  if (ACamera* pCamera = core::ref.getActor(name)->getAs<ACamera>()) {
+#ifndef NDEBUG
+    RE_LOG(Log, "Selecting camera '%s' as sun camera / shadow projector.",
+           name);
+#endif
+    if (pCamera->getProjectionType() != ECameraProjection::Orthogtaphic) {
+      RE_LOG(Error,
+             "Failed to set camera '%s' as sun camera. Camera must have an "
+             "orthographic projection.",
+             name);
+
+      return;
+    }
+
+    view.pSunCamera = pCamera;
+    view.pSunCamera->setLocation(core::actors.getLight(RLT_SUN)->getLocation());
+    view.pSunCamera->setLookAtTarget(view.pActiveCamera, true, true);
+    return;
+  }
+
+  RE_LOG(Error,
+         "Failed to set sun / shadow projection camera '%s' - not found.",
+         name);
+}
+
+void core::MRenderer::setSunCamera(ACamera* pCamera) {
+  if (pCamera != nullptr) {
+    if (pCamera->getProjectionType() != ECameraProjection::Orthogtaphic) {
+      RE_LOG(Error,
+             "Failed to set camera '%s' as sun camera. Camera must have an "
+             "orthographic projection.",
+             pCamera->getName());
+
+      return;
+    }
+
+    view.pSunCamera = pCamera;
+    view.pSunCamera->setLookAtTarget(view.pActiveCamera, true, true);
+    return;
+  }
+
+  RE_LOG(Error,
+         "Failed to set sun / shadow projection camera, received nullptr.");
 }
 
 ACamera* core::MRenderer::getCamera() { return view.pActiveCamera; }
