@@ -457,6 +457,13 @@ TResult core::MRenderer::createDefaultFramebuffers() {
 
   TResult chkResult;
   std::vector<std::string> attachmentNames;
+  attachmentNames.emplace_back(RTGT_SHADOW);
+  if (chkResult = createFramebuffer(ERenderPass::Shadow, attachmentNames,
+                                    RFB_SHADOW) != RE_OK) {
+    return chkResult;
+  }
+
+  attachmentNames.clear();
   attachmentNames.emplace_back(RTGT_GPOSITION); // 0
   attachmentNames.emplace_back(RTGT_GDIFFUSE);  // 1
   attachmentNames.emplace_back(RTGT_GNORMAL);   // 2
@@ -626,6 +633,8 @@ TResult core::MRenderer::createRenderPasses() {
   passType = ERenderPass::Shadow;
   system.renderPasses.emplace(passType, RRenderPass{});
   RE_LOG(Log, "Creating render pass E%d", passType);
+
+  depthAttachment.format = core::vulkan::formatShadow;
 
   newRenderPass =
       createRenderPass(logicalDevice.device, 0, nullptr, &depthAttachment);

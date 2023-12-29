@@ -12,6 +12,7 @@ float config::FOV = 90.0f;
 bool config::bDevMode = false;
 float config::pitchLimit = glm::radians(88.0f);
 uint32_t config::shadowResolution = 2048u;
+uint32_t config::shadowCascades = 3u;
 
 float config::getAspectRatio() { return renderWidth / (float)renderHeight; }
 
@@ -36,4 +37,5 @@ size_t config::scene::getSkinTransformBufferSize() {
 }
 
 VkFormat core::vulkan::formatDepth;
+VkFormat core::vulkan::formatShadow;
 VkDeviceSize core::vulkan::minBufferAlignment = 64u;

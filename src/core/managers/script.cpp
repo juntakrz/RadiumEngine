@@ -143,10 +143,15 @@ void core::MScript::jsonParseCameras(const json* pCameraData) noexcept {
         it.at("mode").at("variables").get_to(vars);
 
         if (it.at("mode").at("view") == "perspective") {
-          newCamera->setPerspective(vars[0], vars[1], vars[2], vars[3]);
+          newCamera->setPerspective(vars[0], vars[1] * config::getAspectRatio(),
+                                    vars[2], vars[3]);
         }
 
         if (it.at("mode").at("view") == "orthographic") {
+          // force aspect ratio to square if it's a shadow casting camera
+          if (newCamera->getName() != sunCamera) {
+            vars[1] *= config::getAspectRatio();
+          }
           newCamera->setOrthographic(vars[0], vars[1], vars[2], vars[3]);
         }
       }

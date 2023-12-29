@@ -223,7 +223,7 @@ TResult core::MRenderer::recreateSwapChain() {
   destroySwapChain();
 
   chkResult = createSwapChain();
-  if (chkResult = createDepthTarget() > finalResult) finalResult = chkResult;
+  if (chkResult = createDepthTargets() > finalResult) finalResult = chkResult;
   if (chkResult = createDefaultFramebuffers() > finalResult) finalResult = chkResult;
 
   return finalResult;

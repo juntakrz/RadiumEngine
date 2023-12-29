@@ -8,8 +8,6 @@
 
 void ACamera::setPerspective(float FOV, float aspectRatio, float nearZ,
                              float farZ) noexcept {
-  aspectRatio *= config::getAspectRatio();
-
   m_viewData.perspectiveData = {FOV, aspectRatio, nearZ, farZ};
   m_projection = glm::perspective(
       glm::radians(m_viewData.perspectiveData.x), m_viewData.perspectiveData.y,
@@ -23,8 +21,6 @@ const glm::vec4& ACamera::getPerspective() noexcept {
 
 void ACamera::setOrthographic(float horizontal, float vertical, float nearZ,
                               float farZ) noexcept {
-  horizontal *= config::getAspectRatio();
-
   m_viewData.orthographicData = {horizontal, vertical, nearZ, farZ};
   m_projection =
       glm::ortho(-horizontal, horizontal, -vertical, vertical, nearZ, farZ);
@@ -70,8 +66,6 @@ void ACamera::translate(const glm::vec3& delta) noexcept {
   glm::vec3 moveDirection = glm::rotate(m_transformationData.rotation, delta);
   m_transformationData.translation +=
       moveDirection * m_translationModifier * core::time.getDeltaTime();
-
-  m_transformationData.lastTranslationDelta = moveDirection;
 
   updateAttachments();
 }

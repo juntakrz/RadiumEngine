@@ -17,13 +17,11 @@ class ABase {
 
   struct TransformationData {
     // data used in actual transformation calculations
+    // forward vector doubles as a 'look at' target
     glm::vec3 translation = {0.0f, 0.0f, 0.0f};
     glm::quat rotation = {0.0f, 0.0f, 0.0f, 0.0f};
     glm::vec3 scaling = {1.0f, 1.0f, 1.0f};
     glm::vec3 forwardVector = {0.0f, 0.0f, 1.0f};
-
-    glm::vec3 lastTranslationDelta = {0.0f, 0.0f, 0.0f};
-    glm::quat lastRotationDelta = {0.0f, 0.0f, 0.0f, 0.0f};
 
     struct {
       // initial data defined by Set* methods
@@ -98,6 +96,9 @@ class ABase {
   virtual void setTranslationModifier(float newModifier);
   virtual void setRotationModifier(float newModifier);
   virtual void setScalingModifier(float newModifier);
+
+  virtual void setForwardVector(const glm::vec3& newVector);
+  virtual glm::vec3& getForwardVector();
 
   virtual void setName(const char* name);
   virtual const char* getName();

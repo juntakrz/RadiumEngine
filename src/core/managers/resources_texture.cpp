@@ -200,7 +200,7 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
   createInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   createInfo.extent = {pInfo->width, pInfo->height, 1};
   createInfo.mipLevels = pInfo->mipLevels;
-  createInfo.arrayLayers = pInfo->asCubemap ? 6u : 1u;
+  createInfo.arrayLayers = pInfo->asCubemap ? 6u : pInfo->layerCount;
   createInfo.tiling = pInfo->tiling;
   createInfo.usage = pInfo->usageFlags;
   createInfo.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -236,6 +236,10 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
     case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL: {
       subRange.aspectMask =
           VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+      break;
+    }
+    case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL: {
+      subRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
       break;
     }
     default: {

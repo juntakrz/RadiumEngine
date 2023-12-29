@@ -9,6 +9,7 @@
 #define RE_MAXLIGHTS            32              // includes directional light, always at index 0
 
 // frame buffers
+#define RFB_SHADOW              "FB_Shadow"
 #define RFB_DEFERRED            "FB_Deferred"       // generate G-buffer textures
 #define RFB_PBR                 "FB_PBR"            // combine PBR result of G-buffer textures with skybox
 #define RFB_PRESENT             "FB_Present"        // convert 16 bit float result to 8 bit presentable image
@@ -17,7 +18,7 @@
 
 // render targets
 #define RTGT_DEPTH              "RT2D_Depth"        // active camera depth render target
-#define RTGT_SHADOW             "RT2D_Shadow"       // shadow render target
+#define RTGT_SHADOW             "RT2D_Shadow"       // shadow render target (depth)
 #define RTGT_ENVSRC             "RT2D_EnvSrc"       // source texture for environment cubemaps
 
 #define RTGT_ENVFILTER          "RTCube_EnvFilter"
@@ -61,6 +62,7 @@ extern float FOV;
 extern bool bDevMode;
 extern float pitchLimit;                        // camera pitch limit
 extern uint32_t shadowResolution;
+extern uint32_t shadowCascades;
 
 // scene buffer values
 namespace scene {
@@ -102,6 +104,7 @@ const VkFormat formatHDR16 = VK_FORMAT_R16G16B16A16_SFLOAT;
 const VkFormat formatHDR32 = VK_FORMAT_R32G32B32A32_SFLOAT;
 const VkFormat formatLUT = VK_FORMAT_R16G16_SFLOAT;
 extern VkFormat formatDepth;
+extern VkFormat formatShadow;
 const uint32_t LUTExtent = 512u;
 const uint32_t envFilterExtent = 512u;
 const uint32_t envIrradianceExtent = 64u;

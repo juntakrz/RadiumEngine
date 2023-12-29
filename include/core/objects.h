@@ -221,6 +221,7 @@ struct RTextureInfo {
   uint32_t height = 0u;
   VkImageUsageFlags usageFlags;
   VkFormat format = core::vulkan::formatLDR;
+  uint32_t layerCount = 1u;
   uint32_t mipLevels = 1u;
   VkImageLayout targetLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
   VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
@@ -357,6 +358,7 @@ struct WAnimationInfo {
 
 struct WAttachmentInfo {
   ABase* pAttached = nullptr;
+  glm::vec3 vector = glm::vec3(0.0f);
   bool attachTranslation = true;
   bool attachRotation = true;
   bool attachToForwardVector = false;

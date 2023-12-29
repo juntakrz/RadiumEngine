@@ -220,29 +220,41 @@ void core::MRenderer::setResourceName(VkDevice device, VkObjectType objectType,
   }*/
 }
 
-TResult core::MRenderer::setDepthStencilFormat() {
+TResult core::MRenderer::getDepthStencilFormat(
+    VkFormat desiredFormat, VkFormat& outFormat) {
   std::vector<VkFormat> depthFormats = {
       VK_FORMAT_D32_SFLOAT_S8_UINT,
-      VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_D16_UNORM_S8_UINT
+      VK_FORMAT_D24_UNORM_S8_UINT,
+      VK_FORMAT_D16_UNORM_S8_UINT
   };
-  VkBool32 validDepthFormat = false;
+
+  VkFormatProperties formatProps;
+  vkGetPhysicalDeviceFormatProperties(physicalDevice.device, desiredFormat,
+                                      &formatProps);
+  if (formatProps.optimalTilingFeatures &
+      VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+    outFormat = desiredFormat;
+    return RE_OK;
+  }
+
+  RE_LOG(Warning,
+         "Failed to set depth(stencil) format %d. Unsupported by the GPU. "
+         "Trying to use the nearest compatible format.",
+         desiredFormat);
+
   for (auto& format : depthFormats) {
     VkFormatProperties formatProps;
-    vkGetPhysicalDeviceFormatProperties(physicalDevice.device, format, &formatProps);
+    vkGetPhysicalDeviceFormatProperties(physicalDevice.device, format,
+                                        &formatProps);
     if (formatProps.optimalTilingFeatures &
         VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
-      core::vulkan::formatDepth = format;
-      validDepthFormat = true;
-      break;
+      outFormat = format;
+      return RE_WARNING;
     }
   }
 
-  if (!validDepthFormat) {
-    RE_LOG(Critical, "Failed to find an appropriate depth/stencil format.");
-    return RE_CRITICAL;
-  }
-
-  return RE_OK;
+  RE_LOG(Critical, "Failed to find an appropriate depth/stencil format.");
+  return RE_CRITICAL;
 }
 
 
@@ -833,6 +845,7 @@ void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
     imageMemoryBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     break;
 
+    case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL:
     case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
     // Image layout will be used as a depth/stencil attachment.
     // Make sure any writes to depth/stencil buffer have finished.
@@ -1271,8 +1284,13 @@ VkImageView core::MRenderer::createImageView(VkImage image, VkFormat format,
   viewInfo.image = image;
   viewInfo.format = format;
 
-  layerCount == 6 ? viewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE
-                  : viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+  if (layerCount == 6) {
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+  } else if (layerCount > 1) {
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+  } else {
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+  }
 
   viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
   viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -1286,9 +1304,12 @@ VkImageView core::MRenderer::createImageView(VkImage image, VkFormat format,
   viewInfo.subresourceRange.layerCount = layerCount;
 
   if (format == VK_FORMAT_D32_SFLOAT_S8_UINT ||
-      format == VK_FORMAT_D24_UNORM_S8_UINT) {
+      format == VK_FORMAT_D24_UNORM_S8_UINT ||
+      format == VK_FORMAT_D16_UNORM_S8_UINT) {
     viewInfo.subresourceRange.aspectMask =
         VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+  } else if (format == VK_FORMAT_D32_SFLOAT) {
+    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
   }
 
   if (vkCreateImageView(logicalDevice.device, &viewInfo, nullptr, &imageView) !=

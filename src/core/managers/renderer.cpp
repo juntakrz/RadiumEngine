@@ -450,18 +450,19 @@ TResult core::MRenderer::createGBufferRenderTargets() {
     }
   }
 
-  return createDepthTarget();
+  return createDepthTargets();
 }
 
-TResult core::MRenderer::createDepthTarget() {
+TResult core::MRenderer::createDepthTargets() {
 #ifndef NDEBUG
-  RE_LOG(Log, "Creating depth/stencil target.");
+  RE_LOG(Log, "Creating deferred PBR depth/stencil target.");
 #endif
 
-  // may not be supported by every GPU, maybe write a format checker?
-  if (TResult result = setDepthStencilFormat() != RE_OK) {
+  if (TResult result =
+          getDepthStencilFormat(VK_FORMAT_D32_SFLOAT_S8_UINT,
+                                core::vulkan::formatDepth) != RE_OK) {
     return result;
-  };
+  }
 
   // default depth/stencil texture
   std::string rtName = RTGT_DEPTH;
@@ -480,6 +481,43 @@ TResult core::MRenderer::createDepthTarget() {
   textureInfo.vmaMemoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 
   RTexture* pNewTexture = core::resources.createTexture(&textureInfo);
+
+  if (!pNewTexture) {
+    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
+    return RE_CRITICAL;
+  }
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Created depth target '%s'.", rtName.c_str());
+#endif
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Creating shadow depth/stencil target.");
+#endif
+
+  if (TResult result =
+          getDepthStencilFormat(VK_FORMAT_D32_SFLOAT,
+                                core::vulkan::formatShadow) != RE_OK) {
+    return result;
+  }
+
+  rtName = RTGT_SHADOW;
+
+  textureInfo = RTextureInfo{};
+  textureInfo.name = rtName;
+  textureInfo.asCubemap = false;
+  textureInfo.format = core::vulkan::formatShadow;
+  textureInfo.width = config::shadowResolution;
+  textureInfo.height = config::shadowResolution;
+  textureInfo.layerCount = config::shadowCascades;
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
+                           VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+  textureInfo.memoryFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+  textureInfo.vmaMemoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+  pNewTexture = core::resources.createTexture(&textureInfo);
 
   if (!pNewTexture) {
     RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());

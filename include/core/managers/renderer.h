@@ -168,7 +168,7 @@ class MRenderer {
 
   TResult createImageTargets();
   TResult createGBufferRenderTargets();
-  TResult createDepthTarget();
+  TResult createDepthTargets();
   TResult createRendererDefaults();
 
   TResult createCoreCommandPools();
@@ -256,7 +256,7 @@ class MRenderer {
   void setResourceName(VkDevice device, VkObjectType objectType,
                        uint64_t handle, const char* name);
 
-  TResult setDepthStencilFormat();
+  TResult getDepthStencilFormat(VkFormat desiredFormat, VkFormat& outFormat);
 
   VkPipelineShaderStageCreateInfo loadShader(const char* path,
                                              VkShaderStageFlagBits stage);

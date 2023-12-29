@@ -16,13 +16,14 @@ void ABase::copyVec3ToMatrix(const float* vec3, float* matrixColumn) noexcept {
 void ABase::updateAttachments() {
   for (auto& pAttachment : m_pAttachments) {
     if (pAttachment.attachTranslation) {
-      pAttachment.pAttached->translate(
-          m_transformationData.lastTranslationDelta);
+      pAttachment.pAttached->setForwardVector(pAttachment.vector);
+      pAttachment.pAttached->setLocation(
+          pAttachment.attachToForwardVector
+              ? this->getLocation() + this->getForwardVector() -
+                    pAttachment.vector
+              : this->getLocation() - pAttachment.vector);
     }
   }
-
-  // reset deltas after updating attachments
-  m_transformationData.lastTranslationDelta = glm::vec3(0.0f);
 }
 
 glm::mat4& ABase::getRootTransformationMatrix() noexcept {
@@ -68,9 +69,8 @@ void ABase::setLocation(const glm::vec3& pos) noexcept {
 glm::vec3& ABase::getLocation() noexcept { return m_transformationData.translation; }
 
 void ABase::translate(const glm::vec3& delta) noexcept {
-  m_transformationData.lastTranslationDelta =
+  m_transformationData.translation +=
       delta * m_translationModifier * core::time.getDeltaTime();
-  m_transformationData.translation += m_transformationData.lastTranslationDelta;
       
   m_transformationData.wasUpdated = true;
 }
@@ -160,6 +160,14 @@ void ABase::setScalingModifier(float newModifier) {
   m_scalingModifier = newModifier;
 }
 
+void ABase::setForwardVector(const glm::vec3& newVector) {
+  m_transformationData.forwardVector = newVector;
+}
+
+glm::vec3& ABase::getForwardVector() {
+  return m_transformationData.forwardVector;
+}
+
 void ABase::setName(const char* name) { m_name = name; }
 
 const char* ABase::getName() { return m_name.c_str(); }
@@ -187,8 +195,23 @@ void ABase::attachTo(ABase* pTarget, const bool toTranslation,
   }
 
   pTarget->m_pAttachments.emplace_back();
-  pTarget->m_pAttachments.back().pAttached = this;
-  pTarget->m_pAttachments.back().attachTranslation = toTranslation;
-  pTarget->m_pAttachments.back().attachRotation = toRotation;
-  pTarget->m_pAttachments.back().attachToForwardVector = toForwardVector;
+
+  WAttachmentInfo& info = pTarget->m_pAttachments.back();
+  info.pAttached = this;
+  info.attachTranslation = toTranslation;
+  info.attachRotation = toRotation;
+  info.attachToForwardVector = toForwardVector;
+
+  // get attachment vector that will keep attached object relative
+  switch (info.attachToForwardVector) {
+    case true: {
+      info.vector = pTarget->getForwardVector() - this->getLocation();
+      break;
+    }
+    case false: {
+      info.vector = pTarget->getLocation() - this->getLocation();
+    }
+  }
+
+  pTarget->updateAttachments();
 }
