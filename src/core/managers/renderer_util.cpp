@@ -10,81 +10,195 @@
 // PRIVATE
 
 VkRenderPass core::MRenderer::createRenderPass(
-    VkDevice device, uint32_t colorAttachments,
+    VkDevice device, uint32_t colorAttachmentCount,
     VkAttachmentDescription* pColorAttachments,
-    VkAttachmentDescription* pDepthAttachment) {
-  // we need to put all the color and the depth attachments in the same buffer
-  //
+    VkAttachmentDescription* pDepthAttachment, ERenderPass passType) {
+  // put all the color and the depth attachments in the same buffer
   VkAttachmentDescription attachments[10];
-  assert(colorAttachments <
-         10);  // make sure we don't overflow the scratch buffer above
+  assert(colorAttachmentCount < 10);
 
   memcpy(attachments, pColorAttachments,
-         sizeof(VkAttachmentDescription) * colorAttachments);
+         sizeof(VkAttachmentDescription) * colorAttachmentCount);
   if (pDepthAttachment != NULL) {
-    memcpy(&attachments[colorAttachments], pDepthAttachment,
+    memcpy(&attachments[colorAttachmentCount], pDepthAttachment,
            sizeof(VkAttachmentDescription));
   }
 
   // create references for the attachments
-  //
   VkAttachmentReference colorReference[10];
-  for (uint32_t i = 0; i < colorAttachments; i++)
+  for (uint32_t i = 0; i < colorAttachmentCount; i++)
     colorReference[i] = {i, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
 
   VkAttachmentReference depthReference = {
-      colorAttachments, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+      colorAttachmentCount, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
 
-  // Create subpass
-  //
-  VkSubpassDescription subpassDesc{};
-  subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-  subpassDesc.flags = 0;
-  subpassDesc.inputAttachmentCount = 0;
-  subpassDesc.pInputAttachments = NULL;
-  subpassDesc.colorAttachmentCount = colorAttachments;
-  subpassDesc.pColorAttachments = colorReference;
-  subpassDesc.pResolveAttachments = NULL;
-  subpassDesc.pDepthStencilAttachment =
-      (pDepthAttachment) ? &depthReference : NULL;
-  subpassDesc.preserveAttachmentCount = 0;
-  subpassDesc.pPreserveAttachments = NULL;
+  VkRenderPassCreateInfo renderPassInfo{};
+  std::vector<VkSubpassDescription> subpassDescriptions;
+  std::vector<VkSubpassDependency> subpassDependencies;
 
-  VkSubpassDependency subpassDependency{};
-  subpassDependency.dependencyFlags = 0;
-  subpassDependency.dstAccessMask =
-      VK_ACCESS_SHADER_READ_BIT |
-      ((colorAttachments) ? VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT : 0) |
-      ((pDepthAttachment) ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT : 0);
-  subpassDependency.dstStageMask =
-      VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
-      ((colorAttachments) ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT : 0) |
-      ((pDepthAttachment) ? VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-                                VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
-                          : 0);
-  subpassDependency.dstSubpass = VK_SUBPASS_EXTERNAL;
-  subpassDependency.srcAccessMask =
-      ((colorAttachments) ? VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT : 0) |
-      ((pDepthAttachment) ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT : 0);
-  subpassDependency.srcStageMask =
-      ((colorAttachments) ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT : 0) |
-      ((pDepthAttachment) ? VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-                                VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
-                          : 0);
-  subpassDependency.srcSubpass = 0;
+  switch (passType) {
+    case ERenderPass::Deferred: {
+      /* Create deferred subpass
+
+      Last two color references are used in later subpasses*/
+      VkSubpassDescription subpassDesc{};
+      subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+      subpassDesc.flags = 0;
+      subpassDesc.inputAttachmentCount = 0;
+      subpassDesc.pInputAttachments = NULL;
+      subpassDesc.colorAttachmentCount = colorAttachmentCount - 1;
+      subpassDesc.pColorAttachments = colorReference;
+      subpassDesc.pResolveAttachments = NULL;
+      subpassDesc.pDepthStencilAttachment = &depthReference;
+      subpassDesc.preserveAttachmentCount = 0;
+      subpassDesc.pPreserveAttachments = NULL;
+
+      subpassDescriptions.emplace_back(subpassDesc);
+
+      /* Create PBR subpass
+      
+      Convert G-buffer color attachments to shader read sources */
+      VkAttachmentReference colorReferencePBR[10];
+      for (uint32_t j = 0; j < colorAttachmentCount - 1; ++j) {
+        colorReferencePBR[j] = {j, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+      }
+
+      // Use deferred color references as input attachments
+      // and use next to last color reference as PBR attachment
+      subpassDesc = VkSubpassDescription{};
+      subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+      subpassDesc.flags = 0;
+      subpassDesc.inputAttachmentCount = colorAttachmentCount - 1;
+      subpassDesc.pInputAttachments = colorReferencePBR;
+      subpassDesc.colorAttachmentCount = 1;
+      subpassDesc.pColorAttachments = &colorReference[colorAttachmentCount - 1];
+      subpassDesc.pResolveAttachments = NULL;
+      subpassDesc.pDepthStencilAttachment = NULL;
+      subpassDesc.preserveAttachmentCount = 0;
+      subpassDesc.pPreserveAttachments = NULL;
+
+      subpassDescriptions.emplace_back(subpassDesc);
+
+      /* Create Forward subpass
+      
+      Using depth target from subpass 0 render objects that do not fit deferred pipeline */
+      subpassDesc = VkSubpassDescription{};
+      subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+      subpassDesc.flags = 0;
+      subpassDesc.inputAttachmentCount = 0;
+      subpassDesc.pInputAttachments = NULL;
+      subpassDesc.colorAttachmentCount = 1;
+      subpassDesc.pColorAttachments = &colorReference[colorAttachmentCount - 1];
+      subpassDesc.pResolveAttachments = NULL;
+      subpassDesc.pDepthStencilAttachment = &depthReference;
+      subpassDesc.preserveAttachmentCount = 0;
+      subpassDesc.pPreserveAttachments = NULL;
+
+      subpassDescriptions.emplace_back(subpassDesc);
+
+      // Create deferred dependency
+      VkSubpassDependency subpassDependency{};
+      subpassDependency.dependencyFlags = 0;
+      subpassDependency.srcAccessMask =
+          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+          VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+      subpassDependency.srcStageMask =
+          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+          VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+          VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+      subpassDependency.srcSubpass = 0;
+      subpassDependency.dstAccessMask =
+          VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+          VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+      subpassDependency.dstStageMask =
+          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+          VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+          VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+      subpassDependency.dstSubpass = 1;
+
+      subpassDependencies.emplace_back(subpassDependency);
+
+      // Create PBR dependency
+      subpassDependency.srcSubpass = 1;
+      subpassDependency.dstSubpass = 2;
+      subpassDependency.dstAccessMask =
+          VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+      subpassDependencies.emplace_back(subpassDependency);
+
+      // Create Forward dependency
+      subpassDependency.srcSubpass = 2;
+      subpassDependency.dstSubpass = VK_SUBPASS_EXTERNAL;
+
+      subpassDependencies.emplace_back(subpassDependency);
+
+      break;
+    }
+
+    default: {
+      // Create subpass
+      VkSubpassDescription subpassDesc{};
+      subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+      subpassDesc.flags = 0;
+      subpassDesc.inputAttachmentCount = 0;
+      subpassDesc.pInputAttachments = NULL;
+      subpassDesc.colorAttachmentCount = colorAttachmentCount;
+      subpassDesc.pColorAttachments = colorReference;
+      subpassDesc.pResolveAttachments = NULL;
+      subpassDesc.pDepthStencilAttachment =
+          (pDepthAttachment) ? &depthReference : NULL;
+      subpassDesc.preserveAttachmentCount = 0;
+      subpassDesc.pPreserveAttachments = NULL;
+
+      VkSubpassDependency subpassDependency{};
+      subpassDependency.dependencyFlags = 0;
+      subpassDependency.srcAccessMask =
+          ((colorAttachmentCount) ? VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT : 0) |
+          ((pDepthAttachment) ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+                              : 0);
+      subpassDependency.srcStageMask =
+          ((colorAttachmentCount)
+               ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+               : 0) |
+          ((pDepthAttachment) ? VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                                    VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
+                              : 0);
+      subpassDependency.srcSubpass = 0;
+      subpassDependency.dstAccessMask =
+          VK_ACCESS_SHADER_READ_BIT |
+          ((colorAttachmentCount) ? VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT : 0) |
+          ((pDepthAttachment) ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+                              : 0);
+      subpassDependency.dstStageMask =
+          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+          ((colorAttachmentCount)
+               ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+               : 0) |
+          ((pDepthAttachment) ? VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                                    VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
+                              : 0);
+      subpassDependency.dstSubpass = VK_SUBPASS_EXTERNAL;
+
+      subpassDescriptions.emplace_back(subpassDesc);
+      subpassDependencies.emplace_back(subpassDependency);
+
+      break;
+    }
+  }
 
   // Create render pass
-  //
-  VkRenderPassCreateInfo renderPassInfo{};
   renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
   renderPassInfo.pNext = NULL;
-  renderPassInfo.attachmentCount = colorAttachments;
+  renderPassInfo.attachmentCount = colorAttachmentCount;
   if (pDepthAttachment != NULL) renderPassInfo.attachmentCount++;
   renderPassInfo.pAttachments = attachments;
-  renderPassInfo.subpassCount = 1;
-  renderPassInfo.pSubpasses = &subpassDesc;
-  renderPassInfo.dependencyCount = 1;
-  renderPassInfo.pDependencies = &subpassDependency;
+  renderPassInfo.subpassCount =
+      static_cast<uint32_t>(subpassDescriptions.size());
+  renderPassInfo.pSubpasses = subpassDescriptions.data();
+  renderPassInfo.dependencyCount =
+      static_cast<uint32_t>(subpassDependencies.size());
+  renderPassInfo.pDependencies = subpassDependencies.data();
 
   VkRenderPass renderPass;
   VkResult result =
@@ -114,6 +228,7 @@ TResult core::MRenderer::createFramebuffer(
     return RE_ERROR;
   }
 
+  std::vector<RTexture*> pFramebufferTargets;
   std::vector<VkImageView> imageViews;
   uint32_t width = 0, height = 0, layerCount = 0;
 
@@ -146,6 +261,7 @@ TResult core::MRenderer::createFramebuffer(
       layerCount = fbTarget->texture.layerCount;
     }
 
+    pFramebufferTargets.emplace_back(fbTarget);
     imageViews.emplace_back(fbTarget->texture.view);
   }
 
@@ -170,27 +286,35 @@ TResult core::MRenderer::createFramebuffer(
   }
 
   if (vkCreateFramebuffer(logicalDevice.device, &framebufferInfo, nullptr,
-                          &system.framebuffers.at(fbName)) != VK_SUCCESS) {
+                          &system.framebuffers.at(fbName).framebuffer) !=
+      VK_SUCCESS) {
     RE_LOG(Error, "failed to create framebuffer %s.", fbName.c_str());
 
     return RE_ERROR;
   }
 
+  system.framebuffers.at(fbName).pFramebufferAttachments = pFramebufferTargets;
+  getRenderPass(renderPass)->pFramebuffer = &system.framebuffers.at(fbName);
+  
   return RE_OK;
 }
 
-RTexture* core::MRenderer::createFragmentRenderTarget(const char* name) {
+RTexture* core::MRenderer::createFragmentRenderTarget(const char* name, uint32_t width, uint32_t height) {
+  if (width == 0 || height == 0) {
+    width = swapchain.imageExtent.width;
+    height = swapchain.imageExtent.height;
+  }
+
   RTextureInfo textureInfo{};
   textureInfo.name = name;
   textureInfo.format = core::vulkan::formatHDR16;
-  textureInfo.width = swapchain.imageExtent.width;
-  textureInfo.height = swapchain.imageExtent.height;
+  textureInfo.width = width;
+  textureInfo.height = height;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-  textureInfo.usageFlags =
-      VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-  textureInfo.usageFlags =
-      VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                           VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
 
   RTexture* pNewTexture = core::resources.createTexture(&textureInfo);
 

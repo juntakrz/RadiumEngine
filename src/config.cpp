@@ -29,13 +29,19 @@ size_t config::scene::getRootTransformBufferSize() {
 }
 
 size_t config::scene::getNodeTransformBufferSize() {
-  return RE_NODEDATASIZE * nodeBudget;
+  return config::scene::nodeBlockSize * nodeBudget;
 }
 
 size_t config::scene::getSkinTransformBufferSize() {
-  return RE_SKINDATASIZE * entityBudget;
+  return config::scene::skinBlockSize * entityBudget;
 }
+
+size_t config::scene::getMaxCameraCount() { return cameraBudget; }
 
 VkFormat core::vulkan::formatDepth;
 VkFormat core::vulkan::formatShadow;
 VkDeviceSize core::vulkan::minBufferAlignment = 64u;
+
+uint32_t config::scene::cameraBlockSize = 0u;
+uint32_t config::scene::nodeBlockSize = 0u;
+uint32_t config::scene::skinBlockSize = 0u;

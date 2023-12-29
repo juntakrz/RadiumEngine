@@ -22,6 +22,7 @@ class MActors {
   } m_actors;
 
   struct {
+    std::vector<ACamera*> pCameras;
     std::vector<ALight*> pLights;
     std::vector<APawn*> pPawns;
     std::vector<AStatic*> pStatics;

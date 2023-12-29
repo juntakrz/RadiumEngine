@@ -150,8 +150,8 @@ std::wstring toWString(const char* string) {
 
   return newWStr;
 }
-VkDeviceSize getVulkanAlignedSize(VkDeviceSize originalSize,
-                                  VkDeviceSize minAlignment) {
+const VkDeviceSize getVulkanAlignedSize(VkDeviceSize originalSize,
+                                        VkDeviceSize minAlignment) {
   return (originalSize + minAlignment - 1) & ~(minAlignment - 1);
 }
 }  // namespace util

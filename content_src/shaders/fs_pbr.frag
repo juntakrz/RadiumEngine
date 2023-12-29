@@ -2,11 +2,7 @@
 
 #define MAX_LIGHTS 32
 
-layout (location = 0) in vec3 inWorldPos;
-layout (location = 1) in vec3 inNormal;
-layout (location = 2) in vec2 inUV0;
-layout (location = 3) in vec2 inUV1;
-layout (location = 4) in vec4 inColor0;
+layout (location = 0) in vec2 inUV0;
 
 layout (location = 0) out vec4 outColor;
 
@@ -32,31 +28,12 @@ layout (set = 0, binding = 2) uniform samplerCube prefilteredMap;
 layout (set = 0, binding = 3) uniform samplerCube irradianceMap;
 layout (set = 0, binding = 4) uniform sampler2D BRDFLUTMap;
 
-// material bindings
-layout (set = 2, binding = 0) uniform sampler2D colorMap;
-layout (set = 2, binding = 1) uniform sampler2D normalMap;
-layout (set = 2, binding = 2) uniform sampler2D physicalMap;	// r = metalness, g = roughness, b = ambient occlusion
-layout (set = 2, binding = 3) uniform sampler2D aoMap;			// fragment worldspace position RTGT_GPOS
-layout (set = 2, binding = 4) uniform sampler2D emissiveMap;
-layout (set = 2, binding = 5) uniform sampler2D extraMap;		// unused
-
-layout (push_constant) uniform Material {
-	vec4 baseColorFactor;
-	vec4 emissiveFactor;
-	vec4 f0;
-	int baseColorTextureSet;
-	int physicalDescriptorTextureSet;
-	int normalTextureSet;	
-	int occlusionTextureSet;
-	int emissiveTextureSet;
-	int extraTextureSet;
-	float metallicFactor;	
-	float roughnessFactor;	
-	float alphaMask;	
-	float alphaMaskCutoff;
-	float bumpIntensity;
-	float materialIntensity;
-} material;
+// PBR Input bindings
+layout (input_attachment_index = 0, set = 2, binding = 0) uniform subpassInput positionMap;	// fragment worldspace position
+layout (input_attachment_index = 1, set = 2, binding = 1) uniform subpassInput colorMap;
+layout (input_attachment_index = 2, set = 2, binding = 2) uniform subpassInput normalMap;
+layout (input_attachment_index = 3, set = 2, binding = 3) uniform subpassInput physicalMap;	// r = metalness, g = roughness, b = ambient occlusion
+layout (input_attachment_index = 4, set = 2, binding = 4) uniform subpassInput emissiveMap;
 
 const float M_PI = 3.141592653589793;
 const float minRoughness = 0.04;
@@ -146,13 +123,13 @@ void main() {
 	vec3 f0 = vec3(0.04);
 
 	// retrieve G-buffer data
-	vec4 baseColor = texture(colorMap, inUV0);
-    vec3 normal = texture(normalMap, inUV0).rgb;
-	float metallic = texture(physicalMap, inUV0).r;
-	float perceptualRoughness = texture(physicalMap, inUV0).g;
-	float ao = texture(physicalMap, inUV0).b;
-    vec3 worldPos = texture(aoMap, inUV0).xyz;
-    vec3 emissive = texture(emissiveMap, inUV0).rgb;
+	vec3 worldPos = subpassLoad(positionMap).xyz;
+	vec4 baseColor = subpassLoad(colorMap);
+	vec3 normal = subpassLoad(normalMap).rgb;
+	float metallic = subpassLoad(physicalMap).r;
+	float perceptualRoughness = subpassLoad(physicalMap).g;
+	float ao = subpassLoad(physicalMap).b;
+	vec3 emissive = subpassLoad(emissiveMap).rgb;
 
 	// do PBR
 	vec3 diffuseColor = baseColor.rgb * (vec3(1.0) - f0);

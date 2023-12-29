@@ -78,7 +78,7 @@ void AEntity::bindToRenderer() {
     core::animations.getOrRegisterNodeOffsetIndex(
         &animatedNode, animatedNode.nodeTransformBufferIndex);
     animatedNode.nodeTransformBufferOffset =
-        animatedNode.nodeTransformBufferIndex * RE_NODEDATASIZE;
+        animatedNode.nodeTransformBufferIndex * config::scene::nodeBlockSize;
   }
 
   // register inverse bind matrices
@@ -88,7 +88,7 @@ void AEntity::bindToRenderer() {
         m_pModel->m_pSkins[i].get(), m_pModel->m_pSkins[i]->bufferIndex);
 
     m_pModel->m_pSkins[i]->bufferOffset =
-        m_pModel->m_pSkins[i]->bufferIndex * RE_SKINDATASIZE;
+        m_pModel->m_pSkins[i]->bufferIndex * config::scene::skinBlockSize;
   }
 }
 

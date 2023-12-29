@@ -37,27 +37,6 @@ void core::MResources::initialize() {
 
   createMaterial(&materialInfo);
 
-  // create G-buffer material physical render target will contain metalness,
-  // roughness and ambient occlusion so occlusion texture will be used as a
-  // source for fragment position instead
-  materialInfo = RMaterialInfo{};
-  materialInfo.name = RMAT_GBUFFER;
-  materialInfo.textures.baseColor = RTGT_GDIFFUSE;
-  materialInfo.textures.normal = RTGT_GNORMAL;
-  materialInfo.textures.metalRoughness = RTGT_GPHYSICAL;
-  materialInfo.textures.occlusion = RTGT_GPOSITION;
-  materialInfo.textures.emissive = RTGT_GEMISSIVE;
-  materialInfo.alphaMode = EAlphaMode::Opaque;
-  materialInfo.doubleSided = false;
-  materialInfo.manageTextures = true;
-  materialInfo.pipelineFlags = EPipeline::PBRDeferred;
-
-  if (!createMaterial(&materialInfo)) {
-    RE_LOG(Critical, "Failed to create G-Buffer material.");
-
-    return;
-  }
-
   // create present material that takes combined output of all render passes as
   // a shader read only attachment
   materialInfo = RMaterialInfo{};
@@ -181,8 +160,8 @@ RMaterial* core::MResources::createMaterial(
       }
     }
 
-    // all glTF materials are featured in depth prepass by default
-    newMat.pipelineFlags |= EPipeline::Depth;
+    // all glTF materials are featured in shadow prepass by default
+    newMat.pipelineFlags |= EPipeline::Shadow;
   }
 
   RE_LOG(Log, "Creating material \"%s\".", newMat.name.c_str());

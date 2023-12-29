@@ -25,13 +25,18 @@ void core::MRenderer::updateBoundEntities() {
   }
 }
 
-void core::MRenderer::drawBoundEntities(VkCommandBuffer cmdBuffer) {
+void core::MRenderer::drawBoundEntities(VkCommandBuffer cmdBuffer,
+                                        uint32_t subpassIndex) {
   // go through bound models and generate draw calls for each
   AEntity* pEntity = nullptr;
   WModel* pModel = nullptr;
   renderView.refresh();
 
   for (auto& pipeline : renderView.pCurrentRenderPass->usedPipelines) {
+    if (pipeline.subpassIndex != subpassIndex) {
+      continue;
+    }
+
     for (auto& bindInfo : system.bindings) {
       if ((pEntity = bindInfo.pEntity) == nullptr) {
         continue;
@@ -44,7 +49,7 @@ void core::MRenderer::drawBoundEntities(VkCommandBuffer cmdBuffer) {
       auto& primitives = pModel->getPrimitives();
 
       for (const auto& primitive : primitives) {
-        renderPrimitive(cmdBuffer, primitive, pipeline, &bindInfo);
+        renderPrimitive(cmdBuffer, primitive, pipeline.pipelineId, &bindInfo);
       }
     }
   }
@@ -104,7 +109,7 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
         pEntity->getNodeTransformBufferOffset(pNode->index), skinOffset};
     vkCmdBindDescriptorSets(
         cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentRenderPass->usedLayout,
-        1, 1, &scene.transformSet, 3, dynamicOffsets);
+        1, 1, &scene.transformDescriptorSet, 3, dynamicOffsets);
     renderView.pCurrentMesh = pMesh;
   }
 
@@ -156,7 +161,7 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   // render targets must be stored in the same sequence as their related
   // pipelines
   for (uint32_t k = 0; k < pRenderPass->usedPipelines.size(); ++k) {
-    switch (pRenderPass->usedPipelines[k]) {
+    switch (pRenderPass->usedPipelines[k].pipelineId) {
       case EPipeline::EnvFilter: {
         system.renderPassBeginInfo.renderArea.extent = {
             core::vulkan::envFilterExtent, core::vulkan::envFilterExtent};
@@ -175,7 +180,8 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
     mipLevels = pCubemap->texture.levelCount;
     dimension = pCubemap->texture.width;
 
-    system.renderPassBeginInfo.framebuffer = system.framebuffers.at(RFB_ENV);
+    system.renderPassBeginInfo.framebuffer =
+        system.framebuffers.at(RFB_ENV).framebuffer;
 
     // start rendering 6 camera views
     VkCommandBufferBeginInfo beginInfo{};
@@ -230,7 +236,7 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
           &environment.envDescriptorSets[renderView.frameInFlight], 1,
           &dynamicOffset);
 
-      if (pRenderPass->usedPipelines[k] == EPipeline::EnvFilter) {
+      if (pRenderPass->usedPipelines[k].pipelineId == EPipeline::EnvFilter) {
         // global set of push constants is used instead of per material ones
         // environment.envPushBlock.roughness = (float)i / (float)(mipLevels -
         // 1);
@@ -241,7 +247,7 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
                            sizeof(REnvironmentPCB), &environment.envPushBlock);
       }
 
-      drawBoundEntities(commandBuffer, pRenderPass->usedPipelines[k]);
+      drawBoundEntities(commandBuffer, pRenderPass->usedPipelines[k].pipelineId);
 
       vkCmdEndRenderPass(commandBuffer);
 
@@ -291,7 +297,8 @@ void core::MRenderer::renderEnvironmentMapsSequenced(
 
   // render targets must be stored in the same sequence as their related
   // pipelines
-  switch (pRenderPass->usedPipelines[environment.tracking.pipeline]) {
+  switch (
+      pRenderPass->usedPipelines[environment.tracking.pipeline].pipelineId) {
     case EPipeline::EnvFilter: {
       system.renderPassBeginInfo.renderArea.extent = {
           core::vulkan::envFilterExtent, core::vulkan::envFilterExtent};
@@ -358,7 +365,8 @@ void core::MRenderer::renderEnvironmentMapsSequenced(
 
   dimension = pCubemap->texture.width;
 
-  system.renderPassBeginInfo.framebuffer = system.framebuffers.at(RFB_ENV);
+  system.renderPassBeginInfo.framebuffer =
+      system.framebuffers.at(RFB_ENV).framebuffer;
 
   // start rendering an appropriate camera view / layer
   VkCommandBufferBeginInfo beginInfo{};
@@ -412,7 +420,7 @@ void core::MRenderer::renderEnvironmentMapsSequenced(
       &environment.envDescriptorSets[renderView.frameInFlight], 1,
       &dynamicOffset);
 
-  if (pRenderPass->usedPipelines[environment.tracking.pipeline] ==
+  if (pRenderPass->usedPipelines[environment.tracking.pipeline].pipelineId ==
       EPipeline::EnvFilter) {
     // global set of push constants is used instead of per material ones
     // environment.envPushBlock.roughness = (float)i / (float)(mipLevels -
@@ -423,8 +431,9 @@ void core::MRenderer::renderEnvironmentMapsSequenced(
                        &environment.envPushBlock);
   }
   renderView.isEnvironmentPass = true;
-  drawBoundEntities(commandBuffer,
-                    pRenderPass->usedPipelines[environment.tracking.pipeline]);
+  drawBoundEntities(
+      commandBuffer,
+      pRenderPass->usedPipelines[environment.tracking.pipeline].pipelineId);
   renderView.isEnvironmentPass = false;
   vkCmdEndRenderPass(commandBuffer);
 
@@ -461,7 +470,8 @@ void core::MRenderer::generateLUTMap() {
   renderView.pCurrentRenderPass = pRenderPass;
 
   system.renderPassBeginInfo.renderPass = getVkRenderPass(ERenderPass::LUTGen);
-  system.renderPassBeginInfo.framebuffer = system.framebuffers.at(RFB_LUT);
+  system.renderPassBeginInfo.framebuffer =
+      system.framebuffers.at(RFB_LUT).framebuffer;
   system.renderPassBeginInfo.renderArea.extent = {core::vulkan::LUTExtent,
                                                   core::vulkan::LUTExtent};
   system.renderPassBeginInfo.pClearValues =
@@ -518,23 +528,60 @@ void core::MRenderer::generateLUTMap() {
 
 void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer,
                                         ERenderPass passType,
-                                        VkDescriptorSet* pFrameSets,
-                                        const uint32_t setCount,
-                                        VkFramebuffer framebuffer) {
+                                        VkDescriptorSet* pSceneSets,
+                                        const uint32_t setCount) {
+  ACamera* pCurrentCamera = view.pActiveCamera;
+
   renderView.pCurrentRenderPass = getRenderPass(passType);
   system.renderPassBeginInfo.renderPass = getVkRenderPass(passType);
 
   system.renderPassBeginInfo.renderPass =
       renderView.pCurrentRenderPass->renderPass;
-  system.renderPassBeginInfo.renderArea.extent = {config::renderWidth,
-                                                  config::renderHeight};
+  system.renderPassBeginInfo.renderArea.extent = {
+      static_cast<uint32_t>(renderView.pCurrentRenderPass->viewport.width),
+      static_cast<uint32_t>(renderView.pCurrentRenderPass->viewport.y)};
   system.renderPassBeginInfo.pClearValues =
       renderView.pCurrentRenderPass->clearValues.data();
   system.renderPassBeginInfo.clearValueCount =
       static_cast<uint32_t>(renderView.pCurrentRenderPass->clearValues.size());
 
-  // swapchain image index is different from frame in flight
-  system.renderPassBeginInfo.framebuffer = framebuffer;
+  switch (passType) {
+    case ERenderPass::Present: {
+      system.renderPassBeginInfo.framebuffer =
+          swapchain.framebuffers[renderView.currentFrameIndex].framebuffer;
+
+      vkCmdBeginRenderPass(commandBuffer, &system.renderPassBeginInfo,
+                           VK_SUBPASS_CONTENTS_INLINE);
+
+      vkCmdSetViewport(commandBuffer, 0, 1,
+                       &renderView.pCurrentRenderPass->viewport);
+
+      vkCmdSetScissor(commandBuffer, 0, 1,
+                      &renderView.pCurrentRenderPass->scissor);
+
+      renderFullscreenQuad(commandBuffer, EPipelineLayout::Scene, EPipeline::Present,
+          &core::resources.getMaterial(RMAT_PRESENT)->descriptorSet);
+
+      vkCmdEndRenderPass(commandBuffer);
+
+      return;
+    }
+
+    case ERenderPass::Shadow: {
+      setCamera(view.pSunCamera);
+      updateSceneUBO(renderView.frameInFlight);
+      system.renderPassBeginInfo.framebuffer =
+          renderView.pCurrentRenderPass->pFramebuffer->framebuffer;
+      break;
+    }
+
+    default: {
+      system.renderPassBeginInfo.framebuffer =
+          renderView.pCurrentRenderPass->pFramebuffer->framebuffer;
+      updateSceneUBO(renderView.frameInFlight);
+      break;
+    }
+  }
 
   vkCmdBeginRenderPass(commandBuffer, &system.renderPassBeginInfo,
                        VK_SUBPASS_CONTENTS_INLINE);
@@ -542,11 +589,7 @@ void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer,
   vkCmdSetViewport(commandBuffer, 0, 1,
                    &renderView.pCurrentRenderPass->viewport);
 
-  VkRect2D scissor{};
-  scissor.offset = {0, 0};
-  scissor.extent = swapchain.imageExtent;
-
-  vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+  vkCmdSetScissor(commandBuffer, 0, 1, &renderView.pCurrentRenderPass->scissor);
 
   VkDeviceSize offset = 0u;
   vkCmdBindVertexBuffers(commandBuffer, 0, 1, &scene.vertexBuffer.buffer,
@@ -554,17 +597,66 @@ void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer,
   vkCmdBindIndexBuffer(commandBuffer, scene.indexBuffer.buffer, 0,
                        VK_INDEX_TYPE_UINT32);
 
+  const uint32_t dynamicOffset =
+      config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           renderView.pCurrentRenderPass->usedLayout, 0,
-                          setCount, pFrameSets, 0, nullptr);
+                          setCount, pSceneSets, 1, &dynamicOffset);
 
   drawBoundEntities(commandBuffer);
+
+  switch (passType) {
+    case ERenderPass::Shadow: {
+      setCamera(pCurrentCamera);
+      updateSceneUBO(renderView.frameInFlight);
+      break;
+    }
+    case ERenderPass::Deferred: {
+      // Subpass 1
+      vkCmdNextSubpass(commandBuffer, VK_SUBPASS_CONTENTS_INLINE);
+
+      renderFullscreenQuad(commandBuffer, EPipelineLayout::PBR,
+                           EPipeline::PBR, &scene.GBufferDescriptorSet,
+                           pSceneSets, dynamicOffset);
+
+      // Subpass 2
+      vkCmdNextSubpass(commandBuffer, VK_SUBPASS_CONTENTS_INLINE);
+
+      vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                              getPipelineLayout(EPipelineLayout::Scene), 0,
+                              setCount, pSceneSets, 1, &dynamicOffset);
+
+      drawBoundEntities(commandBuffer, 2u);
+
+      break;
+    }
+  }
 
   vkCmdEndRenderPass(commandBuffer);
 }
 
+void core::MRenderer::renderFullscreenQuad(VkCommandBuffer commandBuffer,
+                                           EPipelineLayout pipelineLayout,
+                                           EPipeline pipeline,
+                                           VkDescriptorSet* pAttachmentSet,
+                                           VkDescriptorSet* pSceneSet,
+                                           uint32_t sceneDynamicOffset) {
+  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    getPipeline(pipeline));
+
+  if (pSceneSet) {
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            getPipelineLayout(pipelineLayout), 0, 1, pSceneSet,
+                            1, &sceneDynamicOffset);
+  }
+
+  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          getPipelineLayout(pipelineLayout), 2, 1,
+                          pAttachmentSet, 0, nullptr);
+  vkCmdDraw(commandBuffer, 6, 1, 0, 0);
+}
+
 void core::MRenderer::renderFrame() {
-  uint32_t imageIndex = -1;
   TResult chkResult = RE_OK;
 
   vkWaitForFences(logicalDevice.device, 1,
@@ -574,7 +666,7 @@ void core::MRenderer::renderFrame() {
   VkResult APIResult =
       vkAcquireNextImageKHR(logicalDevice.device, swapChain, UINT64_MAX,
                             sync.semImgAvailable[renderView.frameInFlight],
-                            VK_NULL_HANDLE, &imageIndex);
+                            VK_NULL_HANDLE, &renderView.currentFrameIndex);
 
   if (APIResult == VK_ERROR_OUT_OF_DATE_KHR) {
     RE_LOG(Warning, "Out of date swap chain image. Recreating swap chain.");
@@ -605,9 +697,6 @@ void core::MRenderer::renderFrame() {
     renderEnvironmentMapsSequenced(cmdBuffer, environment.genInterval);
   }
 
-  // update view, projection and camera position
-  updateSceneUBO(renderView.frameInFlight);
-
   // update lighting UBO if required
   updateLightingUBO(renderView.frameInFlight);
 
@@ -625,37 +714,9 @@ void core::MRenderer::renderFrame() {
     return;
   }
 
-  // convert G-buffer render targets to color attachments
-  convertRenderTargets(
-      cmdBuffer, core::resources.getMaterialTextures(RMAT_GBUFFER), true);
-
-  executeRenderPass(cmdBuffer, ERenderPass::Deferred, frameSets, 1,
-                    system.framebuffers.at(RFB_DEFERRED));
-
-  // convert G-buffer render targets to shader read only sources
-  convertRenderTargets(
-      cmdBuffer, core::resources.getMaterialTextures(RMAT_GBUFFER), false);
-
-  core::world.getModel(RMDL_RENDERPLANE)
-      ->setPrimitiveMaterial(0, 0, RMAT_GBUFFER);
-
-  executeRenderPass(cmdBuffer, ERenderPass::PBR, frameSets, 1,
-                    system.framebuffers.at(RFB_PBR));
-
-  std::vector<RTexture*> targets;
-  targets.emplace_back(core::resources.getTexture(RTGT_GPBR));
-
-  // convert combined PBR output to shader source
-  convertRenderTargets(cmdBuffer, &targets, false);
-
-  core::world.getModel(RMDL_RENDERPLANE)
-      ->setPrimitiveMaterial(0, 0, RMAT_PRESENT);
-
-  executeRenderPass(cmdBuffer, ERenderPass::Present, frameSets, 1,
-                    swapchain.framebuffers[imageIndex]);
-
-  // convert combined PBR output back to render target
-  convertRenderTargets(cmdBuffer, &targets, true);
+  executeRenderPass(cmdBuffer, ERenderPass::Shadow, frameSets, 1);
+  executeRenderPass(cmdBuffer, ERenderPass::Deferred, frameSets, 1);
+  executeRenderPass(cmdBuffer, ERenderPass::Present, frameSets, 1);
 
   // end writing commands and prepare to submit buffer to rendering queue
   if (vkEndCommandBuffer(cmdBuffer) != VK_SUCCESS) {
@@ -701,8 +762,7 @@ void core::MRenderer::renderFrame() {
       signalSems;  // present when render finished semaphores are signaled
   presentInfo.swapchainCount = 1;
   presentInfo.pSwapchains = swapChains;
-  presentInfo.pImageIndices =
-      &imageIndex;                 // use selected images for set swapchains
+  presentInfo.pImageIndices = &renderView.currentFrameIndex;   // use selected images for set swapchains
   presentInfo.pResults = nullptr;  // for future use with more swapchains
 
   APIResult = vkQueuePresentKHR(logicalDevice.queues.present, &presentInfo);

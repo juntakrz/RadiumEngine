@@ -10,9 +10,7 @@
 
 // frame buffers
 #define RFB_SHADOW              "FB_Shadow"
-#define RFB_DEFERRED            "FB_Deferred"       // generate G-buffer textures
-#define RFB_PBR                 "FB_PBR"            // combine PBR result of G-buffer textures with skybox
-#define RFB_PRESENT             "FB_Present"        // convert 16 bit float result to 8 bit presentable image
+#define RFB_DEFERRED            "FB_Deferred"       // generate G-buffer textures and do PBR
 #define RFB_ENV                 "FB_Env"
 #define RFB_LUT                 "FB_Lut"
 
@@ -25,19 +23,17 @@
 #define RTGT_ENVIRRAD           "RTCube_EnvIrrad"
 #define RTGT_LUTMAP             "RTCube_EnvLUT"
 
-#define RTGT_GPBR               "RT2D_GPBR"         // render target for combined G-Buffer PBR output
 #define RTGT_GPOSITION          "RT2D_GPosition"    // fragment world space position output
 #define RTGT_GDIFFUSE           "RT2D_GDiffuse"     // diffuse output
 #define RTGT_GNORMAL            "RT2D_GNormal"      // normals output
 #define RTGT_GPHYSICAL          "RT2D_GPhysical"    // physical properties output
 #define RTGT_GEMISSIVE          "RT2D_GEmissive"    // emissive color output
+#define RTGT_GPBR               "RT2D_GPBR"         // render target for combined G-Buffer output
 
 // default materials
-#define RMAT_GBUFFER            "RMat_GBuffer"      // material storing G-buffer targets as textures
 #define RMAT_PRESENT            "RMat_Present"
 
 // default models
-#define RMDL_RENDERPLANE        "RMdl_RenderPlane"  // a screen-wide plane for rendering to
 #define RMDL_SKYBOX             "RMdl_SkyBox"       // default cube skybox using cubemap
 
 // default entities
@@ -78,11 +74,17 @@ const size_t vertexBudget = 10000000u;                  // ~960 MBs for vertex d
 const size_t indexBudget = 100000000u;                  // ~400 MBs for index data
 const size_t entityBudget = 10000u;                     // ~0.6 MBs for root transformation matrices
 const size_t nodeBudget = RE_MAXJOINTS * entityBudget;  // ~164 MBs for node transformation matrices
+const size_t cameraBudget = 64u;                        // ~9 KBs for camera MVP data
 size_t getVertexBufferSize();
 size_t getIndexBufferSize();
 size_t getRootTransformBufferSize();
 size_t getNodeTransformBufferSize();
 size_t getSkinTransformBufferSize();                    // ~82 MBs for joint transformation matrices
+size_t getMaxCameraCount();
+
+extern uint32_t cameraBlockSize;
+extern uint32_t nodeBlockSize;
+extern uint32_t skinBlockSize;
 };  // namespace scene
 
 float getAspectRatio();

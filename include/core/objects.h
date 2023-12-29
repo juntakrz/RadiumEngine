@@ -57,6 +57,7 @@ enum class ECmdType {
 enum class EDescriptorSetLayout {
   Scene,
   Material,
+  PBRInput,
   Model,
   Environment,
   Dummy
@@ -72,13 +73,13 @@ enum EPipeline : uint32_t {
   LUTGen            = 0b1,
   EnvFilter         = 0b10,
   EnvIrradiance     = 0b100,
-  Depth             = 0b1000,
+  Shadow            = 0b1000,
   Skybox            = 0b10000,
   OpaqueCullBack    = 0b100000,
   OpaqueCullNone    = 0b1000000,
   MaskCullBack      = 0b10000000,
   BlendCullNone     = 0b100000000,
-  PBRDeferred       = 0b1000000000,
+  PBR               = 0b1000000000,
   Present           = 0b10000000000,
 
   // combined pipeline indices for rendering only
@@ -88,6 +89,7 @@ enum EPipeline : uint32_t {
 enum class EPipelineLayout {
   Null,
   Scene,
+  PBR,
   Environment,
   LUTGen,
   Shadow
@@ -107,7 +109,6 @@ enum class ERenderPass {
   Environment,
   Shadow,
   Deferred,
-  PBR,
   Present
 };
 
@@ -132,6 +133,11 @@ struct REntityBindInfo {
   uint32_t indexOffset = 0u;
   uint32_t vertexCount = 0u;
   uint32_t indexCount = 0u;
+};
+
+struct RFramebuffer {
+  VkFramebuffer framebuffer;
+  std::vector<struct RTexture*> pFramebufferAttachments;
 };
 
 struct RLightInfo {
@@ -184,6 +190,11 @@ struct RMaterialInfo {
   uint32_t pipelineFlags = EPipeline::Null;
 };
 
+struct RPipeline {
+  EPipeline pipelineId = EPipeline::Null;
+  uint32_t subpassIndex = 0;
+};
+
 struct RPrimitiveInfo {
   uint32_t vertexOffset = 0u;
   uint32_t indexOffset = 0u;
@@ -198,7 +209,8 @@ struct RPrimitiveInfo {
 
 struct RRenderPass {
   VkRenderPass renderPass;
-  std::vector<EPipeline> usedPipelines;
+  std::vector<RPipeline> usedPipelines;
+  RFramebuffer* pFramebuffer = nullptr;
   VkPipelineLayout usedLayout;
   VkViewport viewport;
   VkRect2D scissor;
@@ -337,6 +349,11 @@ struct RMeshUBO {
   glm::mat4 nodeMatrix = glm::mat4(1.0f);
   float jointCount = 0.0f;
   std::vector<glm::mat4> jointMatrices;
+};
+
+// camera push constant block for vertex shader
+struct RScenePCB {
+  uint32_t cascadeIndex = 0u;
 };
 
 // camera and view matrix UBO for vertex shader

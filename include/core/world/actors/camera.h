@@ -25,6 +25,8 @@ class ACamera : public ABase {
   float m_pitch = 0.0f;
   float m_yaw = 0.0f;
 
+  uint32_t m_ViewBufferIndex = -1;
+
  private:
    // uses pitch limit set in config.h
    template<typename T>
@@ -71,4 +73,7 @@ class ACamera : public ABase {
 
   virtual void setFOV(float FOV) noexcept;
   virtual void setAspectRatio(float ratio) noexcept;
+
+  virtual void setViewBufferIndex(const uint32_t newIndex);
+  virtual const uint32_t getViewBufferIndex();
 };

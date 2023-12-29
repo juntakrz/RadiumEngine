@@ -37,9 +37,9 @@ class MRenderer {
     int32_t genInterval = 3;
 
     struct {
-      uint32_t pipeline = 0; // ENVFILTER or ENVIRRAD
-      uint32_t layer = 0;    // cubemap layer
-      uint32_t mipLevel = 0; // mipmap level
+      uint32_t pipeline = 0;  // ENVFILTER or ENVIRRAD
+      uint32_t layer = 0;     // cubemap layer
+      uint32_t mipLevel = 0;  // mipmap level
     } tracking;
   } environment;
 
@@ -61,7 +61,10 @@ class MRenderer {
     RBuffer skinTransformBuffer;
     uint32_t currentVertexOffset = 0u;
     uint32_t currentIndexOffset = 0u;
-    VkDescriptorSet transformSet;
+    VkDescriptorSet transformDescriptorSet;
+
+    std::vector<RTexture*> pGBufferTargets;
+    VkDescriptorSet GBufferDescriptorSet;
   } scene;
 
   // swapchain data
@@ -72,7 +75,7 @@ class MRenderer {
     uint32_t imageCount = 0;
     std::vector<VkImage> images;
     std::vector<VkImageView> imageViews;
-    std::vector<VkFramebuffer> framebuffers;
+    std::vector<RFramebuffer> framebuffers;
     VkImageCopy copyRegion;
   } swapchain;
 
@@ -90,16 +93,19 @@ class MRenderer {
     std::unordered_map<EPipeline, VkPipeline> pipelines;
     std::unordered_map<ERenderPass, RRenderPass> renderPasses;
     VkRenderPassBeginInfo renderPassBeginInfo;
-    std::unordered_map<std::string, VkFramebuffer> framebuffers;   // general purpose, swapchain uses its own set
+    std::unordered_map<std::string, RFramebuffer>
+        framebuffers;  // general purpose, swapchain uses its own set
 
     VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> descriptorSets;
     std::unordered_map<EDescriptorSetLayout, VkDescriptorSetLayout>
         descriptorSetLayouts;
 
-    std::vector<REntityBindInfo> bindings;                         // entities rendered during the current frame
+    std::vector<REntityBindInfo>
+        bindings;  // entities rendered during the current frame
     std::vector<VkDrawIndexedIndirectCommand> drawCommands;
-    std::unordered_map<EPipeline, std::vector<WPrimitive*>> primitivesByPipeline;   // TODO
+    std::unordered_map<EPipeline, std::vector<WPrimitive*>>
+        primitivesByPipeline;  // TODO
   } system;
 
   // current camera view data
@@ -128,11 +134,14 @@ class MRenderer {
     void* pCurrentPipeline = nullptr;
 
     RRenderPass* pCurrentRenderPass = nullptr;
+    uint32_t currentFrameIndex = 0;
     uint32_t frameInFlight = 0;
     uint32_t framesRendered = 0;
-    bool generateEnvironmentMapsImmediate = false;  // queue single pass environment map gen (slow)
-    bool generateEnvironmentMaps = false;           // queue sequenced environment map gen (fast)
-    bool isEnvironmentPass = false;                 // is in the process of generating
+    bool generateEnvironmentMapsImmediate =
+        false;  // queue single pass environment map gen (slow)
+    bool generateEnvironmentMaps =
+        false;  // queue sequenced environment map gen (fast)
+    bool isEnvironmentPass = false;  // is in the process of generating
 
     void refresh() {
       pCurrentMesh = nullptr;
@@ -197,7 +206,8 @@ class MRenderer {
   TResult initialize();
   void deinitialize();
 
-  const VkDescriptorSetLayout getDescriptorSetLayout(EDescriptorSetLayout type) const;
+  const VkDescriptorSetLayout getDescriptorSetLayout(
+      EDescriptorSetLayout type) const;
   const VkDescriptorPool getDescriptorPool();
 
   // returns descriptor set used by the current frame in flight by default
@@ -241,9 +251,11 @@ class MRenderer {
   //
 
  private:
-  VkRenderPass createRenderPass(VkDevice device, uint32_t colorAttachments,
+  /* Setting render pass type is optional. If set - will create a multi subpass render pass for selected types and will expect a type-dependent color attachment layout */
+  VkRenderPass createRenderPass(VkDevice device, uint32_t colorAttachmentCount,
                                 VkAttachmentDescription* pColorAttachments,
-                                VkAttachmentDescription* pDepthAttachment);
+                                VkAttachmentDescription* pDepthAttachment,
+                                ERenderPass passType);
 
   TResult createFramebuffer(ERenderPass renderPass,
                             const std::vector<std::string>& attachmentNames,
@@ -251,7 +263,8 @@ class MRenderer {
 
   // create single layer render target for fragment shader output
   // uses swapchain resolution
-  RTexture* createFragmentRenderTarget(const char* name);
+  RTexture* createFragmentRenderTarget(const char* name, uint32_t width = 0,
+                                       uint32_t height = 0);
 
   void setResourceName(VkDevice device, VkObjectType objectType,
                        uint64_t handle, const char* name);
@@ -453,7 +466,7 @@ class MRenderer {
   void updateBoundEntities();
 
   // draw bound entities using render pass pipelines
-  void drawBoundEntities(VkCommandBuffer cmdBuffer);
+  void drawBoundEntities(VkCommandBuffer cmdBuffer, uint32_t subpassIndex = 0);
 
   // draw bound entities using specific pipeline
   void drawBoundEntities(VkCommandBuffer, EPipeline forcedPipeline);
@@ -467,13 +480,20 @@ class MRenderer {
   void renderEnvironmentMapsSequenced(VkCommandBuffer commandBuffer,
                                       int32_t frameInterval = 1);
 
-  // generates BRDF LUT map
+  // Generates BRDF LUT map
   void generateLUTMap();
 
  public:
   void executeRenderPass(VkCommandBuffer commandBuffer, ERenderPass passType,
-                         VkDescriptorSet* pFrameSets, const uint32_t setCount,
-                         VkFramebuffer framebuffer);
+                         VkDescriptorSet* pSceneSets, const uint32_t setCount);
+
+  // Pipeline must use a compatible quad drawing vertex shader
+  // Scene descriptor set is optional and is required only if fragment shader needs scene data
+  void renderFullscreenQuad(VkCommandBuffer commandBuffer,
+                            EPipelineLayout pipelineLayout, EPipeline pipeline,
+                            VkDescriptorSet* pAttachmentSet,
+                            VkDescriptorSet* pSceneSet = nullptr,
+                            uint32_t sceneDynamicOffset = 0u);
 
   void renderFrame();
   void renderInitFrame();

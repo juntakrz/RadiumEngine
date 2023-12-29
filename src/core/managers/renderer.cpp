@@ -115,6 +115,17 @@ void core::MRenderer::destroySurface() {
 }
 
 TResult core::MRenderer::createSceneBuffers() {
+  // set dynamic uniform buffer block sizes
+  config::scene::cameraBlockSize =
+      static_cast<uint32_t>(util::getVulkanAlignedSize(
+          sizeof(RSceneUBO), core::vulkan::minBufferAlignment));
+  config::scene::nodeBlockSize =
+      static_cast<uint32_t>(util::getVulkanAlignedSize(
+          sizeof(glm::mat4) + sizeof(float), core::vulkan::minBufferAlignment));
+  config::scene::skinBlockSize =
+      static_cast<uint32_t>(util::getVulkanAlignedSize(
+          sizeof(glm::mat4) * RE_MAXJOINTS, core::vulkan::minBufferAlignment));
+
   RE_LOG(Log, "Allocating scene buffer for %d vertices.",
          config::scene::vertexBudget);
   createBuffer(EBufferMode::DGPU_VERTEX, config::scene::getVertexBufferSize(),
@@ -220,12 +231,15 @@ TResult core::MRenderer::createUniformBuffers() {
   view.modelViewProjectionBuffers.resize(MAX_FRAMES_IN_FLIGHT);
   lighting.buffers.resize(MAX_FRAMES_IN_FLIGHT);
 
-  VkDeviceSize uboMVPSize = sizeof(RSceneUBO);
+  VkDeviceSize uboMVPSize =
+      config::scene::cameraBlockSize * config::scene::getMaxCameraCount();
   VkDeviceSize uboLightingSize = sizeof(RLightingUBO);
 
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+    //createBuffer(EBufferMode::CPU_UNIFORM, uboMVPSize,
+    //             view.modelViewProjectionBuffers[i], getSceneUBO());
     createBuffer(EBufferMode::CPU_UNIFORM, uboMVPSize,
-                 view.modelViewProjectionBuffers[i], getSceneUBO());
+                 view.modelViewProjectionBuffers[i], nullptr);
     createBuffer(EBufferMode::CPU_UNIFORM, uboLightingSize, lighting.buffers[i],
                  &lighting.data);
   }
@@ -282,8 +296,8 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.format = core::vulkan::formatHDR16;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-  textureInfo.usageFlags =
-      VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -435,19 +449,28 @@ TResult core::MRenderer::createImageTargets() {
 
 TResult core::MRenderer::createGBufferRenderTargets() {
   std::vector<std::string> targetNames;
+  scene.pGBufferTargets.clear();
 
   targetNames.emplace_back(RTGT_GPOSITION);
   targetNames.emplace_back(RTGT_GDIFFUSE);
   targetNames.emplace_back(RTGT_GNORMAL);
   targetNames.emplace_back(RTGT_GPHYSICAL);
   targetNames.emplace_back(RTGT_GEMISSIVE);
-  targetNames.emplace_back(RTGT_GPBR);
 
   for (const auto& targetName : targetNames) {
     core::resources.destroyTexture(targetName.c_str(), true);
-    if (!createFragmentRenderTarget(targetName.c_str())) {
+
+    RTexture* pNewTarget;
+    if ((pNewTarget = createFragmentRenderTarget(targetName.c_str())) ==
+        nullptr) {
       return RE_CRITICAL;
     }
+
+    scene.pGBufferTargets.emplace_back(pNewTarget);
+  }
+
+  if (!createFragmentRenderTarget(RTGT_GPBR)) {
+    return RE_CRITICAL;
   }
 
   return createDepthTargets();
@@ -758,8 +781,12 @@ void core::MRenderer::updateSceneUBO(uint32_t currentImage) {
   view.worldViewProjectionData.cameraPosition =
       view.pActiveCamera->getLocation();
 
-  memcpy(view.modelViewProjectionBuffers[currentImage].allocInfo.pMappedData,
-         &view.worldViewProjectionData, sizeof(RSceneUBO));
+  uint8_t* pSceneUBO =
+      static_cast<uint8_t*>(
+          view.modelViewProjectionBuffers[currentImage].allocInfo.pMappedData) +
+      config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
+
+  memcpy(pSceneUBO, &view.worldViewProjectionData, sizeof(RSceneUBO));
 }
 
 void core::MRenderer::waitForSystemIdle() {

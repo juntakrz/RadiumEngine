@@ -178,3 +178,9 @@ void ACamera::setAspectRatio(float ratio) noexcept {
       glm::radians(m_viewData.perspectiveData.x), m_viewData.perspectiveData.y,
       m_viewData.perspectiveData.z, m_viewData.perspectiveData.w);
 }
+
+void ACamera::setViewBufferIndex(const uint32_t newIndex) {
+  m_ViewBufferIndex = newIndex;
+}
+
+const uint32_t ACamera::getViewBufferIndex() { return m_ViewBufferIndex; }

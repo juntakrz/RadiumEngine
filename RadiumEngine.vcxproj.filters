@@ -209,9 +209,6 @@
     <ClInclude Include="include\core\model\primitive.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="lib\include\vk_mem_alloc.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\core\managers\time.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -277,10 +274,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Library Include="lib\glfw3.lib" />
-    <Library Include="lib\ktx_read.lib" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include=".gitignore" />
     <None Include=".gitattributes" />
     <None Include="content\shaders\default.vert" />
@@ -304,16 +297,20 @@
     </None>
     <None Include="content_src\shaders\fs_pbr.frag" />
     <None Include="content_src\shaders\fs_skybox.frag" />
-    <None Include="content_src\shaders\vs_pbr.vert" />
+    <None Include="content_src\shaders\vs_quad.vert" />
     <None Include="content_src\shaders\vs_skybox.vert" />
     <None Include="content_src\shaders\vs_environment.vert" />
     <None Include="content_src\shaders\fs_envFilter.frag" />
     <None Include="content_src\shaders\fs_envIrradiance.frag" />
     <None Include="content_src\shaders\vs_brdfLUT.vert" />
     <None Include="content_src\shaders\fs_brdfLUT.frag" />
-    <None Include="content_src\shaders\fs_deferred.frag" />
+    <None Include="content_src\shaders\fs_gbuffer.frag" />
     <None Include="content_src\shaders\fs_present.frag" />
-    <None Include="content_src\shaders\vs_deferred.vert" />
-    <None Include="content_src\shaders\vs_present.vert" />
+    <None Include="content_src\shaders\vs_scene.vert" />
+    <None Include="content_src\shaders\fs_shadowPass.frag" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="lib\glfw3.lib" />
+    <Library Include="lib\ktx_read.lib" />
   </ItemGroup>
 </Project>

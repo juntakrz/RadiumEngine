@@ -52,9 +52,9 @@ void core::MActors::updateLightingUBO(RLightingUBO* pLightingBuffer) {
 }
 
 void core::MActors::initialize() {
-  AStatic* pNewStatic = createStatic(RACT_RENDERPLANE);
+  /*AStatic* pNewStatic = createStatic(RACT_RENDERPLANE);
   pNewStatic->setModel(core::world.getModel(RMDL_RENDERPLANE));
-  pNewStatic->bindToRenderer();
+  pNewStatic->bindToRenderer();*/
 }
 
 ACamera* core::MActors::createCamera(const char* name,
@@ -74,6 +74,20 @@ ACamera* core::MActors::createCamera(const char* name,
           RE_NEARZ, config::viewDistance);
     }
 
+    // get free camera offset index into the dynamic buffer
+    uint32_t index = 0;
+    
+    for (const auto& it : m_linearActors.pCameras) {
+      if (it->getViewBufferIndex() != index) {
+        break;
+      }
+
+      ++index;
+    }
+
+    pCamera->setViewBufferIndex(index);
+    m_linearActors.pCameras.emplace_back(pCamera);
+
     RE_LOG(Log, "Created camera '%s'.", name);
     return pCamera;
   }
@@ -87,6 +101,18 @@ ACamera* core::MActors::createCamera(const char* name,
 
 TResult core::MActors::destroyCamera(const char* name) {
   if (m_actors.cameras.contains(name)) {
+    ACamera* pCamera = m_actors.cameras.at(name).get();
+    size_t index = 0;
+    
+    for (const auto& it : m_linearActors.pCameras) {
+      if (it == pCamera) {
+        break;
+      }
+
+      ++index;
+    }
+
+    m_linearActors.pCameras.erase(m_linearActors.pCameras.begin() + index);
     m_actors.cameras.erase(name);
     return RE_OK;
   }

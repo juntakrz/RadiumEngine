@@ -25,11 +25,6 @@ bool loadImageData(tinygltf::Image* image, const int image_idx,
 core::MWorld::MWorld() { RE_LOG(Log, "Initializing world manager."); }
 
 void core::MWorld::initialize() {
-  // create render target plane
-  createModel(EPrimitiveType::Plane, RMDL_RENDERPLANE, 1, 1);
-  WModel* pModel = getModel(RMDL_RENDERPLANE);
-  pModel->setPrimitiveMaterial(0, 0, RMAT_GBUFFER);
-
   // create default skybox, will have its material set by load scripts
   createModel(EPrimitiveType::Cube, RMDL_SKYBOX, 1, true);
 }

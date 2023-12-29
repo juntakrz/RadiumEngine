@@ -362,12 +362,7 @@
     <ClInclude Include="include\util\math.h" />
     <ClInclude Include="include\util\util.h" />
     <ClInclude Include="lib\include\tinygltf\tiny_gltf.h" />
-    <ClInclude Include="lib\include\vk_mem_alloc.h" />
     <ClInclude Include="include\core\world\actors\camera.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <Library Include="lib\glfw3.lib" />
-    <Library Include="lib\ktx_read.lib" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".gitattributes" />
@@ -387,21 +382,25 @@
     <None Include="content\shaders\vs_default.spv" />
     <None Include="content_src\shaders\fs_brdfLUT.frag" />
     <None Include="content_src\shaders\fs_default.frag" />
-    <None Include="content_src\shaders\fs_deferred.frag" />
+    <None Include="content_src\shaders\fs_gbuffer.frag" />
     <None Include="content_src\shaders\fs_envFilter.frag" />
     <None Include="content_src\shaders\fs_envIrradiance.frag" />
     <None Include="content_src\shaders\fs_pbr.frag" />
     <None Include="content_src\shaders\fs_present.frag" />
+    <None Include="content_src\shaders\fs_shadowPass.frag" />
     <None Include="content_src\shaders\fs_skybox.frag" />
     <None Include="content_src\shaders\vs_brdfLUT.vert" />
     <None Include="content_src\shaders\vs_default.vert" />
-    <None Include="content_src\shaders\vs_deferred.vert" />
+    <None Include="content_src\shaders\vs_scene.vert" />
     <None Include="content_src\shaders\vs_environment.vert" />
-    <None Include="content_src\shaders\vs_pbr.vert" />
-    <None Include="content_src\shaders\vs_present.vert" />
+    <None Include="content_src\shaders\vs_quad.vert" />
     <None Include="content_src\shaders\vs_skybox.vert" />
     <None Include="development\compileShaders_Win_x64_DEBUG.bat" />
     <None Include="development\devconfig.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="lib\glfw3.lib" />
+    <Library Include="lib\ktx_read.lib" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
