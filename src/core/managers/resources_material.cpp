@@ -17,9 +17,9 @@ void core::MResources::initialize() {
   loadTexture("default/default_normal.ktx2", &samplerInfo);
   loadTexture("default/default_metallicRoughness.ktx2", &samplerInfo);
   loadTexture("default/default_occlusion.ktx2", &samplerInfo);
-
   loadTexture(RE_BLACKTEXTURE, &samplerInfo);
   loadTexture(RE_WHITETEXTURE, &samplerInfo);
+  loadTexture("default/brdfLUT.ktx2", &samplerInfo);
 
   // create default material
   RMaterialInfo materialInfo{};
@@ -36,6 +36,40 @@ void core::MResources::initialize() {
   materialInfo.texCoordSets.occlusion = 0;
 
   createMaterial(&materialInfo);
+
+  // create present material that takes combined output of all render passes as
+  // a shader read only attachment
+  materialInfo = RMaterialInfo{};
+  materialInfo.name = RMAT_PRESENT;
+  materialInfo.textures.baseColor = RTGT_GPBR;
+  materialInfo.alphaMode = EAlphaMode::Opaque;
+  materialInfo.doubleSided = false;
+  materialInfo.manageTextures = true;
+  materialInfo.pipelineFlags = EPipeline::Present;
+
+  if (!createMaterial(&materialInfo)) {
+    RE_LOG(Critical, "Failed to create Vulkan present material.");
+
+    return;
+  }
+
+  // TODO / HACK: fix brdfLUT generation
+
+  // update renderer descriptor sets to use texture as LUT source
+  for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+    VkWriteDescriptorSet writeDescriptorSet{};
+    writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeDescriptorSet.descriptorType =
+        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    writeDescriptorSet.descriptorCount = 1;
+    writeDescriptorSet.dstSet = core::renderer.getDescriptorSet(i);
+    writeDescriptorSet.dstBinding = 4;
+    writeDescriptorSet.pImageInfo =
+        &core::resources.getTexture("default/brdfLUT.ktx2")->texture.descriptor;
+
+    vkUpdateDescriptorSets(core::renderer.logicalDevice.device, 1,
+                           &writeDescriptorSet, 0, nullptr);
+  }
 }
 
 RMaterial* core::MResources::createMaterial(
@@ -82,6 +116,26 @@ RMaterial* core::MResources::createMaterial(
   newMat.pushConstantBlock.extraTextureSet =
       newMat.pExtra ? pDesc->texCoordSets.extra : -1;
 
+  // store total number of textures the material has
+  if (newMat.pBaseColor) {
+    newMat.pLinearTextures.emplace_back(newMat.pBaseColor);
+  }
+  if (newMat.pNormal) {
+    newMat.pLinearTextures.emplace_back(newMat.pNormal);
+  }
+  if (newMat.pMetalRoughness) {
+    newMat.pLinearTextures.emplace_back(newMat.pMetalRoughness);
+  }
+  if (newMat.pOcclusion) {
+    newMat.pLinearTextures.emplace_back(newMat.pOcclusion);
+  }
+  if (newMat.pEmissive) {
+    newMat.pLinearTextures.emplace_back(newMat.pEmissive);
+  }
+  if (newMat.pExtra) {
+    newMat.pLinearTextures.emplace_back(newMat.pExtra);
+  }
+
   newMat.pushConstantBlock.bumpIntensity = pDesc->bumpIntensity;
   newMat.pushConstantBlock.materialIntensity = pDesc->materialIntensity;
   newMat.pushConstantBlock.f0 = pDesc->F0;
@@ -106,8 +160,8 @@ RMaterial* core::MResources::createMaterial(
       }
     }
 
-    // all glTF materials are featured in depth prepass by default
-    newMat.pipelineFlags |= EPipeline::Depth;
+    // all glTF materials are featured in shadow prepass by default
+    newMat.pipelineFlags |= EPipeline::Shadow;
   }
 
   RE_LOG(Log, "Creating material \"%s\".", newMat.name.c_str());
@@ -143,4 +197,17 @@ TResult core::MResources::deleteMaterial(const char* name) noexcept {
 
   RE_LOG(Warning, "Could not delete material \"%\", does not exist.", name);
   return RE_WARNING;
+}
+
+std::vector<RTexture*>* core::MResources::getMaterialTextures(
+    const char* name) noexcept {
+  RMaterial* pMaterial = getMaterial(name);
+
+  if (!pMaterial) {
+    RE_LOG(Error, "Couldn't retrieve textures from requested material '%s'.",
+           name);
+    return nullptr;
+  }
+
+  return &pMaterial->pLinearTextures;
 }

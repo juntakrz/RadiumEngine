@@ -9,29 +9,376 @@
 
 // PRIVATE
 
-TResult core::MRenderer::setDepthStencilFormat() {
-  std::vector<VkFormat> depthFormats = {
-      VK_FORMAT_D32_SFLOAT_S8_UINT,
-      VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_D16_UNORM_S8_UINT
-  };
-  VkBool32 validDepthFormat = false;
-  for (auto& format : depthFormats) {
-    VkFormatProperties formatProps;
-    vkGetPhysicalDeviceFormatProperties(physicalDevice.device, format, &formatProps);
-    if (formatProps.optimalTilingFeatures &
-        VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
-      core::vulkan::formatDepth = format;
-      validDepthFormat = true;
+VkRenderPass core::MRenderer::createRenderPass(
+    VkDevice device, uint32_t colorAttachmentCount,
+    VkAttachmentDescription* pColorAttachments,
+    VkAttachmentDescription* pDepthAttachment, ERenderPass passType) {
+  // put all the color and the depth attachments in the same buffer
+  VkAttachmentDescription attachments[10];
+  assert(colorAttachmentCount < 10);
+
+  memcpy(attachments, pColorAttachments,
+         sizeof(VkAttachmentDescription) * colorAttachmentCount);
+  if (pDepthAttachment != NULL) {
+    memcpy(&attachments[colorAttachmentCount], pDepthAttachment,
+           sizeof(VkAttachmentDescription));
+  }
+
+  // create references for the attachments
+  VkAttachmentReference colorReference[10];
+  for (uint32_t i = 0; i < colorAttachmentCount; i++)
+    colorReference[i] = {i, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+
+  VkAttachmentReference depthReference = {
+      colorAttachmentCount, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+
+  VkRenderPassCreateInfo renderPassInfo{};
+  std::vector<VkSubpassDescription> subpassDescriptions;
+  std::vector<VkSubpassDependency> subpassDependencies;
+
+  switch (passType) {
+    case ERenderPass::Deferred: {
+      /* Create deferred subpass
+
+      Last two color references are used in later subpasses*/
+      VkSubpassDescription subpassDesc{};
+      subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+      subpassDesc.flags = 0;
+      subpassDesc.inputAttachmentCount = 0;
+      subpassDesc.pInputAttachments = NULL;
+      subpassDesc.colorAttachmentCount = colorAttachmentCount - 1;
+      subpassDesc.pColorAttachments = colorReference;
+      subpassDesc.pResolveAttachments = NULL;
+      subpassDesc.pDepthStencilAttachment = &depthReference;
+      subpassDesc.preserveAttachmentCount = 0;
+      subpassDesc.pPreserveAttachments = NULL;
+
+      subpassDescriptions.emplace_back(subpassDesc);
+
+      /* Create PBR subpass
+      
+      Convert G-buffer color attachments to shader read sources */
+      VkAttachmentReference colorReferencePBR[10];
+      for (uint32_t j = 0; j < colorAttachmentCount - 1; ++j) {
+        colorReferencePBR[j] = {j, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+      }
+
+      // Use deferred color references as input attachments
+      // and use next to last color reference as PBR attachment
+      subpassDesc = VkSubpassDescription{};
+      subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+      subpassDesc.flags = 0;
+      subpassDesc.inputAttachmentCount = colorAttachmentCount - 1;
+      subpassDesc.pInputAttachments = colorReferencePBR;
+      subpassDesc.colorAttachmentCount = 1;
+      subpassDesc.pColorAttachments = &colorReference[colorAttachmentCount - 1];
+      subpassDesc.pResolveAttachments = NULL;
+      subpassDesc.pDepthStencilAttachment = NULL;
+      subpassDesc.preserveAttachmentCount = 0;
+      subpassDesc.pPreserveAttachments = NULL;
+
+      subpassDescriptions.emplace_back(subpassDesc);
+
+      /* Create Forward subpass
+      
+      Using depth target from subpass 0 render objects that do not fit deferred pipeline */
+      subpassDesc = VkSubpassDescription{};
+      subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+      subpassDesc.flags = 0;
+      subpassDesc.inputAttachmentCount = 0;
+      subpassDesc.pInputAttachments = NULL;
+      subpassDesc.colorAttachmentCount = 1;
+      subpassDesc.pColorAttachments = &colorReference[colorAttachmentCount - 1];
+      subpassDesc.pResolveAttachments = NULL;
+      subpassDesc.pDepthStencilAttachment = &depthReference;
+      subpassDesc.preserveAttachmentCount = 0;
+      subpassDesc.pPreserveAttachments = NULL;
+
+      subpassDescriptions.emplace_back(subpassDesc);
+
+      // Create deferred dependency
+      VkSubpassDependency subpassDependency{};
+      subpassDependency.dependencyFlags = 0;
+      subpassDependency.srcAccessMask =
+          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+          VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+      subpassDependency.srcStageMask =
+          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+          VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+          VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+      subpassDependency.srcSubpass = 0;
+      subpassDependency.dstAccessMask =
+          VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+          VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+      subpassDependency.dstStageMask =
+          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+          VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+          VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+      subpassDependency.dstSubpass = 1;
+
+      subpassDependencies.emplace_back(subpassDependency);
+
+      // Create PBR dependency
+      subpassDependency.srcSubpass = 1;
+      subpassDependency.dstSubpass = 2;
+      subpassDependency.dstAccessMask =
+          VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+      subpassDependencies.emplace_back(subpassDependency);
+
+      // Create Forward dependency
+      subpassDependency.srcSubpass = 2;
+      subpassDependency.dstSubpass = VK_SUBPASS_EXTERNAL;
+
+      subpassDependencies.emplace_back(subpassDependency);
+
+      break;
+    }
+
+    default: {
+      // Create subpass
+      VkSubpassDescription subpassDesc{};
+      subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+      subpassDesc.flags = 0;
+      subpassDesc.inputAttachmentCount = 0;
+      subpassDesc.pInputAttachments = NULL;
+      subpassDesc.colorAttachmentCount = colorAttachmentCount;
+      subpassDesc.pColorAttachments = colorReference;
+      subpassDesc.pResolveAttachments = NULL;
+      subpassDesc.pDepthStencilAttachment =
+          (pDepthAttachment) ? &depthReference : NULL;
+      subpassDesc.preserveAttachmentCount = 0;
+      subpassDesc.pPreserveAttachments = NULL;
+
+      VkSubpassDependency subpassDependency{};
+      subpassDependency.dependencyFlags = 0;
+      subpassDependency.srcAccessMask =
+          ((colorAttachmentCount) ? VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT : 0) |
+          ((pDepthAttachment) ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+                              : 0);
+      subpassDependency.srcStageMask =
+          ((colorAttachmentCount)
+               ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+               : 0) |
+          ((pDepthAttachment) ? VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                                    VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
+                              : 0);
+      subpassDependency.srcSubpass = 0;
+      subpassDependency.dstAccessMask =
+          VK_ACCESS_SHADER_READ_BIT |
+          ((colorAttachmentCount) ? VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT : 0) |
+          ((pDepthAttachment) ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+                              : 0);
+      subpassDependency.dstStageMask =
+          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+          ((colorAttachmentCount)
+               ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+               : 0) |
+          ((pDepthAttachment) ? VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                                    VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
+                              : 0);
+      subpassDependency.dstSubpass = VK_SUBPASS_EXTERNAL;
+
+      subpassDescriptions.emplace_back(subpassDesc);
+      subpassDependencies.emplace_back(subpassDependency);
+
       break;
     }
   }
 
-  if (!validDepthFormat) {
-    RE_LOG(Critical, "Failed to find an appropriate depth/stencil format.");
-    return RE_CRITICAL;
+  // Create render pass
+  renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+  renderPassInfo.pNext = NULL;
+  renderPassInfo.attachmentCount = colorAttachmentCount;
+  if (pDepthAttachment != NULL) renderPassInfo.attachmentCount++;
+  renderPassInfo.pAttachments = attachments;
+  renderPassInfo.subpassCount =
+      static_cast<uint32_t>(subpassDescriptions.size());
+  renderPassInfo.pSubpasses = subpassDescriptions.data();
+  renderPassInfo.dependencyCount =
+      static_cast<uint32_t>(subpassDependencies.size());
+  renderPassInfo.pDependencies = subpassDependencies.data();
+
+  VkRenderPass renderPass;
+  VkResult result =
+      vkCreateRenderPass(device, &renderPassInfo, NULL, &renderPass);
+  assert(result == VK_SUCCESS);
+
+  /*setResourceName(device, VK_OBJECT_TYPE_RENDER_PASS, (uint64_t)renderPass,
+                  "CreateRenderPass");*/
+
+  return renderPass;
+}
+
+TResult core::MRenderer::createFramebuffer(
+    ERenderPass renderPass, const std::vector<std::string>& attachmentNames,
+    const char* framebufferName) {
+#ifndef NDEBUG
+  RE_LOG(Log, "Creating framebuffer '%s' with %d attachments.", framebufferName,
+         attachmentNames.size());
+#endif
+
+  if (attachmentNames.empty()) {
+    RE_LOG(Error,
+           "Failed to create framebuffer '%s'. No texture attachments were "
+           "provided.",
+           framebufferName);
+
+    return RE_ERROR;
   }
 
+  std::vector<RTexture*> pFramebufferTargets;
+  std::vector<VkImageView> imageViews;
+  uint32_t width = 0, height = 0, layerCount = 0;
+
+  for (const auto& textureName : attachmentNames) {
+    RTexture* fbTarget = core::resources.getTexture(textureName.c_str());
+
+    if (!fbTarget || !fbTarget->texture.view) {
+      RE_LOG(Error,
+             "Failed to retrieve attachment texture '%s' for creating "
+             "framebuffer '%s'.",
+             textureName.c_str(), framebufferName);
+
+      return RE_ERROR;
+    }
+
+    if (!imageViews.empty()) {
+      if (fbTarget->texture.width != width ||
+          fbTarget->texture.height != height ||
+          fbTarget->texture.layerCount != layerCount) {
+        RE_LOG(Error,
+               "Failed to create framebuffer '%s'. Texture dimensions are not "
+               "equal for all attachments.",
+               framebufferName);
+
+        return RE_ERROR;
+      }
+    } else {
+      width = fbTarget->texture.width;
+      height = fbTarget->texture.height;
+      layerCount = fbTarget->texture.layerCount;
+    }
+
+    pFramebufferTargets.emplace_back(fbTarget);
+    imageViews.emplace_back(fbTarget->texture.view);
+  }
+
+  std::string fbName = framebufferName;
+
+  VkFramebufferCreateInfo framebufferInfo{};
+  framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+  framebufferInfo.renderPass = getVkRenderPass(renderPass);
+  framebufferInfo.attachmentCount = static_cast<uint32_t>(imageViews.size());
+  framebufferInfo.pAttachments = imageViews.data();
+  framebufferInfo.width = width;
+  framebufferInfo.height = height;
+  framebufferInfo.layers = layerCount;
+
+  if (!system.framebuffers.try_emplace(fbName).second) {
+#ifndef NDEBUG
+    RE_LOG(Warning,
+           "Failed to create framebuffer record for \"%s\". Already exists.",
+           fbName.c_str());
+#endif
+    return RE_WARNING;
+  }
+
+  if (vkCreateFramebuffer(logicalDevice.device, &framebufferInfo, nullptr,
+                          &system.framebuffers.at(fbName).framebuffer) !=
+      VK_SUCCESS) {
+    RE_LOG(Error, "failed to create framebuffer %s.", fbName.c_str());
+
+    return RE_ERROR;
+  }
+
+  system.framebuffers.at(fbName).pFramebufferAttachments = pFramebufferTargets;
+  getRenderPass(renderPass)->pFramebuffer = &system.framebuffers.at(fbName);
+  
   return RE_OK;
+}
+
+RTexture* core::MRenderer::createFragmentRenderTarget(const char* name, uint32_t width, uint32_t height) {
+  if (width == 0 || height == 0) {
+    width = swapchain.imageExtent.width;
+    height = swapchain.imageExtent.height;
+  }
+
+  RTextureInfo textureInfo{};
+  textureInfo.name = name;
+  textureInfo.format = core::vulkan::formatHDR16;
+  textureInfo.width = width;
+  textureInfo.height = height;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                           VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+
+  RTexture* pNewTexture = core::resources.createTexture(&textureInfo);
+
+  if (!pNewTexture) {
+    RE_LOG(Error, "Failed to create fragment render target \"%s\".", name);
+    return nullptr;
+  }
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Created fragment render target '%s'.", name);
+#endif
+
+  return pNewTexture;
+}
+
+void core::MRenderer::setResourceName(VkDevice device, VkObjectType objectType,
+                                      uint64_t handle, const char* name) {
+  /*if (s_vkSetDebugUtilsObjectName && handle && name) {
+    std::unique_lock<std::mutex> lock(s_mutex);
+
+    VkDebugUtilsObjectNameInfoEXT nameInfo = {};
+    nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+    nameInfo.objectType = objectType;
+    nameInfo.objectHandle = handle;
+    nameInfo.pObjectName = name;
+    s_vkSetDebugUtilsObjectName(device, &nameInfo);
+  }*/
+}
+
+TResult core::MRenderer::getDepthStencilFormat(
+    VkFormat desiredFormat, VkFormat& outFormat) {
+  std::vector<VkFormat> depthFormats = {
+      VK_FORMAT_D32_SFLOAT_S8_UINT,
+      VK_FORMAT_D24_UNORM_S8_UINT,
+      VK_FORMAT_D16_UNORM_S8_UINT
+  };
+
+  VkFormatProperties formatProps;
+  vkGetPhysicalDeviceFormatProperties(physicalDevice.device, desiredFormat,
+                                      &formatProps);
+  if (formatProps.optimalTilingFeatures &
+      VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+    outFormat = desiredFormat;
+    return RE_OK;
+  }
+
+  RE_LOG(Warning,
+         "Failed to set depth(stencil) format %d. Unsupported by the GPU. "
+         "Trying to use the nearest compatible format.",
+         desiredFormat);
+
+  for (auto& format : depthFormats) {
+    VkFormatProperties formatProps;
+    vkGetPhysicalDeviceFormatProperties(physicalDevice.device, format,
+                                        &formatProps);
+    if (formatProps.optimalTilingFeatures &
+        VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+      outFormat = format;
+      return RE_WARNING;
+    }
+  }
+
+  RE_LOG(Critical, "Failed to find an appropriate depth/stencil format.");
+  return RE_CRITICAL;
 }
 
 
@@ -477,6 +824,39 @@ TResult core::MRenderer::copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
   return RE_OK;
 }
 
+TResult core::MRenderer::copyImage(VkCommandBuffer cmdBuffer, VkImage srcImage,
+                                   VkImage dstImage,
+                                   VkImageLayout srcImageLayout,
+                                   VkImageLayout dstImageLayout,
+                                   VkImageCopy& copyRegion) {
+  VkImageSubresourceRange srcRange{};
+  srcRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  srcRange.baseArrayLayer = 0;
+  srcRange.layerCount = 1;
+  srcRange.baseMipLevel = 0;
+  srcRange.levelCount = 1;
+
+  VkImageSubresourceRange dstRange = srcRange;
+
+  setImageLayout(cmdBuffer, srcImage, srcImageLayout,
+                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, srcRange);
+
+  setImageLayout(cmdBuffer, dstImage, dstImageLayout,
+                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dstRange);
+
+  vkCmdCopyImage(cmdBuffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                 dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
+                 &swapchain.copyRegion);
+
+  setImageLayout(cmdBuffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                 srcImageLayout, srcRange);
+
+  setImageLayout(cmdBuffer, dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                 dstImageLayout, dstRange);
+
+  return RE_OK;
+}
+
 void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer,
                                      RTexture* pTexture,
                                      VkImageLayout newLayout,
@@ -492,6 +872,13 @@ void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
                                      VkImageLayout oldLayout,
                                      VkImageLayout newLayout,
                                      VkImageSubresourceRange subresourceRange) {
+  if (newLayout == oldLayout) {
+#ifndef NDEBUG
+    RE_LOG(Warning, "Trying to convert texture to the same image layout.");
+#endif
+    return;
+  }
+
   // Create an image barrier object
   VkImageMemoryBarrier imageMemoryBarrier = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
@@ -582,6 +969,7 @@ void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
     imageMemoryBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     break;
 
+    case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL:
     case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
     // Image layout will be used as a depth/stencil attachment.
     // Make sure any writes to depth/stencil buffer have finished.
@@ -598,6 +986,7 @@ void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
     }
     imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
     break;
+
     default:
     /* Value not used by callers, so not supported. */
     assert(KTX_FALSE);
@@ -605,11 +994,308 @@ void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
 
   // Put barrier on top of pipeline.
   VkPipelineStageFlags srcStageFlags = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-  VkPipelineStageFlags destStageFlags = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+  VkPipelineStageFlags dstStageFlags = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 
   // Add the barrier to the passed command buffer
-  vkCmdPipelineBarrier(cmdBuffer, srcStageFlags, destStageFlags, 0, 0,
+  vkCmdPipelineBarrier(cmdBuffer, srcStageFlags, dstStageFlags, 0, 0,
                                NULL, 0, NULL, 1, &imageMemoryBarrier);
+}
+
+void core::MRenderer::convertRenderTargets(VkCommandBuffer cmdBuffer,
+                                           std::vector<RTexture*>* pInTextures,
+                                           bool convertBackToRenderTargets) {
+  VkImageLayout newLayout = (convertBackToRenderTargets)
+                                ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+  VkImageSubresourceRange range{};
+  range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  range.baseArrayLayer = 0;
+  range.baseMipLevel = 0;
+
+  for (int8_t i = 0; i < pInTextures->size(); ++i) {
+    if (newLayout == pInTextures->at(i)->texture.imageLayout) continue;
+
+    range.layerCount = pInTextures->at(i)->texture.layerCount;
+    range.levelCount = pInTextures->at(i)->texture.levelCount;
+
+    setImageLayout(cmdBuffer, pInTextures->at(i), newLayout, range);
+  }
+}
+
+TResult core::MRenderer::generateMipMaps(RTexture* pTexture, int32_t mipLevels,
+                                         VkFilter filter) {
+  if (!pTexture) {
+    RE_LOG(Error, "Can't generate mip maps, no texture was provided.");
+    return RE_ERROR;
+  }
+
+  if (mipLevels < 1) {
+    RE_LOG(Warning, "Tried to generate 0 mip maps for texture '%s'. Skipping.",
+           pTexture->name);
+    return RE_WARNING;
+  }
+
+  int32_t mipWidth = 0;
+  int32_t mipHeight = 0;
+
+  VkImageSubresourceRange range{};
+  range.baseArrayLayer = 0;
+  range.layerCount = pTexture->texture.layerCount;
+  range.baseMipLevel = 0;
+  range.levelCount = pTexture->texture.levelCount;
+
+  if (pTexture->texture.imageFormat != VK_FORMAT_D32_SFLOAT_S8_UINT &&
+      pTexture->texture.imageFormat != VK_FORMAT_D24_UNORM_S8_UINT) {
+    range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  } else {
+    range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+  }
+
+  VkCommandBuffer cmdBuffer = createCommandBuffer(
+      ECmdType::Graphics, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
+
+  // transition texture to DST layout if needed
+  if (pTexture->texture.imageLayout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+    setImageLayout(cmdBuffer, pTexture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                   range);
+  }
+
+  // Create an image barrier object
+  VkImageMemoryBarrier imageMemoryBarrier{};
+  imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  imageMemoryBarrier.pNext = NULL;
+  imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  imageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  imageMemoryBarrier.image = pTexture->texture.image;
+  imageMemoryBarrier.subresourceRange.aspectMask = range.aspectMask;
+  imageMemoryBarrier.subresourceRange.layerCount = 1;
+  imageMemoryBarrier.subresourceRange.levelCount = 1;
+
+  VkImageBlit blit{};
+  blit.srcOffsets[0] = {0, 0, 0};
+  blit.srcSubresource.layerCount = 1;
+  blit.dstOffsets[0] = {0, 0, 0};
+  blit.dstSubresource.layerCount = 1;
+
+  for (uint32_t j = 0; j < range.layerCount; ++j) {
+    mipWidth = pTexture->texture.width;
+    mipHeight = pTexture->texture.height;
+
+    imageMemoryBarrier.subresourceRange.baseArrayLayer = j;
+
+
+    blit.srcSubresource.aspectMask = range.aspectMask;
+    blit.srcSubresource.baseArrayLayer = j;
+
+    blit.dstSubresource.aspectMask = range.aspectMask;
+    blit.dstSubresource.baseArrayLayer = j;
+
+    for (int32_t i = 1; i < mipLevels; ++i) {
+      // creating a new mipmap using the previous mip level
+      imageMemoryBarrier.subresourceRange.baseMipLevel = i - 1;
+      imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+      imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+      imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+      imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+      vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                           VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0,
+                           nullptr, 1, &imageMemoryBarrier);
+
+      blit.srcOffsets[1] = {mipWidth, mipHeight, 1};
+      blit.srcSubresource.mipLevel = i - 1;
+      blit.dstOffsets[1] = {mipWidth > 1 ? mipWidth / 2 : 1,
+                            mipHeight > 1 ? mipHeight / 2 : 1, 1};
+      blit.dstSubresource.mipLevel = i;
+
+      vkCmdBlitImage(cmdBuffer, pTexture->texture.image,
+                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                     pTexture->texture.image,
+                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, filter);
+
+      if (mipWidth > 1) mipWidth /= 2;
+      if (mipHeight > 1) mipHeight /= 2;
+      
+      imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+      imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+      imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+      vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                           VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr,
+                           0, nullptr, 1, &imageMemoryBarrier);
+    }
+
+    imageMemoryBarrier.subresourceRange.baseMipLevel = mipLevels - 1;
+    imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+    vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr,
+                         0, nullptr, 1, &imageMemoryBarrier);
+  }
+
+  flushCommandBuffer(cmdBuffer, ECmdType::Graphics, true);
+
+  pTexture->texture.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+  return RE_OK;
+}
+
+
+TResult core::MRenderer::generateSingleMipMap(VkCommandBuffer cmdBuffer,
+                                              RTexture* pTexture,
+                                              uint32_t mipLevel, uint32_t layer,
+                                              VkFilter filter) {
+  if (!pTexture) {
+    RE_LOG(Error, "Can't generate mip maps, no texture was provided.");
+    return RE_ERROR;
+  }
+
+  if (mipLevel < 1 || mipLevel > pTexture->texture.levelCount - 1 ||
+      layer < 0 || layer > pTexture->texture.layerCount - 1) {
+    RE_LOG(Error,
+           "Invalid mip map generation parameters for texture '%s'. Skipping.",
+           pTexture->name.c_str());
+    return RE_ERROR;
+  }
+
+  VkPipelineStageFlags srcStageMask = 0;
+
+  switch (pTexture->texture.descriptor.imageLayout) {
+    case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL: {
+      srcStageMask = VK_ACCESS_SHADER_READ_BIT;
+      break;
+    }
+    case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL: {
+      srcStageMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+      break;
+    }
+    default: {
+      RE_LOG(Error,
+             "Unsupported layout for mip map generation for texture '%s'. "
+             "Skipping.",
+             pTexture->name.c_str());
+      return RE_ERROR;
+    }
+  }
+
+  const int32_t mipWidth = pTexture->texture.width / (1 << (mipLevel - 1));
+  const int32_t mipHeight = pTexture->texture.height / (1 << (mipLevel - 1));
+
+  VkImageMemoryBarrier barrier{};
+  barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  barrier.pNext = NULL;
+  barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  barrier.image = pTexture->texture.image;
+  barrier.subresourceRange.layerCount = 1;
+  barrier.subresourceRange.levelCount = 1;
+  barrier.subresourceRange.baseArrayLayer = layer;
+  barrier.subresourceRange.baseMipLevel = mipLevel - 1;
+  barrier.oldLayout = pTexture->texture.imageLayout;
+  barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+
+  switch (pTexture->texture.imageLayout) {
+    case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL: {
+      barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+      break;
+    }
+    case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL: {
+      barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+      break;
+    }
+    default: {
+      RE_LOG(
+          Error,
+          "Invalid input texture layout when trying to generate a mip map for "
+          "'%s'. Layout must be either VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or "
+          "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL.",
+          pTexture->name.c_str());
+
+      return RE_ERROR;
+    }
+  }
+
+  barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+  if (pTexture->texture.imageFormat != VK_FORMAT_D32_SFLOAT_S8_UINT &&
+      pTexture->texture.imageFormat != VK_FORMAT_D24_UNORM_S8_UINT) {
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  } else {
+    barrier.subresourceRange.aspectMask =
+        VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+  }
+
+  // convert source mip level to TRANSFER SRC layout
+  vkCmdPipelineBarrier(cmdBuffer, srcStageMask,
+                       VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0,
+                       nullptr, 1, &barrier);
+
+  // convert destination mip level to TRANSFER DST layout if differs
+  if (pTexture->texture.imageLayout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+    barrier.subresourceRange.baseMipLevel = mipLevel;
+    barrier.oldLayout = pTexture->texture.imageLayout;
+    barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+    vkCmdPipelineBarrier(cmdBuffer, srcStageMask,
+                         VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0,
+                         nullptr, 1, &barrier);
+  }
+
+  VkImageBlit blit{};
+  blit.srcOffsets[0] = {0, 0, 0};
+  blit.srcSubresource.layerCount = 1;
+  blit.srcOffsets[1] = {mipWidth, mipHeight, 1};
+  blit.srcSubresource.aspectMask = barrier.subresourceRange.aspectMask;
+  blit.srcSubresource.baseArrayLayer = layer;
+  blit.srcSubresource.mipLevel = mipLevel - 1;
+  blit.dstOffsets[0] = {0, 0, 0};
+  blit.dstSubresource.layerCount = 1;
+  blit.dstOffsets[1] = {mipWidth > 1 ? mipWidth / 2 : 1,
+                        mipHeight > 1 ? mipHeight / 2 : 1, 1};
+  blit.dstSubresource.aspectMask = barrier.subresourceRange.aspectMask;
+  blit.dstSubresource.baseArrayLayer = layer;
+  blit.dstSubresource.mipLevel = mipLevel;
+
+  vkCmdBlitImage(cmdBuffer, pTexture->texture.image,
+                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, pTexture->texture.image,
+                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, filter);
+
+  // convert source mip map to its original layout
+  barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+  barrier.newLayout = pTexture->texture.imageLayout;
+  barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+  barrier.subresourceRange.baseMipLevel = mipLevel - 1;
+
+  switch (pTexture->texture.imageLayout) {
+    // leave mip map at 'mipLevel' as is because it already has a valid layout
+    case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL: {
+      barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+      break;
+    }
+    case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL: {
+      barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+      vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                           VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr,
+                           0, nullptr, 1, &barrier);
+
+      barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+      barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+      barrier.subresourceRange.baseMipLevel = mipLevel;
+
+      break;
+    }
+  }
+
+  vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                       VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0,
+                       nullptr, 1, &barrier);
+
+  return RE_OK;
 }
 
 VkCommandPool core::MRenderer::getCommandPool(ECmdType type) {
@@ -722,8 +1408,13 @@ VkImageView core::MRenderer::createImageView(VkImage image, VkFormat format,
   viewInfo.image = image;
   viewInfo.format = format;
 
-  layerCount == 6 ? viewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE
-                  : viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+  if (layerCount == 6) {
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+  } else if (layerCount > 1) {
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+  } else {
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+  }
 
   viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
   viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -737,9 +1428,12 @@ VkImageView core::MRenderer::createImageView(VkImage image, VkFormat format,
   viewInfo.subresourceRange.layerCount = layerCount;
 
   if (format == VK_FORMAT_D32_SFLOAT_S8_UINT ||
-      format == VK_FORMAT_D24_UNORM_S8_UINT) {
+      format == VK_FORMAT_D24_UNORM_S8_UINT ||
+      format == VK_FORMAT_D16_UNORM_S8_UINT) {
     viewInfo.subresourceRange.aspectMask =
         VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+  } else if (format == VK_FORMAT_D32_SFLOAT) {
+    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
   }
 
   if (vkCreateImageView(logicalDevice.device, &viewInfo, nullptr, &imageView) !=
@@ -759,7 +1453,7 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
   }
 
   // check if model is already bound, it shouldn't have valid offsets stored
-  if (pEntity->getBindingIndex() > -1) {
+  if (pEntity->getRendererBindingIndex() > -1) {
     RE_LOG(Error, "Entity is already bound.");
     return -1;
   }
@@ -780,6 +1474,10 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
 
   copyBuffer(&pModel->staging.indexBuffer, &scene.indexBuffer, &copyInfo);
 
+  // store reference data to model in the scene buffers
+  pModel->setSceneBindingData(scene.currentVertexOffset,
+                              scene.currentIndexOffset);
+
   // add model to rendering queue, store its offsets
   REntityBindInfo bindInfo{};
   bindInfo.pEntity = pEntity;
@@ -790,7 +1488,19 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
 
   system.bindings.emplace_back(bindInfo);
 
-  pEntity->setBindingIndex(static_cast<int32_t>(system.bindings.size() - 1));
+  // TODO: implement indirect draw command properly
+  VkDrawIndexedIndirectCommand drawCommand{};
+  drawCommand.firstInstance = 0;
+  drawCommand.instanceCount = 1;
+  drawCommand.vertexOffset = scene.currentVertexOffset;
+  drawCommand.firstIndex = scene.currentIndexOffset;
+  drawCommand.indexCount = pModel->m_indexCount;
+
+  system.drawCommands.emplace_back(drawCommand);
+  // TODO
+
+  pEntity->setRendererBindingIndex(
+      static_cast<int32_t>(system.bindings.size() - 1));
 
   // store new offsets into scene buffer data
   scene.currentVertexOffset += pModel->m_vertexCount;
@@ -820,7 +1530,7 @@ void core::MRenderer::unbindEntity(uint32_t index) {
   }
 #endif
 
-  system.bindings[index].pEntity->setBindingIndex(-1);
+  system.bindings[index].pEntity->setRendererBindingIndex(-1);
   system.bindings[index].pEntity = nullptr;
 }
 
@@ -831,6 +1541,7 @@ void core::MRenderer::setCamera(const char* name) {
 #ifndef NDEBUG
     RE_LOG(Log, "Selecting camera '%s'.", name);
 #endif
+
     view.pActiveCamera = pCamera;
     return;
   }
@@ -847,4 +1558,55 @@ void core::MRenderer::setCamera(ACamera* pCamera) {
   RE_LOG(Error, "Failed to set camera, received nullptr.");
 }
 
+void core::MRenderer::setSunCamera(const char* name) {
+  if (ACamera* pCamera = core::ref.getActor(name)->getAs<ACamera>()) {
+#ifndef NDEBUG
+    RE_LOG(Log, "Selecting camera '%s' as sun camera / shadow projector.",
+           name);
+#endif
+    if (pCamera->getProjectionType() != ECameraProjection::Orthogtaphic) {
+      RE_LOG(Error,
+             "Failed to set camera '%s' as sun camera. Camera must have an "
+             "orthographic projection.",
+             name);
+
+      return;
+    }
+
+    view.pSunCamera = pCamera;
+    view.pSunCamera->setLocation(core::actors.getLight(RLT_SUN)->getLocation());
+    view.pSunCamera->setLookAtTarget(view.pActiveCamera, true, true);
+    return;
+  }
+
+  RE_LOG(Error,
+         "Failed to set sun / shadow projection camera '%s' - not found.",
+         name);
+}
+
+void core::MRenderer::setSunCamera(ACamera* pCamera) {
+  if (pCamera != nullptr) {
+    if (pCamera->getProjectionType() != ECameraProjection::Orthogtaphic) {
+      RE_LOG(Error,
+             "Failed to set camera '%s' as sun camera. Camera must have an "
+             "orthographic projection.",
+             pCamera->getName());
+
+      return;
+    }
+
+    view.pSunCamera = pCamera;
+    view.pSunCamera->setLookAtTarget(view.pActiveCamera, true, true);
+    return;
+  }
+
+  RE_LOG(Error,
+         "Failed to set sun / shadow projection camera, received nullptr.");
+}
+
 ACamera* core::MRenderer::getCamera() { return view.pActiveCamera; }
+
+void core::MRenderer::setIBLScale(float newScale) {
+  lighting.data.scaleIBLAmbient = newScale;
+  lighting.tracking.bufferUpdatesRemaining = MAX_FRAMES_IN_FLIGHT;
+}

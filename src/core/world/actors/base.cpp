@@ -13,6 +13,19 @@ void ABase::copyVec3ToMatrix(const float* vec3, float* matrixColumn) noexcept {
   _mm_storeu_ps(matrixColumn, dstColumn);
 }
 
+void ABase::updateAttachments() {
+  for (auto& pAttachment : m_pAttachments) {
+    if (pAttachment.attachTranslation) {
+      pAttachment.pAttached->setForwardVector(pAttachment.vector);
+      pAttachment.pAttached->setLocation(
+          pAttachment.attachToForwardVector
+              ? this->getLocation() + this->getForwardVector() -
+                    pAttachment.vector
+              : this->getLocation() - pAttachment.vector);
+    }
+  }
+}
+
 glm::mat4& ABase::getRootTransformationMatrix() noexcept {
   if (m_transformationData.wasUpdated) {
     // Scale Rotation Translation (SRT) order
@@ -24,6 +37,8 @@ glm::mat4& ABase::getRootTransformationMatrix() noexcept {
     // use SIMD to add translation data without creating the new matrix
     copyVec3ToMatrix(&m_transformationData.translation.x,
                      &m_transformationMatrix[3][0]);
+
+    updateAttachments();
 
     m_transformationData.wasUpdated = false;
   }
@@ -56,7 +71,7 @@ glm::vec3& ABase::getLocation() noexcept { return m_transformationData.translati
 void ABase::translate(const glm::vec3& delta) noexcept {
   m_transformationData.translation +=
       delta * m_translationModifier * core::time.getDeltaTime();
-
+      
   m_transformationData.wasUpdated = true;
 }
 
@@ -145,6 +160,58 @@ void ABase::setScalingModifier(float newModifier) {
   m_scalingModifier = newModifier;
 }
 
+void ABase::setForwardVector(const glm::vec3& newVector) {
+  m_transformationData.forwardVector = newVector;
+}
+
+glm::vec3& ABase::getForwardVector() {
+  return m_transformationData.forwardVector;
+}
+
 void ABase::setName(const char* name) { m_name = name; }
 
-const EActorType& ABase::typeId() { return m_typeId; }
+const char* ABase::getName() { return m_name.c_str(); }
+
+const EActorType& ABase::getTypeId() { return m_typeId; }
+
+void ABase::setVisibility(const bool isVisible) { m_isVisible = isVisible; }
+
+const bool ABase::isVisible() { return m_isVisible; }
+
+void ABase::attachTo(ABase* pTarget, const bool toTranslation,
+                     const bool toRotation, const bool toForwardVector) {
+  if (!pTarget) {
+    RE_LOG(Error, "Failed to attach '%s' to target. No target was provided.",
+           m_name.c_str());
+    return;
+  }
+
+  if (!toTranslation && !toRotation) {
+    RE_LOG(Error,
+           "Unable to attach '%s' to '%s' because no valid attachment "
+           "parameters were provided.",
+           m_name.c_str(), pTarget->m_name.c_str());
+    return;
+  }
+
+  pTarget->m_pAttachments.emplace_back();
+
+  WAttachmentInfo& info = pTarget->m_pAttachments.back();
+  info.pAttached = this;
+  info.attachTranslation = toTranslation;
+  info.attachRotation = toRotation;
+  info.attachToForwardVector = toForwardVector;
+
+  // get attachment vector that will keep attached object relative
+  switch (info.attachToForwardVector) {
+    case true: {
+      info.vector = pTarget->getForwardVector() - this->getLocation();
+      break;
+    }
+    case false: {
+      info.vector = pTarget->getLocation() - this->getLocation();
+    }
+  }
+
+  pTarget->updateAttachments();
+}

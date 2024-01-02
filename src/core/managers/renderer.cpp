@@ -115,6 +115,17 @@ void core::MRenderer::destroySurface() {
 }
 
 TResult core::MRenderer::createSceneBuffers() {
+  // set dynamic uniform buffer block sizes
+  config::scene::cameraBlockSize =
+      static_cast<uint32_t>(util::getVulkanAlignedSize(
+          sizeof(RSceneUBO), core::vulkan::minBufferAlignment));
+  config::scene::nodeBlockSize =
+      static_cast<uint32_t>(util::getVulkanAlignedSize(
+          sizeof(glm::mat4) + sizeof(float), core::vulkan::minBufferAlignment));
+  config::scene::skinBlockSize =
+      static_cast<uint32_t>(util::getVulkanAlignedSize(
+          sizeof(glm::mat4) * RE_MAXJOINTS, core::vulkan::minBufferAlignment));
+
   RE_LOG(Log, "Allocating scene buffer for %d vertices.",
          config::scene::vertexBudget);
   createBuffer(EBufferMode::DGPU_VERTEX, config::scene::getVertexBufferSize(),
@@ -125,6 +136,25 @@ TResult core::MRenderer::createSceneBuffers() {
   createBuffer(EBufferMode::DGPU_INDEX, config::scene::getIndexBufferSize(),
                scene.indexBuffer, nullptr);
 
+  RE_LOG(Log, "Allocating scene buffer for %d entities with transformation.",
+         config::scene::entityBudget);
+  createBuffer(EBufferMode::CPU_UNIFORM,
+               config::scene::getRootTransformBufferSize(),
+               scene.rootTransformBuffer, nullptr);
+
+  RE_LOG(Log, "Allocating scene buffer for %d unique nodes with transformation.",
+         config::scene::nodeBudget);
+  createBuffer(EBufferMode::CPU_UNIFORM,
+               config::scene::getNodeTransformBufferSize(),
+               scene.nodeTransformBuffer, nullptr);
+
+  RE_LOG(Log,
+         "Allocating scene buffer for %d unique skins.",
+         config::scene::entityBudget);
+  createBuffer(EBufferMode::CPU_UNIFORM,
+               config::scene::getSkinTransformBufferSize(),
+               scene.skinTransformBuffer, nullptr);
+
   return RE_OK;
 }
 
@@ -134,6 +164,12 @@ void core::MRenderer::destroySceneBuffers() {
                    scene.vertexBuffer.allocation);
   vmaDestroyBuffer(memAlloc, scene.indexBuffer.buffer,
                    scene.indexBuffer.allocation);
+  vmaDestroyBuffer(memAlloc, scene.rootTransformBuffer.buffer,
+                   scene.rootTransformBuffer.allocation);
+  vmaDestroyBuffer(memAlloc, scene.nodeTransformBuffer.buffer,
+                   scene.nodeTransformBuffer.allocation);
+  vmaDestroyBuffer(memAlloc, scene.skinTransformBuffer.buffer,
+                   scene.skinTransformBuffer.allocation);
 }
 
 core::MRenderer::RSceneBuffers* core::MRenderer::getSceneBuffers() {
@@ -153,21 +189,21 @@ TResult core::MRenderer::createDescriptorPool() {
 
   // materials and textures
   // TODO: rewrite so that descriptorCounts are calculated by objects/textures
-  // using map data e.g. max preloaded textures plus 256 for headroom
+  // using map data e.g. max textures that are going to be loaded
   poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-  poolSizes[1].descriptorCount = 2048 * MAX_FRAMES_IN_FLIGHT;
+  poolSizes[1].descriptorCount = 2000 * MAX_FRAMES_IN_FLIGHT;
 
   // model nodes
   // TODO: rewrite so that descriptorCounts are calculated by objects/textures
-  // using map data e.g. max preloaded model nodes plus 256 for headroom
+  // using map data e.g. max unique model nodes that are going to be loaded
   poolSizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  poolSizes[2].descriptorCount = 4096 * MAX_FRAMES_IN_FLIGHT;
+  poolSizes[2].descriptorCount = 2000 * MAX_FRAMES_IN_FLIGHT;
 
   uint32_t maxSets = 0;
   for (uint8_t i = 0; i < poolSizes.size(); ++i) {
     maxSets += poolSizes[i].descriptorCount;
   }
-  maxSets += 256; // descriptor set headroom
+  maxSets += 100;  // descriptor set headroom
 
   VkDescriptorPoolCreateInfo poolInfo{};
   poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -191,26 +227,28 @@ void core::MRenderer::destroyDescriptorPool() {
 }
 
 TResult core::MRenderer::createUniformBuffers() {
-  // each frame will require a separate buffer, so 2 frames in flight would
-  // require buffers * 2
+  // TODO: dynamic uniform buffers with an offset tied to frame in flight
   view.modelViewProjectionBuffers.resize(MAX_FRAMES_IN_FLIGHT);
   lighting.buffers.resize(MAX_FRAMES_IN_FLIGHT);
 
-  VkDeviceSize uboMVPSize = sizeof(RSceneUBO);
+  VkDeviceSize uboMVPSize =
+      config::scene::cameraBlockSize * config::scene::getMaxCameraCount();
   VkDeviceSize uboLightingSize = sizeof(RLightingUBO);
 
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+    //createBuffer(EBufferMode::CPU_UNIFORM, uboMVPSize,
+    //             view.modelViewProjectionBuffers[i], getSceneUBO());
     createBuffer(EBufferMode::CPU_UNIFORM, uboMVPSize,
-                 view.modelViewProjectionBuffers[i], getSceneUBO());
+                 view.modelViewProjectionBuffers[i], nullptr);
     createBuffer(EBufferMode::CPU_UNIFORM, uboLightingSize, lighting.buffers[i],
                  &lighting.data);
   }
 
   // create environment buffer
-  VkDeviceSize minBufferAlignment =
+  core::vulkan::minBufferAlignment =
       physicalDevice.properties.limits.minUniformBufferOffsetAlignment;
-  VkDeviceSize alignedSize = (sizeof(REnvironmentUBO) + minBufferAlignment - 1) &
-                         ~(minBufferAlignment - 1);
+  VkDeviceSize alignedSize = util::getVulkanAlignedSize(
+      sizeof(REnvironmentUBO), core::vulkan::minBufferAlignment);
   VkDeviceSize bufferSize = alignedSize * 6;
 
   environment.transformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
@@ -244,6 +282,8 @@ void core::MRenderer::destroyUniformBuffers() {
 TResult core::MRenderer::createImageTargets() {
   RTexture* pNewTexture = nullptr;
   RTextureInfo textureInfo{};
+  environment.destinationRanges.resize(2);
+  environment.destinationTextures.resize(2);
 
   // front target texture used as a source for environment cubemap sides
   std::string rtName = RTGT_ENVSRC;
@@ -256,8 +296,8 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.format = core::vulkan::formatHDR16;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-  textureInfo.usageFlags =
-      VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -265,6 +305,32 @@ TResult core::MRenderer::createImageTargets() {
     RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
     return RE_CRITICAL;
   }
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
+#endif
+
+  // set subresource range for future copying from this render target
+  environment.sourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  environment.sourceRange.baseArrayLayer = 0;
+  environment.sourceRange.layerCount = pNewTexture->texture.layerCount;
+  environment.sourceRange.baseMipLevel = 0;
+  environment.sourceRange.levelCount = pNewTexture->texture.levelCount;
+
+  environment.copyRegion.srcSubresource.aspectMask =
+      VK_IMAGE_ASPECT_COLOR_BIT;
+  environment.copyRegion.srcSubresource.baseArrayLayer = 0;
+  environment.copyRegion.srcSubresource.layerCount = 1;
+  environment.copyRegion.srcSubresource.mipLevel = 0;
+  environment.copyRegion.srcOffset = {0, 0, 0};
+
+  environment.copyRegion.dstSubresource.aspectMask =
+      VK_IMAGE_ASPECT_COLOR_BIT;
+  environment.copyRegion.dstSubresource.layerCount = 1;
+  environment.copyRegion.dstOffset = {0, 0, 0};
+  environment.copyRegion.extent.depth = pNewTexture->texture.depth;
+
+  environment.pSourceTexture = pNewTexture;
 
   // target for BRDF LUT generation
   rtName = RTGT_LUTMAP;
@@ -276,6 +342,9 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
   textureInfo.usageFlags =
       VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.usageFlags =
+      VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -283,6 +352,10 @@ TResult core::MRenderer::createImageTargets() {
     RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
     return RE_CRITICAL;
   }
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
+#endif
 
   // default cubemap texture as a copy target
   rtName = RTGT_ENVFILTER;
@@ -296,9 +369,10 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.height = textureInfo.width;
   textureInfo.format = core::vulkan::formatHDR16;
   textureInfo.mipLevels = mipLevels;
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags =
+      VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
       VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
@@ -307,6 +381,18 @@ TResult core::MRenderer::createImageTargets() {
     RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
     return RE_CRITICAL;
   }
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
+#endif
+
+  environment.destinationRanges[0].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  environment.destinationRanges[0].baseArrayLayer = 0;
+  environment.destinationRanges[0].layerCount = pNewTexture->texture.layerCount;
+  environment.destinationRanges[0].baseMipLevel = 0;
+  environment.destinationRanges[0].levelCount = pNewTexture->texture.levelCount;
+
+  environment.destinationTextures[0] = pNewTexture;
 
   rtName = RTGT_ENVIRRAD;
   dimension = core::vulkan::envIrradianceExtent;
@@ -325,18 +411,81 @@ TResult core::MRenderer::createImageTargets() {
     return RE_CRITICAL;
   }
 
-  return createDepthTarget();
-}
-
-TResult core::MRenderer::createDepthTarget() {
 #ifndef NDEBUG
-  RE_LOG(Log, "Creating depth/stencil target.");
+  RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
 #endif
 
-  // may not be supported by every GPU, maybe write a format checker?
-  if (TResult result = setDepthStencilFormat() != RE_OK) {
+  environment.destinationRanges[1].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  environment.destinationRanges[1].baseArrayLayer = 0;
+  environment.destinationRanges[1].layerCount = pNewTexture->texture.layerCount;
+  environment.destinationRanges[1].baseMipLevel = 0;
+  environment.destinationRanges[1].levelCount = pNewTexture->texture.levelCount;
+
+  environment.destinationTextures[1] = pNewTexture;
+
+  // set environment push block defaults
+  environment.envPushBlock.samples = 32u;
+  environment.envPushBlock.roughness = 0.0f;
+
+  // set swapchain subresource copy region
+  swapchain.copyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  swapchain.copyRegion.srcSubresource.baseArrayLayer = 0;
+  swapchain.copyRegion.srcSubresource.layerCount = 1;
+  swapchain.copyRegion.srcSubresource.mipLevel = 0;
+  swapchain.copyRegion.srcOffset = {0, 0, 0};
+
+  swapchain.copyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  swapchain.copyRegion.dstSubresource.baseArrayLayer = 0;
+  swapchain.copyRegion.dstSubresource.layerCount = 1;
+  swapchain.copyRegion.dstSubresource.mipLevel = 0;
+  swapchain.copyRegion.dstOffset = {0, 0, 0};
+
+  swapchain.copyRegion.extent.width = swapchain.imageExtent.width;
+  swapchain.copyRegion.extent.height = swapchain.imageExtent.height;
+  swapchain.copyRegion.extent.depth = 1;
+
+  return createGBufferRenderTargets();
+}
+
+TResult core::MRenderer::createGBufferRenderTargets() {
+  std::vector<std::string> targetNames;
+  scene.pGBufferTargets.clear();
+
+  targetNames.emplace_back(RTGT_GPOSITION);
+  targetNames.emplace_back(RTGT_GDIFFUSE);
+  targetNames.emplace_back(RTGT_GNORMAL);
+  targetNames.emplace_back(RTGT_GPHYSICAL);
+  targetNames.emplace_back(RTGT_GEMISSIVE);
+
+  for (const auto& targetName : targetNames) {
+    core::resources.destroyTexture(targetName.c_str(), true);
+
+    RTexture* pNewTarget;
+    if ((pNewTarget = createFragmentRenderTarget(targetName.c_str())) ==
+        nullptr) {
+      return RE_CRITICAL;
+    }
+
+    scene.pGBufferTargets.emplace_back(pNewTarget);
+  }
+
+  if (!createFragmentRenderTarget(RTGT_GPBR)) {
+    return RE_CRITICAL;
+  }
+
+  return createDepthTargets();
+}
+
+TResult core::MRenderer::createDepthTargets() {
+#ifndef NDEBUG
+  RE_LOG(Log, "Creating deferred PBR depth/stencil target.");
+#endif
+
+  if (TResult result =
+          getDepthStencilFormat(VK_FORMAT_D32_SFLOAT_S8_UINT,
+                                core::vulkan::formatDepth) != RE_OK) {
     return result;
-  };
+  }
 
   // default depth/stencil texture
   std::string rtName = RTGT_DEPTH;
@@ -361,6 +510,47 @@ TResult core::MRenderer::createDepthTarget() {
     return RE_CRITICAL;
   }
 
+#ifndef NDEBUG
+  RE_LOG(Log, "Created depth target '%s'.", rtName.c_str());
+#endif
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Creating shadow depth/stencil target.");
+#endif
+
+  if (TResult result =
+          getDepthStencilFormat(VK_FORMAT_D32_SFLOAT,
+                                core::vulkan::formatShadow) != RE_OK) {
+    return result;
+  }
+
+  rtName = RTGT_SHADOW;
+
+  textureInfo = RTextureInfo{};
+  textureInfo.name = rtName;
+  textureInfo.asCubemap = false;
+  textureInfo.format = core::vulkan::formatShadow;
+  textureInfo.width = config::shadowResolution;
+  textureInfo.height = config::shadowResolution;
+  textureInfo.layerCount = config::shadowCascades;
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
+                           VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+  textureInfo.memoryFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+  textureInfo.vmaMemoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+  pNewTexture = core::resources.createTexture(&textureInfo);
+
+  if (!pNewTexture) {
+    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
+    return RE_CRITICAL;
+  }
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Created depth target '%s'.", rtName.c_str());
+#endif
+
   return RE_OK;
 }
 
@@ -375,7 +565,7 @@ TResult core::MRenderer::createRendererDefaults() {
   // create default camera
   RCameraInfo cameraInfo{};
   cameraInfo.FOV = config::FOV;
-  cameraInfo.aspectRatio = config::getAspectRatio();
+  cameraInfo.aspectRatio = 1.0f;
   cameraInfo.nearZ = RE_NEARZ;
   cameraInfo.farZ = config::viewDistance;
 
@@ -574,7 +764,6 @@ void core::MRenderer::setEnvironmentUBO() {
       glm::rotate(glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));   // Z-
 
   for (uint8_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-
     uint8_t* memAddress = static_cast<uint8_t*>(
         environment.transformBuffers[i].allocInfo.pMappedData);
 
@@ -592,8 +781,12 @@ void core::MRenderer::updateSceneUBO(uint32_t currentImage) {
   view.worldViewProjectionData.cameraPosition =
       view.pActiveCamera->getLocation();
 
-  memcpy(view.modelViewProjectionBuffers[currentImage].allocInfo.pMappedData,
-         &view.worldViewProjectionData, sizeof(RSceneUBO));
+  uint8_t* pSceneUBO =
+      static_cast<uint8_t*>(
+          view.modelViewProjectionBuffers[currentImage].allocInfo.pMappedData) +
+      config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
+
+  memcpy(pSceneUBO, &view.worldViewProjectionData, sizeof(RSceneUBO));
 }
 
 void core::MRenderer::waitForSystemIdle() {
@@ -634,7 +827,7 @@ TResult core::MRenderer::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createRenderPasses();           // A
   if (chkResult <= RE_ERRORLIMIT) chkResult = createGraphicsPipelines();      // B
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDefaultFramebuffers();    // C
-  if (chkResult <= RE_ERRORLIMIT) chkResult = configureRenderPasses();        // connect A, B, C together
+  if (chkResult <= RE_ERRORLIMIT) chkResult = configureRenderPasses();        // tie A, B, C together
 
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createUniformBuffers();
@@ -682,4 +875,22 @@ const VkDescriptorSet core::MRenderer::getDescriptorSet(
 
 RSceneUBO* core::MRenderer::getSceneUBO() {
   return &view.worldViewProjectionData;
+}
+
+void core::MRenderer::queueLightingUBOUpdate() {
+  lighting.tracking.bufferUpdatesRemaining = MAX_FRAMES_IN_FLIGHT;
+  lighting.tracking.dataRequiresUpdate = true;
+}
+
+void core::MRenderer::updateLightingUBO(const int32_t frameIndex) {
+  if (lighting.tracking.bufferUpdatesRemaining < 1) return;
+
+  if (lighting.tracking.dataRequiresUpdate) {
+    core::actors.updateLightingUBO(&lighting.data);
+    lighting.tracking.dataRequiresUpdate = false;
+  }
+
+  memcpy(lighting.buffers[frameIndex].allocInfo.pMappedData, &lighting.data,
+         sizeof(RLightingUBO));
+  lighting.tracking.bufferUpdatesRemaining--;
 }

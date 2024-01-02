@@ -3,11 +3,13 @@
 #include "vk_mem_alloc.h"
 #include "config.h"
 
+class ABase;
 class AEntity;
 
 enum class EActorType {  // actor type
   Base,
   Camera,
+  Light,
   Entity,     // unity for types below
   Pawn,       // can be controlled by player input
   Static      // part of the scene not meant to be controlled
@@ -40,6 +42,11 @@ enum class EBufferMode {  // VkBuffer creation mode
   STAGING             // create staging buffer only
 };
 
+enum class ECameraProjection {
+  Perspective,
+  Orthogtaphic
+};
+
 enum class ECmdType {
   Graphics,
   Compute,
@@ -50,9 +57,15 @@ enum class ECmdType {
 enum class EDescriptorSetLayout {
   Scene,
   Material,
-  Mesh,
+  PBRInput,
+  Model,
   Environment,
   Dummy
+};
+
+enum class ELightType {
+  Directional,
+  Point
 };
 
 enum EPipeline : uint32_t {
@@ -60,12 +73,14 @@ enum EPipeline : uint32_t {
   LUTGen            = 0b1,
   EnvFilter         = 0b10,
   EnvIrradiance     = 0b100,
-  Depth             = 0b1000,
+  Shadow            = 0b1000,
   Skybox            = 0b10000,
   OpaqueCullBack    = 0b100000,
   OpaqueCullNone    = 0b1000000,
   MaskCullBack      = 0b10000000,
   BlendCullNone     = 0b100000000,
+  PBR               = 0b1000000000,
+  Present           = 0b10000000000,
 
   // combined pipeline indices for rendering only
   MixEnvironment = EnvFilter + EnvIrradiance
@@ -74,8 +89,10 @@ enum EPipeline : uint32_t {
 enum class EPipelineLayout {
   Null,
   Scene,
+  PBR,
   Environment,
-  LUTGen
+  LUTGen,
+  Shadow
 };
 
 enum class EPrimitiveType {
@@ -90,47 +107,12 @@ enum class ERenderPass {
   Null,
   LUTGen,
   Environment,
-  PBR
+  Shadow,
+  Deferred,
+  Present
 };
 
 enum class ETransformType { Translation, Rotation, Scale, Weight, Undefined };
-
-struct RVkLogicalDevice {
-  VkDevice device;
-
-  struct {
-    VkQueue graphics = VK_NULL_HANDLE;
-    VkQueue compute = VK_NULL_HANDLE;
-    VkQueue present = VK_NULL_HANDLE;
-    VkQueue transfer = VK_NULL_HANDLE;
-  } queues;
-};
-
-struct RVkSwapChainInfo {
-  VkSurfaceCapabilitiesKHR capabilities;
-  std::vector<VkSurfaceFormatKHR> formats;
-  std::vector<VkPresentModeKHR> modes;
-};
-
-struct RVkQueueFamilyIndices {
-  std::vector<int32_t> graphics;
-  std::vector<int32_t> compute;
-  std::vector<int32_t> present;
-  std::vector<int32_t> transfer;
-
-  // retrieve first entries for queue family indices
-  std::set<int32_t> getAsSet() const;
-};
-
-struct RVkPhysicalDevice {
-  VkPhysicalDevice device = VK_NULL_HANDLE;
-  VkPhysicalDeviceFeatures features;
-  VkPhysicalDeviceProperties properties;
-  VkPhysicalDeviceMemoryProperties memProperties;
-  RVkQueueFamilyIndices queueFamilyIndices;
-  RVkSwapChainInfo swapChainInfo;
-  bool bIsValid = false;
-};
 
 struct RBuffer {
   VkBuffer buffer;
@@ -138,38 +120,32 @@ struct RBuffer {
   VmaAllocationInfo allocInfo;
 };
 
-struct RRenderPass {
-  VkRenderPass renderPass;
-  std::vector<EPipeline> usedPipelines;
-  VkPipelineLayout usedLayout;
-  VkViewport viewport;
-};
-
-// expanding KTX structure
-struct RVulkanTexture : public ktxVulkanTexture {
-  VkImageView view;
-  VkSampler sampler;
-  VkDescriptorImageInfo descriptor;
-};
-
-struct RVertex {
-  glm::vec3 pos;        // POSITION
-  glm::vec3 normal;     // NORMAL
-  glm::vec2 tex0;       // TEXCOORD0
-  glm::vec2 tex1;       // TEXCOORD1
-  glm::vec4 joint;      // JOINT
-  glm::vec4 weight;     // WEIGHT
-  glm::vec4 color;      // COLOR      aligned to 96 bytes per vertex on device
-
-  static VkVertexInputBindingDescription getBindingDesc();
-  static std::vector<VkVertexInputAttributeDescription> getAttributeDescs();
-};
-
 struct RCameraInfo {
-  float aspectRatio = config::getAspectRatio();
   float FOV = config::FOV;
+  float aspectRatio = 1.0f; // ratio 1.0 corresponds to resolution
   float nearZ = RE_NEARZ;
   float farZ = config::viewDistance;
+};
+
+struct REntityBindInfo {
+  AEntity* pEntity = nullptr;
+  uint32_t vertexOffset = 0u;
+  uint32_t indexOffset = 0u;
+  uint32_t vertexCount = 0u;
+  uint32_t indexCount = 0u;
+};
+
+struct RFramebuffer {
+  VkFramebuffer framebuffer;
+  std::vector<struct RTexture*> pFramebufferAttachments;
+};
+
+struct RLightInfo {
+  ELightType type = ELightType::Point;
+  glm::vec3 color = {1.0f, 1.0f, 1.0f};
+  float intensity = 1.0f;
+  glm::vec3 direction = {0.0f, 0.0f, 0.0f};   // used by directional light only
+  glm::vec3 translation = {0.0f, 0.0f, 0.0f}; // used by point light only, both may be used by spotlight
 };
 
 // used for RMaterial creation in materials manager
@@ -214,27 +190,9 @@ struct RMaterialInfo {
   uint32_t pipelineFlags = EPipeline::Null;
 };
 
-// used by createTexture()
-struct RTextureInfo {
-  std::string name = "";
-  uint32_t width = 0u;
-  uint32_t height = 0u;
-  VkImageUsageFlags usageFlags;
-  VkFormat format = core::vulkan::formatLDR;
-  uint32_t mipLevels = 1u;
-  VkImageLayout targetLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-  VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
-  bool asCubemap = false;
-  VkMemoryPropertyFlags memoryFlags = NULL;
-  VmaMemoryUsage vmaMemoryUsage = VMA_MEMORY_USAGE_AUTO;
-};
-
-struct REntityBindInfo {
-  AEntity* pEntity = nullptr;
-  uint32_t vertexOffset = 0u;
-  uint32_t indexOffset = 0u;
-  uint32_t vertexCount = 0u;
-  uint32_t indexCount = 0u;
+struct RPipeline {
+  EPipeline pipelineId = EPipeline::Null;
+  uint32_t subpassIndex = 0;
 };
 
 struct RPrimitiveInfo {
@@ -249,6 +207,16 @@ struct RPrimitiveInfo {
   void* pOwnerNode = nullptr;
 };
 
+struct RRenderPass {
+  VkRenderPass renderPass;
+  std::vector<RPipeline> usedPipelines;
+  RFramebuffer* pFramebuffer = nullptr;
+  VkPipelineLayout usedLayout;
+  VkViewport viewport;
+  VkRect2D scissor;
+  std::vector<VkClearValue> clearValues;
+};
+
 // stored by WModel, used to create a valid sampler for a specific texture
 struct RSamplerInfo {
   VkFilter minFilter = VK_FILTER_LINEAR;
@@ -258,9 +226,87 @@ struct RSamplerInfo {
   VkSamplerAddressMode addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 };
 
+// used by createTexture()
+struct RTextureInfo {
+  std::string name = "";
+  uint32_t width = 0u;
+  uint32_t height = 0u;
+  VkImageUsageFlags usageFlags;
+  VkFormat format = core::vulkan::formatLDR;
+  uint32_t layerCount = 1u;
+  uint32_t mipLevels = 1u;
+  VkImageLayout targetLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
+  bool asCubemap = false;
+  VkMemoryPropertyFlags memoryFlags = NULL;
+  VmaMemoryUsage vmaMemoryUsage = VMA_MEMORY_USAGE_AUTO;
+};
+
+struct RVertex {
+  glm::vec3 pos;     // POSITION
+  glm::vec3 normal;  // NORMAL
+  glm::vec2 tex0;    // TEXCOORD0
+  glm::vec2 tex1;    // TEXCOORD1
+  glm::vec4 joint;   // JOINT
+  glm::vec4 weight;  // WEIGHT
+  glm::vec4 color;   // COLOR      aligned to 96 bytes per vertex on device
+
+  static VkVertexInputBindingDescription getBindingDesc();
+  static std::vector<VkVertexInputAttributeDescription> getAttributeDescs();
+};
+
+struct RVkLogicalDevice {
+  VkDevice device;
+
+  struct {
+    VkQueue graphics = VK_NULL_HANDLE;
+    VkQueue compute = VK_NULL_HANDLE;
+    VkQueue present = VK_NULL_HANDLE;
+    VkQueue transfer = VK_NULL_HANDLE;
+  } queues;
+};
+
+struct RVkQueueFamilyIndices {
+  std::vector<int32_t> graphics;
+  std::vector<int32_t> compute;
+  std::vector<int32_t> present;
+  std::vector<int32_t> transfer;
+
+  // retrieve first entries for queue family indices
+  std::set<int32_t> getAsSet() const;
+};
+
+struct RVkSwapChainInfo {
+  VkSurfaceCapabilitiesKHR capabilities;
+  std::vector<VkSurfaceFormatKHR> formats;
+  std::vector<VkPresentModeKHR> modes;
+};
+
+struct RVkPhysicalDevice {
+  VkPhysicalDevice device = VK_NULL_HANDLE;
+  VkPhysicalDeviceFeatures features;
+  VkPhysicalDeviceProperties properties;
+  VkPhysicalDeviceMemoryProperties memProperties;
+  RVkQueueFamilyIndices queueFamilyIndices;
+  RVkSwapChainInfo swapChainInfo;
+  bool bIsValid = false;
+};
+
+// expanding KTX structure
+struct RVulkanTexture : public ktxVulkanTexture {
+  VkImageView view;
+  VkSampler sampler;
+  VkDescriptorImageInfo descriptor;
+};
+
 //
 // uniform buffer objects and push contant blocks
 // 
+
+struct REnvironmentPCB {
+  float roughness;
+  uint32_t samples;
+};
 
 // camera rotation UBO for environment map generation
 struct REnvironmentUBO {
@@ -268,33 +314,15 @@ struct REnvironmentUBO {
   glm::mat4 projection;
 };
 
-// camera and view matrix UBO for vertex shader
-struct RSceneUBO {
-  alignas(16) glm::mat4 view = glm::mat4(1.0f);
-  alignas(16) glm::mat4 projection = glm::mat4(1.0f);
-  alignas(16) glm::vec3 cameraPosition = glm::vec3(0.0f);
-};
-
-// mesh and joints transformation uniform buffer object
-struct RMeshUBO {
-  glm::mat4 rootMatrix = glm::mat4(1.0f);
-  glm::mat4 nodeMatrix = glm::mat4(1.0f);
-  glm::mat4 jointMatrices[RE_MAXJOINTS]{};
-  float jointCount = 0.0f;
-};
-
 // lighting data uniform buffer object
 struct RLightingUBO {
-  glm::vec4 lightDir;
+  glm::vec4 lightLocations[RE_MAXLIGHTS]; // w is unused
+  glm::vec4 lightColors[RE_MAXLIGHTS];    // alpha is intensity
+  float lightCount = 0.0f;
   float exposure = 4.5f;
   float gamma = 2.2f;
   float prefilteredCubeMipLevels;
   float scaleIBLAmbient = 1.0f;
-};
-
-struct REnvironmentPCB {
-  float roughness;
-  uint32_t samples;
 };
 
 // push constant block used by RMaterial
@@ -317,6 +345,24 @@ struct RMaterialPCB {
   float materialIntensity;
 };
 
+struct RMeshUBO {
+  glm::mat4 nodeMatrix = glm::mat4(1.0f);
+  float jointCount = 0.0f;
+  std::vector<glm::mat4> jointMatrices;
+};
+
+// camera push constant block for vertex shader
+struct RScenePCB {
+  uint32_t cascadeIndex = 0u;
+};
+
+// camera and view matrix UBO for vertex shader
+struct RSceneUBO {
+  alignas(16) glm::mat4 view = glm::mat4(1.0f);
+  alignas(16) glm::mat4 projection = glm::mat4(1.0f);
+  alignas(16) glm::vec3 cameraPosition = glm::vec3(0.0f);
+};
+
 struct WAnimationInfo {
   class WModel* pModel;
   std::string animationName;
@@ -324,7 +370,15 @@ struct WAnimationInfo {
   float endTime = std::numeric_limits<float>::max();
   float speed = 1.0f;
   bool loop = true;
-  bool bounce = true;
+  bool bounce = false;
+};
+
+struct WAttachmentInfo {
+  ABase* pAttached = nullptr;
+  glm::vec3 vector = glm::vec3(0.0f);
+  bool attachTranslation = true;
+  bool attachRotation = true;
+  bool attachToForwardVector = false;
 };
 
 struct WModelConfigInfo {

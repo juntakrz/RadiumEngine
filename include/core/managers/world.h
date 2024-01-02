@@ -16,6 +16,8 @@ class MWorld {
     return _sInstance;
   }
 
+  void initialize();
+
   // load model from file, .gltf and .glb models are supported
   TResult loadModelFromFile(const std::string& path, const char* name,
                             const WModelConfigInfo* pConfigInfo = nullptr);

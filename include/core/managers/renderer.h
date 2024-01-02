@@ -19,29 +19,52 @@ class MRenderer {
     VkCommandPool poolCompute;
     VkCommandPool poolTransfer;
     std::vector<VkCommandBuffer> buffersGraphics;
-    std::vector<VkCommandBuffer> buffersCompute;  // no code for this yet
+    std::vector<VkCommandBuffer> buffersCompute;  // TODO: not implemented yet
     std::vector<VkCommandBuffer> buffersTransfer;
   } command;
 
-  struct REnvironmentInfo {
+  struct REnvironmentData {
     REnvironmentPCB envPushBlock;
     std::vector<VkDescriptorSet> envDescriptorSets;
     VkDescriptorSet LUTDescriptorSet;
-
     std::vector<RBuffer> transformBuffers;
     VkDeviceSize transformOffset = 0u;
+    RTexture* pSourceTexture;
+    VkImageSubresourceRange sourceRange;
+    std::vector<RTexture*> destinationTextures;
+    std::vector<VkImageSubresourceRange> destinationRanges;
+    VkImageCopy copyRegion;
+    int32_t genInterval = 3;
+
+    struct {
+      uint32_t pipeline = 0;  // ENVFILTER or ENVIRRAD
+      uint32_t layer = 0;     // cubemap layer
+      uint32_t mipLevel = 0;  // mipmap level
+    } tracking;
   } environment;
 
   struct {
     std::vector<RBuffer> buffers;
     RLightingUBO data;
+
+    struct {
+      int8_t bufferUpdatesRemaining = 0;
+      bool dataRequiresUpdate = false;
+    } tracking;
   } lighting;
 
   struct RSceneBuffers {
     RBuffer vertexBuffer;
     RBuffer indexBuffer;
+    RBuffer rootTransformBuffer;
+    RBuffer nodeTransformBuffer;
+    RBuffer skinTransformBuffer;
     uint32_t currentVertexOffset = 0u;
     uint32_t currentIndexOffset = 0u;
+    VkDescriptorSet transformDescriptorSet;
+
+    std::vector<RTexture*> pGBufferTargets;
+    VkDescriptorSet GBufferDescriptorSet;
   } scene;
 
   // swapchain data
@@ -52,7 +75,8 @@ class MRenderer {
     uint32_t imageCount = 0;
     std::vector<VkImage> images;
     std::vector<VkImageView> imageViews;
-    std::vector<VkFramebuffer> framebuffers;
+    std::vector<RFramebuffer> framebuffers;
+    VkImageCopy copyRegion;
   } swapchain;
 
   // multi-threaded synchronization objects
@@ -69,22 +93,26 @@ class MRenderer {
     std::unordered_map<EPipeline, VkPipeline> pipelines;
     std::unordered_map<ERenderPass, RRenderPass> renderPasses;
     VkRenderPassBeginInfo renderPassBeginInfo;
-    std::unordered_map<std::string, VkFramebuffer> framebuffers;   // general purpose, swapchain uses its own set
-    std::array<VkClearValue, 2> clearColors;
+    std::unordered_map<std::string, RFramebuffer>
+        framebuffers;  // general purpose, swapchain uses its own set
 
     VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> descriptorSets;
     std::unordered_map<EDescriptorSetLayout, VkDescriptorSetLayout>
         descriptorSetLayouts;
 
-    std::vector<REntityBindInfo> bindings;                            // entities rendered during the current frame
-    std::unordered_map<EPipeline, std::vector<WPrimitive*>> primitivesByPipeline;   // TODO
+    std::vector<REntityBindInfo>
+        bindings;  // entities rendered during the current frame
+    std::vector<VkDrawIndexedIndirectCommand> drawCommands;
+    std::unordered_map<EPipeline, std::vector<WPrimitive*>>
+        primitivesByPipeline;  // TODO
   } system;
 
   // current camera view data
   struct {
     RCameraInfo cameraSettings;
     ACamera* pActiveCamera = nullptr;
+    ACamera* pSunCamera = nullptr;
     std::vector<RBuffer> modelViewProjectionBuffers;
     RSceneUBO worldViewProjectionData;
   } view;
@@ -106,9 +134,14 @@ class MRenderer {
     void* pCurrentPipeline = nullptr;
 
     RRenderPass* pCurrentRenderPass = nullptr;
+    uint32_t currentFrameIndex = 0;
     uint32_t frameInFlight = 0;
     uint32_t framesRendered = 0;
-    bool doEnvironmentPass = false;           // queue environment cubemaps (re)generation
+    bool generateEnvironmentMapsImmediate =
+        false;  // queue single pass environment map gen (slow)
+    bool generateEnvironmentMaps =
+        false;  // queue sequenced environment map gen (fast)
+    bool isEnvironmentPass = false;  // is in the process of generating
 
     void refresh() {
       pCurrentMesh = nullptr;
@@ -143,7 +176,8 @@ class MRenderer {
   void destroyUniformBuffers();
 
   TResult createImageTargets();
-  TResult createDepthTarget();
+  TResult createGBufferRenderTargets();
+  TResult createDepthTargets();
   TResult createRendererDefaults();
 
   TResult createCoreCommandPools();
@@ -172,8 +206,8 @@ class MRenderer {
   TResult initialize();
   void deinitialize();
 
- public:
-  const VkDescriptorSetLayout getDescriptorSetLayout(EDescriptorSetLayout type) const;
+  const VkDescriptorSetLayout getDescriptorSetLayout(
+      EDescriptorSetLayout type) const;
   const VkDescriptorPool getDescriptorPool();
 
   // returns descriptor set used by the current frame in flight by default
@@ -182,6 +216,9 @@ class MRenderer {
   RSceneBuffers* getSceneBuffers();
 
   RSceneUBO* getSceneUBO();
+
+  void queueLightingUBOUpdate();
+  void updateLightingUBO(const int32_t frameIndex);
 
   //
   // ***PIPELINE
@@ -193,9 +230,6 @@ class MRenderer {
   TResult createDescriptorSets();
 
   TResult createDefaultFramebuffers();
-  TResult createFramebuffer(ERenderPass renderPass,
-                            const char* targetTextureName,
-                            const char* framebufferName);
 
   TResult createRenderPasses();
   void destroyRenderPasses();
@@ -217,7 +251,25 @@ class MRenderer {
   //
 
  private:
-  TResult setDepthStencilFormat();
+  /* Setting render pass type is optional. If set - will create a multi subpass render pass for selected types and will expect a type-dependent color attachment layout */
+  VkRenderPass createRenderPass(VkDevice device, uint32_t colorAttachmentCount,
+                                VkAttachmentDescription* pColorAttachments,
+                                VkAttachmentDescription* pDepthAttachment,
+                                ERenderPass passType);
+
+  TResult createFramebuffer(ERenderPass renderPass,
+                            const std::vector<std::string>& attachmentNames,
+                            const char* framebufferName);
+
+  // create single layer render target for fragment shader output
+  // uses swapchain resolution
+  RTexture* createFragmentRenderTarget(const char* name, uint32_t width = 0,
+                                       uint32_t height = 0);
+
+  void setResourceName(VkDevice device, VkObjectType objectType,
+                       uint64_t handle, const char* name);
+
+  TResult getDepthStencilFormat(VkFormat desiredFormat, VkFormat& outFormat);
 
   VkPipelineShaderStageCreateInfo loadShader(const char* path,
                                              VkShaderStageFlagBits stage);
@@ -247,6 +299,10 @@ class MRenderer {
                             uint32_t width, uint32_t height,
                             uint32_t layerCount);
 
+  TResult copyImage(VkCommandBuffer cmdBuffer, VkImage srcImage,
+                    VkImage dstImage, VkImageLayout srcImageLayout,
+                    VkImageLayout dstImageLayout, VkImageCopy& copyRegion);
+
   void setImageLayout(VkCommandBuffer cmdBuffer, RTexture* pTexture,
                       VkImageLayout newLayout,
                       VkImageSubresourceRange subresourceRange);
@@ -254,6 +310,18 @@ class MRenderer {
   void setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
                       VkImageLayout oldLayout, VkImageLayout newLayout,
                       VkImageSubresourceRange subresourceRange);
+
+  void convertRenderTargets(VkCommandBuffer cmdBuffer,
+                            std::vector<RTexture*>* pInTextures,
+                            bool convertBackToRenderTargets);
+
+  TResult generateMipMaps(RTexture* pTexture, int32_t mipLevels,
+                          VkFilter filter = VK_FILTER_LINEAR);
+
+  // generates a single mip map from a previous level at a set layer
+  TResult generateSingleMipMap(VkCommandBuffer cmdBuffer, RTexture* pTexture,
+                               uint32_t mipLevel, uint32_t layer = 0,
+                               VkFilter filter = VK_FILTER_LINEAR);
 
   VkCommandPool getCommandPool(ECmdType type);
   VkQueue getCommandQueue(ECmdType type);
@@ -287,7 +355,13 @@ class MRenderer {
   void setCamera(const char* name);
   void setCamera(ACamera* pCamera);
 
+  void setSunCamera(const char* name);
+  void setSunCamera(ACamera* pCamera);
+
+  // get current renderer camera
   ACamera* getCamera();
+
+  void setIBLScale(float newScale);
 
   //
   // ***PHYSICAL DEVICE
@@ -375,6 +449,16 @@ class MRenderer {
   TResult createSwapChainImageViews();
 
   //
+  // ***DEBUG
+  //
+ public:
+  void debug_initialize();
+
+ private:
+  void debug_viewMainCamera();
+  void debug_viewSunCamera();
+
+  //
   // ***RENDERING
   //
 
@@ -382,7 +466,7 @@ class MRenderer {
   void updateBoundEntities();
 
   // draw bound entities using render pass pipelines
-  void drawBoundEntities(VkCommandBuffer cmdBuffer);
+  void drawBoundEntities(VkCommandBuffer cmdBuffer, uint32_t subpassIndex = 0);
 
   // draw bound entities using specific pipeline
   void drawBoundEntities(VkCommandBuffer, EPipeline forcedPipeline);
@@ -390,15 +474,26 @@ class MRenderer {
   void renderPrimitive(VkCommandBuffer cmdBuffer, WPrimitive* pPrimitive,
                        EPipeline pipelineFlag, REntityBindInfo* pBindInfo);
 
-  // renders Environment passes and generates PBR cubemaps for future use
+  // DEPRECATED - generates all environment maps and mipmaps in a single pass
   void renderEnvironmentMaps(VkCommandBuffer commandBuffer);
 
-  // generates BRDF LUT map
+  void renderEnvironmentMapsSequenced(VkCommandBuffer commandBuffer,
+                                      int32_t frameInterval = 1);
+
+  // Generates BRDF LUT map
   void generateLUTMap();
 
  public:
-  void doRenderPass(VkCommandBuffer commandBuffer,
-                    std::vector<VkDescriptorSet>& sets, uint32_t imageIndex);
+  void executeRenderPass(VkCommandBuffer commandBuffer, ERenderPass passType,
+                         VkDescriptorSet* pSceneSets, const uint32_t setCount);
+
+  // Pipeline must use a compatible quad drawing vertex shader
+  // Scene descriptor set is optional and is required only if fragment shader needs scene data
+  void renderFullscreenQuad(VkCommandBuffer commandBuffer,
+                            EPipelineLayout pipelineLayout, EPipeline pipeline,
+                            VkDescriptorSet* pAttachmentSet,
+                            VkDescriptorSet* pSceneSet = nullptr,
+                            uint32_t sceneDynamicOffset = 0u);
 
   void renderFrame();
   void renderInitFrame();

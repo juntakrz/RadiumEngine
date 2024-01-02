@@ -8,7 +8,6 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
   // layout: shader binding / descriptor type / count / shader stage / immutable
   // samplers
 
-  
   // dummy descriptor set layout
   {
     system.descriptorSetLayouts.emplace(EDescriptorSetLayout::Dummy,
@@ -20,8 +19,8 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
 
     if (vkCreateDescriptorSetLayout(
             logicalDevice.device, &setLayoutCreateInfo, nullptr,
-            &system.descriptorSetLayouts.at(
-                EDescriptorSetLayout::Dummy)) != VK_SUCCESS) {
+            &system.descriptorSetLayouts.at(EDescriptorSetLayout::Dummy)) !=
+        VK_SUCCESS) {
       RE_LOG(Critical, "Failed to create dummy descriptor set layout.");
       return RE_CRITICAL;
     }
@@ -38,7 +37,7 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
                                         VK_NULL_HANDLE);
 
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
-        {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1,
+        {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1,
          VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
         {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT,
          nullptr},
@@ -65,7 +64,7 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
     }
   }
 
-  // standard set of 6 texture maps
+  // standard RMaterial set of 6 texture maps
   // 0 - baseColor
   // 1 - normal
   // 2 - metalness / roughness
@@ -106,16 +105,27 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
     }
   }
 
-  // model mesh matrices
+  // PBR input layout
+  // 0 - color input
+  // 1 - normal input
+  // 2 - physical input (metalness, roughness, ambient occlusion)
+  // 3 - position input
+  // 4 - emissive input
   {
-    system.descriptorSetLayouts.emplace(EDescriptorSetLayout::Mesh,
+    system.descriptorSetLayouts.emplace(EDescriptorSetLayout::PBRInput,
                                         VK_NULL_HANDLE);
 
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
-        {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1,
-         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
-        {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT,
-         nullptr}};
+        {0, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1,
+         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+        {1, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1,
+         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+        {2, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1,
+         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+        {3, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1,
+         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+        {4, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1,
+         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}};
 
     VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
     setLayoutCreateInfo.sType =
@@ -126,9 +136,41 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
 
     if (vkCreateDescriptorSetLayout(
             logicalDevice.device, &setLayoutCreateInfo, nullptr,
-            &system.descriptorSetLayouts.at(EDescriptorSetLayout::Mesh)) !=
+            &system.descriptorSetLayouts.at(EDescriptorSetLayout::PBRInput)) !=
         VK_SUCCESS) {
-      RE_LOG(Critical, "Failed to create model node descriptor set layout.");
+      RE_LOG(Critical, "Failed to create PBR input descriptor set layout.");
+      return RE_CRITICAL;
+    }
+  }
+
+  // model transform matrices
+  // 0 - model transform matrices (offset stored in entity)
+  // 1 - per node transform matrices (offset SHOULD BE stored by animations manager)
+  // 2 - per model inverse bind matrices (offset SHOULD BE stored by animations manager)
+  {
+    system.descriptorSetLayouts.emplace(EDescriptorSetLayout::Model,
+                                        VK_NULL_HANDLE);
+
+    std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
+        {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1,
+         VK_SHADER_STAGE_VERTEX_BIT, nullptr},
+        {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1,
+         VK_SHADER_STAGE_VERTEX_BIT, nullptr},
+        {2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1,
+         VK_SHADER_STAGE_VERTEX_BIT, nullptr}};
+
+    VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
+    setLayoutCreateInfo.sType =
+        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    setLayoutCreateInfo.pBindings = setLayoutBindings.data();
+    setLayoutCreateInfo.bindingCount =
+        static_cast<uint32_t>(setLayoutBindings.size());
+
+    if (vkCreateDescriptorSetLayout(
+            logicalDevice.device, &setLayoutCreateInfo, nullptr,
+            &system.descriptorSetLayouts.at(EDescriptorSetLayout::Model)) !=
+        VK_SUCCESS) {
+      RE_LOG(Critical, "Failed to create model descriptor set layout.");
       return RE_CRITICAL;
     }
   }
@@ -201,18 +243,6 @@ TResult core::MRenderer::createDescriptorSets() {
     RE_LOG(Log, "Populating renderer descriptor sets.");
 #endif
 
-    // TODO: maybe needs a better workaround / solution
-    // stepping ahead environment texture descriptors to update sets without errors
-    RTexture* pTexture = core::resources.getTexture(RTGT_ENVFILTER);
-    pTexture->texture.descriptor.imageLayout =
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    pTexture = core::resources.getTexture(RTGT_ENVIRRAD);
-    pTexture->texture.descriptor.imageLayout =
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    pTexture = core::resources.getTexture(RTGT_LUTMAP);
-    pTexture->texture.descriptor.imageLayout =
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
     uint32_t descriptorCount = 5u;
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
@@ -233,7 +263,7 @@ TResult core::MRenderer::createDescriptorSets() {
 
       // settings used for writing to MVP descriptor set
       writeDescriptorSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-      writeDescriptorSets[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+      writeDescriptorSets[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
       writeDescriptorSets[0].dstSet = system.descriptorSets[i];
       writeDescriptorSets[0].dstBinding = 0;
       writeDescriptorSets[0].dstArrayElement = 0;
@@ -252,32 +282,44 @@ TResult core::MRenderer::createDescriptorSets() {
       writeDescriptorSets[1].pBufferInfo = &descriptorBufferInfoLighting;
       
       // environment image data
+
+      // environment maps are created with a layout for accepting data writes
+      // however descriptor sets require info about their final state
+      VkDescriptorImageInfo imageDescriptors[3]{
+          core::resources.getTexture(RTGT_ENVFILTER)->texture.descriptor,
+          core::resources.getTexture(RTGT_ENVIRRAD)->texture.descriptor,
+          core::resources.getTexture(RTGT_LUTMAP)->texture.descriptor};
+
+      for (VkDescriptorImageInfo& imageInfo : imageDescriptors) {
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      }
+
+      // RTGT_ENVFILTER
       writeDescriptorSets[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
       writeDescriptorSets[2].descriptorType =
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
       writeDescriptorSets[2].descriptorCount = 1;
       writeDescriptorSets[2].dstSet = system.descriptorSets[i];
       writeDescriptorSets[2].dstBinding = 2;
-      writeDescriptorSets[2].pImageInfo =
-          &core::resources.getTexture(RTGT_ENVFILTER)->texture.descriptor;
+      writeDescriptorSets[2].pImageInfo = &imageDescriptors[0];
 
+      // RTGT_ENVIRRAD
       writeDescriptorSets[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
       writeDescriptorSets[3].descriptorType =
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
       writeDescriptorSets[3].descriptorCount = 1;
       writeDescriptorSets[3].dstSet = system.descriptorSets[i];
       writeDescriptorSets[3].dstBinding = 3;
-      writeDescriptorSets[3].pImageInfo =
-          &core::resources.getTexture(RTGT_ENVIRRAD)->texture.descriptor;
+      writeDescriptorSets[3].pImageInfo = &imageDescriptors[1];
 
+      // RTGT_LUTMAP
       writeDescriptorSets[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
       writeDescriptorSets[4].descriptorType =
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
       writeDescriptorSets[4].descriptorCount = 1;
       writeDescriptorSets[4].dstSet = system.descriptorSets[i];
       writeDescriptorSets[4].dstBinding = 4;
-      writeDescriptorSets[4].pImageInfo =
-          &core::resources.getTexture(RTGT_LUTMAP)->texture.descriptor;
+      writeDescriptorSets[4].pImageInfo = &imageDescriptors[2];
       
       vkUpdateDescriptorSets(logicalDevice.device, descriptorCount,
                              writeDescriptorSets.data(), 0, nullptr);
@@ -313,13 +355,13 @@ TResult core::MRenderer::createDescriptorSets() {
 #endif
 
     for (uint32_t j = 0; j < MAX_FRAMES_IN_FLIGHT; ++j) {
-      VkDescriptorBufferInfo infoEnvironment;
+      VkDescriptorBufferInfo infoEnvironment{};
       infoEnvironment.buffer = environment.transformBuffers[j].buffer;
       infoEnvironment.offset = 0;
       infoEnvironment.range = sizeof(REnvironmentUBO);
 
       // lighting data for descriptor set
-      VkDescriptorBufferInfo infoLighting;
+      VkDescriptorBufferInfo infoLighting{};
       infoLighting.buffer = lighting.buffers[j].buffer;
       infoLighting.offset = 0;
       infoLighting.range = sizeof(RLightingUBO);
@@ -346,6 +388,133 @@ TResult core::MRenderer::createDescriptorSets() {
     }
   }
 
+#ifndef NDEBUG
+  RE_LOG(Log, "Creating model transformation descriptor set.");
+#endif
+
+  {
+    VkDevice device = core::renderer.logicalDevice.device;
+
+    VkDescriptorSetLayout meshLayout =
+        getDescriptorSetLayout(EDescriptorSetLayout::Model);
+
+    VkDescriptorSetAllocateInfo descriptorSetAllocInfo{};
+    descriptorSetAllocInfo.sType =
+        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    descriptorSetAllocInfo.descriptorPool = core::renderer.getDescriptorPool();
+    descriptorSetAllocInfo.pSetLayouts = &meshLayout;
+    descriptorSetAllocInfo.descriptorSetCount = 1;
+
+    VkResult result;
+    if ((result = vkAllocateDescriptorSets(
+             device, &descriptorSetAllocInfo,
+             &scene.transformDescriptorSet)) != VK_SUCCESS) {
+      RE_LOG(Error,
+             "Failed to create model transformation descriptor set. Vulkan "
+             "error %d.",
+             result);
+      return RE_ERROR;
+    }
+
+    #ifndef NDEBUG
+    RE_LOG(Log, "Populating model transformation descriptor set.");
+#endif
+
+    VkDescriptorBufferInfo rootMatrixBufferInfo{};
+    rootMatrixBufferInfo.buffer = scene.rootTransformBuffer.buffer;
+    rootMatrixBufferInfo.offset = 0;
+    rootMatrixBufferInfo.range = sizeof(glm::mat4); // root matrix
+
+    VkDescriptorBufferInfo nodeMatrixBufferInfo{};
+    nodeMatrixBufferInfo.buffer = scene.nodeTransformBuffer.buffer;
+    nodeMatrixBufferInfo.offset = 0;
+    nodeMatrixBufferInfo.range = config::scene::nodeBlockSize;
+
+    VkDescriptorBufferInfo skinningMatricesBufferInfo{};
+    skinningMatricesBufferInfo.buffer = scene.skinTransformBuffer.buffer;
+    skinningMatricesBufferInfo.offset = 0;
+    skinningMatricesBufferInfo.range = config::scene::skinBlockSize;
+
+    std::vector<VkWriteDescriptorSet> writeSets(3);
+    writeSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeSets[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    writeSets[0].descriptorCount = 1;
+    writeSets[0].dstSet = scene.transformDescriptorSet;
+    writeSets[0].dstBinding = 0;
+    writeSets[0].pBufferInfo = &rootMatrixBufferInfo;
+
+    writeSets[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeSets[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    writeSets[1].descriptorCount = 1;
+    writeSets[1].dstSet = scene.transformDescriptorSet;
+    writeSets[1].dstBinding = 1;
+    writeSets[1].pBufferInfo = &nodeMatrixBufferInfo;
+
+    writeSets[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeSets[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    writeSets[2].descriptorCount = 1;
+    writeSets[2].dstSet = scene.transformDescriptorSet;
+    writeSets[2].dstBinding = 2;
+    writeSets[2].pBufferInfo = &skinningMatricesBufferInfo;
+
+    vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeSets.size()),
+                           writeSets.data(), 0, nullptr);
+  }
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Creating deferred PBR descriptor set.");
+#endif
+  {
+    // allocate material's descriptor set
+    VkDescriptorSetLayout PBRInputLayout =
+        core::renderer.getDescriptorSetLayout(EDescriptorSetLayout::PBRInput);
+
+    VkDescriptorSetAllocateInfo allocateInfo{};
+    allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocateInfo.descriptorPool = core::renderer.getDescriptorPool();
+    allocateInfo.pSetLayouts = &PBRInputLayout;
+    allocateInfo.descriptorSetCount = 1;
+
+    if (vkAllocateDescriptorSets(core::renderer.logicalDevice.device,
+                                 &allocateInfo,
+                                 &scene.GBufferDescriptorSet) != VK_SUCCESS) {
+      RE_LOG(Error, "Failed to allocate descriptor set for PBR input subpass.");
+      return RE_CRITICAL;
+    };
+
+    std::vector<VkDescriptorImageInfo> imageDescriptors;
+    
+    for (const auto& image : scene.pGBufferTargets) {
+      imageDescriptors.emplace_back(image->texture.descriptor);
+    }
+
+    // write retrieved data to newly allocated descriptor set
+    std::vector<VkWriteDescriptorSet> writeDescriptorSets;
+    uint32_t writeSize = static_cast<uint32_t>(imageDescriptors.size());
+    writeDescriptorSets.resize(writeSize);
+
+    for (uint32_t i = 0; i < writeSize; ++i) {
+      // if an image is a color attachment - it's probably a render target that
+      // will be used as a shader data source at some point
+      if (imageDescriptors[i].imageLayout ==
+          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
+        imageDescriptors[i].imageLayout =
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      }
+
+      writeDescriptorSets[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writeDescriptorSets[i].dstSet = scene.GBufferDescriptorSet;
+      writeDescriptorSets[i].dstBinding = i;
+      writeDescriptorSets[i].descriptorType =
+          VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+      writeDescriptorSets[i].descriptorCount = 1;
+      writeDescriptorSets[i].pImageInfo = &imageDescriptors[i];
+    }
+
+    vkUpdateDescriptorSets(core::renderer.logicalDevice.device, writeSize,
+                           writeDescriptorSets.data(), 0, nullptr);
+  }
+
   return RE_OK;
 }
 
@@ -362,7 +531,7 @@ TResult core::MRenderer::createDefaultFramebuffers() {
         swapchain.imageViews[i],
         core::resources.getTexture(RTGT_DEPTH)->texture.view};
 
-    framebufferInfo.renderPass = getVkRenderPass(ERenderPass::PBR);
+    framebufferInfo.renderPass = getVkRenderPass(ERenderPass::Present);
     framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
     framebufferInfo.pAttachments = attachments.data();
     framebufferInfo.width = swapchain.imageExtent.width;
@@ -370,7 +539,8 @@ TResult core::MRenderer::createDefaultFramebuffers() {
     framebufferInfo.layers = 1;
 
     if (vkCreateFramebuffer(logicalDevice.device, &framebufferInfo, nullptr,
-                            &swapchain.framebuffers[i]) != VK_SUCCESS) {
+                            &swapchain.framebuffers[i].framebuffer) !=
+        VK_SUCCESS) {
       RE_LOG(Critical, "failed to create swapchain framebuffer with index %d.",
              i);
 
@@ -379,91 +549,70 @@ TResult core::MRenderer::createDefaultFramebuffers() {
   }
 
   TResult chkResult;
-  
-  if (chkResult = createFramebuffer(ERenderPass::Environment, RTGT_ENVSRC,
+  std::vector<std::string> attachmentNames;
+  attachmentNames.emplace_back(RTGT_SHADOW);
+  if (chkResult = createFramebuffer(ERenderPass::Shadow, attachmentNames,
+                                    RFB_SHADOW) != RE_OK) {
+    return chkResult;
+  }
+
+  // Deferred subpass 0
+  attachmentNames.clear();
+  attachmentNames.emplace_back(RTGT_GPOSITION); // 0
+  attachmentNames.emplace_back(RTGT_GDIFFUSE);  // 1
+  attachmentNames.emplace_back(RTGT_GNORMAL);   // 2
+  attachmentNames.emplace_back(RTGT_GPHYSICAL); // 3
+  attachmentNames.emplace_back(RTGT_GEMISSIVE); // 4
+  attachmentNames.emplace_back(RTGT_GPBR);      // 5 - subpasses 1 and 2
+  attachmentNames.emplace_back(RTGT_DEPTH);     // depth buffer target
+
+  if (chkResult = createFramebuffer(ERenderPass::Deferred, attachmentNames,
+                                    RFB_DEFERRED) != RE_OK) {
+    return chkResult;
+  }
+
+  // framebuffer for rendering environment map source
+  if (chkResult = createFramebuffer(ERenderPass::Environment, {RTGT_ENVSRC},
                                     RFB_ENV) != RE_OK) {
     return chkResult;
   };
 
-  return createFramebuffer(ERenderPass::LUTGen, RTGT_LUTMAP, RFB_LUT);
-}
-
-TResult core::MRenderer::createFramebuffer(ERenderPass renderPass,
-                                           const char* targetTextureName,
-                                           const char* framebufferName) {
-  // create render-to-texture framebuffer
-  RTexture* fbTarget = core::resources.getTexture(targetTextureName);
-
-  if (!fbTarget) {
-    RE_LOG(Error,
-           "Failed to create framebuffer %s, target texture %s wasn't found.",
-           framebufferName, targetTextureName);
-    return RE_ERROR;
-  }
-
-  std::string fbName = framebufferName;
-
-  VkFramebufferCreateInfo framebufferInfo{};
-  framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-  framebufferInfo.renderPass = getVkRenderPass(renderPass);
-  framebufferInfo.attachmentCount = 1;
-  framebufferInfo.pAttachments = &fbTarget->texture.view;
-  framebufferInfo.width = fbTarget->texture.width;
-  framebufferInfo.height = fbTarget->texture.height;
-  framebufferInfo.layers = fbTarget->texture.layerCount;
-
-  if (!system.framebuffers.try_emplace(fbName).second) {
-#ifndef NDEBUG
-    RE_LOG(Warning,
-           "Failed to create framebuffer record for \"%s\". Already exists.",
-           fbName.c_str());
-#endif
-    return RE_WARNING;
-  }
-
-  if (vkCreateFramebuffer(logicalDevice.device, &framebufferInfo, nullptr,
-                          &system.framebuffers.at(fbName)) != VK_SUCCESS) {
-    RE_LOG(Error, "failed to create framebuffer %s.", fbName.c_str());
-
-    return RE_ERROR;
-  }
-
-  return RE_OK;
+  // framebuffer for generating and storing LUT map
+  return createFramebuffer(ERenderPass::LUTGen, {RTGT_LUTMAP}, RFB_LUT);
 }
 
 TResult core::MRenderer::createRenderPasses() {
-  //
-  // MAIN render pass
-  //
-  ERenderPass passType = ERenderPass::PBR;
+  // lambda for quickly filling common clear values for render targets
+  auto fGetClearValues = [](VkClearColorValue colorValue,
+                            int8_t colorValueCount,
+                            VkClearDepthStencilValue depthValue) {
+    std::vector<VkClearValue> clearValues;
+    clearValues.resize(colorValueCount + 1);
 
-  RE_LOG(Log, "Creating render pass E%d", passType);
+    for (int8_t i = 0; i < colorValueCount; ++i) {
+      clearValues[i].color = colorValue;
+    }
 
-  system.renderPasses.emplace(passType, RRenderPass{});
-
+    clearValues[colorValueCount].depthStencil = depthValue;
+    return clearValues;
+  };
+  
+  // standard info setup
   VkAttachmentDescription colorAttachment{};
   colorAttachment.format = swapchain.formatData.format;
   colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
   colorAttachment.loadOp =
       VK_ATTACHMENT_LOAD_OP_CLEAR;  // clearing contents on new frame
   colorAttachment.storeOp =
-      VK_ATTACHMENT_STORE_OP_STORE;  // storing contents in memory while
-                                     // rendering
+      VK_ATTACHMENT_STORE_OP_STORE; // storing contents in memory while rendering
   colorAttachment.stencilLoadOp =
       VK_ATTACHMENT_LOAD_OP_DONT_CARE;  // ignore stencil buffer
   colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
   colorAttachment.initialLayout =
-      VK_IMAGE_LAYOUT_UNDEFINED;  // not important, since it's cleared at the
-                                  // frame start
+      VK_IMAGE_LAYOUT_UNDEFINED;    // not important, since it's cleared at the
+                                    // frame start
   colorAttachment.finalLayout =
       VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;  // swap chain image to be presented
-
-  VkAttachmentReference colorAttachmentRef{};
-  colorAttachmentRef.attachment =
-      0;  // index of an attachment in attachmentdesc array (also vertex shader
-          // output index)
-  colorAttachmentRef.layout =
-      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;  // the layout will be an image
 
   VkAttachmentDescription depthAttachment{};
   depthAttachment.format = core::vulkan::formatDepth;
@@ -476,110 +625,102 @@ TResult core::MRenderer::createRenderPasses() {
   depthAttachment.finalLayout =
       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-  VkAttachmentReference depthAttachmentRef{};
-  depthAttachmentRef.attachment = 1;
-  depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+  // common clear color and clear depth values
+  const VkClearColorValue clearColor = {0.0f, 0.0f, 0.0f, 0.0f};
+  const VkClearDepthStencilValue clearDepth = {1.0f};
 
-  VkSubpassDescription subpassDesc{};
-  subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-  subpassDesc.colorAttachmentCount = 1;
-  subpassDesc.pColorAttachments = &colorAttachmentRef;
-  subpassDesc.pDepthStencilAttachment = &depthAttachmentRef;
+  //
+  // DEFERRED render pass
+  // all models are rendered to 5 separate color maps forming G-buffer
+  // then they are combined into 1 PBR color attachment
 
-  VkSubpassDependency dependency{};  // makes subpass wait for color
-                                     // attachment-type image to be acquired
-  dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-  dependency.dstSubpass = 0;
-  dependency.srcStageMask =
-      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-      VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;  // wait for external subpass
-                                                   // to be of color attachment
-  dependency.srcAccessMask = NULL;
-  dependency.dstStageMask =
-      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-      VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;  // wait until we can write to
-                                                   // color attachment
-  dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-                             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+  ERenderPass passType = ERenderPass::Deferred;
+  system.renderPasses.emplace(passType, RRenderPass{});
+  RE_LOG(Log, "Creating render pass E%d", passType);
 
-  std::vector<VkAttachmentDescription> attachments = {colorAttachment,
-                                                      depthAttachment};
+  colorAttachment.format = core::vulkan::formatHDR16;
+  colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-  VkRenderPassCreateInfo renderPassInfo{};
-  renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-  renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-  renderPassInfo.pAttachments = attachments.data();
-  renderPassInfo.subpassCount = 1;
-  renderPassInfo.pSubpasses = &subpassDesc;
-  renderPassInfo.dependencyCount = 1;
-  renderPassInfo.pDependencies = &dependency;
+  // deferred render targets: position, color, normal, physical, emissive
+  // + PBR render target
+  uint32_t attachmentCount = 6;
+  std::vector<VkAttachmentDescription> deferredColorAttachments(attachmentCount, colorAttachment);
 
-  if (vkCreateRenderPass(logicalDevice.device, &renderPassInfo, nullptr,
-                         &getVkRenderPass(passType)) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create render pass E%d.", passType);
+  VkRenderPass newRenderPass = createRenderPass(
+      logicalDevice.device, attachmentCount, deferredColorAttachments.data(),
+      &depthAttachment, passType);
+  system.renderPasses.at(passType).renderPass = newRenderPass;
+  system.renderPasses.at(passType).clearValues =
+      fGetClearValues(clearColor, attachmentCount, clearDepth);
 
-    return RE_CRITICAL;
-  }
+  //
+  // PRESENT render pass
+  // the 16 bit float color map is rendered to the compatible surface target
+  passType = ERenderPass::Present;
+  system.renderPasses.emplace(passType, RRenderPass{});
+  RE_LOG(Log, "Creating render pass E%d", passType);
+
+  colorAttachment.format = swapchain.formatData.format;
+  colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+  newRenderPass = createRenderPass(logicalDevice.device, 1, &colorAttachment,
+                                   &depthAttachment, passType);
+  system.renderPasses.at(passType).renderPass = newRenderPass;
+  system.renderPasses.at(passType).clearValues =
+      fGetClearValues(clearColor, 1, clearDepth);
 
   //
   // CUBEMAP render pass
   //
+
   passType = ERenderPass::Environment;
-  attachments.clear();
-
   system.renderPasses.emplace(passType, RRenderPass{});
+  RE_LOG(Log, "Creating render pass E%d", passType);
 
+  colorAttachment.format = core::vulkan::formatHDR16;
   colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-  colorAttachment.format = core::vulkan::formatHDR16;
-  subpassDesc.pDepthStencilAttachment = nullptr;
-  attachments = {colorAttachment};
-  dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-                            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-  dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-  renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-  renderPassInfo.pAttachments = attachments.data();
-
-  if (vkCreateRenderPass(logicalDevice.device, &renderPassInfo, nullptr,
-                         &getVkRenderPass(passType)) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create render pass E%d.", passType);
-
-    return RE_CRITICAL;
-  }
+  newRenderPass = createRenderPass(logicalDevice.device, 1, &colorAttachment,
+                                   nullptr, passType);
+  system.renderPasses.at(passType).renderPass = newRenderPass;
+  system.renderPasses.at(passType).clearValues =
+      fGetClearValues(clearColor, 1, clearDepth);
 
   //
   // BRDF LUT render pass
   //
   passType = ERenderPass::LUTGen;
-  attachments.clear();
-
   system.renderPasses.emplace(passType, RRenderPass{});
+  RE_LOG(Log, "Creating render pass E%d", passType);
 
   colorAttachment.format = core::vulkan::formatLUT;
-  attachments = {colorAttachment};
-  renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-  renderPassInfo.pAttachments = attachments.data();
-  renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-  renderPassInfo.pAttachments = attachments.data();
+  newRenderPass = createRenderPass(logicalDevice.device, 1, &colorAttachment,
+                                   nullptr, passType);
+  system.renderPasses.at(passType).renderPass = newRenderPass;
+  system.renderPasses.at(passType).clearValues =
+      fGetClearValues(clearColor, 1, clearDepth);
 
-  if (vkCreateRenderPass(logicalDevice.device, &renderPassInfo, nullptr,
-                         &getVkRenderPass(passType)) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create render pass E%d.", passType);
+  //
+  // SHADOW render pass
+  //
+  passType = ERenderPass::Shadow;
+  system.renderPasses.emplace(passType, RRenderPass{});
+  RE_LOG(Log, "Creating render pass E%d", passType);
 
-    return RE_CRITICAL;
-  }
+  depthAttachment.format = core::vulkan::formatShadow;
 
-  // setup default render pass begin info
-  system.clearColors[0].color = {0.0f, 0.0f, 0.0f, 1.0f};
-  system.clearColors[1].depthStencil = {1.0f, 0};
+  newRenderPass = createRenderPass(logicalDevice.device, 0, nullptr,
+                                   &depthAttachment, passType);
+  system.renderPasses.at(passType).renderPass = newRenderPass;
+  system.renderPasses.at(passType).clearValues =
+      fGetClearValues(clearColor, 0, clearDepth);
 
   system.renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
   system.renderPassBeginInfo.renderArea.offset = {0, 0};
   system.renderPassBeginInfo.renderArea.extent = swapchain.imageExtent;
-  system.renderPassBeginInfo.pClearValues = system.clearColors.data();
-  system.renderPassBeginInfo.clearValueCount =
-      static_cast<uint32_t>(system.clearColors.size());
 
   // must be set up during frame drawing
   system.renderPassBeginInfo.renderPass = VK_NULL_HANDLE;
@@ -628,8 +769,8 @@ TResult core::MRenderer::createGraphicsPipelines() {
   inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
   inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
 
-  // set main viewport
-  VkViewport& viewport = getRenderPass(ERenderPass::PBR)->viewport;
+  // set viewports and scissors for screen render passes
+  VkViewport viewport{}; 
   viewport.x = 0.0f;
   viewport.y = static_cast<float>(swapchain.imageExtent.height);
   viewport.width = static_cast<float>(swapchain.imageExtent.width);
@@ -641,11 +782,25 @@ TResult core::MRenderer::createGraphicsPipelines() {
   scissor.offset = {0, 0};
   scissor.extent = swapchain.imageExtent;
 
+  getRenderPass(ERenderPass::Deferred)->viewport = viewport;
+  getRenderPass(ERenderPass::Present)->viewport = viewport;
+
+  getRenderPass(ERenderPass::Deferred)->scissor = scissor;
+  getRenderPass(ERenderPass::Present)->scissor = scissor;
+
+  viewport.y = static_cast<float>(config::shadowResolution);
+  viewport.width = viewport.y;
+  viewport.height = -viewport.y;
+  scissor.extent = {config::shadowResolution, config::shadowResolution};
+
+  getRenderPass(ERenderPass::Shadow)->viewport = viewport;
+  getRenderPass(ERenderPass::Shadow)->scissor = scissor;
+
   VkPipelineViewportStateCreateInfo viewportInfo{};
   viewportInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-  viewportInfo.pViewports = &viewport;
+  viewportInfo.pViewports = &getRenderPass(ERenderPass::Deferred)->viewport;
   viewportInfo.viewportCount = 1;
-  viewportInfo.pScissors = &scissor;
+  viewportInfo.pScissors = &getRenderPass(ERenderPass::Deferred)->scissor;
   viewportInfo.scissorCount = 1;
 
   VkPipelineRasterizationStateCreateInfo rasterizationInfo{};
@@ -735,9 +890,9 @@ TResult core::MRenderer::createGraphicsPipelines() {
 
   // pipeline layout for the main 'scene'
   std::vector<VkDescriptorSetLayout> descriptorSetLayouts{
-      getDescriptorSetLayout(EDescriptorSetLayout::Scene),    // 0
-      getDescriptorSetLayout(EDescriptorSetLayout::Mesh),     // 1
-      getDescriptorSetLayout(EDescriptorSetLayout::Material)  // 2
+      getDescriptorSetLayout(EDescriptorSetLayout::Scene),      // 0
+      getDescriptorSetLayout(EDescriptorSetLayout::Model),      // 1
+      getDescriptorSetLayout(EDescriptorSetLayout::Material)    // 2
   };
 
   VkPipelineLayoutCreateInfo layoutInfo{};
@@ -756,6 +911,34 @@ TResult core::MRenderer::createGraphicsPipelines() {
   }
 
 #ifndef NDEBUG
+  RE_LOG(Log, "Creating pipeline layout for \"PBR\".");
+#endif
+
+  layoutType = EPipelineLayout::PBR;
+  system.layouts.emplace(layoutType, VK_NULL_HANDLE);
+
+  descriptorSetLayouts.clear();
+  descriptorSetLayouts = {
+      getDescriptorSetLayout(EDescriptorSetLayout::Scene),    // 0
+      getDescriptorSetLayout(EDescriptorSetLayout::Model),    // 1
+      getDescriptorSetLayout(EDescriptorSetLayout::PBRInput)  // 2
+  };
+
+  layoutInfo = VkPipelineLayoutCreateInfo{};
+  layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+  layoutInfo.setLayoutCount =
+      static_cast<uint32_t>(descriptorSetLayouts.size());
+  layoutInfo.pSetLayouts = descriptorSetLayouts.data();
+  layoutInfo.pushConstantRangeCount = 0;
+
+  if (vkCreatePipelineLayout(logicalDevice.device, &layoutInfo, nullptr,
+                             &getPipelineLayout(layoutType)) != VK_SUCCESS) {
+    RE_LOG(Critical, "failed to create \"PBR\" pipeline layout.");
+
+    return RE_CRITICAL;
+  }
+
+#ifndef NDEBUG
   RE_LOG(Log, "Creating pipeline layout for \"environment\".");
 #endif
 
@@ -766,7 +949,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
   descriptorSetLayouts.clear();
   descriptorSetLayouts = {
       getDescriptorSetLayout(EDescriptorSetLayout::Environment),  // 0
-      getDescriptorSetLayout(EDescriptorSetLayout::Mesh),         // 1
+      getDescriptorSetLayout(EDescriptorSetLayout::Model),        // 1
       getDescriptorSetLayout(EDescriptorSetLayout::Material)      // 2
   };
 
@@ -828,10 +1011,17 @@ TResult core::MRenderer::createGraphicsPipelines() {
       static_cast<uint32_t>(attributeDescs.size());
   vertexInputInfo.pVertexAttributeDescriptions = attributeDescs.data();
 
-  // 'PBR single sided' pipeline, uses 'PBR' render pass and 'scene' layout
+  // 'single sided' pipeline, uses 'Deferred' render pass and 'scene' layout
   std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {
-      loadShader("vs_pbr.spv", VK_SHADER_STAGE_VERTEX_BIT),
-      loadShader("fs_pbr.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
+      loadShader("vs_scene.spv", VK_SHADER_STAGE_VERTEX_BIT),
+      loadShader("fs_gbuffer.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
+
+  VkPipelineColorBlendAttachmentState colorBlendAttachments[] = {
+      colorBlendAttachment, colorBlendAttachment, colorBlendAttachment,
+      colorBlendAttachment, colorBlendAttachment};
+
+  colorBlendInfo.attachmentCount = 5;
+  colorBlendInfo.pAttachments = colorBlendAttachments;
 
   VkGraphicsPipelineCreateInfo graphicsPipelineInfo{};
   graphicsPipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -846,44 +1036,43 @@ TResult core::MRenderer::createGraphicsPipelines() {
   graphicsPipelineInfo.pStages = shaderStages.data();
   graphicsPipelineInfo.pVertexInputState = &vertexInputInfo;
   graphicsPipelineInfo.layout = getPipelineLayout(EPipelineLayout::Scene);
-  graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::PBR);
+  graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::Deferred);
   graphicsPipelineInfo.subpass = 0;  // subpass index for render pass
   graphicsPipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
   graphicsPipelineInfo.basePipelineIndex = -1;
 
   system.pipelines.emplace(EPipeline::OpaqueCullBack, VK_NULL_HANDLE);
 
-  if (vkCreateGraphicsPipelines(logicalDevice.device, VK_NULL_HANDLE, 1,
-                                &graphicsPipelineInfo, nullptr,
-                                &getPipeline(OpaqueCullBack)) != VK_SUCCESS) {
+  if (vkCreateGraphicsPipelines(
+          logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
+          nullptr, &getPipeline(EPipeline::OpaqueCullBack)) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create PBR graphics pipeline.");
 
     return RE_CRITICAL;
   }
 
-  // 'PBR doublesided' pipeline, uses 'PBR' render pass and 'scene' layout
+  // 'Doublesided' pipeline, uses 'Deferred' render pass and 'scene' layout
   rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
 
   system.pipelines.emplace(EPipeline::OpaqueCullNone, VK_NULL_HANDLE);
 
-  if (vkCreateGraphicsPipelines(logicalDevice.device, VK_NULL_HANDLE, 1,
-                                &graphicsPipelineInfo, nullptr,
-                                &getPipeline(OpaqueCullNone)) != VK_SUCCESS) {
+  if (vkCreateGraphicsPipelines(
+          logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
+          nullptr, &getPipeline(EPipeline::OpaqueCullNone)) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create PBR doublesided graphics pipeline.");
 
     return RE_CRITICAL;
   }
 
-  // 'Blend' pipeline, similar to PBR singlesided, but with alpha channel
+  // 'Blend' pipeline, similar to singlesided, but with alpha channel
   rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
-  //rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
   colorBlendAttachment.blendEnable = VK_TRUE;
 
   system.pipelines.emplace(EPipeline::BlendCullNone, VK_NULL_HANDLE);
 
-  if (vkCreateGraphicsPipelines(logicalDevice.device, VK_NULL_HANDLE, 1,
-                                &graphicsPipelineInfo, nullptr,
-                                &getPipeline(BlendCullNone)) != VK_SUCCESS) {
+  if (vkCreateGraphicsPipelines(
+          logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
+          nullptr, &getPipeline(EPipeline::BlendCullNone)) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create PBR doublesided graphics pipeline.");
 
     return RE_CRITICAL;
@@ -893,24 +1082,109 @@ TResult core::MRenderer::createGraphicsPipelines() {
     vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
   }
 
-  // 'Skybox' pipeline
+    
+  // 'PBR' pipeline, renders combined G-buffer output to a screen wide plane
+  shaderStages.clear();
+  shaderStages = {loadShader("vs_quad.spv", VK_SHADER_STAGE_VERTEX_BIT),
+                  loadShader("fs_pbr.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
+
+  graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::Deferred);
+  graphicsPipelineInfo.subpass = 1;
+  graphicsPipelineInfo.layout = getPipelineLayout(EPipelineLayout::PBR);
+  rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+  colorBlendAttachment.blendEnable = VK_TRUE;
+  colorBlendInfo.attachmentCount = 1;
+  colorBlendInfo.pAttachments = &colorBlendAttachment;
+
+  system.pipelines.emplace(EPipeline::PBR, VK_NULL_HANDLE);
+
+  if (vkCreateGraphicsPipelines(
+          logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
+          nullptr, &getPipeline(EPipeline::PBR)) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to create PBR graphics pipeline.");
+
+    return RE_CRITICAL;
+  }
+
+  for (auto stage : shaderStages) {
+    vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
+  }
+
+   // 'Skybox' pipeline
   shaderStages.clear();
   shaderStages = {loadShader("vs_skybox.spv", VK_SHADER_STAGE_VERTEX_BIT),
                   loadShader("fs_skybox.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
 
+  graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::Deferred);
+  graphicsPipelineInfo.subpass = 2;
+  graphicsPipelineInfo.layout = getPipelineLayout(EPipelineLayout::Scene);
   rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+  colorBlendAttachment.blendEnable = VK_FALSE;
+  colorBlendInfo.attachmentCount = 1;
+  colorBlendInfo.pAttachments = &colorBlendAttachment;
 
   system.pipelines.emplace(EPipeline::Skybox, VK_NULL_HANDLE);
 
-  if (vkCreateGraphicsPipelines(logicalDevice.device, VK_NULL_HANDLE, 1,
-                                &graphicsPipelineInfo, nullptr,
-                                &getPipeline(Skybox)) != VK_SUCCESS) {
+  if (vkCreateGraphicsPipelines(
+          logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
+          nullptr, &getPipeline(EPipeline::Skybox)) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create skybox graphics pipeline.");
 
     return RE_CRITICAL;
   }
 
   for (auto stage : shaderStages) {
+    vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
+  }
+
+  // 'Shadow' depth map pipeline
+  shaderStages.clear();
+  shaderStages = {
+      loadShader("vs_scene.spv", VK_SHADER_STAGE_VERTEX_BIT),
+      loadShader("fs_shadowPass.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
+
+  graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::Shadow);
+  graphicsPipelineInfo.subpass = 0;
+  graphicsPipelineInfo.layout = getPipelineLayout(EPipelineLayout::Scene);
+  rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
+  colorBlendAttachment.blendEnable = VK_TRUE;
+  colorBlendInfo.attachmentCount = 0;
+
+  system.pipelines.emplace(EPipeline::Shadow, VK_NULL_HANDLE);
+
+  if (vkCreateGraphicsPipelines(
+          logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
+          nullptr, &getPipeline(EPipeline::Shadow)) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to create shadow depth map pipeline.");
+
+    return RE_CRITICAL;
+  }
+
+  for (auto& stage : shaderStages) {
+    vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
+  }
+
+  // 'Present' final output pipeline
+  shaderStages.clear();
+  shaderStages = {loadShader("vs_quad.spv", VK_SHADER_STAGE_VERTEX_BIT),
+                  loadShader("fs_present.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
+
+  system.pipelines.emplace(EPipeline::Present, VK_NULL_HANDLE);
+
+  graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::Present);
+  rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+  colorBlendAttachment.blendEnable = VK_FALSE;
+  colorBlendInfo.attachmentCount = 1;
+
+  if (vkCreateGraphicsPipelines(
+          logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
+          nullptr, &getPipeline(EPipeline::Present)) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to create Vulkan presentation pipeline.");
+
+    return RE_CRITICAL;
+  }
+
+  for (auto& stage : shaderStages) {
     vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
   }
 
@@ -921,8 +1195,14 @@ TResult core::MRenderer::createGraphicsPipelines() {
 
   system.pipelines.emplace(EPipeline::EnvFilter, VK_NULL_HANDLE);
 
+  colorBlendInfo.attachmentCount = 1;
+  colorBlendInfo.pAttachments = &colorBlendAttachment;
+
   graphicsPipelineInfo.layout = getPipelineLayout(EPipelineLayout::Environment);
   graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::Environment);
+
+  getRenderPass(ERenderPass::Environment)->viewport = viewport;
+  getRenderPass(ERenderPass::Environment)->scissor = scissor;
 
   if (vkCreateGraphicsPipelines(
           logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
@@ -958,9 +1238,8 @@ TResult core::MRenderer::createGraphicsPipelines() {
 
   // 'EnvLUT' pipeline
   shaderStages.clear();
-  shaderStages = {
-      loadShader("vs_brdfLUT.spv", VK_SHADER_STAGE_VERTEX_BIT),
-      loadShader("fs_brdfLUT.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
+  shaderStages = {loadShader("vs_brdfLUT.spv", VK_SHADER_STAGE_VERTEX_BIT),
+                  loadShader("fs_brdfLUT.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
 
   system.pipelines.emplace(EPipeline::LUTGen, VK_NULL_HANDLE);
 
@@ -1015,15 +1294,26 @@ bool core::MRenderer::checkPipeline(uint32_t pipelineFlags,
 }
 
 TResult core::MRenderer::configureRenderPasses() {
-  // NOTE: order of pipeline emplacement is important
+  // NOTE: order of pipeline 'emplacement' is important
 
-  // configure main 'scene', PBR render pass
-  RRenderPass* pRenderPass = getRenderPass(ERenderPass::PBR);
+  /* SHADOW */
+  RRenderPass* pRenderPass = getRenderPass(ERenderPass::Shadow);
   pRenderPass->usedLayout = getPipelineLayout(EPipelineLayout::Scene);
-  pRenderPass->usedPipelines.emplace_back(EPipeline::OpaqueCullBack);
-  pRenderPass->usedPipelines.emplace_back(EPipeline::OpaqueCullNone);
-  pRenderPass->usedPipelines.emplace_back(EPipeline::Skybox);
-  pRenderPass->usedPipelines.emplace_back(EPipeline::BlendCullNone);
+  pRenderPass->usedPipelines.emplace_back(EPipeline::Shadow);
+
+  /* DEFERRED */
+  pRenderPass = getRenderPass(ERenderPass::Deferred);
+  pRenderPass->usedLayout = getPipelineLayout(EPipelineLayout::Scene);
+  pRenderPass->usedPipelines.emplace_back(EPipeline::OpaqueCullBack, 0);
+  pRenderPass->usedPipelines.emplace_back(EPipeline::OpaqueCullNone, 0);
+  pRenderPass->usedPipelines.emplace_back(EPipeline::BlendCullNone, 0);
+  pRenderPass->usedPipelines.emplace_back(EPipeline::Skybox, 2);
+
+  /* PRESENT */
+  // uses swapchain framebuffers
+  pRenderPass = getRenderPass(ERenderPass::Present);
+  pRenderPass->usedLayout = getPipelineLayout(EPipelineLayout::Scene);
+  pRenderPass->usedPipelines.emplace_back(EPipeline::Present);
 
   // configure 'environment' cubemap render pass
   pRenderPass = getRenderPass(ERenderPass::Environment);

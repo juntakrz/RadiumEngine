@@ -24,6 +24,11 @@ bool loadImageData(tinygltf::Image* image, const int image_idx,
 
 core::MWorld::MWorld() { RE_LOG(Log, "Initializing world manager."); }
 
+void core::MWorld::initialize() {
+  // create default skybox, will have its material set by load scripts
+  createModel(EPrimitiveType::Cube, RMDL_SKYBOX, 1, true);
+}
+
 TResult core::MWorld::loadModelFromFile(const std::string& path,
                                         const char* name,
                                         const WModelConfigInfo* pConfigInfo) {
@@ -110,8 +115,12 @@ TResult core::MWorld::createModel(EPrimitiveType type, std::string name,
 
   pModel->m_name = name;
   WModel::Node* pNode = pModel->createNode(nullptr, 0, "node_" + name);
-  RE_CHECK(fValidateNode(pNode));
+  pNode->pMesh = std::make_unique<WModel::Mesh>();
+  pNode->pMesh->index = pModel->m_meshCount;
+  pModel->m_pLinearMeshes.emplace_back(pNode->pMesh.get());
+  pModel->m_meshCount++;
   pModel->m_pLinearNodes.emplace_back(pNode);
+  RE_CHECK(fValidateNode(pNode));
 
   RPrimitiveInfo primitiveInfo{};
   primitiveInfo.vertexOffset = pModel->staging.currentVertexOffset;
@@ -168,12 +177,6 @@ TResult core::MWorld::createModel(EPrimitiveType type, std::string name,
   for (auto& primitive : pModel->getPrimitives()) {
     primitive->pMaterial = pDefaultMaterial;
   }
-
-  for (auto& node : pModel->getRootNodes()) {
-    node->setNodeDescriptorSet(true);
-  }
-
-  pModel->update(glm::mat4(1.0f));
 
   // calculate bounding box extent for the whole mesh based on created primitives
   /*glm::vec3 minExtent{0.0f}, maxExtent{0.0f};

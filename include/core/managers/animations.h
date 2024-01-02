@@ -1,6 +1,8 @@
 #pragma once
 
+#include "core/world/actors/entity.h"
 #include "core/model/animation.h"
+#include "core/model/model.h"
 
 namespace core {
 class MAnimations {
@@ -51,7 +53,16 @@ class MAnimations {
 
   int32_t m_availableQueueIndex = 0;
 
-  MAnimations(){};
+  // registers index location for node in node transform buffer
+  std::vector<AEntity::AnimatedNodeBinding*> m_nodeTransformBufferIndices;
+
+  // registers index location for entity in root transform buffer
+  std::vector<AEntity*> m_rootTransformBufferIndices;
+
+  // registers index location for skin in skin transform buffer
+  std::vector<WModel::Skin*> m_skinTransformBufferIndices;
+
+  MAnimations();
 
  public:
   static MAnimations& get() {
@@ -77,5 +88,12 @@ class MAnimations {
   int32_t addAnimationToQueue(const WAnimationInfo* pAnimationInfo);
   void runAnimationQueue();
   void cleanupQueue();
+
+  // returns true if actor was registered, false if already present
+  bool getOrRegisterActorOffsetIndex(class AEntity* pActor, size_t& outIndex);
+  // returns true if node was registered, false if already present
+  bool getOrRegisterNodeOffsetIndex(AEntity::AnimatedNodeBinding* pNode,
+                                    size_t& outIndex);
+  bool getOrRegisterSkinOffsetIndex(WModel::Skin* pSkin, size_t& outIndex);
 };
 }  // namespace core

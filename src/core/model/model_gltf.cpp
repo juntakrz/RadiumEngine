@@ -86,24 +86,22 @@ TResult WModel::createModel(const char* name, const tinygltf::Model* pInModel,
 
   loadSkins();
 
-  for (auto node : m_pLinearNodes) {
+  for (auto pNode : m_pLinearNodes) {
     // Assign skins
-    if (node->skinIndex > -1) {
-      node->pSkin = m_pSkins[node->skinIndex].get();
+    if (pNode->skinIndex > -1) {
+      pNode->pSkin = m_pSkins[pNode->skinIndex].get();
 
       // set joint count for every instance of a skin
-      if (node->pSkin) {
+      if (pNode->pSkin) {
         size_t jointCount =
-            std::min((uint32_t)node->pSkin->joints.size(), RE_MAXJOINTS);
-        node->pMesh->uniformBlock.jointCount = (float)jointCount;
+            std::min((uint32_t)pNode->pSkin->joints.size(), RE_MAXJOINTS);
+        pNode->pMesh->uniformBlock.jointCount = (float)jointCount;
+
+        if (pNode->pMesh->uniformBlock.jointMatrices.empty() && jointCount) {
+          pNode->pMesh->uniformBlock.jointMatrices.resize(jointCount);
+        }
       }
     }
-
-    // Initial pose
-    update(glm::mat4(1.0f));
-
-    // no need to update children, they are accessed anyway
-    node->setNodeDescriptorSet(false);
   }
 
   if (pConfigInfo &&
@@ -143,24 +141,24 @@ void WModel::createNode(WModel::Node* pParentNode,
   }
 
   pNode->skinIndex = gltfNode.skin;
-  pNode->nodeMatrix = glm::mat4(1.0f);
+  pNode->staging.nodeMatrix = glm::mat4(1.0f);
 
   // general local node matrix
   if (gltfNode.translation.size() == 3) {
-    pNode->translation = glm::make_vec3(gltfNode.translation.data());
+    pNode->staging.translation = glm::make_vec3(gltfNode.translation.data());
   }
 
   if (gltfNode.rotation.size() == 4) {
     glm::quat q = glm::make_quat(gltfNode.rotation.data());
-    pNode->rotation = glm::mat4(q);   // why if both are quaternions? check later
+    pNode->staging.rotation = glm::mat4(q);   // why if both are quaternions? check later
   }
 
   if (gltfNode.scale.size() == 3) {
-    pNode->scale = glm::make_vec3(gltfNode.scale.data());
+    pNode->staging.scale = glm::make_vec3(gltfNode.scale.data());
   }
 
   if (gltfNode.matrix.size() == 14) {
-    pNode->nodeMatrix = glm::make_mat4x4(gltfNode.matrix.data());
+    pNode->staging.nodeMatrix = glm::make_mat4x4(gltfNode.matrix.data());
   }
 
   // recursively create node children
@@ -175,9 +173,11 @@ void WModel::createNode(WModel::Node* pParentNode,
   if (gltfNode.mesh > -1) {
     const tinygltf::Mesh& gltfMesh = gltfModel.meshes[gltfNode.mesh];
     pNode->pMesh = std::make_unique<WModel::Mesh>();
-    // allocate buffer for UBO used for writing mesh transformation data
-    pNode->allocateMeshBuffer();
+
     WModel::Mesh* pMesh = pNode->pMesh.get();
+    pMesh->index = m_meshCount;
+    m_pLinearMeshes.emplace_back(pMesh);
+    ++m_meshCount;
 
     for (size_t j = 0; j < gltfMesh.primitives.size(); ++j) {
       const tinygltf::Primitive& gltfPrimitive = gltfMesh.primitives[j];
@@ -835,19 +835,21 @@ void WModel::extractAnimations(const WModelConfigInfo* pConfigInfo) {
 
 void WModel::loadSkins() {
   const tinygltf::Model& gltfModel = *staging.pInModel;
+  int32_t index = 0;
 
-  for (const tinygltf::Skin& source : gltfModel.skins) {
+  for (const tinygltf::Skin& skin : gltfModel.skins) {
     m_pSkins.emplace_back(std::make_unique<Skin>());
     Skin* pSkin = m_pSkins.back().get();
-    pSkin->name = source.name;
+    pSkin->name = skin.name;
+    pSkin->index = index;
 
     // Find skeleton root node
-    if (source.skeleton > -1) {
-      pSkin->skeletonRoot = getNode(source.skeleton);
+    if (skin.skeleton > -1) {
+      pSkin->skeletonRoot = getNode(skin.skeleton);
     }
 
     // Find joint nodes
-    for (int jointIndex : source.joints) {
+    for (int jointIndex : skin.joints) {
       Node* pNode = getNode(jointIndex);
       if (pNode) {
         pSkin->joints.emplace_back(pNode);
@@ -855,16 +857,18 @@ void WModel::loadSkins() {
     }
 
     // Get inverse bind matrices from buffer
-    if (source.inverseBindMatrices > -1) {
+    if (skin.inverseBindMatrices > -1) {
       const tinygltf::Accessor& accessor =
-          gltfModel.accessors[source.inverseBindMatrices];
+          gltfModel.accessors[skin.inverseBindMatrices];
       const tinygltf::BufferView& bufferView =
           gltfModel.bufferViews[accessor.bufferView];
       const tinygltf::Buffer& buffer = gltfModel.buffers[bufferView.buffer];
-      pSkin->inverseBindMatrices.resize(accessor.count);
-      memcpy(pSkin->inverseBindMatrices.data(),
+      pSkin->staging.inverseBindMatrices.resize(accessor.count);
+      memcpy(pSkin->staging.inverseBindMatrices.data(),
              &buffer.data[accessor.byteOffset + bufferView.byteOffset],
              accessor.count * sizeof(glm::mat4));
     }
+
+    ++index;
   }
 }

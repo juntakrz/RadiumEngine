@@ -5,7 +5,6 @@
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_LEFT_HANDED
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
-//#define GLM_FORCE_SSE42
 #define GLM_FORCE_AVX
 #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
 
@@ -38,6 +37,7 @@ constexpr bool bRequireValidationLayers = true;
 #define RE_FEXT_ANIMATIONS  ".anm"
 
 #define RE_MAGIC_ANIMATIONS 0x4D4E41
+#define RE_MAGIC_MODEL      0x4C444D
 
 #define RE_DEFAULTTEXTURE   "default/default_baseColor.ktx2"
 #define RE_WHITETEXTURE     "default/white.ktx2"
@@ -47,10 +47,10 @@ constexpr bool bRequireValidationLayers = true;
 #define RE_MAXJOINTS        128u
 
 // error levels
-#define RE_OK					      0x00		   // success
-#define RE_WARNING          0x01       // result is acceptable, but less than ideal
-#define RE_ERROR			      0x02       // error
-#define RE_CRITICAL         0x03       // unrecoverable error
+#define RE_OK					      0x00		    // success
+#define RE_WARNING          0x01        // result is acceptable, but less than ideal
+#define RE_ERROR			      0x02        // error
+#define RE_CRITICAL         0x03        // unrecoverable error
 
 // log levels
 constexpr char Log =        RE_OK;

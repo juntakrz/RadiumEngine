@@ -30,10 +30,10 @@ namespace core {
     // clear all loaded JSONs from memory
     void clearAllScripts();
 
-    void jsonParseCameras(const json* cameraData) noexcept;
-    void jsonParseMaterials(const json* materialData) noexcept;
-    void jsonParseLights(const json* lightData) noexcept;
-    void jsonParseObjects(const json* objectData) noexcept;
-    void jsonParseCommands(const json* commandData) noexcept;
+    void jsonParseCameras(const json* pCameraData) noexcept;
+    void jsonParseMaterials(const json* pMaterialData) noexcept;
+    void jsonParseLights(const json* pLightData) noexcept;
+    void jsonParseObjects(const json* pObjectData) noexcept;
+    void jsonParseCommands(const json* pCommandData) noexcept;
   };
 }

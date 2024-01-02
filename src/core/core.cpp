@@ -30,11 +30,11 @@ void core::run() {
 
   loadCoreConfig();
 
-  #ifndef NDEBUG
+#ifndef NDEBUG
   loadDevelopmentConfig();
   core::debug.compileDebugShaders();
   core::debug.initializeRenderDoc();
-  #endif
+#endif
 
   RE_LOG(Log, "Creating renderer.");
   RE_CHECK(core::create());
@@ -52,19 +52,19 @@ void core::run() {
   materialInfo.name = "skybox";
   materialInfo.pipelineFlags = EPipeline::Skybox | EPipeline::MixEnvironment;
   materialInfo.textures.baseColor = "skyboxCubemap.ktx2";
-  //materialInfo.textures.baseColor = "papermill.ktx";
   core::resources.createMaterial(&materialInfo);
 
   // create map models
   core::world.createModel(EPrimitiveType::Sphere, "mdlSphere", 16, false);
-  core::world.createModel(EPrimitiveType::Cube, "mdlSkybox", 1, true);
   core::world.createModel(EPrimitiveType::Cube, "mdlBox1", 1, false);
 
+  core::world.getModel(RMDL_SKYBOX)->setPrimitiveMaterial(0, 0, "skybox");
+
   WModelConfigInfo modelConfigInfo{};
-  modelConfigInfo.animationLoadMode = EAnimationLoadMode::None;
+  modelConfigInfo.animationLoadMode = EAnimationLoadMode::ExtractToManager;
 
   core::world.loadModelFromFile("content/models/wc3guy/scene.gltf", "mdlGuy", &modelConfigInfo);
-  //core::world.loadModelFromFile("content/models/windmill/scene.gltf", "mdlGuy");
+  core::world.loadModelFromFile("content/models/castle/scene.gltf", "mdlCastle");
   //
   
   // create entities
@@ -75,14 +75,12 @@ void core::run() {
   pPawn->setLocation(-3.0f, 0.0f, 2.0f);
 
   AStatic* pStatic = core::actors.createStatic("Skybox");
-  pStatic->setModel(core::world.getModel("mdlSkybox"));
-  core::renderer.bindEntity(pStatic);
-  pStatic->getModel()->getPrimitives()[0]->pMaterial =
-    core::resources.getMaterial("skybox");
+  pStatic->setModel(core::world.getModel(RMDL_SKYBOX));
+  pStatic->bindToRenderer();
   
   pStatic = core::actors.createStatic("Static01");
   pStatic->setModel(core::world.getModel("mdlGuy"));
-  core::renderer.bindEntity(pStatic);
+  pStatic->bindToRenderer();
   pStatic->setLocation(0.0f, -1.0f, -0.3f);
   pStatic->setRotation({0.0f, 1.0f, 0.0f}, glm::radians(100.0f));
   pStatic->setScale(0.32f);
@@ -90,21 +88,22 @@ void core::run() {
   //pStatic->getModel()->bindAnimation("Windy day");
   //pStatic->getModel()->playAnimation("Windy day");
 
-  core::animations.loadAnimation("Idle");
+  //core::animations.loadAnimation("Idle");
   
   pStatic->getModel()->bindAnimation("Idle");
   pStatic->getModel()->playAnimation("Idle");
 
-  pStatic = core::actors.createStatic("Box1");
-  pStatic->setModel(core::world.getModel("mdlBox1"));
-  //core::renderer.bindEntity(pStatic);
-  pStatic->setScale(2.2f);
-  pStatic->setLocation(4.0f, -0.2f, -2.0f);
-  pStatic->setRotation({0.5f, 0.32f, 0.1f});
+  pStatic = core::actors.createStatic("StaticCastle");
+  pStatic->setModel(core::world.getModel("mdlCastle"));
+  pStatic->bindToRenderer();
+  pStatic->setLocation(0.0f, 6.17f, 12.0f);
+  pStatic->setRotation({-0.5f, -0.4f, 0.0f});
+  pStatic->setScale(2.0f);
 
   //core::animations.saveAnimation("SwordAndShieldIdle", "SwordAndShieldIdle");
   //
-  core::renderer.renderView.doEnvironmentPass = true;
+  //core::renderer.renderView.generateEnvironmentMapsImmediate = true;
+  core::renderer.renderView.generateEnvironmentMaps = true;
   // ---------------------------- */
 
   RE_LOG(Log, "Launching main event loop.");
@@ -160,11 +159,19 @@ TResult core::create() {
 
   RE_LOG(Log, "Rendering module successfully initialized.");
 
+  core::resources.initialize();
+  core::world.initialize();
+  core::actors.initialize();
+
   core::renderer.renderInitFrame();
 
-  core::resources.initialize();
   core::input.initialize(core::window.getWindow());
   core::player.initialize();
+
+  
+#ifndef NDEBUG
+  core::renderer.debug_initialize();
+#endif
 
   return chkResult;
 }

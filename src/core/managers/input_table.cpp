@@ -5,6 +5,7 @@ void core::MInput::setDefaultInputs() {
   RE_LOG(Log, "Setting up default input bindings and data.");
 
   // default input bindings
+  // TODO: make input bind <-> input alias configurable and not hardcoded
   m_inputBinds["moveForward"] = GLFW_KEY_W;
   m_inputBinds["moveBack"] = GLFW_KEY_S;
   m_inputBinds["moveLeft"] = GLFW_KEY_A;
@@ -13,6 +14,8 @@ void core::MInput::setDefaultInputs() {
   m_inputBinds["moveDown"] = GLFW_KEY_LEFT_CONTROL;
   m_inputBinds["mouseMode"] = GLFW_KEY_SPACE;
   m_inputBinds["devKey"] = GLFW_KEY_GRAVE_ACCENT;
+  m_inputBinds["F1"] = GLFW_KEY_F1;
+  m_inputBinds["F2"] = GLFW_KEY_F2;
 
   // key aliases
   m_inputAliases["Esc"] = GLFW_KEY_ESCAPE;

@@ -9,6 +9,8 @@ void processMessage(char level, const char* message, ...);
 void validate(TResult result);
 std::string toString(const wchar_t* string);
 std::wstring toWString(const char* string);
+const VkDeviceSize getVulkanAlignedSize(VkDeviceSize originalSize,
+                                        VkDeviceSize minAlignmanet);
 
 template<typename T>
 size_t hash(T input) {
