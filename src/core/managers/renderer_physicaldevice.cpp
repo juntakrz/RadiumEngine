@@ -191,7 +191,7 @@ TResult core::MRenderer::setPhysicalDeviceQueueFamilies(
                                            &queueFamilyPropertyCount,
                                            queueFamilyProperties.data());
 
-  // fill queue family indices data structure
+  // Fill queue family indices data structure
   for (const VkQueueFamilyProperties& queueFamilyProperty :
        queueFamilyProperties) {
     if (queueFamilyProperty.queueFlags & VK_QUEUE_COMPUTE_BIT)

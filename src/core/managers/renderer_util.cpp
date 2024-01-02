@@ -987,6 +987,11 @@ void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
     imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
     break;
 
+    case VK_IMAGE_LAYOUT_GENERAL:
+    imageMemoryBarrier.dstAccessMask =
+        VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+    break;
+
     default:
     /* Value not used by callers, so not supported. */
     assert(KTX_FALSE);

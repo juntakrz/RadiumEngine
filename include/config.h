@@ -18,6 +18,7 @@
 #define RTGT_DEPTH              "RT2D_Depth"        // active camera depth render target
 #define RTGT_SHADOW             "RT2D_Shadow"       // shadow render target (depth)
 #define RTGT_ENVSRC             "RT2D_EnvSrc"       // source texture for environment cubemaps
+#define RTGT_COMPUTE            "RT2D_Compute"      // default compute shader processing target
 
 #define RTGT_ENVFILTER          "RTCube_EnvFilter"
 #define RTGT_ENVIRRAD           "RTCube_EnvIrrad"
@@ -98,7 +99,7 @@ const uint32_t APIversion = VK_API_VERSION_1_3;
 
 // mandatory extensions required by the renderer
 const std::vector<const char*> requiredExtensions = {
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME
 };
 
 const VkFormat formatLDR = VK_FORMAT_B8G8R8A8_SRGB;

@@ -635,6 +635,20 @@ void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer,
   vkCmdEndRenderPass(commandBuffer);
 }
 
+void core::MRenderer::executeDynamicRendering(VkCommandBuffer commandBuffer,
+                                               VkRenderingInfo* pRenderingInfo,
+                                               EPipeline pipeline) {
+  //vkCmdBeginRendering(commandBuffer, pRenderingInfo);
+  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+                    getPipeline(EPipeline::Compute));
+  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+                          getPipelineLayout(EPipelineLayout::Compute), 0, 1,
+                          &compute.computeImageDescriptorSet, 0, nullptr);
+  vkCmdDispatch(commandBuffer, 1280, 720, 1);
+  //drawBoundEntities(commandBuffer, pipeline);
+  //vkCmdEndRendering(commandBuffer);
+}
+
 void core::MRenderer::renderFullscreenQuad(VkCommandBuffer commandBuffer,
                                            EPipelineLayout pipelineLayout,
                                            EPipeline pipeline,
@@ -716,6 +730,28 @@ void core::MRenderer::renderFrame() {
 
   executeRenderPass(cmdBuffer, ERenderPass::Shadow, frameSets, 1);
   executeRenderPass(cmdBuffer, ERenderPass::Deferred, frameSets, 1);
+
+  VkRenderingAttachmentInfo renderingAttachmentInfo{};
+  renderingAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+  renderingAttachmentInfo.imageLayout =
+      compute.pComputeImageTarget->texture.imageLayout;
+  renderingAttachmentInfo.imageView = compute.pComputeImageTarget->texture.view;
+  renderingAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  renderingAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  renderingAttachmentInfo.clearValue = {0.0f, 0.0f, 0.25f, 0.0f};
+
+  VkRenderingInfo renderingInfo{};
+  renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+  renderingInfo.colorAttachmentCount = 1;
+  renderingInfo.layerCount = 1;
+  renderingInfo.renderArea.extent.width =
+      compute.pComputeImageTarget->texture.width;
+  renderingInfo.renderArea.extent.height =
+      compute.pComputeImageTarget->texture.height;
+  renderingInfo.pColorAttachments = &renderingAttachmentInfo;
+
+  executeDynamicRendering(cmdBuffer, &renderingInfo, EPipeline::Compute);
+
   executeRenderPass(cmdBuffer, ERenderPass::Present, frameSets, 1);
 
   // end writing commands and prepare to submit buffer to rendering queue

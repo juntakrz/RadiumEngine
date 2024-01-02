@@ -423,6 +423,34 @@ TResult core::MRenderer::createImageTargets() {
 
   environment.destinationTextures[1] = pNewTexture;
 
+  rtName = RTGT_COMPUTE;
+  textureInfo = RTextureInfo{};
+  textureInfo.name = rtName;
+  textureInfo.width = swapchain.imageExtent.width;
+  textureInfo.height = swapchain.imageExtent.height;
+  textureInfo.asCubemap = false;
+  textureInfo.format = core::vulkan::formatHDR32;
+  textureInfo.layerCount = 1;
+  textureInfo.mipLevels = 1;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                           VK_IMAGE_USAGE_STORAGE_BIT |
+                           VK_IMAGE_USAGE_SAMPLED_BIT;
+
+  pNewTexture = core::resources.createTexture(&textureInfo);
+
+  if (!pNewTexture) {
+    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
+    return RE_CRITICAL;
+  }
+
+  compute.pComputeImageTarget = pNewTexture;
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
+#endif
+
   // set environment push block defaults
   environment.envPushBlock.samples = 32u;
   environment.envPushBlock.roughness = 0.0f;
@@ -826,8 +854,9 @@ TResult core::MRenderer::initialize() {
 
   if (chkResult <= RE_ERRORLIMIT) chkResult = createRenderPasses();           // A
   if (chkResult <= RE_ERRORLIMIT) chkResult = createGraphicsPipelines();      // B
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createDefaultFramebuffers();    // C
-  if (chkResult <= RE_ERRORLIMIT) chkResult = configureRenderPasses();        // tie A, B, C together
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createComputePipelines();       // C
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createDefaultFramebuffers();    // D
+  if (chkResult <= RE_ERRORLIMIT) chkResult = configureRenderPasses();        // tie A, B, C, D together
 
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createUniformBuffers();
@@ -844,6 +873,7 @@ void core::MRenderer::deinitialize() {
   destroySyncObjects();
   destroyCoreCommandBuffers();
   destroyCoreCommandPools();
+  destroyComputePipelines();
   destroyGraphicsPipelines();
   destroyRenderPasses();
   destroySceneBuffers();

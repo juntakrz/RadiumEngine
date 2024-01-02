@@ -23,6 +23,11 @@ class MRenderer {
     std::vector<VkCommandBuffer> buffersTransfer;
   } command;
 
+  struct {
+    RTexture* pComputeImageTarget;
+    VkDescriptorSet computeImageDescriptorSet;
+  } compute;
+
   struct REnvironmentData {
     REnvironmentPCB envPushBlock;
     std::vector<VkDescriptorSet> envDescriptorSets;
@@ -238,6 +243,8 @@ class MRenderer {
 
   TResult createGraphicsPipelines();
   void destroyGraphicsPipelines();
+  TResult createComputePipelines();
+  void destroyComputePipelines();
   VkPipelineLayout& getPipelineLayout(EPipelineLayout type);
   VkPipeline& getPipeline(EPipeline type);
 
@@ -486,6 +493,10 @@ class MRenderer {
  public:
   void executeRenderPass(VkCommandBuffer commandBuffer, ERenderPass passType,
                          VkDescriptorSet* pSceneSets, const uint32_t setCount);
+
+  void executeDynamicRendering(VkCommandBuffer commandBuffer,
+                               VkRenderingInfo* pRenderingInfo,
+                               EPipeline pipeline);
 
   // Pipeline must use a compatible quad drawing vertex shader
   // Scene descriptor set is optional and is required only if fragment shader needs scene data

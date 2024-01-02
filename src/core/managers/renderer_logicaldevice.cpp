@@ -22,6 +22,12 @@ TResult core::MRenderer::initLogicalDevice(
     deviceQueues.emplace_back(queueCreateInfo);
   }
 
+  // Vulkan 1.3: Enabling dynamic rendering
+  VkPhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures{};
+  dynamicRenderingFeatures.sType =
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
+  dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
+
   VkDeviceCreateInfo deviceCreateInfo{};
   deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
   deviceCreateInfo.pQueueCreateInfos = deviceQueues.data();
@@ -35,6 +41,9 @@ TResult core::MRenderer::initLogicalDevice(
   deviceCreateInfo.enabledLayerCount =
       static_cast<uint32_t>(requiredLayers.size());
   deviceCreateInfo.ppEnabledLayerNames = requiredLayers.data();
+
+  //Vulkan 1.3: Enabling dynamic rendering
+  deviceCreateInfo.pNext = &dynamicRenderingFeatures;
 
   if (bRequireValidationLayers) {
     deviceCreateInfo.enabledLayerCount =

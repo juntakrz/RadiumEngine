@@ -60,6 +60,7 @@ enum class EDescriptorSetLayout {
   PBRInput,
   Model,
   Environment,
+  ComputeImage,
   Dummy
 };
 
@@ -73,14 +74,15 @@ enum EPipeline : uint32_t {
   LUTGen            = 0b1,
   EnvFilter         = 0b10,
   EnvIrradiance     = 0b100,
-  Shadow            = 0b1000,
-  Skybox            = 0b10000,
-  OpaqueCullBack    = 0b100000,
-  OpaqueCullNone    = 0b1000000,
-  MaskCullBack      = 0b10000000,
-  BlendCullNone     = 0b100000000,
-  PBR               = 0b1000000000,
-  Present           = 0b10000000000,
+  Compute           = 0b1000,
+  Shadow            = 0b10000,
+  Skybox            = 0b100000,
+  OpaqueCullBack    = 0b1000000,
+  OpaqueCullNone    = 0b10000000,
+  MaskCullBack      = 0b100000000,
+  BlendCullNone     = 0b1000000000,
+  PBR               = 0b10000000000,
+  Present           = 0b100000000000,
 
   // combined pipeline indices for rendering only
   MixEnvironment = EnvFilter + EnvIrradiance
@@ -92,7 +94,8 @@ enum class EPipelineLayout {
   PBR,
   Environment,
   LUTGen,
-  Shadow
+  Shadow,
+  Compute
 };
 
 enum class EPrimitiveType {
@@ -109,7 +112,8 @@ enum class ERenderPass {
   Environment,
   Shadow,
   Deferred,
-  Present
+  Present,
+  Compute
 };
 
 enum class ETransformType { Translation, Rotation, Scale, Weight, Undefined };
