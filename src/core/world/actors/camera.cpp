@@ -22,8 +22,7 @@ const glm::vec4& ACamera::getPerspective() noexcept {
 void ACamera::setOrthographic(float horizontal, float vertical, float nearZ,
                               float farZ) noexcept {
   m_viewData.orthographicData = {horizontal, vertical, nearZ, farZ};
-  m_projection =
-      glm::ortho(-horizontal, horizontal, -vertical, vertical, nearZ, farZ);
+  m_projection = glm::ortho(-horizontal, horizontal, -vertical, vertical, nearZ, farZ);
   m_projectionType = ECameraProjection::Orthogtaphic;
 }
 
@@ -35,6 +34,15 @@ glm::mat4& ACamera::getView() {
 }
 
 glm::mat4& ACamera::getProjection() { return m_projection; }
+
+const glm::mat4& ACamera::getProjectionView() {
+  if (m_transformationData.wasUpdated) {
+    m_projectionView = getProjection() * getView();
+    m_transformationData.wasUpdated = false;
+  }
+
+  return m_projectionView;
+}
 
 ECameraProjection ACamera::getProjectionType() { return m_projectionType; }
 
@@ -75,7 +83,8 @@ void ACamera::setRotation(float x, float y, float z) noexcept {
 }
 
 void ACamera::setRotation(const glm::vec3& newRotation) noexcept {
-  m_pitch = newRotation.x < -config::pitchLimit  ? -config::pitchLimit
+  m_pitch = m_viewData.ignorePitchLimit ? newRotation.x :
+    newRotation.x < -config::pitchLimit  ? -config::pitchLimit
             : newRotation.x > config::pitchLimit ? config::pitchLimit
                                                  : newRotation.x;
 
@@ -130,12 +139,14 @@ void ACamera::rotate(const glm::vec3& vector, float angle) noexcept {
     case 0: {
       float newPitch = m_pitch + realAngle;
 
-      if (newPitch < -config::pitchLimit) {
-        break;
-      }
+      if (!m_viewData.ignorePitchLimit) {
+        if (newPitch < -config::pitchLimit) {
+          break;
+        }
 
-      if (newPitch > config::pitchLimit) {
-        break;
+        if (newPitch > config::pitchLimit) {
+          break;
+        }
       }
 
       m_pitch = newPitch;
@@ -161,6 +172,10 @@ void ACamera::rotate(const glm::vec3& vector, float angle) noexcept {
   updateAttachments();
 }
 
+void ACamera::setIgnorePitchLimit(const bool newValue) {
+  m_viewData.ignorePitchLimit = newValue;
+}
+
 void ACamera::setFOV(float FOV) noexcept {
   if (m_projectionType == ECameraProjection::Orthogtaphic) return;
 
@@ -180,7 +195,7 @@ void ACamera::setAspectRatio(float ratio) noexcept {
 }
 
 void ACamera::setViewBufferIndex(const uint32_t newIndex) {
-  m_ViewBufferIndex = newIndex;
+  m_viewBufferIndex = newIndex;
 }
 
-const uint32_t ACamera::getViewBufferIndex() { return m_ViewBufferIndex; }
+const uint32_t ACamera::getViewBufferIndex() { return m_viewBufferIndex; }

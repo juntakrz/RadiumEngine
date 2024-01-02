@@ -22,12 +22,42 @@ TResult core::MRenderer::initLogicalDevice(
     deviceQueues.emplace_back(queueCreateInfo);
   }
 
+  VkPhysicalDeviceMultiviewFeatures multiviewFeatures{};
+  multiviewFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES;
+  multiviewFeatures.multiview = VK_TRUE;
+  multiviewFeatures.multiviewGeometryShader = VK_FALSE;
+  multiviewFeatures.multiviewTessellationShader = VK_FALSE;
+
+  // Vulkan 1.3: Enabling descriptor indexing
+  VkPhysicalDeviceDescriptorIndexingFeaturesEXT descriptorIndexingFeatures{};
+  descriptorIndexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
+  descriptorIndexingFeatures.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+  descriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
+  descriptorIndexingFeatures.descriptorBindingPartiallyBound = VK_TRUE;
+  descriptorIndexingFeatures.descriptorBindingUpdateUnusedWhilePending = VK_TRUE;
+  descriptorIndexingFeatures.descriptorBindingVariableDescriptorCount = VK_TRUE;
+  descriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind = VK_TRUE;
+  descriptorIndexingFeatures.runtimeDescriptorArray = VK_TRUE;
+  descriptorIndexingFeatures.pNext = &multiviewFeatures;
+
+  // Vulkan 1.3: Enabling buffer device address
+  VkPhysicalDeviceBufferDeviceAddressFeatures bdaFeatures{};
+  bdaFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+  bdaFeatures.bufferDeviceAddress = VK_TRUE;
+  bdaFeatures.pNext = &descriptorIndexingFeatures;
+
+  // Vulkan 1.3: Enabling dynamic rendering
+  VkPhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures{};
+  dynamicRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
+  dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
+  dynamicRenderingFeatures.pNext = &bdaFeatures;
+
   VkDeviceCreateInfo deviceCreateInfo{};
   deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
   deviceCreateInfo.pQueueCreateInfos = deviceQueues.data();
   deviceCreateInfo.queueCreateInfoCount =
       static_cast<uint32_t>(deviceQueues.size());
-  deviceCreateInfo.pEnabledFeatures = &physicalDeviceData.features;
+  deviceCreateInfo.pEnabledFeatures = &physicalDeviceData.deviceFeatures.features;
   deviceCreateInfo.enabledExtensionCount =
       static_cast<uint32_t>(core::vulkan::requiredExtensions.size());
   deviceCreateInfo.ppEnabledExtensionNames =
@@ -36,7 +66,10 @@ TResult core::MRenderer::initLogicalDevice(
       static_cast<uint32_t>(requiredLayers.size());
   deviceCreateInfo.ppEnabledLayerNames = requiredLayers.data();
 
-  if (bRequireValidationLayers) {
+  //Vulkan 1.3: Enabling dynamic rendering
+  deviceCreateInfo.pNext = &dynamicRenderingFeatures;
+
+  if (requireValidationLayers) {
     deviceCreateInfo.enabledLayerCount =
         static_cast<uint32_t>(debug::validationLayers.size());
     deviceCreateInfo.ppEnabledLayerNames = debug::validationLayers.data();
@@ -47,7 +80,7 @@ TResult core::MRenderer::initLogicalDevice(
     RE_LOG(Error,
            "failed to create logical device using "
            "provided physical device: '%s'.",
-           physicalDeviceData.properties.deviceName);
+           physicalDeviceData.deviceProperties.properties.deviceName);
     return RE_ERROR;
   }
 
@@ -73,7 +106,7 @@ TResult core::MRenderer::initLogicalDevice(
 
   RE_LOG(Log,
          "Successfully created logical device for '%s', handle: 0x%016llX.",
-         physicalDeviceData.properties.deviceName, physicalDeviceData.device);
+         physicalDeviceData.deviceProperties.properties.deviceName, physicalDeviceData.device);
   return RE_OK;
 }
 

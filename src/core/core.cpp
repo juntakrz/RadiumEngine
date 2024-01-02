@@ -50,7 +50,7 @@ void core::run() {
 
   RMaterialInfo materialInfo{};
   materialInfo.name = "skybox";
-  materialInfo.pipelineFlags = EPipeline::Skybox | EPipeline::MixEnvironment;
+  materialInfo.passFlags = EDynamicRenderingPass::Skybox | EDynamicRenderingPass::EnvSkybox;
   materialInfo.textures.baseColor = "skyboxCubemap.ktx2";
   core::resources.createMaterial(&materialInfo);
 

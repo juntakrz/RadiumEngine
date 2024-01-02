@@ -94,4 +94,7 @@ void interpolate(const glm::mat4& first, const glm::mat4& second,
 
 float random(float min, float max);
 
+// calculate how many mip levels a square texture may fit
+uint32_t getMipLevels(uint32_t dimension);
+
 }  // namespace math

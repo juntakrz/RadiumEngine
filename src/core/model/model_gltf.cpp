@@ -623,11 +623,6 @@ void WModel::parseMaterials(const std::vector<std::string>& texturePaths) {
           mat.additionalValues.at("emissiveTexture").TextureTexCoord();
     }
 
-    if (mat.values.contains("baseColorFactor")) {
-      materialInfo.baseColorFactor =
-          glm::make_vec4(mat.values.at("baseColorFactor").ColorFactor().data());
-    }
-
     if (mat.values.contains("metallicFactor")) {
       materialInfo.metallicFactor =
           static_cast<float>(mat.values.at("metallicFactor").Factor());
@@ -636,13 +631,6 @@ void WModel::parseMaterials(const std::vector<std::string>& texturePaths) {
     if (mat.values.contains("roughnessFactor")) {
       materialInfo.roughnessFactor =
           static_cast<float>(mat.values.at("roughnessFactor").Factor());
-    }
-
-    if (mat.additionalValues.contains("emissiveFactor")) {
-      materialInfo.emissiveFactor = glm::vec4(
-          glm::make_vec3(
-              mat.additionalValues.at("emissiveFactor").ColorFactor().data()),
-          1.0);
     }
 
     if (mat.additionalValues.contains("alphaMode")) {

@@ -11,25 +11,10 @@
         "variables": [ 75.0, 1.0, 0.001, 1000.0 ]
       }
     },
-
-    "C_Sun": {
-      "name": "C_Sun",
-      "translation": [ 0.0, 0.0, 0.0 ],
-      "rotation": [ 0.0, 0.0, 0.0 ],
-      "mode": {
-        "view": "orthographic",
-        "variables": [ 1.0, 1.0, 0.001, 100.0 ]
-      }
-    },
 	
 	"$ACTIVECAMERA$": {
 	  "name": "$ACTIVECAMERA$",
 	  "activate": "C_Main"
-	},
-	
-	"$SUNCAMERA": {
-	  "name": "$SUNCAMERA$",
-	  "activate": "C_Sun"
 	}
   }
 }

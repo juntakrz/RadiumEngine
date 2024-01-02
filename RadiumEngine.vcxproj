@@ -146,7 +146,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\core\managers\renderer_buffer.cpp" />
+    <ClCompile Include="src\core\managers\renderer_compute.cpp" />
     <ClCompile Include="src\core\managers\renderer_debug.cpp" />
+    <ClCompile Include="src\core\managers\renderer_descriptor.cpp" />
+    <ClCompile Include="src\core\managers\renderer_pass.cpp" />
     <ClCompile Include="src\core\world\actors\light.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
     </ClCompile>
@@ -380,20 +384,21 @@
     <None Include="content\shaders\fs_default.spv" />
     <None Include="content\shaders\shaders" />
     <None Include="content\shaders\vs_default.spv" />
-    <None Include="content_src\shaders\fs_brdfLUT.frag" />
-    <None Include="content_src\shaders\fs_default.frag" />
+    <None Include="content_src\shaders\cs_brdfLUT.comp" />
+    <None Include="content_src\shaders\cs_envFilter.comp" />
+    <None Include="content_src\shaders\cs_envIrrad.comp" />
+    <None Include="content_src\shaders\cs_mipmap16f.comp" />
     <None Include="content_src\shaders\fs_gbuffer.frag" />
-    <None Include="content_src\shaders\fs_envFilter.frag" />
-    <None Include="content_src\shaders\fs_envIrradiance.frag" />
     <None Include="content_src\shaders\fs_pbr.frag" />
     <None Include="content_src\shaders\fs_present.frag" />
     <None Include="content_src\shaders\fs_shadowPass.frag" />
     <None Include="content_src\shaders\fs_skybox.frag" />
+    <None Include="content_src\shaders\gs_shadowPass.geom" />
+    <None Include="content_src\shaders\include\common.glsl" />
     <None Include="content_src\shaders\vs_brdfLUT.vert" />
-    <None Include="content_src\shaders\vs_default.vert" />
     <None Include="content_src\shaders\vs_scene.vert" />
-    <None Include="content_src\shaders\vs_environment.vert" />
     <None Include="content_src\shaders\vs_quad.vert" />
+    <None Include="content_src\shaders\vs_shadowPass.vert" />
     <None Include="content_src\shaders\vs_skybox.vert" />
     <None Include="development\compileShaders_Win_x64_DEBUG.bat" />
     <None Include="development\devconfig.json" />

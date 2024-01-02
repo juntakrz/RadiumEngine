@@ -11,16 +11,16 @@ struct RTexture {
   bool isKTX = false;
   bool isCubemap = false;
 
-  // trying to track how many times texture is assigned to material
+  // Trying to track how many times texture is assigned to material
   // to see if it should be deleted if owning material is deleted
   uint32_t references = 0;
 
-  TResult createImageView();
+  // Texture index in the sampler2D variable index descriptor set
+  uint32_t combinedSamplerIndex = -1;
+
+  TResult createImageViews(const bool createExtraViews = false, const bool createCubemapFaceViews = false);
   TResult createSampler(RSamplerInfo *pSamplerInfo);
   TResult createDescriptor();
+
   ~RTexture();
-};
-
-struct RTextureCube : public RTexture {
-
 };

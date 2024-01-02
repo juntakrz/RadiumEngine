@@ -20,9 +20,9 @@ TResult WModel::createStagingBuffers() {
   VkDeviceSize vertexBufferSize = sizeof(RVertex) * staging.vertices.size();
   VkDeviceSize indexBufferSize = sizeof(uint32_t) * staging.indices.size();
 
-  core::renderer.createBuffer(EBufferMode::STAGING, vertexBufferSize,
+  core::renderer.createBuffer(EBufferType::STAGING, vertexBufferSize,
                               staging.vertexBuffer, staging.vertices.data());
-  core::renderer.createBuffer(EBufferMode::STAGING, indexBufferSize,
+  core::renderer.createBuffer(EBufferType::STAGING, indexBufferSize,
                               staging.indexBuffer, staging.indices.data());
 
   // clear some of the raw staging data

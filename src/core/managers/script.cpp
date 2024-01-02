@@ -86,7 +86,6 @@ void core::MScript::jsonParseCameras(const json* pCameraData) noexcept {
   }
 
   std::string activatedCamera = "";
-  std::string sunCamera = "";
 
   for (const auto& it : pCameraData->at("cameras")) {
     // create camera if it doesn't exist
@@ -97,14 +96,6 @@ void core::MScript::jsonParseCameras(const json* pCameraData) noexcept {
       if (name == "$ACTIVECAMERA$") {
         if (it.contains("activate")) {
           activatedCamera = it.at("activate");
-          continue;
-        }
-      }
-
-      // get sun / shadow projecting camera
-      if (name == "$SUNCAMERA$") {
-        if (it.contains("activate")) {
-          sunCamera = it.at("activate");
           continue;
         }
       }
@@ -148,15 +139,9 @@ void core::MScript::jsonParseCameras(const json* pCameraData) noexcept {
         }
 
         if (it.at("mode").at("view") == "orthographic") {
-          // force aspect ratio to square if it's a shadow casting camera
-          if (newCamera->getName() != sunCamera) {
-            vars[1] *= config::getAspectRatio();
-          }
           newCamera->setOrthographic(vars[0], vars[1], vars[2], vars[3]);
         }
       }
-
-      core::ref.registerActor(name.c_str(), newCamera);
     }
   }
 
@@ -165,10 +150,6 @@ void core::MScript::jsonParseCameras(const json* pCameraData) noexcept {
 
     // TODO: make this a separate thing in a map config
     core::player.controlActor(core::renderer.getCamera());
-  }
-
-  if (sunCamera != "") {
-    core::renderer.setSunCamera(sunCamera.c_str());
   }
 }
 
@@ -222,14 +203,21 @@ void core::MScript::jsonParseLights(const json* pLightData) noexcept {
 
         info.color = {color[0], color[1], color[2]};
       }
+
+      if (it.contains("shadows")) {
+        it.at("shadows").get_to(info.isShadowCaster);
+      }
     }
   }
 
   for (int32_t i = 0; i < lightNames.size(); ++i) {
-    core::actors.createLight(lightNames[i].c_str(), &lightInfo[i]);
-  }
+    ALight* pNewLight = core::actors.createLight(lightNames[i].c_str(), &lightInfo[i]);
 
-  core::renderer.queueLightingUBOUpdate();
+    if (pNewLight->isShadowCaster()) {
+      core::renderer.setSunCamera(pNewLight);
+      core::actors.setSunLight(pNewLight);
+    }
+  }
 }
 
 void core::MScript::jsonParseObjects(const json* objectData) noexcept {}
