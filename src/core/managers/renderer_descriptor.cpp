@@ -3,6 +3,62 @@
 #include "core/managers/resources.h"
 #include "core/managers/renderer.h"
 
+TResult core::MRenderer::createDescriptorPool() {
+  RE_LOG(Log, "Creating descriptor pool.");
+
+  // the number of descriptors in the given pool per set/layout type
+  std::vector<VkDescriptorPoolSize> poolSizes;
+  poolSizes.resize(3);
+
+  // model view projection matrix
+  poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+  // model nodes
+  // TODO: rewrite so that descriptorCounts are calculated without hardcoding
+  poolSizes[0].descriptorCount += 2000 * MAX_FRAMES_IN_FLIGHT;
+
+  // materials and textures
+  // TODO: rewrite so that descriptorCounts are calculated by objects/textures
+  // using map data e.g. max textures that are going to be loaded
+  poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  poolSizes[1].descriptorCount = 2000 * MAX_FRAMES_IN_FLIGHT;
+
+  // compute image descriptors
+  poolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+  poolSizes[2].descriptorCount = 10;
+
+  uint32_t maxSets = 0;
+  for (uint8_t i = 0; i < poolSizes.size(); ++i) {
+    maxSets += poolSizes[i].descriptorCount;
+  }
+  maxSets += 100;  // descriptor set headroom
+
+  VkDescriptorPoolCreateInfo poolInfo{};
+  poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+  poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+  poolInfo.pPoolSizes = poolSizes.data();
+  poolInfo.maxSets = maxSets;
+  poolInfo.flags = 0;
+
+  if (vkCreateDescriptorPool(logicalDevice.device, &poolInfo, nullptr,
+                             &system.descriptorPool) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to create descriptor pool.");
+    return RE_CRITICAL;
+  }
+
+  return RE_OK;
+}
+
+void core::MRenderer::destroyDescriptorPool() {
+  RE_LOG(Log, "Destroying descriptor pool.");
+  vkDestroyDescriptorPool(logicalDevice.device, system.descriptorPool, nullptr);
+}
+
+const VkDescriptorPool core::MRenderer::getDescriptorPool() {
+  return system.descriptorPool;
+}
+
 TResult core::MRenderer::createDescriptorSetLayouts() {
   // layout: shader binding / descriptor type / count / shader stage / immutable
   // samplers
@@ -210,9 +266,19 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
     system.descriptorSetLayouts.emplace(EDescriptorSetLayout::ComputeImage,
                                         VK_NULL_HANDLE);
 
-    std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
-        {0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1,
-         VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}};
+    // make compute image pipeline support RE_MAXCOMPUTEIMAGES
+    std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings(
+        RE_MAXCOMPUTEIMAGES);
+
+    for (uint8_t i = 0; i < RE_MAXCOMPUTEIMAGES; ++i) {
+      setLayoutBindings[i] = {
+        i,
+        VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+        1,
+        VK_SHADER_STAGE_COMPUTE_BIT,
+        nullptr
+      };
+    }
 
     VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
     setLayoutCreateInfo.sType =
@@ -239,6 +305,11 @@ void core::MRenderer::destroyDescriptorSetLayouts() {
   for (auto& it : system.descriptorSetLayouts) {
     vkDestroyDescriptorSetLayout(logicalDevice.device, it.second, nullptr);
   }
+}
+
+const VkDescriptorSetLayout core::MRenderer::getDescriptorSetLayout(
+    EDescriptorSetLayout type) const {
+  return system.descriptorSetLayouts.at(type);
 }
 
 TResult core::MRenderer::createDescriptorSets() {
@@ -562,26 +633,39 @@ TResult core::MRenderer::createDescriptorSets() {
       RE_LOG(Error, "Failed to allocate descriptor set for PBR input subpass.");
       return RE_CRITICAL;
     };
-
-    std::vector<VkDescriptorImageInfo> imageDescriptors;
-    imageDescriptors.emplace_back(compute.pImageTarget->texture.descriptor);
-
-    // write retrieved data to newly allocated descriptor set
-    std::vector<VkWriteDescriptorSet> writeDescriptorSets;
-    uint32_t writeSize = static_cast<uint32_t>(imageDescriptors.size());
-    writeDescriptorSets.resize(writeSize);
-
-    for (uint32_t i = 0; i < writeSize; ++i) {
-      writeDescriptorSets[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-      writeDescriptorSets[i].dstSet = compute.imageDescriptorSet;
-      writeDescriptorSets[i].dstBinding = i;
-      writeDescriptorSets[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-      writeDescriptorSets[i].descriptorCount = 1;
-      writeDescriptorSets[i].pImageInfo = &imageDescriptors[i];
-    }
-
-    vkUpdateDescriptorSets(core::renderer.logicalDevice.device, writeSize,
-                           writeDescriptorSets.data(), 0, nullptr);
   }
   return RE_OK;
+}
+
+void core::MRenderer::updateComputeDescriptorSet(
+    std::vector<RTexture*>* pInImages) {
+  if (!pInImages || pInImages->size() > RE_MAXCOMPUTEIMAGES ||
+      pInImages->size() < 1) {
+    RE_LOG(Error,
+           "Couldn't update compute image descriptor set. Invalid data was "
+           "provided.");
+    return;
+  }
+
+  compute.pImages = *pInImages;
+
+  uint32_t writeSize = static_cast<uint32_t>(compute.pImages.size());
+  std::vector<VkWriteDescriptorSet> writeDescriptorSets;
+  writeDescriptorSets.resize(writeSize);
+
+  for (uint32_t i = 0; i < writeSize; ++i) {
+    writeDescriptorSets[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeDescriptorSets[i].dstSet = compute.imageDescriptorSet;
+    writeDescriptorSets[i].dstBinding = i;
+    writeDescriptorSets[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    writeDescriptorSets[i].descriptorCount = 1;
+    writeDescriptorSets[i].pImageInfo = &compute.pImages[i]->texture.descriptor;
+  }
+
+  vkUpdateDescriptorSets(core::renderer.logicalDevice.device, writeSize,
+                         writeDescriptorSets.data(), 0, nullptr);
+
+  // the workgroup size is always determined by the leading image
+  compute.imageExtent.width = compute.pImages[0]->texture.width;
+  compute.imageExtent.height = compute.pImages[0]->texture.height;
 }

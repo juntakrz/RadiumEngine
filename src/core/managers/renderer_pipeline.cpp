@@ -58,13 +58,7 @@ TResult core::MRenderer::createDefaultFramebuffers() {
   }
 
   // framebuffer for rendering environment map source
-  if (chkResult = createFramebuffer(ERenderPass::Environment, {RTGT_ENVSRC},
-                                    RFB_ENV) != RE_OK) {
-    return chkResult;
-  };
-
-  // framebuffer for generating and storing LUT map
-  return createFramebuffer(ERenderPass::LUTGen, {RTGT_LUTMAP}, RFB_LUT);
+  return createFramebuffer(ERenderPass::Environment, {RTGT_ENVSRC}, RFB_ENV);
 }
 
 TResult core::MRenderer::createRenderPasses() {
@@ -169,20 +163,6 @@ TResult core::MRenderer::createRenderPasses() {
   colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-  newRenderPass = createRenderPass(logicalDevice.device, 1, &colorAttachment,
-                                   nullptr, passType);
-  system.renderPasses.at(passType).renderPass = newRenderPass;
-  system.renderPasses.at(passType).clearValues =
-      fGetClearValues(clearColor, 1, clearDepth);
-
-  //
-  // BRDF LUT render pass
-  //
-  passType = ERenderPass::LUTGen;
-  system.renderPasses.emplace(passType, RRenderPass{});
-  RE_LOG(Log, "Creating render pass E%d", passType);
-
-  colorAttachment.format = core::vulkan::formatLUT;
   newRenderPass = createRenderPass(logicalDevice.device, 1, &colorAttachment,
                                    nullptr, passType);
   system.renderPasses.at(passType).renderPass = newRenderPass;
@@ -384,38 +364,11 @@ TResult core::MRenderer::createPipelineLayouts() {
     return RE_CRITICAL;
   }
 
-  // pipeline layout for generating BRDF LUT map
-#ifndef NDEBUG
-  RE_LOG(Log, "Creating pipeline layout for \"BRDF LUT\".");
-#endif
-
-  layoutType = EPipelineLayout::LUTGen;
-  system.layouts.emplace(layoutType, VK_NULL_HANDLE);
-
-  descriptorSetLayouts.clear();
-  descriptorSetLayouts = {getDescriptorSetLayout(EDescriptorSetLayout::Dummy)};
-
-  layoutInfo = VkPipelineLayoutCreateInfo{};
-  layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-  layoutInfo.setLayoutCount =
-      static_cast<uint32_t>(descriptorSetLayouts.size());
-  layoutInfo.pSetLayouts = descriptorSetLayouts.data();
-  layoutInfo.pushConstantRangeCount = 0;
-  layoutInfo.pPushConstantRanges = nullptr;
-
-  if (vkCreatePipelineLayout(logicalDevice.device, &layoutInfo, nullptr,
-                             &getPipelineLayout(layoutType)) != VK_SUCCESS) {
-    RE_LOG(Critical,
-           "Failed to create \"BRDF LUT generator\" pipeline layout.");
-
-    return RE_CRITICAL;
-  }
-
 #ifndef NDEBUG
   RE_LOG(Log, "Creating pipeline layout for \"Compute Image\".");
 #endif
 
-  layoutType = EPipelineLayout::Compute;
+  layoutType = EPipelineLayout::ComputeImage;
   system.layouts.emplace(layoutType, VK_NULL_HANDLE);
 
   descriptorSetLayouts.clear();
@@ -579,19 +532,19 @@ TResult core::MRenderer::createComputePipelines() {
   system.computePipelines.emplace(EComputePipeline::ImageLUT, VK_NULL_HANDLE);
 
   VkPipelineShaderStageCreateInfo shaderStage =
-      loadShader("cs_test.spv", VK_SHADER_STAGE_COMPUTE_BIT);
+      loadShader("cs_brdfLUT.spv", VK_SHADER_STAGE_COMPUTE_BIT);
 
   // 'Compute Image' pipeline
   VkPipelineRenderingCreateInfo pipelineRenderingInfo{};
   pipelineRenderingInfo.sType =
       VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
   pipelineRenderingInfo.colorAttachmentCount = 1;
-  pipelineRenderingInfo.pColorAttachmentFormats = &core::vulkan::formatHDR32;
+  pipelineRenderingInfo.pColorAttachmentFormats = &core::vulkan::formatLUT;
   pipelineRenderingInfo.viewMask = 0;
 
   VkComputePipelineCreateInfo computePipelineInfo{};
   computePipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-  computePipelineInfo.layout = getPipelineLayout(EPipelineLayout::Compute);
+  computePipelineInfo.layout = getPipelineLayout(EPipelineLayout::ComputeImage);
   computePipelineInfo.stage = shaderStage;
   computePipelineInfo.flags = 0;
 

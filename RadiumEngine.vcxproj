@@ -381,8 +381,7 @@
     <None Include="content\shaders\fs_default.spv" />
     <None Include="content\shaders\shaders" />
     <None Include="content\shaders\vs_default.spv" />
-    <None Include="content_src\shaders\cs_test.comp" />
-    <None Include="content_src\shaders\fs_brdfLUT.frag" />
+    <None Include="content_src\shaders\cs_brdfLUT.comp" />
     <None Include="content_src\shaders\fs_default.frag" />
     <None Include="content_src\shaders\fs_gbuffer.frag" />
     <None Include="content_src\shaders\fs_envFilter.frag" />

@@ -24,9 +24,9 @@ class MRenderer {
   } command;
 
   struct {
-    RTexture* pImageTarget;               // Switchable image target
-    VkDescriptorSet imageDescriptorSet;   // should be written to this descriptor upon change
-    VkExtent2D imageExtent;               // and its extent updated before executing image compute pass
+    std::vector<RTexture*> pImages;
+    VkDescriptorSet imageDescriptorSet;
+    VkExtent2D imageExtent;
   } compute;
 
   struct REnvironmentData {
@@ -175,10 +175,6 @@ class MRenderer {
   TResult createSceneBuffers();
   void destroySceneBuffers();
 
-  // TODO: improve pool size calculations using loaded map data
-  TResult createDescriptorPool();
-  void destroyDescriptorPool();
-
   TResult createUniformBuffers();
   void destroyUniformBuffers();
 
@@ -213,10 +209,6 @@ class MRenderer {
   TResult initialize();
   void deinitialize();
 
-  const VkDescriptorSetLayout getDescriptorSetLayout(
-      EDescriptorSetLayout type) const;
-  const VkDescriptorPool getDescriptorPool();
-
   // returns descriptor set used by the current frame in flight by default
   const VkDescriptorSet getDescriptorSet(uint32_t frameInFlight = -1);
 
@@ -228,13 +220,28 @@ class MRenderer {
   void updateLightingUBO(const int32_t frameIndex);
 
   //
-  // ***PIPELINE
+  // ***DESCRIPTORS
   //
+
+  // TODO: improve pool size calculations using loaded map data
+  TResult createDescriptorPool();
+  void destroyDescriptorPool();
+  const VkDescriptorPool getDescriptorPool();
 
   TResult createDescriptorSetLayouts();
   void destroyDescriptorSetLayouts();
 
+  const VkDescriptorSetLayout getDescriptorSetLayout(
+      EDescriptorSetLayout type) const;
+
   TResult createDescriptorSets();
+
+  // Update compute descriptor set for processing/generating images
+  void updateComputeDescriptorSet(std::vector<RTexture*>* pInImages);
+
+  //
+  // ***PIPELINE
+  //
 
   TResult createDefaultFramebuffers();
 
@@ -497,13 +504,15 @@ class MRenderer {
   // Generates BRDF LUT map
   void generateLUTMap();
 
- public:
   void executeRenderPass(VkCommandBuffer commandBuffer, ERenderPass passType,
                          VkDescriptorSet* pSceneSets, const uint32_t setCount);
 
   void executeDynamicRendering(VkCommandBuffer commandBuffer,
                                VkRenderingInfo* pRenderingInfo,
                                EPipeline pipeline);
+
+  void executeComputeImage(VkCommandBuffer commandBuffer,
+                           EComputePipeline pipeline);
 
   // Pipeline must use a compatible quad drawing vertex shader
   // Scene descriptor set is optional and is required only if fragment shader needs scene data
@@ -513,6 +522,7 @@ class MRenderer {
                             VkDescriptorSet* pSceneSet = nullptr,
                             uint32_t sceneDynamicOffset = 0u);
 
+ public:
   void renderFrame();
   void renderInitFrame();
 

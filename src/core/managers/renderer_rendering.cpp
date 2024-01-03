@@ -464,66 +464,49 @@ void core::MRenderer::renderEnvironmentMapsSequenced(
 }
 
 void core::MRenderer::generateLUTMap() {
+  RE_LOG(Log, "Generating BRDF LUT map to '%s' texture.", RTGT_LUTMAP);
+
   core::time.tickTimer();
 
-  RRenderPass* pRenderPass = getRenderPass(ERenderPass::LUTGen);
-  renderView.pCurrentRenderPass = pRenderPass;
-
-  system.renderPassBeginInfo.renderPass = getVkRenderPass(ERenderPass::LUTGen);
-  system.renderPassBeginInfo.framebuffer =
-      system.framebuffers.at(RFB_LUT).framebuffer;
-  system.renderPassBeginInfo.renderArea.extent = {core::vulkan::LUTExtent,
-                                                  core::vulkan::LUTExtent};
-  system.renderPassBeginInfo.pClearValues =
-      renderView.pCurrentRenderPass->clearValues.data();
-  system.renderPassBeginInfo.clearValueCount =
-      static_cast<uint32_t>(renderView.pCurrentRenderPass->clearValues.size());
-
   RTexture* pLUTTexture = core::resources.getTexture(RTGT_LUTMAP);
+  std::vector<RTexture*> pTextures;
+  pTextures.emplace_back(pLUTTexture);
+  updateComputeDescriptorSet(&pTextures);
 
-  VkImageSubresourceRange subresourceRange{};
-  subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  subresourceRange.baseArrayLayer = 0;
-  subresourceRange.layerCount = pLUTTexture->texture.layerCount;
-  subresourceRange.baseMipLevel = 0;
-  subresourceRange.levelCount = pLUTTexture->texture.levelCount;
+  VkCommandBuffer commandBuffer = createCommandBuffer(
+      ECmdType::Compute, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
+  executeComputeImage(commandBuffer, EComputePipeline::ImageLUT);
 
-  VkViewport viewport{};
-  viewport.width = core::vulkan::LUTExtent;
-  viewport.height = -viewport.width;
-  viewport.y = viewport.width;
-  viewport.minDepth = 0.0f;
-  viewport.maxDepth = 1.0f;
+  VkImageSubresourceRange subRange{};
+  subRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  subRange.baseArrayLayer = 0;
+  subRange.layerCount = 1;
+  subRange.baseMipLevel = 0;
+  subRange.levelCount = 1;
 
-  VkRect2D scissor{};
-  scissor.extent = system.renderPassBeginInfo.renderArea.extent;
-  scissor.offset = {0, 0};
+  setImageLayout(commandBuffer, pLUTTexture,
+                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subRange);
 
-  VkCommandBuffer cmdBuffer = createCommandBuffer(
-      ECmdType::Graphics, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
+  flushCommandBuffer(commandBuffer, ECmdType::Compute, true, false);
 
-  vkCmdBeginRenderPass(cmdBuffer, &system.renderPassBeginInfo,
-                       VK_SUBPASS_CONTENTS_INLINE);
+  // update renderer descriptor sets to use texture as LUT source
+  for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+    VkWriteDescriptorSet writeDescriptorSet{};
+    writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeDescriptorSet.descriptorType =
+        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    writeDescriptorSet.descriptorCount = 1;
+    writeDescriptorSet.dstSet = core::renderer.getDescriptorSet(i);
+    writeDescriptorSet.dstBinding = 4;
+    writeDescriptorSet.pImageInfo =
+        &core::resources.getTexture(RTGT_LUTMAP)->texture.descriptor;
 
-  vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
-  vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
-
-  vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    getGraphicsPipeline(EPipeline::LUTGen));
-
-  vkCmdDraw(cmdBuffer, 3, 1, 0, 0);
-
-  vkCmdEndRenderPass(cmdBuffer);
-
-  setImageLayout(cmdBuffer, pLUTTexture,
-                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subresourceRange);
-
-  flushCommandBuffer(cmdBuffer, ECmdType::Graphics, true, true);
+    vkUpdateDescriptorSets(core::renderer.logicalDevice.device, 1,
+                           &writeDescriptorSet, 0, nullptr);
+  }
 
   float timeSpent = core::time.tickTimer();
-
-  // fix this
-  RE_LOG(Log, "Generating BRDF LUT map took %.2f milliseconds.", timeSpent);
+  RE_LOG(Log, "Generating BRDF LUT map took %.3f milliseconds.", timeSpent);
 }
 
 void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer,
@@ -639,14 +622,21 @@ void core::MRenderer::executeDynamicRendering(VkCommandBuffer commandBuffer,
                                                VkRenderingInfo* pRenderingInfo,
                                                EPipeline pipeline) {
   //vkCmdBeginRendering(commandBuffer, pRenderingInfo);
-  /*vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
-                    getComputePipeline(EComputePipeline::ImageLUT));
-  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
-                          getPipelineLayout(EPipelineLayout::Compute), 0, 1,
-                          &compute.imageDescriptorSet, 0, nullptr);
-  vkCmdDispatch(commandBuffer, 1280, 720, 1);*/
   //drawBoundEntities(commandBuffer, pipeline);
   //vkCmdEndRendering(commandBuffer);
+}
+
+void core::MRenderer::executeComputeImage(VkCommandBuffer commandBuffer,
+                                          EComputePipeline pipeline) {
+  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+                    getComputePipeline(pipeline));
+  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+                          getPipelineLayout(EPipelineLayout::ComputeImage), 0, 1,
+                          &compute.imageDescriptorSet, 0, nullptr);
+  vkCmdDispatch(
+      commandBuffer,
+      compute.imageExtent.width / core::vulkan::computeGroupCountX_2D,
+      compute.imageExtent.height / core::vulkan::computeGroupCountY_2D, 1);
 }
 
 void core::MRenderer::renderFullscreenQuad(VkCommandBuffer commandBuffer,
@@ -731,24 +721,24 @@ void core::MRenderer::renderFrame() {
   executeRenderPass(cmdBuffer, ERenderPass::Shadow, frameSets, 1);
   executeRenderPass(cmdBuffer, ERenderPass::Deferred, frameSets, 1);
 
-  VkRenderingAttachmentInfo renderingAttachmentInfo{};
-  renderingAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-  renderingAttachmentInfo.imageLayout =
-      compute.pImageTarget->texture.imageLayout;
-  renderingAttachmentInfo.imageView = compute.pImageTarget->texture.view;
-  renderingAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-  renderingAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-  renderingAttachmentInfo.clearValue = {0.0f, 0.0f, 0.25f, 0.0f};
+  //VkRenderingAttachmentInfo renderingAttachmentInfo{};
+  //renderingAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+  //renderingAttachmentInfo.imageLayout =
+  //    compute.pImageTarget->texture.imageLayout;
+  //renderingAttachmentInfo.imageView = compute.pImageTarget->texture.view;
+  //renderingAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  //renderingAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  //renderingAttachmentInfo.clearValue = {0.0f, 0.0f, 0.25f, 0.0f};
 
-  VkRenderingInfo renderingInfo{};
-  renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-  renderingInfo.colorAttachmentCount = 1;
-  renderingInfo.layerCount = 1;
-  renderingInfo.renderArea.extent.width =
-      compute.pImageTarget->texture.width;
-  renderingInfo.renderArea.extent.height =
-      compute.pImageTarget->texture.height;
-  renderingInfo.pColorAttachments = &renderingAttachmentInfo;
+  //VkRenderingInfo renderingInfo{};
+  //renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+  //renderingInfo.colorAttachmentCount = 1;
+  //renderingInfo.layerCount = 1;
+  //renderingInfo.renderArea.extent.width =
+  //    compute.pImageTarget->texture.width;
+  //renderingInfo.renderArea.extent.height =
+  //    compute.pImageTarget->texture.height;
+  //renderingInfo.pColorAttachments = &renderingAttachmentInfo;
 
   //executeDynamicRendering(cmdBuffer, &renderingInfo, EPipeline::Compute);
 
@@ -825,7 +815,7 @@ void core::MRenderer::renderFrame() {
 }
 
 void core::MRenderer::renderInitFrame() {
-  //generateLUTMap();
+  generateLUTMap();
   renderFrame();
 }
 

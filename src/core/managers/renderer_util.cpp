@@ -897,6 +897,7 @@ void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
   // layout before it will be transitioned to the new layout.
   switch (oldLayout) {
     case VK_IMAGE_LAYOUT_UNDEFINED:
+    case VK_IMAGE_LAYOUT_GENERAL:
     // Image layout is undefined (or does not matter).
     // Only valid as initial layout. No flags required.
     imageMemoryBarrier.srcAccessMask = 0;

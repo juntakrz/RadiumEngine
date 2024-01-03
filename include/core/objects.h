@@ -76,17 +76,16 @@ enum class ELightType {
 
 enum EPipeline : uint32_t {
   Null              = 0,
-  LUTGen            = 0b1,
-  EnvFilter         = 0b10,
-  EnvIrradiance     = 0b100,
-  Shadow            = 0b1000,
-  Skybox            = 0b10000,
-  OpaqueCullBack    = 0b100000,
-  OpaqueCullNone    = 0b1000000,
-  MaskCullBack      = 0b10000000,
-  BlendCullNone     = 0b100000000,
-  PBR               = 0b1000000000,
-  Present           = 0b10000000000,
+  EnvFilter         = 0b1,
+  EnvIrradiance     = 0b10,
+  Shadow            = 0b100,
+  Skybox            = 0b1000,
+  OpaqueCullBack    = 0b10000,
+  OpaqueCullNone    = 0b100000,
+  MaskCullBack      = 0b1000000,
+  BlendCullNone     = 0b10000000,
+  PBR               = 0b100000000,
+  Present           = 0b1000000000,
 
   // combined pipeline indices for rendering only
   MixEnvironment = EnvFilter + EnvIrradiance
@@ -97,9 +96,8 @@ enum class EPipelineLayout {
   Scene,
   PBR,
   Environment,
-  LUTGen,
   Shadow,
-  Compute
+  ComputeImage
 };
 
 enum class EPrimitiveType {
@@ -112,12 +110,10 @@ enum class EPrimitiveType {
 
 enum class ERenderPass {
   Null,
-  LUTGen,
   Environment,
   Shadow,
   Deferred,
-  Present,
-  Compute
+  Present
 };
 
 enum class ETransformType { Translation, Rotation, Scale, Weight, Undefined };

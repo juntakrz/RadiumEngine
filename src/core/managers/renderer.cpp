@@ -176,56 +176,6 @@ core::MRenderer::RSceneBuffers* core::MRenderer::getSceneBuffers() {
   return &scene;
 }
 
-TResult core::MRenderer::createDescriptorPool() {
-  RE_LOG(Log, "Creating descriptor pool.");
-
-  // the number of descriptors in the given pool per set/layout type
-  std::vector<VkDescriptorPoolSize> poolSizes;
-  poolSizes.resize(3);
-
-  // model view projection matrix
-  poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-
-  // materials and textures
-  // TODO: rewrite so that descriptorCounts are calculated by objects/textures
-  // using map data e.g. max textures that are going to be loaded
-  poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-  poolSizes[1].descriptorCount = 2000 * MAX_FRAMES_IN_FLIGHT;
-
-  // model nodes
-  // TODO: rewrite so that descriptorCounts are calculated by objects/textures
-  // using map data e.g. max unique model nodes that are going to be loaded
-  poolSizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  poolSizes[2].descriptorCount = 2000 * MAX_FRAMES_IN_FLIGHT;
-
-  uint32_t maxSets = 0;
-  for (uint8_t i = 0; i < poolSizes.size(); ++i) {
-    maxSets += poolSizes[i].descriptorCount;
-  }
-  maxSets += 100;  // descriptor set headroom
-
-  VkDescriptorPoolCreateInfo poolInfo{};
-  poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-  poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
-  poolInfo.pPoolSizes = poolSizes.data();
-  poolInfo.maxSets = maxSets;
-  poolInfo.flags = 0;
-
-  if (vkCreateDescriptorPool(logicalDevice.device, &poolInfo, nullptr,
-                             &system.descriptorPool) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create descriptor pool.");
-    return RE_CRITICAL;
-  }
-
-  return RE_OK;
-}
-
-void core::MRenderer::destroyDescriptorPool() {
-  RE_LOG(Log, "Destroying descriptor pool.");
-  vkDestroyDescriptorPool(logicalDevice.device, system.descriptorPool, nullptr);
-}
-
 TResult core::MRenderer::createUniformBuffers() {
   // TODO: dynamic uniform buffers with an offset tied to frame in flight
   view.modelViewProjectionBuffers.resize(MAX_FRAMES_IN_FLIGHT);
@@ -332,31 +282,6 @@ TResult core::MRenderer::createImageTargets() {
 
   environment.pSourceTexture = pNewTexture;
 
-  // target for BRDF LUT generation
-  rtName = RTGT_LUTMAP;
-
-  textureInfo.name = rtName;
-  textureInfo.width = core::vulkan::LUTExtent;
-  textureInfo.height = textureInfo.width;
-  textureInfo.format = core::vulkan::formatLUT;
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-  textureInfo.usageFlags =
-      VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-  textureInfo.usageFlags =
-      VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-  pNewTexture = core::resources.createTexture(&textureInfo);
-
-  if (!pNewTexture) {
-    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
-    return RE_CRITICAL;
-  }
-
-#ifndef NDEBUG
-  RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
-#endif
-
   // default cubemap texture as a copy target
   rtName = RTGT_ENVFILTER;
   uint32_t dimension = core::vulkan::envFilterExtent;
@@ -445,7 +370,28 @@ TResult core::MRenderer::createImageTargets() {
     return RE_CRITICAL;
   }
 
-  compute.pImageTarget = pNewTexture;
+#ifndef NDEBUG
+  RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
+#endif
+
+  // target for BRDF LUT generation
+  rtName = RTGT_LUTMAP;
+
+  textureInfo.name = rtName;
+  textureInfo.width = core::vulkan::LUTExtent;
+  textureInfo.height = textureInfo.width;
+  textureInfo.format = core::vulkan::formatLUT;
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_STORAGE_BIT |
+                           VK_IMAGE_USAGE_SAMPLED_BIT;
+
+  pNewTexture = core::resources.createTexture(&textureInfo);
+
+  if (!pNewTexture) {
+    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
+    return RE_CRITICAL;
+  }
 
 #ifndef NDEBUG
   RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
@@ -891,14 +837,6 @@ void core::MRenderer::deinitialize() {
   if(bRequireValidationLayers) MDebug::get().destroy(APIInstance);
   destroyLogicalDevice();
   destroyInstance();
-}
-
-const VkDescriptorSetLayout core::MRenderer::getDescriptorSetLayout(EDescriptorSetLayout type) const {
-  return system.descriptorSetLayouts.at(type);
-}
-
-const VkDescriptorPool core::MRenderer::getDescriptorPool() {
-  return system.descriptorPool;
 }
 
 const VkDescriptorSet core::MRenderer::getDescriptorSet(

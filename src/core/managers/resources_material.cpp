@@ -19,7 +19,7 @@ void core::MResources::initialize() {
   loadTexture("default/default_occlusion.ktx2", &samplerInfo);
   loadTexture(RE_BLACKTEXTURE, &samplerInfo);
   loadTexture(RE_WHITETEXTURE, &samplerInfo);
-  loadTexture("default/brdfLUT.ktx2", &samplerInfo);
+  //loadTexture("default/brdfLUT.ktx2", &samplerInfo);
 
   // create default material
   RMaterialInfo materialInfo{};
@@ -51,24 +51,6 @@ void core::MResources::initialize() {
     RE_LOG(Critical, "Failed to create Vulkan present material.");
 
     return;
-  }
-
-  // TODO / HACK: fix brdfLUT generation
-
-  // update renderer descriptor sets to use texture as LUT source
-  for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-    VkWriteDescriptorSet writeDescriptorSet{};
-    writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeDescriptorSet.descriptorType =
-        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    writeDescriptorSet.descriptorCount = 1;
-    writeDescriptorSet.dstSet = core::renderer.getDescriptorSet(i);
-    writeDescriptorSet.dstBinding = 4;
-    writeDescriptorSet.pImageInfo =
-        &core::resources.getTexture("default/brdfLUT.ktx2")->texture.descriptor;
-
-    vkUpdateDescriptorSets(core::renderer.logicalDevice.device, 1,
-                           &writeDescriptorSet, 0, nullptr);
   }
 }
 

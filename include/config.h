@@ -12,7 +12,6 @@
 #define RFB_SHADOW              "FB_Shadow"
 #define RFB_DEFERRED            "FB_Deferred"       // generate G-buffer textures and do PBR
 #define RFB_ENV                 "FB_Env"
-#define RFB_LUT                 "FB_Lut"
 
 // render targets
 #define RTGT_DEPTH              "RT2D_Depth"        // active camera depth render target
@@ -22,7 +21,7 @@
 
 #define RTGT_ENVFILTER          "RTCube_EnvFilter"
 #define RTGT_ENVIRRAD           "RTCube_EnvIrrad"
-#define RTGT_LUTMAP             "RTCube_EnvLUT"
+#define RTGT_LUTMAP             "RT2D_EnvLUT"
 
 #define RTGT_GPOSITION          "RT2D_GPosition"    // fragment world space position output
 #define RTGT_GDIFFUSE           "RT2D_GDiffuse"     // diffuse output
@@ -116,6 +115,8 @@ const VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 constexpr uint8_t maxFramesInFlight = MAX_FRAMES_IN_FLIGHT;
 extern VkDeviceSize minBufferAlignment;
 constexpr bool applyGLTFLeftHandedFix = false;    // currently ok for static models, but has issues with skin
+constexpr uint32_t computeGroupCountX_2D = 8u;    // NVidia GPUs do 32 groups per wave
+constexpr uint32_t computeGroupCountY_2D = 4u;    // AMD's do 64, using one size fits all
 
 }
 }  // namespace core

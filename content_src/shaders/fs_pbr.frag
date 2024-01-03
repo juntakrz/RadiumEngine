@@ -96,7 +96,7 @@ vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, 
 	float lod = (roughness * 16.0);
 
 	// retrieve a scale and bias to F0
-	vec3 brdf = (texture(BRDFLUTMap, vec2(NdotV, 1.0 - roughness))).rgb;
+	vec2 brdf = (texture(BRDFLUTMap, vec2(NdotV, 1.0 - roughness))).rg;
 	vec3 diffuseLight = tonemap(texture(irradianceMap, n)).rgb;
 	vec3 specularLight = tonemap(textureLod(prefilteredMap, reflection, lod)).rgb;
 
