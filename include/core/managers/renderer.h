@@ -24,8 +24,9 @@ class MRenderer {
   } command;
 
   struct {
-    RTexture* pComputeImageTarget;
-    VkDescriptorSet computeImageDescriptorSet;
+    RTexture* pImageTarget;               // Switchable image target
+    VkDescriptorSet imageDescriptorSet;   // should be written to this descriptor upon change
+    VkExtent2D imageExtent;               // and its extent updated before executing image compute pass
   } compute;
 
   struct REnvironmentData {
@@ -95,7 +96,8 @@ class MRenderer {
   // render system data - passes, pipelines, mesh data to render
   struct {
     std::unordered_map<EPipelineLayout, VkPipelineLayout> layouts;
-    std::unordered_map<EPipeline, VkPipeline> pipelines;
+    std::unordered_map<EPipeline, VkPipeline> graphicsPipelines;
+    std::unordered_map<EComputePipeline, VkPipeline> computePipelines;
     std::unordered_map<ERenderPass, RRenderPass> renderPasses;
     VkRenderPassBeginInfo renderPassBeginInfo;
     std::unordered_map<std::string, RFramebuffer>
@@ -238,20 +240,25 @@ class MRenderer {
 
   TResult createRenderPasses();
   void destroyRenderPasses();
+  TResult configureRenderPasses();
   RRenderPass* getRenderPass(ERenderPass type);
   VkRenderPass& getVkRenderPass(ERenderPass type);
 
+  TResult createPipelineLayouts();
   TResult createGraphicsPipelines();
   void destroyGraphicsPipelines();
   TResult createComputePipelines();
   void destroyComputePipelines();
   VkPipelineLayout& getPipelineLayout(EPipelineLayout type);
-  VkPipeline& getPipeline(EPipeline type);
+  TResult createGraphicsPipeline(RGraphicsPipelineInfo* pipelineInfo);
+  TResult createComputePipeline(RComputePipelineInfo* pipelineInfo);
+  VkPipeline& getGraphicsPipeline(EPipeline type);
+  VkPipeline& getComputePipeline(EComputePipeline type);
 
   // check if pipeline flag is present in the flag array
   bool checkPipeline(uint32_t pipelineFlags, EPipeline pipelineFlag);
 
-  TResult configureRenderPasses();
+  TResult configureRenderer();
 
   //
   // ***UTIL

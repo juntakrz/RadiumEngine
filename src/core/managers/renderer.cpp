@@ -445,7 +445,7 @@ TResult core::MRenderer::createImageTargets() {
     return RE_CRITICAL;
   }
 
-  compute.pComputeImageTarget = pNewTexture;
+  compute.pImageTarget = pNewTexture;
 
 #ifndef NDEBUG
   RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
@@ -852,11 +852,15 @@ TResult core::MRenderer::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createRendererDefaults();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSetLayouts();
 
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createRenderPasses();           // A
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createGraphicsPipelines();      // B
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createComputePipelines();       // C
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createDefaultFramebuffers();    // D
-  if (chkResult <= RE_ERRORLIMIT) chkResult = configureRenderPasses();        // tie A, B, C, D together
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createRenderPasses();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = configureRenderPasses();
+
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createPipelineLayouts();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createGraphicsPipelines();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createComputePipelines();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createDefaultFramebuffers();
+
+  if (chkResult <= RE_ERRORLIMIT) chkResult = configureRenderer();
 
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createUniformBuffers();

@@ -204,14 +204,6 @@ TResult core::MRenderer::createRenderPasses() {
   system.renderPasses.at(passType).clearValues =
       fGetClearValues(clearColor, 0, clearDepth);
 
-  system.renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-  system.renderPassBeginInfo.renderArea.offset = {0, 0};
-  system.renderPassBeginInfo.renderArea.extent = swapchain.imageExtent;
-
-  // must be set up during frame drawing
-  system.renderPassBeginInfo.renderPass = VK_NULL_HANDLE;
-  system.renderPassBeginInfo.framebuffer = VK_NULL_HANDLE;
-
   return RE_OK;
 }
 
@@ -221,6 +213,53 @@ void core::MRenderer::destroyRenderPasses() {
   for (auto& it : system.renderPasses) {
     vkDestroyRenderPass(logicalDevice.device, it.second.renderPass, nullptr);
   }
+}
+
+TResult core::MRenderer::configureRenderPasses() {
+  system.renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+  system.renderPassBeginInfo.renderArea.offset = {0, 0};
+  system.renderPassBeginInfo.renderArea.extent = swapchain.imageExtent;
+
+  // must be set up during frame drawing
+  system.renderPassBeginInfo.renderPass = VK_NULL_HANDLE;
+  system.renderPassBeginInfo.framebuffer = VK_NULL_HANDLE;
+
+  // set viewports and scissors for screen render passes
+  VkViewport viewport{};
+  viewport.x = 0.0f;
+  viewport.y = static_cast<float>(swapchain.imageExtent.height);
+  viewport.width = static_cast<float>(swapchain.imageExtent.width);
+  viewport.height = -viewport.y;
+  viewport.minDepth = 0.0f;
+  viewport.maxDepth = 1.0f;
+
+  VkRect2D scissor{};
+  scissor.offset = {0, 0};
+  scissor.extent = swapchain.imageExtent;
+
+  getRenderPass(ERenderPass::Deferred)->viewport = viewport;
+  getRenderPass(ERenderPass::Deferred)->scissor = scissor;
+  getRenderPass(ERenderPass::Present)->viewport = viewport;
+  getRenderPass(ERenderPass::Present)->scissor = scissor;
+
+  viewport.y = static_cast<float>(config::shadowResolution);
+  viewport.width = viewport.y;
+  viewport.height = -viewport.y;
+  scissor.extent = {config::shadowResolution, config::shadowResolution};
+
+  getRenderPass(ERenderPass::Shadow)->viewport = viewport;
+  getRenderPass(ERenderPass::Shadow)->scissor = scissor;
+
+  viewport.y = core::vulkan::envFilterExtent;
+  viewport.width = viewport.y;
+  viewport.height = -viewport.y;
+  scissor.extent = {core::vulkan::envFilterExtent,
+                    core::vulkan::envFilterExtent};
+
+  getRenderPass(ERenderPass::Environment)->viewport = viewport;
+  getRenderPass(ERenderPass::Environment)->scissor = scissor;
+
+  return RE_OK;
 }
 
 RRenderPass* core::MRenderer::getRenderPass(ERenderPass type) {
@@ -236,7 +275,7 @@ VkRenderPass& core::MRenderer::getVkRenderPass(ERenderPass type) {
   return system.renderPasses.at(type).renderPass;
 }
 
-TResult core::MRenderer::createGraphicsPipelines() {
+TResult core::MRenderer::createPipelineLayouts() {
   RE_LOG(Log, "Creating graphics pipelines.");
 
   //
@@ -244,123 +283,9 @@ TResult core::MRenderer::createGraphicsPipelines() {
   //
 
   // common 3D pipeline data //
-
 #ifndef NDEBUG
   RE_LOG(Log, "Setting up common 3D pipeline data.");
 #endif
-
-  VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
-  inputAssemblyInfo.sType =
-      VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-  inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-  inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
-
-  // set viewports and scissors for screen render passes
-  VkViewport viewport{}; 
-  viewport.x = 0.0f;
-  viewport.y = static_cast<float>(swapchain.imageExtent.height);
-  viewport.width = static_cast<float>(swapchain.imageExtent.width);
-  viewport.height = -viewport.y;
-  viewport.minDepth = 0.0f;
-  viewport.maxDepth = 1.0f;
-
-  VkRect2D scissor{};
-  scissor.offset = {0, 0};
-  scissor.extent = swapchain.imageExtent;
-
-  getRenderPass(ERenderPass::Deferred)->viewport = viewport;
-  getRenderPass(ERenderPass::Present)->viewport = viewport;
-
-  getRenderPass(ERenderPass::Deferred)->scissor = scissor;
-  getRenderPass(ERenderPass::Present)->scissor = scissor;
-
-  viewport.y = static_cast<float>(config::shadowResolution);
-  viewport.width = viewport.y;
-  viewport.height = -viewport.y;
-  scissor.extent = {config::shadowResolution, config::shadowResolution};
-
-  getRenderPass(ERenderPass::Shadow)->viewport = viewport;
-  getRenderPass(ERenderPass::Shadow)->scissor = scissor;
-
-  VkPipelineViewportStateCreateInfo viewportInfo{};
-  viewportInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-  viewportInfo.pViewports = &getRenderPass(ERenderPass::Deferred)->viewport;
-  viewportInfo.viewportCount = 1;
-  viewportInfo.pScissors = &getRenderPass(ERenderPass::Deferred)->scissor;
-  viewportInfo.scissorCount = 1;
-
-  VkPipelineRasterizationStateCreateInfo rasterizationInfo{};
-  rasterizationInfo.sType =
-      VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-  rasterizationInfo.depthClampEnable = VK_FALSE;
-  rasterizationInfo.rasterizerDiscardEnable = VK_FALSE;
-  rasterizationInfo.polygonMode = VK_POLYGON_MODE_FILL;
-  rasterizationInfo.lineWidth = 1.0f;
-  rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-  rasterizationInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
-  rasterizationInfo.depthBiasEnable = VK_FALSE;
-  rasterizationInfo.depthBiasConstantFactor = 0.0f;
-  rasterizationInfo.depthBiasClamp = 0.0f;
-  rasterizationInfo.depthBiasSlopeFactor = 0.0f;
-
-  VkPipelineMultisampleStateCreateInfo multisampleInfo{};
-  multisampleInfo.sType =
-      VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-  multisampleInfo.sampleShadingEnable = VK_FALSE;
-  multisampleInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-  multisampleInfo.minSampleShading = 1.0f;
-  multisampleInfo.pSampleMask = nullptr;
-  multisampleInfo.alphaToCoverageEnable = VK_FALSE;
-  multisampleInfo.alphaToOneEnable = VK_FALSE;
-
-  VkPipelineDepthStencilStateCreateInfo depthStencilInfo{};
-  depthStencilInfo.sType =
-      VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-  depthStencilInfo.depthTestEnable = VK_TRUE;
-  depthStencilInfo.depthWriteEnable = VK_TRUE;
-  depthStencilInfo.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-  depthStencilInfo.front = depthStencilInfo.back;
-  depthStencilInfo.back.compareOp = VK_COMPARE_OP_ALWAYS;
-  depthStencilInfo.stencilTestEnable = VK_FALSE;
-  depthStencilInfo.depthBoundsTestEnable = VK_FALSE;
-  depthStencilInfo.minDepthBounds = 0.0f;
-  depthStencilInfo.maxDepthBounds = 1.0f;
-
-  VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-  colorBlendAttachment.colorWriteMask =
-      VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-      VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-  colorBlendAttachment.blendEnable = VK_FALSE;
-  colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-  colorBlendAttachment.dstColorBlendFactor =
-      VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-  colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-  colorBlendAttachment.srcAlphaBlendFactor =
-      VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-  colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-  colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
-
-  VkPipelineColorBlendStateCreateInfo colorBlendInfo{};
-  colorBlendInfo.sType =
-      VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-  colorBlendInfo.logicOpEnable = VK_FALSE;
-  colorBlendInfo.logicOp = VK_LOGIC_OP_COPY;
-  colorBlendInfo.attachmentCount = 1;
-  colorBlendInfo.pAttachments = &colorBlendAttachment;
-  colorBlendInfo.blendConstants[0] = 0.0f;
-  colorBlendInfo.blendConstants[1] = 0.0f;
-  colorBlendInfo.blendConstants[2] = 0.0f;
-  colorBlendInfo.blendConstants[3] = 0.0f;
-
-  // dynamic states allow changing specific parts of the pipeline without
-  // recreating it
-  std::vector<VkDynamicState> dynamicStates = {VK_DYNAMIC_STATE_VIEWPORT,
-                                               VK_DYNAMIC_STATE_SCISSOR};
-
-  VkPipelineDynamicStateCreateInfo dynStateInfo{};
-  dynStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-  dynStateInfo.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
-  dynStateInfo.pDynamicStates = dynamicStates.data();
 
   VkPushConstantRange materialPushConstRange{};
   materialPushConstRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -376,9 +301,9 @@ TResult core::MRenderer::createGraphicsPipelines() {
 
   // pipeline layout for the main 'scene'
   std::vector<VkDescriptorSetLayout> descriptorSetLayouts{
-      getDescriptorSetLayout(EDescriptorSetLayout::Scene),      // 0
-      getDescriptorSetLayout(EDescriptorSetLayout::Model),      // 1
-      getDescriptorSetLayout(EDescriptorSetLayout::Material)    // 2
+      getDescriptorSetLayout(EDescriptorSetLayout::Scene),    // 0
+      getDescriptorSetLayout(EDescriptorSetLayout::Model),    // 1
+      getDescriptorSetLayout(EDescriptorSetLayout::Material)  // 2
   };
 
   VkPipelineLayoutCreateInfo layoutInfo{};
@@ -480,7 +405,8 @@ TResult core::MRenderer::createGraphicsPipelines() {
 
   if (vkCreatePipelineLayout(logicalDevice.device, &layoutInfo, nullptr,
                              &getPipelineLayout(layoutType)) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create \"BRDF LUT generator\" pipeline layout.");
+    RE_LOG(Critical,
+           "Failed to create \"BRDF LUT generator\" pipeline layout.");
 
     return RE_CRITICAL;
   }
@@ -506,280 +432,126 @@ TResult core::MRenderer::createGraphicsPipelines() {
 
   if (vkCreatePipelineLayout(logicalDevice.device, &layoutInfo, nullptr,
                              &getPipelineLayout(layoutType)) != VK_SUCCESS) {
-    RE_LOG(Critical,
-           "Failed to create \"Compute Image\" pipeline layout.");
+    RE_LOG(Critical, "Failed to create \"Compute Image\" pipeline layout.");
 
     return RE_CRITICAL;
   }
 
-  //
-  // PIPELINES
-  //
+  return RE_OK;
+}
 
-  VkVertexInputBindingDescription bindingDesc = RVertex::getBindingDesc();
-  auto attributeDescs = RVertex::getAttributeDescs();
+TResult core::MRenderer::createGraphicsPipelines() {
+  // G-Buffer pipelines
+  {
+    // backface culled opaque pipeline
+    RGraphicsPipelineInfo pipelineInfo{};
+    pipelineInfo.pipeline = EPipeline::OpaqueCullBack;
+    pipelineInfo.pipelineLayout = EPipelineLayout::Scene;
+    pipelineInfo.renderPass = ERenderPass::Deferred;
+    pipelineInfo.subpass = 0;
+    pipelineInfo.vertexShader = "vs_scene.spv";
+    pipelineInfo.fragmentShader = "fs_gbuffer.spv";
+    pipelineInfo.colorBlendAttachmentCount =
+        static_cast<uint32_t>(scene.pGBufferTargets.size());
+    pipelineInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+    pipelineInfo.blendEnable = VK_FALSE;
 
-  VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-  vertexInputInfo.sType =
-      VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-  vertexInputInfo.vertexBindingDescriptionCount = 1;
-  vertexInputInfo.pVertexBindingDescriptions = &bindingDesc;
-  vertexInputInfo.vertexAttributeDescriptionCount =
-      static_cast<uint32_t>(attributeDescs.size());
-  vertexInputInfo.pVertexAttributeDescriptions = attributeDescs.data();
+    RE_CHECK(createGraphicsPipeline(&pipelineInfo));
 
-  // 'single sided' pipeline, uses 'Deferred' render pass and 'scene' layout
-  std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {
-      loadShader("vs_scene.spv", VK_SHADER_STAGE_VERTEX_BIT),
-      loadShader("fs_gbuffer.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
+    // non-culled opaque pipeline
+    pipelineInfo.pipeline = EPipeline::OpaqueCullNone;
+    pipelineInfo.cullMode = VK_CULL_MODE_NONE;
+    pipelineInfo.blendEnable = VK_FALSE;
 
-  VkPipelineColorBlendAttachmentState colorBlendAttachments[] = {
-      colorBlendAttachment, colorBlendAttachment, colorBlendAttachment,
-      colorBlendAttachment, colorBlendAttachment};
+    RE_CHECK(createGraphicsPipeline(&pipelineInfo));
 
-  colorBlendInfo.attachmentCount = 5;
-  colorBlendInfo.pAttachments = colorBlendAttachments;
+    // non-culled blending pipeline
+    pipelineInfo.pipeline = EPipeline::BlendCullNone;
+    pipelineInfo.cullMode = VK_CULL_MODE_NONE;
+    pipelineInfo.blendEnable = VK_TRUE;
 
-  VkGraphicsPipelineCreateInfo graphicsPipelineInfo{};
-  graphicsPipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-  graphicsPipelineInfo.pColorBlendState = &colorBlendInfo;
-  graphicsPipelineInfo.pDepthStencilState = &depthStencilInfo;
-  graphicsPipelineInfo.pDynamicState = &dynStateInfo;
-  graphicsPipelineInfo.pMultisampleState = &multisampleInfo;
-  graphicsPipelineInfo.pInputAssemblyState = &inputAssemblyInfo;
-  graphicsPipelineInfo.pRasterizationState = &rasterizationInfo;
-  graphicsPipelineInfo.pViewportState = &viewportInfo;
-  graphicsPipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
-  graphicsPipelineInfo.pStages = shaderStages.data();
-  graphicsPipelineInfo.pVertexInputState = &vertexInputInfo;
-  graphicsPipelineInfo.layout = getPipelineLayout(EPipelineLayout::Scene);
-  graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::Deferred);
-  graphicsPipelineInfo.subpass = 0;  // subpass index for render pass
-  graphicsPipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
-  graphicsPipelineInfo.basePipelineIndex = -1;
+    RE_CHECK(createGraphicsPipeline(&pipelineInfo));
 
-  system.pipelines.emplace(EPipeline::OpaqueCullBack, VK_NULL_HANDLE);
-
-  if (vkCreateGraphicsPipelines(
-          logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
-          nullptr, &getPipeline(EPipeline::OpaqueCullBack)) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create PBR graphics pipeline.");
-
-    return RE_CRITICAL;
+    // TODO: add mask pipeline
   }
-
-  // 'Doublesided' pipeline, uses 'Deferred' render pass and 'scene' layout
-  rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
-
-  system.pipelines.emplace(EPipeline::OpaqueCullNone, VK_NULL_HANDLE);
-
-  if (vkCreateGraphicsPipelines(
-          logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
-          nullptr, &getPipeline(EPipeline::OpaqueCullNone)) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create PBR doublesided graphics pipeline.");
-
-    return RE_CRITICAL;
-  }
-
-  // 'Blend' pipeline, similar to singlesided, but with alpha channel
-  rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
-  colorBlendAttachment.blendEnable = VK_TRUE;
-
-  system.pipelines.emplace(EPipeline::BlendCullNone, VK_NULL_HANDLE);
-
-  if (vkCreateGraphicsPipelines(
-          logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
-          nullptr, &getPipeline(EPipeline::BlendCullNone)) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create PBR doublesided graphics pipeline.");
-
-    return RE_CRITICAL;
-  }
-
-  for (auto stage : shaderStages) {
-    vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
-  }
-
     
-  // 'PBR' pipeline, renders combined G-buffer output to a screen wide plane
-  shaderStages.clear();
-  shaderStages = {loadShader("vs_quad.spv", VK_SHADER_STAGE_VERTEX_BIT),
-                  loadShader("fs_pbr.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
+  // PBR pipeline, uses the result of G-Buffer pipelines
+  {
+    RGraphicsPipelineInfo pipelineInfo{};
+    pipelineInfo.pipeline = EPipeline::PBR;
+    pipelineInfo.pipelineLayout = EPipelineLayout::PBR;
+    pipelineInfo.renderPass = ERenderPass::Deferred;
+    pipelineInfo.subpass = 1;
+    pipelineInfo.vertexShader = "vs_quad.spv";
+    pipelineInfo.fragmentShader = "fs_pbr.spv";
+    pipelineInfo.colorBlendAttachmentCount = 1;
+    pipelineInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+    pipelineInfo.blendEnable = VK_FALSE;
 
-  graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::Deferred);
-  graphicsPipelineInfo.subpass = 1;
-  graphicsPipelineInfo.layout = getPipelineLayout(EPipelineLayout::PBR);
-  rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-  colorBlendAttachment.blendEnable = VK_TRUE;
-  colorBlendInfo.attachmentCount = 1;
-  colorBlendInfo.pAttachments = &colorBlendAttachment;
-
-  system.pipelines.emplace(EPipeline::PBR, VK_NULL_HANDLE);
-
-  if (vkCreateGraphicsPipelines(
-          logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
-          nullptr, &getPipeline(EPipeline::PBR)) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create PBR graphics pipeline.");
-
-    return RE_CRITICAL;
+    RE_CHECK(createGraphicsPipeline(&pipelineInfo));
   }
 
-  for (auto stage : shaderStages) {
-    vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
+  // Skybox pipeline, uses forward subpass of the deferred render pass
+  {
+    RGraphicsPipelineInfo pipelineInfo{};
+    pipelineInfo.pipeline = EPipeline::Skybox;
+    pipelineInfo.pipelineLayout = EPipelineLayout::Scene;
+    pipelineInfo.renderPass = ERenderPass::Deferred;
+    pipelineInfo.subpass = 2;
+    pipelineInfo.vertexShader = "vs_skybox.spv";
+    pipelineInfo.fragmentShader = "fs_skybox.spv";
+    pipelineInfo.colorBlendAttachmentCount = 1;
+    pipelineInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+    pipelineInfo.blendEnable = VK_FALSE;
+
+    RE_CHECK(createGraphicsPipeline(&pipelineInfo));
   }
 
-   // 'Skybox' pipeline
-  shaderStages.clear();
-  shaderStages = {loadShader("vs_skybox.spv", VK_SHADER_STAGE_VERTEX_BIT),
-                  loadShader("fs_skybox.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
+  // "Shadow" depth map pipeline
+  {
+    RGraphicsPipelineInfo pipelineInfo{};
+    pipelineInfo.pipeline = EPipeline::Shadow;
+    pipelineInfo.pipelineLayout = EPipelineLayout::Scene;
+    pipelineInfo.renderPass = ERenderPass::Shadow;
+    pipelineInfo.vertexShader = "vs_scene.spv";
+    pipelineInfo.fragmentShader = "fs_shadowPass.spv";
+    pipelineInfo.colorBlendAttachmentCount = 0;
+    pipelineInfo.blendEnable = VK_TRUE;
 
-  graphicsPipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
-  graphicsPipelineInfo.pStages = shaderStages.data();
-  graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::Deferred);
-  graphicsPipelineInfo.subpass = 2;
-  graphicsPipelineInfo.layout = getPipelineLayout(EPipelineLayout::Scene);
-  rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-  colorBlendAttachment.blendEnable = VK_FALSE;
-  colorBlendInfo.attachmentCount = 1;
-  colorBlendInfo.pAttachments = &colorBlendAttachment;
-
-  system.pipelines.emplace(EPipeline::Skybox, VK_NULL_HANDLE);
-
-  if (vkCreateGraphicsPipelines(
-          logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
-          nullptr, &getPipeline(EPipeline::Skybox)) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create skybox graphics pipeline.");
-
-    return RE_CRITICAL;
+    RE_CHECK(createGraphicsPipeline(&pipelineInfo));
   }
 
-  for (auto stage : shaderStages) {
-    vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
+  // "Present" final output pipeline
+  {
+    RGraphicsPipelineInfo pipelineInfo{};
+    pipelineInfo.pipeline = EPipeline::Present;
+    pipelineInfo.pipelineLayout = EPipelineLayout::Scene;
+    pipelineInfo.renderPass = ERenderPass::Present;
+    pipelineInfo.vertexShader = "vs_quad.spv";
+    pipelineInfo.fragmentShader = "fs_present.spv";
+    pipelineInfo.colorBlendAttachmentCount = 1;
+
+    RE_CHECK(createGraphicsPipeline(&pipelineInfo));
   }
 
-  // 'Shadow' depth map pipeline
-  shaderStages.clear();
-  shaderStages = {
-      loadShader("vs_scene.spv", VK_SHADER_STAGE_VERTEX_BIT),
-      loadShader("fs_shadowPass.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
+  // Environment / image based lighting pipelines
+  {
+    // 'EnvFilter' pipeline
+    RGraphicsPipelineInfo pipelineInfo{};
+    pipelineInfo.pipeline = EPipeline::EnvFilter;
+    pipelineInfo.pipelineLayout = EPipelineLayout::Environment;
+    pipelineInfo.renderPass = ERenderPass::Environment;
+    pipelineInfo.vertexShader = "vs_environment.spv";
+    pipelineInfo.fragmentShader = "fs_envFilter.spv";
+    pipelineInfo.colorBlendAttachmentCount = 1;
 
-  graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::Shadow);
-  graphicsPipelineInfo.subpass = 0;
-  graphicsPipelineInfo.layout = getPipelineLayout(EPipelineLayout::Scene);
-  rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
-  colorBlendAttachment.blendEnable = VK_TRUE;
-  colorBlendInfo.attachmentCount = 0;
+    RE_CHECK(createGraphicsPipeline(&pipelineInfo));
 
-  system.pipelines.emplace(EPipeline::Shadow, VK_NULL_HANDLE);
+    // 'EnvIrradiance' pipeline
+    pipelineInfo.pipeline = EPipeline::EnvIrradiance;
+    pipelineInfo.fragmentShader = "fs_envIrradiance.spv";
 
-  if (vkCreateGraphicsPipelines(
-          logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
-          nullptr, &getPipeline(EPipeline::Shadow)) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create shadow depth map pipeline.");
-
-    return RE_CRITICAL;
-  }
-
-  for (auto& stage : shaderStages) {
-    vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
-  }
-
-  // 'Present' final output pipeline
-  shaderStages.clear();
-  shaderStages = {loadShader("vs_quad.spv", VK_SHADER_STAGE_VERTEX_BIT),
-                  loadShader("fs_present.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
-
-  system.pipelines.emplace(EPipeline::Present, VK_NULL_HANDLE);
-
-  graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::Present);
-  rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-  colorBlendAttachment.blendEnable = VK_FALSE;
-  colorBlendInfo.attachmentCount = 1;
-
-  if (vkCreateGraphicsPipelines(
-          logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
-          nullptr, &getPipeline(EPipeline::Present)) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create Vulkan presentation pipeline.");
-
-    return RE_CRITICAL;
-  }
-
-  for (auto& stage : shaderStages) {
-    vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
-  }
-
-  // 'EnvFilter' pipeline
-  shaderStages.clear();
-  shaderStages = {loadShader("vs_environment.spv", VK_SHADER_STAGE_VERTEX_BIT),
-                  loadShader("fs_envFilter.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
-
-  system.pipelines.emplace(EPipeline::EnvFilter, VK_NULL_HANDLE);
-
-  colorBlendInfo.attachmentCount = 1;
-  colorBlendInfo.pAttachments = &colorBlendAttachment;
-
-  graphicsPipelineInfo.layout = getPipelineLayout(EPipelineLayout::Environment);
-  graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::Environment);
-
-  getRenderPass(ERenderPass::Environment)->viewport = viewport;
-  getRenderPass(ERenderPass::Environment)->scissor = scissor;
-
-  if (vkCreateGraphicsPipelines(
-          logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
-          nullptr, &getPipeline(EPipeline::EnvFilter)) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create environment filter graphics pipeline.");
-
-    return RE_CRITICAL;
-  }
-
-  for (auto stage : shaderStages) {
-    vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
-  }
-
-  // 'EnvIrradiance' pipeline
-  shaderStages.clear();
-  shaderStages = {loadShader("vs_environment.spv", VK_SHADER_STAGE_VERTEX_BIT),
-                  loadShader("fs_envIrradiance.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
-
-  system.pipelines.emplace(EPipeline::EnvIrradiance, VK_NULL_HANDLE);
-
-  if (vkCreateGraphicsPipelines(
-          logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
-          nullptr, &getPipeline(EPipeline::EnvIrradiance)) != VK_SUCCESS) {
-    RE_LOG(Critical,
-           "Failed to create environment irradiance graphics pipeline.");
-
-    return RE_CRITICAL;
-  }
-
-  for (auto stage : shaderStages) {
-    vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
-  }
-
-  // 'EnvLUT' pipeline
-  shaderStages.clear();
-  shaderStages = {loadShader("vs_brdfLUT.spv", VK_SHADER_STAGE_VERTEX_BIT),
-                  loadShader("fs_brdfLUT.spv", VK_SHADER_STAGE_FRAGMENT_BIT)};
-
-  system.pipelines.emplace(EPipeline::LUTGen, VK_NULL_HANDLE);
-
-  vertexInputInfo = VkPipelineVertexInputStateCreateInfo{};
-  vertexInputInfo.sType =
-      VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-
-  graphicsPipelineInfo.layout = getPipelineLayout(EPipelineLayout::LUTGen);
-  graphicsPipelineInfo.renderPass = getVkRenderPass(ERenderPass::LUTGen);
-
-  if (vkCreateGraphicsPipelines(
-          logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
-          nullptr, &getPipeline(EPipeline::LUTGen)) != VK_SUCCESS) {
-    RE_LOG(Critical,
-           "Failed to create LUT generator pipeline.");
-
-    return RE_CRITICAL;
-  }
-
-  for (auto stage : shaderStages) {
-    vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
+    RE_CHECK(createGraphicsPipeline(&pipelineInfo));
   }
 
   return RE_OK;
@@ -789,7 +561,7 @@ void core::MRenderer::destroyGraphicsPipelines() {
   RE_LOG(Log, "Shutting down graphics pipeline.");
   destroyDescriptorSetLayouts();
 
-  for (auto& pipeline : system.pipelines) {
+  for (auto& pipeline : system.graphicsPipelines) {
     vkDestroyPipeline(logicalDevice.device, pipeline.second, nullptr);
   }
 
@@ -804,7 +576,7 @@ TResult core::MRenderer::createComputePipelines() {
   //
   // Compute Image pipeline
   //
-  system.pipelines.emplace(EPipeline::Compute, VK_NULL_HANDLE);
+  system.computePipelines.emplace(EComputePipeline::ImageLUT, VK_NULL_HANDLE);
 
   VkPipelineShaderStageCreateInfo shaderStage =
       loadShader("cs_test.spv", VK_SHADER_STAGE_COMPUTE_BIT);
@@ -825,7 +597,7 @@ TResult core::MRenderer::createComputePipelines() {
 
   if (vkCreateComputePipelines(
           logicalDevice.device, VK_NULL_HANDLE, 1, &computePipelineInfo,
-          nullptr, &getPipeline(EPipeline::Compute)) != VK_SUCCESS) {
+          nullptr, &getComputePipeline(EComputePipeline::ImageLUT)) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create Compute Image pipeline.");
 
     return RE_CRITICAL;
@@ -837,17 +609,189 @@ TResult core::MRenderer::createComputePipelines() {
 }
 
 void core::MRenderer::destroyComputePipelines() {
-  vkDestroyPipeline(logicalDevice.device, getPipeline(EPipeline::Compute),
-                    nullptr);
+  vkDestroyPipeline(logicalDevice.device,
+                    getComputePipeline(EComputePipeline::ImageLUT), nullptr);
 }
 
 VkPipelineLayout& core::MRenderer::getPipelineLayout(EPipelineLayout type) {
   return system.layouts.at(type);
 }
 
-VkPipeline& core::MRenderer::getPipeline(EPipeline type) {
+TResult core::MRenderer::createGraphicsPipeline(
+    RGraphicsPipelineInfo* pipelineInfo) {
+  VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
+  inputAssemblyInfo.sType =
+      VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+  inputAssemblyInfo.topology = pipelineInfo->primitiveTopology;
+  inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
+
+  VkPipelineMultisampleStateCreateInfo multisampleInfo{};
+  multisampleInfo.sType =
+      VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+  multisampleInfo.sampleShadingEnable = VK_FALSE;
+  multisampleInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+  multisampleInfo.minSampleShading = 1.0f;
+  multisampleInfo.pSampleMask = nullptr;
+  multisampleInfo.alphaToCoverageEnable = VK_FALSE;
+  multisampleInfo.alphaToOneEnable = VK_FALSE;
+
+  VkPipelineRasterizationStateCreateInfo rasterizationInfo{};
+  rasterizationInfo.sType =
+      VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+  rasterizationInfo.depthClampEnable = VK_FALSE;
+  rasterizationInfo.rasterizerDiscardEnable = VK_FALSE;
+  rasterizationInfo.polygonMode = pipelineInfo->polygonMode;
+  rasterizationInfo.lineWidth = 1.0f;
+  rasterizationInfo.cullMode = pipelineInfo->cullMode;
+  rasterizationInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
+  rasterizationInfo.depthBiasEnable = VK_FALSE;
+  rasterizationInfo.depthBiasConstantFactor = 0.0f;
+  rasterizationInfo.depthBiasClamp = 0.0f;
+  rasterizationInfo.depthBiasSlopeFactor = 0.0f;
+
+  // dynamic states allow changing specific parts of the pipeline without
+  // recreating it
+  std::vector<VkDynamicState> dynamicStates = {VK_DYNAMIC_STATE_VIEWPORT,
+                                               VK_DYNAMIC_STATE_SCISSOR};
+
+  VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
+  dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+  dynamicStateInfo.dynamicStateCount =
+      static_cast<uint32_t>(dynamicStates.size());
+  dynamicStateInfo.pDynamicStates = dynamicStates.data();
+  
+  VkPipelineViewportStateCreateInfo viewportInfo{};
+  viewportInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+  viewportInfo.pViewports = &getRenderPass(pipelineInfo->renderPass)->viewport;
+  viewportInfo.viewportCount = 1;
+  viewportInfo.pScissors = &getRenderPass(pipelineInfo->renderPass)->scissor;
+  viewportInfo.scissorCount = 1;
+
+  VkPipelineDepthStencilStateCreateInfo depthStencilInfo{};
+  depthStencilInfo.sType =
+      VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+  depthStencilInfo.depthTestEnable = VK_TRUE;
+  depthStencilInfo.depthWriteEnable = VK_TRUE;
+  depthStencilInfo.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+  depthStencilInfo.front = depthStencilInfo.back;
+  depthStencilInfo.back.compareOp = VK_COMPARE_OP_ALWAYS;
+  depthStencilInfo.stencilTestEnable = VK_FALSE;
+  depthStencilInfo.depthBoundsTestEnable = VK_FALSE;
+  depthStencilInfo.minDepthBounds = 0.0f;
+  depthStencilInfo.maxDepthBounds = 1.0f;
+
+  VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+  colorBlendAttachment.colorWriteMask =
+      VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+      VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+  colorBlendAttachment.blendEnable = pipelineInfo->blendEnable;
+  colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+  colorBlendAttachment.dstColorBlendFactor =
+      VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+  colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+  colorBlendAttachment.srcAlphaBlendFactor =
+      VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+  colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+  colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
+  std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachments;
+  colorBlendAttachments.resize(pipelineInfo->colorBlendAttachmentCount);
+
+  for (uint8_t i = 0; i < pipelineInfo->colorBlendAttachmentCount; ++i) {
+    colorBlendAttachments[i] = colorBlendAttachment;
+  }
+
+  VkPipelineColorBlendStateCreateInfo colorBlendInfo{};
+  colorBlendInfo.sType =
+      VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+  colorBlendInfo.logicOpEnable = VK_FALSE;
+  colorBlendInfo.logicOp = VK_LOGIC_OP_COPY;
+  colorBlendInfo.attachmentCount =
+      static_cast<uint32_t>(colorBlendAttachments.size());
+  colorBlendInfo.pAttachments = colorBlendAttachments.data();
+  colorBlendInfo.blendConstants[0] = 0.0f;
+  colorBlendInfo.blendConstants[1] = 0.0f;
+  colorBlendInfo.blendConstants[2] = 0.0f;
+  colorBlendInfo.blendConstants[3] = 0.0f;
+
+  VkVertexInputBindingDescription bindingDesc = RVertex::getBindingDesc();
+  auto attributeDescs = RVertex::getAttributeDescs();
+
+  VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+  vertexInputInfo.sType =
+      VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+  vertexInputInfo.vertexBindingDescriptionCount = 1;
+  vertexInputInfo.pVertexBindingDescriptions = &bindingDesc;
+  vertexInputInfo.vertexAttributeDescriptionCount =
+      static_cast<uint32_t>(attributeDescs.size());
+  vertexInputInfo.pVertexAttributeDescriptions = attributeDescs.data();
+
+  std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
+  if (!pipelineInfo->vertexShader.empty()) {
+    shaderStages.emplace_back(
+        loadShader(pipelineInfo->vertexShader.c_str(), VK_SHADER_STAGE_VERTEX_BIT));
+  }
+  if (!pipelineInfo->fragmentShader.empty()) {
+    shaderStages.emplace_back(loadShader(pipelineInfo->fragmentShader.c_str(),
+                                         VK_SHADER_STAGE_FRAGMENT_BIT));
+  }
+
+  if (shaderStages.empty()) {
+    RE_LOG(Critical, "Failed to create pipeline E%d. No shaders were loaded.",
+           pipelineInfo->pipeline);
+    return RE_CRITICAL;
+  }
+
+  VkGraphicsPipelineCreateInfo graphicsPipelineInfo{};
+  graphicsPipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+  graphicsPipelineInfo.pInputAssemblyState = &inputAssemblyInfo;
+  graphicsPipelineInfo.pMultisampleState = &multisampleInfo;
+  graphicsPipelineInfo.pRasterizationState = &rasterizationInfo;
+  graphicsPipelineInfo.pDynamicState = &dynamicStateInfo;
+  graphicsPipelineInfo.pViewportState = &viewportInfo;
+  graphicsPipelineInfo.pColorBlendState = &colorBlendInfo;
+  graphicsPipelineInfo.pDepthStencilState = &depthStencilInfo;
+  graphicsPipelineInfo.pVertexInputState = &vertexInputInfo;
+  graphicsPipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
+  graphicsPipelineInfo.pStages = shaderStages.data();
+  graphicsPipelineInfo.layout = getPipelineLayout(pipelineInfo->pipelineLayout);
+  graphicsPipelineInfo.renderPass = getVkRenderPass(pipelineInfo->renderPass);
+  graphicsPipelineInfo.subpass = pipelineInfo->subpass;
+  graphicsPipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+  graphicsPipelineInfo.basePipelineIndex = -1;
+
+  system.graphicsPipelines.emplace(pipelineInfo->pipeline, VK_NULL_HANDLE);
+
+  if (vkCreateGraphicsPipelines(
+          logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
+          nullptr,
+          &getGraphicsPipeline(pipelineInfo->pipeline)) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to create pipeline E%d.", pipelineInfo->pipeline);
+
+    return RE_CRITICAL;
+  }
+
+  for (auto stage : shaderStages) {
+    vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
+  }
+
+  RE_LOG(Log, "Created pipeline E%d.", pipelineInfo->pipeline);
+  return RE_OK;
+}
+
+TResult core::MRenderer::createComputePipeline(
+    RComputePipelineInfo* pipelineInfo) {
+  return RE_OK;
+}
+
+VkPipeline& core::MRenderer::getGraphicsPipeline(EPipeline type) {
   // not error checked
-  return system.pipelines.at(type);
+  return system.graphicsPipelines.at(type);
+}
+
+VkPipeline& core::MRenderer::getComputePipeline(EComputePipeline type) {
+  // not error checked
+  return system.computePipelines.at(type);
 }
 
 bool core::MRenderer::checkPipeline(uint32_t pipelineFlags,
@@ -855,7 +799,7 @@ bool core::MRenderer::checkPipeline(uint32_t pipelineFlags,
   return pipelineFlags & pipelineFlag;
 }
 
-TResult core::MRenderer::configureRenderPasses() {
+TResult core::MRenderer::configureRenderer() {
   // NOTE: order of pipeline 'emplacement' is important
 
   /* SHADOW */

@@ -88,7 +88,7 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
     return;
   }
 
-  VkPipeline pipeline = getPipeline(pipelineFlag);
+  VkPipeline pipeline = getGraphicsPipeline(pipelineFlag);
 
   if (renderView.pCurrentPipeline != pipeline) {
     vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
@@ -509,7 +509,7 @@ void core::MRenderer::generateLUTMap() {
   vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
 
   vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    getPipeline(EPipeline::LUTGen));
+                    getGraphicsPipeline(EPipeline::LUTGen));
 
   vkCmdDraw(cmdBuffer, 3, 1, 0, 0);
 
@@ -639,12 +639,12 @@ void core::MRenderer::executeDynamicRendering(VkCommandBuffer commandBuffer,
                                                VkRenderingInfo* pRenderingInfo,
                                                EPipeline pipeline) {
   //vkCmdBeginRendering(commandBuffer, pRenderingInfo);
-  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
-                    getPipeline(EPipeline::Compute));
+  /*vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+                    getComputePipeline(EComputePipeline::ImageLUT));
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
                           getPipelineLayout(EPipelineLayout::Compute), 0, 1,
-                          &compute.computeImageDescriptorSet, 0, nullptr);
-  vkCmdDispatch(commandBuffer, 1280, 720, 1);
+                          &compute.imageDescriptorSet, 0, nullptr);
+  vkCmdDispatch(commandBuffer, 1280, 720, 1);*/
   //drawBoundEntities(commandBuffer, pipeline);
   //vkCmdEndRendering(commandBuffer);
 }
@@ -656,7 +656,7 @@ void core::MRenderer::renderFullscreenQuad(VkCommandBuffer commandBuffer,
                                            VkDescriptorSet* pSceneSet,
                                            uint32_t sceneDynamicOffset) {
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    getPipeline(pipeline));
+                    getGraphicsPipeline(pipeline));
 
   if (pSceneSet) {
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -734,8 +734,8 @@ void core::MRenderer::renderFrame() {
   VkRenderingAttachmentInfo renderingAttachmentInfo{};
   renderingAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
   renderingAttachmentInfo.imageLayout =
-      compute.pComputeImageTarget->texture.imageLayout;
-  renderingAttachmentInfo.imageView = compute.pComputeImageTarget->texture.view;
+      compute.pImageTarget->texture.imageLayout;
+  renderingAttachmentInfo.imageView = compute.pImageTarget->texture.view;
   renderingAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
   renderingAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
   renderingAttachmentInfo.clearValue = {0.0f, 0.0f, 0.25f, 0.0f};
@@ -745,12 +745,12 @@ void core::MRenderer::renderFrame() {
   renderingInfo.colorAttachmentCount = 1;
   renderingInfo.layerCount = 1;
   renderingInfo.renderArea.extent.width =
-      compute.pComputeImageTarget->texture.width;
+      compute.pImageTarget->texture.width;
   renderingInfo.renderArea.extent.height =
-      compute.pComputeImageTarget->texture.height;
+      compute.pImageTarget->texture.height;
   renderingInfo.pColorAttachments = &renderingAttachmentInfo;
 
-  executeDynamicRendering(cmdBuffer, &renderingInfo, EPipeline::Compute);
+  //executeDynamicRendering(cmdBuffer, &renderingInfo, EPipeline::Compute);
 
   executeRenderPass(cmdBuffer, ERenderPass::Present, frameSets, 1);
 
@@ -825,7 +825,7 @@ void core::MRenderer::renderFrame() {
 }
 
 void core::MRenderer::renderInitFrame() {
-  generateLUTMap();
+  //generateLUTMap();
   renderFrame();
 }
 

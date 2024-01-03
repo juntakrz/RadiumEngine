@@ -558,13 +558,13 @@ TResult core::MRenderer::createDescriptorSets() {
 
     if (vkAllocateDescriptorSets(core::renderer.logicalDevice.device,
                                  &allocateInfo,
-                                 &compute.computeImageDescriptorSet) != VK_SUCCESS) {
+                                 &compute.imageDescriptorSet) != VK_SUCCESS) {
       RE_LOG(Error, "Failed to allocate descriptor set for PBR input subpass.");
       return RE_CRITICAL;
     };
 
     std::vector<VkDescriptorImageInfo> imageDescriptors;
-    imageDescriptors.emplace_back(compute.pComputeImageTarget->texture.descriptor);
+    imageDescriptors.emplace_back(compute.pImageTarget->texture.descriptor);
 
     // write retrieved data to newly allocated descriptor set
     std::vector<VkWriteDescriptorSet> writeDescriptorSets;
@@ -573,7 +573,7 @@ TResult core::MRenderer::createDescriptorSets() {
 
     for (uint32_t i = 0; i < writeSize; ++i) {
       writeDescriptorSets[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-      writeDescriptorSets[i].dstSet = compute.computeImageDescriptorSet;
+      writeDescriptorSets[i].dstSet = compute.imageDescriptorSet;
       writeDescriptorSets[i].dstBinding = i;
       writeDescriptorSets[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
       writeDescriptorSets[i].descriptorCount = 1;

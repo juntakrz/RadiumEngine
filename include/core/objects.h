@@ -54,6 +54,11 @@ enum class ECmdType {
   Present
 };
 
+enum class EComputePipeline {
+  Null,
+  ImageLUT
+};
+
 enum class EDescriptorSetLayout {
   Scene,
   Material,
@@ -74,15 +79,14 @@ enum EPipeline : uint32_t {
   LUTGen            = 0b1,
   EnvFilter         = 0b10,
   EnvIrradiance     = 0b100,
-  Compute           = 0b1000,
-  Shadow            = 0b10000,
-  Skybox            = 0b100000,
-  OpaqueCullBack    = 0b1000000,
-  OpaqueCullNone    = 0b10000000,
-  MaskCullBack      = 0b100000000,
-  BlendCullNone     = 0b1000000000,
-  PBR               = 0b10000000000,
-  Present           = 0b100000000000,
+  Shadow            = 0b1000,
+  Skybox            = 0b10000,
+  OpaqueCullBack    = 0b100000,
+  OpaqueCullNone    = 0b1000000,
+  MaskCullBack      = 0b10000000,
+  BlendCullNone     = 0b100000000,
+  PBR               = 0b1000000000,
+  Present           = 0b10000000000,
 
   // combined pipeline indices for rendering only
   MixEnvironment = EnvFilter + EnvIrradiance
@@ -131,6 +135,10 @@ struct RCameraInfo {
   float farZ = config::viewDistance;
 };
 
+struct RComputePipelineInfo {
+  EComputePipeline type;
+};
+
 struct REntityBindInfo {
   AEntity* pEntity = nullptr;
   uint32_t vertexOffset = 0u;
@@ -142,6 +150,20 @@ struct REntityBindInfo {
 struct RFramebuffer {
   VkFramebuffer framebuffer;
   std::vector<struct RTexture*> pFramebufferAttachments;
+};
+
+struct RGraphicsPipelineInfo {
+  ERenderPass renderPass;
+  EPipelineLayout pipelineLayout;
+  EPipeline pipeline;
+  uint32_t colorBlendAttachmentCount;
+  std::string vertexShader;
+  std::string fragmentShader;
+  uint32_t subpass = 0;
+  VkBool32 blendEnable = VK_FALSE;
+  VkPrimitiveTopology primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+  VkPolygonMode polygonMode = VK_POLYGON_MODE_FILL;
+  VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT;
 };
 
 struct RLightInfo {
