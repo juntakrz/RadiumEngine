@@ -8,7 +8,7 @@
 #include "stb_image.h"
 
 TResult core::MResources::loadTexture(const std::string& filePath,
-                                   RSamplerInfo* pSamplerInfo) {
+                                   RSamplerInfo* pSamplerInfo, const bool createDetailedViews) {
   auto revert = [&](const char* name) { m_textures.erase(name); };
 
   if (filePath == "") {
@@ -68,7 +68,7 @@ TResult core::MResources::loadTexture(const std::string& filePath,
   ktxTexture_Destroy(pKTXTexture);
   ktxVulkanDeviceInfo_Destruct(deviceInfo);
 
-  if (pNewTexture->createImageView() != RE_OK) {
+  if (pNewTexture->createImageViews(createDetailedViews) != RE_OK) {
     revert(filePath.c_str());
     return RE_ERROR;
   }
@@ -262,7 +262,7 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
   newTexture->texture.levelCount = createInfo.mipLevels;
   newTexture->texture.layerCount = createInfo.arrayLayers;
 
-  if (newTexture->createImageView() != RE_OK) {
+  if (newTexture->createImageViews(pInfo->detailedViews) != RE_OK) {
     revert(pInfo->name.c_str());
     return nullptr;
   }

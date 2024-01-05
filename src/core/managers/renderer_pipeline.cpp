@@ -527,43 +527,85 @@ TResult core::MRenderer::createComputePipelines() {
   RE_LOG(Log, "Creating compute pipelines.");
 
   //
-  // Compute Image pipeline
+  // Compute Image pipeline for creating BRDF LUT image
   //
-  system.computePipelines.emplace(EComputePipeline::ImageLUT, VK_NULL_HANDLE);
+  {
+    system.computePipelines.emplace(EComputePipeline::ImageLUT, VK_NULL_HANDLE);
 
-  VkPipelineShaderStageCreateInfo shaderStage =
-      loadShader("cs_brdfLUT.spv", VK_SHADER_STAGE_COMPUTE_BIT);
+    VkPipelineShaderStageCreateInfo shaderStage =
+        loadShader("cs_brdfLUT.spv", VK_SHADER_STAGE_COMPUTE_BIT);
 
-  // 'Compute Image' pipeline
-  VkPipelineRenderingCreateInfo pipelineRenderingInfo{};
-  pipelineRenderingInfo.sType =
-      VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
-  pipelineRenderingInfo.colorAttachmentCount = 1;
-  pipelineRenderingInfo.pColorAttachmentFormats = &core::vulkan::formatLUT;
-  pipelineRenderingInfo.viewMask = 0;
+    // 'Compute Image' pipeline
+    VkPipelineRenderingCreateInfo pipelineRenderingInfo{};
+    pipelineRenderingInfo.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+    pipelineRenderingInfo.colorAttachmentCount = 1;
+    pipelineRenderingInfo.pColorAttachmentFormats = &core::vulkan::formatLUT;
+    pipelineRenderingInfo.viewMask = 0;
 
-  VkComputePipelineCreateInfo computePipelineInfo{};
-  computePipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-  computePipelineInfo.layout = getPipelineLayout(EPipelineLayout::ComputeImage);
-  computePipelineInfo.stage = shaderStage;
-  computePipelineInfo.flags = 0;
+    VkComputePipelineCreateInfo computePipelineInfo{};
+    computePipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    computePipelineInfo.layout =
+        getPipelineLayout(EPipelineLayout::ComputeImage);
+    computePipelineInfo.stage = shaderStage;
+    computePipelineInfo.flags = 0;
 
-  if (vkCreateComputePipelines(
-          logicalDevice.device, VK_NULL_HANDLE, 1, &computePipelineInfo,
-          nullptr, &getComputePipeline(EComputePipeline::ImageLUT)) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create Compute Image pipeline.");
+    if (vkCreateComputePipelines(
+            logicalDevice.device, VK_NULL_HANDLE, 1, &computePipelineInfo,
+            nullptr,
+            &getComputePipeline(EComputePipeline::ImageLUT)) != VK_SUCCESS) {
+      RE_LOG(Critical, "Failed to create Compute Image 'BRDF LUT' pipeline.");
 
-    return RE_CRITICAL;
+      return RE_CRITICAL;
+    }
+
+    vkDestroyShaderModule(logicalDevice.device, shaderStage.module, nullptr);
   }
 
-  vkDestroyShaderModule(logicalDevice.device, shaderStage.module, nullptr);
+  //
+  // Compute Image pipeline for mipmapping R16G16B16A16_SFLOAT image
+  //
+  {
+    system.computePipelines.emplace(EComputePipeline::ImageMipMap16f,
+                                    VK_NULL_HANDLE);
+
+    VkPipelineShaderStageCreateInfo shaderStage =
+        loadShader("cs_mipmap16f.spv", VK_SHADER_STAGE_COMPUTE_BIT);
+
+    // 'Compute Image' pipeline
+    VkPipelineRenderingCreateInfo pipelineRenderingInfo{};
+    pipelineRenderingInfo.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+    pipelineRenderingInfo.colorAttachmentCount = 1;
+    pipelineRenderingInfo.pColorAttachmentFormats = &core::vulkan::formatHDR16;
+    pipelineRenderingInfo.viewMask = 0;
+
+    VkComputePipelineCreateInfo computePipelineInfo{};
+    computePipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    computePipelineInfo.layout =
+        getPipelineLayout(EPipelineLayout::ComputeImage);
+    computePipelineInfo.stage = shaderStage;
+    computePipelineInfo.flags = 0;
+
+    if (vkCreateComputePipelines(
+            logicalDevice.device, VK_NULL_HANDLE, 1, &computePipelineInfo,
+            nullptr, &getComputePipeline(EComputePipeline::ImageMipMap16f)) !=
+        VK_SUCCESS) {
+      RE_LOG(Critical, "Failed to create Compute Image 'MipMap16f' pipeline.");
+
+      return RE_CRITICAL;
+    }
+
+    vkDestroyShaderModule(logicalDevice.device, shaderStage.module, nullptr);
+  }
 
   return RE_OK;
 }
 
 void core::MRenderer::destroyComputePipelines() {
-  vkDestroyPipeline(logicalDevice.device,
-                    getComputePipeline(EComputePipeline::ImageLUT), nullptr);
+  for (auto& pipeline : system.computePipelines) {
+    vkDestroyPipeline(logicalDevice.device, pipeline.second, nullptr);
+  }
 }
 
 VkPipelineLayout& core::MRenderer::getPipelineLayout(EPipelineLayout type) {

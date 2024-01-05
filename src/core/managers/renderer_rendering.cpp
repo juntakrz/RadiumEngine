@@ -619,8 +619,7 @@ void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer,
 }
 
 void core::MRenderer::executeDynamicRendering(VkCommandBuffer commandBuffer,
-                                               VkRenderingInfo* pRenderingInfo,
-                                               EPipeline pipeline) {
+                                               EDynamicRenderPass renderPass) {
   //vkCmdBeginRendering(commandBuffer, pRenderingInfo);
   //drawBoundEntities(commandBuffer, pipeline);
   //vkCmdEndRendering(commandBuffer);
@@ -728,7 +727,7 @@ void core::MRenderer::renderFrame() {
   //renderingAttachmentInfo.imageView = compute.pImageTarget->texture.view;
   //renderingAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
   //renderingAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-  //renderingAttachmentInfo.clearValue = {0.0f, 0.0f, 0.25f, 0.0f};
+  //renderingAttachmentInfo.clearValue = {0.0f, 0.0f, 0.0f, 0.0f};
 
   //VkRenderingInfo renderingInfo{};
   //renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;

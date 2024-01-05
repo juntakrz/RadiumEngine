@@ -19,7 +19,6 @@ void core::MResources::initialize() {
   loadTexture("default/default_occlusion.ktx2", &samplerInfo);
   loadTexture(RE_BLACKTEXTURE, &samplerInfo);
   loadTexture(RE_WHITETEXTURE, &samplerInfo);
-  //loadTexture("default/brdfLUT.ktx2", &samplerInfo);
 
   // create default material
   RMaterialInfo materialInfo{};

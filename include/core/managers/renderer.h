@@ -29,6 +29,10 @@ class MRenderer {
     VkExtent2D imageExtent;
   } compute;
 
+  struct {
+    std::unordered_map<EDynamicRenderPass, RDynamicRenderingPass> passes;
+  } dynamicRendering;
+
   struct REnvironmentData {
     REnvironmentPCB envPushBlock;
     std::vector<VkDescriptorSet> envDescriptorSets;
@@ -282,6 +286,9 @@ class MRenderer {
                             const std::vector<std::string>& attachmentNames,
                             const char* framebufferName);
 
+  TResult setupDynamicRenderPass(EDynamicRenderPass passType,
+                                  RDynamicRenderingInfo info);
+
   // create single layer render target for fragment shader output
   // uses swapchain resolution
   RTexture* createFragmentRenderTarget(const char* name, uint32_t width = 0,
@@ -361,7 +368,8 @@ class MRenderer {
                           bool free = false, bool useFence = false);
 
   VkImageView createImageView(VkImage image, VkFormat format,
-                              uint32_t levelCount, uint32_t layerCount);
+                              uint32_t levelCount, uint32_t layerCount,
+                              uint32_t baseLevel = 0, uint32_t baseLayer = 0);
 
   // binds model to graphics pipeline
   uint32_t bindEntity(AEntity* pEntity);
@@ -508,8 +516,7 @@ class MRenderer {
                          VkDescriptorSet* pSceneSets, const uint32_t setCount);
 
   void executeDynamicRendering(VkCommandBuffer commandBuffer,
-                               VkRenderingInfo* pRenderingInfo,
-                               EPipeline pipeline);
+                               EDynamicRenderPass renderPass);
 
   void executeComputeImage(VkCommandBuffer commandBuffer,
                            EComputePipeline pipeline);

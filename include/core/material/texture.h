@@ -15,12 +15,8 @@ struct RTexture {
   // to see if it should be deleted if owning material is deleted
   uint32_t references = 0;
 
-  TResult createImageView();
+  TResult createImageViews(const bool createDetailedViews = false);
   TResult createSampler(RSamplerInfo *pSamplerInfo);
   TResult createDescriptor();
   ~RTexture();
-};
-
-struct RTextureCube : public RTexture {
-
 };

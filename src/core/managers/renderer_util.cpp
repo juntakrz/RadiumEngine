@@ -4,6 +4,7 @@
 #include "core/managers/ref.h"
 #include "core/managers/renderer.h"
 #include "core/managers/actors.h"
+#include "core/material/texture.h"
 #include "core/model/model.h"
 #include "core/world/actors/camera.h"
 
@@ -188,17 +189,17 @@ VkRenderPass core::MRenderer::createRenderPass(
   }
 
   // Create render pass
-  renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-  renderPassInfo.pNext = NULL;
-  renderPassInfo.attachmentCount = colorAttachmentCount;
-  if (pDepthAttachment != NULL) renderPassInfo.attachmentCount++;
-  renderPassInfo.pAttachments = attachments;
-  renderPassInfo.subpassCount =
+  renderpPipelineInfo->sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+  renderpPipelineInfo->pNext = NULL;
+  renderpPipelineInfo->attachmentCount = colorAttachmentCount;
+  if (pDepthAttachment != NULL) renderpPipelineInfo->attachmentCount++;
+  renderpPipelineInfo->pAttachments = attachments;
+  renderpPipelineInfo->subpassCount =
       static_cast<uint32_t>(subpassDescriptions.size());
-  renderPassInfo.pSubpasses = subpassDescriptions.data();
-  renderPassInfo.dependencyCount =
+  renderpPipelineInfo->pSubpasses = subpassDescriptions.data();
+  renderpPipelineInfo->dependencyCount =
       static_cast<uint32_t>(subpassDependencies.size());
-  renderPassInfo.pDependencies = subpassDependencies.data();
+  renderpPipelineInfo->pDependencies = subpassDependencies.data();
 
   VkRenderPass renderPass;
   VkResult result =
@@ -296,6 +297,62 @@ TResult core::MRenderer::createFramebuffer(
   system.framebuffers.at(fbName).pFramebufferAttachments = pFramebufferTargets;
   getRenderPass(renderPass)->pFramebuffer = &system.framebuffers.at(fbName);
   
+  return RE_OK;
+}
+
+TResult core::MRenderer::setupDynamicRenderPass(EDynamicRenderPass passType,
+                                                 RDynamicRenderingInfo info) {
+  // Get or create the dynamic render pass
+  RDynamicRenderingPass& renderPass = dynamicRendering.passes[passType];
+  RDynamicRenderingPipelineInfo* pPipelineInfo = nullptr;
+
+  // Get or create pipeline info
+  for (size_t i = 0; i < renderPass.usedPipelines.size(); ++i) {
+    if (renderPass.usedPipelines.at(i).first == info.pipeline) {
+      pPipelineInfo = &renderPass.usedPipelines.at(i).second;
+      break;
+    }
+  }
+
+  if (!pPipelineInfo) {
+    renderPass.usedPipelines.emplace_back(info.pipeline);
+    pPipelineInfo = &renderPass.usedPipelines.back().second;
+  }
+
+  // Set the chosen pipeline info
+  pPipelineInfo->colorAttachmentInfo.resize(info.imageViews.size());
+
+  for (int32_t i = 0; i < info.imageViews.size(); ++i) {
+    pPipelineInfo->colorAttachmentInfo[i].sType =
+        VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    pPipelineInfo->colorAttachmentInfo[i].imageLayout = info.imageLayouts[i];
+    pPipelineInfo->colorAttachmentInfo[i].imageView = info.imageViews[i];
+    pPipelineInfo->colorAttachmentInfo[i].clearValue = info.clearValue;
+    pPipelineInfo->colorAttachmentInfo[i].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    pPipelineInfo->colorAttachmentInfo[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  }
+
+  pPipelineInfo->depthAttachmentInfo.sType =
+      VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+  pPipelineInfo->depthAttachmentInfo.imageLayout =
+      info.pDepthAttachment->texture.imageLayout;
+  pPipelineInfo->depthAttachmentInfo.imageView = info.pDepthAttachment->texture.view;
+  pPipelineInfo->depthAttachmentInfo.clearValue = {1.0f, 0.0f, 0.0f, 0.0f};
+  pPipelineInfo->depthAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  pPipelineInfo->depthAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+  pPipelineInfo->stencilAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+  pPipelineInfo->stencilAttachmentInfo.imageLayout =
+      info.pStencilAttachment->texture.imageLayout;
+  pPipelineInfo->stencilAttachmentInfo.imageView =
+      info.pStencilAttachment->texture.view;
+  pPipelineInfo->depthAttachmentInfo.clearValue = {0.0f, 0.0f, 0.0f, 0.0f};
+  pPipelineInfo->depthAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  pPipelineInfo->depthAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+  RE_LOG(Log, "Set dynamic rendering pass E%d, pipeline E%d.", passType,
+         info.pipeline);
+
   return RE_OK;
 }
 
@@ -1406,7 +1463,9 @@ void core::MRenderer::flushCommandBuffer(VkCommandBuffer cmdBuffer,
 
 VkImageView core::MRenderer::createImageView(VkImage image, VkFormat format,
                                              uint32_t levelCount,
-                                             uint32_t layerCount) {
+                                             uint32_t layerCount,
+                                             uint32_t baseLevel,
+                                             uint32_t baseLayer) {
   VkImageView imageView = nullptr;
 
   VkImageViewCreateInfo viewInfo{};
@@ -1428,9 +1487,9 @@ VkImageView core::MRenderer::createImageView(VkImage image, VkFormat format,
   viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 
   viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  viewInfo.subresourceRange.baseMipLevel = 0;
+  viewInfo.subresourceRange.baseMipLevel = baseLevel;
   viewInfo.subresourceRange.levelCount = levelCount;
-  viewInfo.subresourceRange.baseArrayLayer = 0;
+  viewInfo.subresourceRange.baseArrayLayer = baseLayer;
   viewInfo.subresourceRange.layerCount = layerCount;
 
   if (format == VK_FORMAT_D32_SFLOAT_S8_UINT ||

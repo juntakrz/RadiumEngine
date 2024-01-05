@@ -285,7 +285,7 @@ TResult core::MRenderer::createImageTargets() {
   // default cubemap texture as a copy target
   rtName = RTGT_ENVFILTER;
   uint32_t dimension = core::vulkan::envFilterExtent;
-  uint32_t mipLevels = static_cast<uint32_t>(floor(log2(dimension))) + 1;
+  uint32_t mipLevels = math::getMipLevels(dimension);
 
   textureInfo = RTextureInfo{};
   textureInfo.name = rtName;
@@ -294,6 +294,7 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.height = textureInfo.width;
   textureInfo.format = core::vulkan::formatHDR16;
   textureInfo.mipLevels = mipLevels;
+  textureInfo.detailedViews = true;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags =
@@ -321,7 +322,7 @@ TResult core::MRenderer::createImageTargets() {
 
   rtName = RTGT_ENVIRRAD;
   dimension = core::vulkan::envIrradianceExtent;
-  mipLevels = static_cast<uint32_t>(floor(log2(dimension))) + 1;
+  mipLevels = math::getMipLevels(dimension);
 
   textureInfo.name = rtName;
   textureInfo.width = dimension;

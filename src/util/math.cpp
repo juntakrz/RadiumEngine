@@ -40,3 +40,7 @@ float math::random(float min, float max) {
   std::uniform_real_distribution<float> dist(min, max);
   return dist(mt);
 }
+
+uint32_t math::getMipLevels(uint32_t dimension) {
+  return static_cast<uint32_t>(floor(log2(dimension))) + 1;
+}

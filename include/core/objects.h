@@ -56,7 +56,8 @@ enum class ECmdType {
 
 enum class EComputePipeline {
   Null,
-  ImageLUT
+  ImageLUT,
+  ImageMipMap16f
 };
 
 enum class EDescriptorSetLayout {
@@ -67,6 +68,11 @@ enum class EDescriptorSetLayout {
   Environment,
   ComputeImage,
   Dummy
+};
+
+enum class EDynamicRenderPass {
+  Null,
+  Environment
 };
 
 enum class ELightType {
@@ -110,7 +116,6 @@ enum class EPrimitiveType {
 
 enum class ERenderPass {
   Null,
-  Environment,
   Shadow,
   Deferred,
   Present
@@ -133,6 +138,27 @@ struct RCameraInfo {
 
 struct RComputePipelineInfo {
   EComputePipeline type;
+};
+
+struct RDynamicRenderingInfo {
+  EPipeline pipeline;
+  std::vector<VkImageView> imageViews;
+  std::vector<VkImageLayout> imageLayouts;
+  struct RTexture* pDepthAttachment = nullptr;
+  struct RTexture* pStencilAttachment = nullptr;
+  VkExtent2D extent;
+  VkClearValue clearValue = {0.0f, 0.0f, 0.0f, 0.0f};
+};
+
+struct RDynamicRenderingPass {
+  std::vector<std::pair<EPipeline, struct RDynamicRenderingPipelineInfo>>
+      usedPipelines;
+};
+
+struct RDynamicRenderingPipelineInfo {
+  std::vector<VkRenderingAttachmentInfo> colorAttachmentInfo;
+  VkRenderingAttachmentInfo depthAttachmentInfo;
+  VkRenderingAttachmentInfo stencilAttachmentInfo;
 };
 
 struct REntityBindInfo {
@@ -260,6 +286,7 @@ struct RTextureInfo {
   VkImageLayout targetLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
   VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
   bool asCubemap = false;
+  bool detailedViews = false;
   VkMemoryPropertyFlags memoryFlags = NULL;
   VmaMemoryUsage vmaMemoryUsage = VMA_MEMORY_USAGE_AUTO;
 };
@@ -317,6 +344,7 @@ struct RVkPhysicalDevice {
 // expanding KTX structure
 struct RVulkanTexture : public ktxVulkanTexture {
   VkImageView view;
+  std::vector<std::vector<VkImageView>> layerAndMipViews;  // [layer][mip level]
   VkSampler sampler;
   VkDescriptorImageInfo descriptor;
 };

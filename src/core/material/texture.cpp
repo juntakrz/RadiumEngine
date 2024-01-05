@@ -3,10 +3,29 @@
 #include "core/managers/renderer.h"
 #include "core/material/texture.h"
 
-TResult RTexture::createImageView() {
+TResult RTexture::createImageViews(const bool createDetailedViews) {
+  // create complete image view
   texture.view =
       core::renderer.createImageView(texture.image, texture.imageFormat,
                                      texture.levelCount, texture.layerCount);
+
+  // create separate views into every layer and mipmap
+  if (createDetailedViews) {
+    texture.layerAndMipViews.resize(texture.layerCount);
+
+    for (auto& it : texture.layerAndMipViews) {
+      it.resize(texture.levelCount);
+    }
+
+    for (uint8_t layerIndex = 0; layerIndex < texture.layerCount;
+         ++layerIndex) {
+      for (uint8_t mipIndex = 0; mipIndex < texture.levelCount; ++mipIndex) {
+        texture.layerAndMipViews[layerIndex][mipIndex] =
+            core::renderer.createImageView(texture.image, texture.imageFormat,
+                                           1u, 1u, mipIndex, layerIndex);
+      }
+    }
+  }
   
   texture.viewType = VK_IMAGE_VIEW_TYPE_2D;
 

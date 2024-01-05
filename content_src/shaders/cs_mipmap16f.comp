@@ -1,0 +1,25 @@
+#version 450
+
+#define MAX_MIPLEVELS 14	// supports 8192 textures
+
+layout(local_size_x = 8, local_size_y = 4) in;
+layout(set = 0, binding = 0, rgba16f) uniform image2D inMipMaps[MAX_MIPLEVELS];
+
+layout(push_constant) uniform PushConstants {
+	uint mipLevel;
+} computeData;
+
+void main() {
+	ivec2 pixelPosition = ivec2(gl_GlobalInvocationID.xy);
+	ivec2 prevMipSize = imageSize(inMipMaps[computeData.mipLevel - 1]);
+    ivec2 mipSize = imageSize(inMipMaps[computeData.mipLevel]);
+
+	// test support for square sized images only
+	if (mipSize != prevMipSize / 2) {
+		return;
+    }
+
+	if (pixelPosition.x >= prevMipSize.x || pixelPosition.y >= prevMipSize.y) {
+		return;
+	}
+}
