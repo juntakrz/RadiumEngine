@@ -255,6 +255,9 @@ class MRenderer {
   RRenderPass* getRenderPass(ERenderPass type);
   VkRenderPass& getVkRenderPass(ERenderPass type);
 
+  TResult createDynamicRenderPasses();
+  RDynamicRenderingPass* getRenderPass(EDynamicRenderPass type);
+
   TResult createPipelineLayouts();
   TResult createGraphicsPipelines();
   void destroyGraphicsPipelines();
@@ -287,7 +290,7 @@ class MRenderer {
                             const char* framebufferName);
 
   TResult setupDynamicRenderPass(EDynamicRenderPass passType,
-                                  RDynamicRenderingInfo info);
+                                  RDynamicRenderingInfo* info);
 
   // create single layer render target for fragment shader output
   // uses swapchain resolution

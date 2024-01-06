@@ -189,17 +189,17 @@ VkRenderPass core::MRenderer::createRenderPass(
   }
 
   // Create render pass
-  renderpPipelineInfo->sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-  renderpPipelineInfo->pNext = NULL;
-  renderpPipelineInfo->attachmentCount = colorAttachmentCount;
-  if (pDepthAttachment != NULL) renderpPipelineInfo->attachmentCount++;
-  renderpPipelineInfo->pAttachments = attachments;
-  renderpPipelineInfo->subpassCount =
+  renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+  renderPassInfo.pNext = NULL;
+  renderPassInfo.attachmentCount = colorAttachmentCount;
+  if (pDepthAttachment != NULL) renderPassInfo.attachmentCount++;
+  renderPassInfo.pAttachments = attachments;
+  renderPassInfo.subpassCount =
       static_cast<uint32_t>(subpassDescriptions.size());
-  renderpPipelineInfo->pSubpasses = subpassDescriptions.data();
-  renderpPipelineInfo->dependencyCount =
+  renderPassInfo.pSubpasses = subpassDescriptions.data();
+  renderPassInfo.dependencyCount =
       static_cast<uint32_t>(subpassDependencies.size());
-  renderpPipelineInfo->pDependencies = subpassDependencies.data();
+  renderPassInfo.pDependencies = subpassDependencies.data();
 
   VkRenderPass renderPass;
   VkResult result =
@@ -300,58 +300,85 @@ TResult core::MRenderer::createFramebuffer(
   return RE_OK;
 }
 
-TResult core::MRenderer::setupDynamicRenderPass(EDynamicRenderPass passType,
-                                                 RDynamicRenderingInfo info) {
+TResult core::MRenderer::setupDynamicRenderPass(EDynamicRenderPass passType, RDynamicRenderingInfo* info) {
+  if (!info->overrideColorViews.empty() &&
+    info->overrideColorViews.size() != info->pColorAttachments.size()) {
+    RE_LOG(Error, "Failed to create / update dynamic render pass E%d. Override image views are used, but their count is not equal to color attachment count.", passType);
+    return RE_ERROR;
+  }
+
   // Get or create the dynamic render pass
   RDynamicRenderingPass& renderPass = dynamicRendering.passes[passType];
   RDynamicRenderingPipelineInfo* pPipelineInfo = nullptr;
+  const bool useOverrideColorViews = !info->overrideColorViews.empty();
+  const uint32_t colorAttachmentCount = static_cast<uint32_t>(info->pColorAttachments.size());
 
   // Get or create pipeline info
   for (size_t i = 0; i < renderPass.usedPipelines.size(); ++i) {
-    if (renderPass.usedPipelines.at(i).first == info.pipeline) {
+    if (renderPass.usedPipelines.at(i).first == info->pipeline) {
       pPipelineInfo = &renderPass.usedPipelines.at(i).second;
       break;
     }
   }
 
   if (!pPipelineInfo) {
-    renderPass.usedPipelines.emplace_back(info.pipeline);
+    renderPass.usedPipelines.emplace_back(info->pipeline);
     pPipelineInfo = &renderPass.usedPipelines.back().second;
   }
 
   // Set the chosen pipeline info
-  pPipelineInfo->colorAttachmentInfo.resize(info.imageViews.size());
+  pPipelineInfo->colorAttachmentInfo.resize(colorAttachmentCount);
 
-  for (int32_t i = 0; i < info.imageViews.size(); ++i) {
-    pPipelineInfo->colorAttachmentInfo[i].sType =
-        VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-    pPipelineInfo->colorAttachmentInfo[i].imageLayout = info.imageLayouts[i];
-    pPipelineInfo->colorAttachmentInfo[i].imageView = info.imageViews[i];
-    pPipelineInfo->colorAttachmentInfo[i].clearValue = info.clearValue;
+  for (uint32_t i = 0; i < colorAttachmentCount; ++i) {
+    pPipelineInfo->colorAttachmentInfo[i].sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    pPipelineInfo->colorAttachmentInfo[i].imageLayout = info->pColorAttachments[i]->texture.imageLayout;
+    pPipelineInfo->colorAttachmentInfo[i].imageView = (useOverrideColorViews) ? info->overrideColorViews[i] : info->pColorAttachments[i]->texture.view;
+    pPipelineInfo->colorAttachmentInfo[i].clearValue = info->clearValue;
     pPipelineInfo->colorAttachmentInfo[i].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     pPipelineInfo->colorAttachmentInfo[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
   }
 
-  pPipelineInfo->depthAttachmentInfo.sType =
-      VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-  pPipelineInfo->depthAttachmentInfo.imageLayout =
-      info.pDepthAttachment->texture.imageLayout;
-  pPipelineInfo->depthAttachmentInfo.imageView = info.pDepthAttachment->texture.view;
-  pPipelineInfo->depthAttachmentInfo.clearValue = {1.0f, 0.0f, 0.0f, 0.0f};
-  pPipelineInfo->depthAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-  pPipelineInfo->depthAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  if (info->pDepthAttachment) {
+    pPipelineInfo->depthAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    pPipelineInfo->depthAttachmentInfo.imageLayout = info->pDepthAttachment->texture.imageLayout;
+    pPipelineInfo->depthAttachmentInfo.imageView = info->pDepthAttachment->texture.view;
+    pPipelineInfo->depthAttachmentInfo.clearValue = { 1.0f, 0.0f, 0.0f, 0.0f };
+    pPipelineInfo->depthAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    pPipelineInfo->depthAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  }
 
-  pPipelineInfo->stencilAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-  pPipelineInfo->stencilAttachmentInfo.imageLayout =
-      info.pStencilAttachment->texture.imageLayout;
-  pPipelineInfo->stencilAttachmentInfo.imageView =
-      info.pStencilAttachment->texture.view;
-  pPipelineInfo->depthAttachmentInfo.clearValue = {0.0f, 0.0f, 0.0f, 0.0f};
-  pPipelineInfo->depthAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-  pPipelineInfo->depthAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  if (info->pStencilAttachment) {
+    pPipelineInfo->stencilAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+    pPipelineInfo->stencilAttachmentInfo.imageLayout = info->pStencilAttachment->texture.imageLayout;
+    pPipelineInfo->stencilAttachmentInfo.imageView = info->pStencilAttachment->texture.view;
+    pPipelineInfo->stencilAttachmentInfo.clearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
+    pPipelineInfo->stencilAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    pPipelineInfo->stencilAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  }
 
-  RE_LOG(Log, "Set dynamic rendering pass E%d, pipeline E%d.", passType,
-         info.pipeline);
+  pPipelineInfo->colorAttachmentFormats.resize(colorAttachmentCount);
+
+  for (uint32_t j = 0; j < colorAttachmentCount; ++j) {
+    pPipelineInfo->colorAttachmentFormats[j] = info->pColorAttachments[j]->texture.imageFormat;
+  }
+
+  // this data will be used during graphics pipeline creation
+  VkPipelineRenderingCreateInfo& pipelineCreateInfo = pPipelineInfo->pipelineCreateInfo;
+  pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+  pipelineCreateInfo.colorAttachmentCount = static_cast<uint32_t>(colorAttachmentCount);
+  pipelineCreateInfo.pColorAttachmentFormats = pPipelineInfo->colorAttachmentFormats.data();
+  pipelineCreateInfo.viewMask = 0;
+
+  if (info->pDepthAttachment) {
+    pipelineCreateInfo.depthAttachmentFormat = info->pDepthAttachment->texture.imageFormat;
+  }
+
+  if (info->pStencilAttachment) {
+    pipelineCreateInfo.stencilAttachmentFormat = info->pStencilAttachment->texture.imageFormat;
+  }
+
+  RE_LOG(Log, "Dynamic rendering pass E%d, pipeline E%d were set.", passType,
+         info->pipeline);
 
   return RE_OK;
 }
@@ -369,9 +396,7 @@ RTexture* core::MRenderer::createFragmentRenderTarget(const char* name, uint32_t
   textureInfo.height = height;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-  textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-                           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-                           VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
 
   RTexture* pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -401,8 +426,7 @@ void core::MRenderer::setResourceName(VkDevice device, VkObjectType objectType,
   }*/
 }
 
-TResult core::MRenderer::getDepthStencilFormat(
-    VkFormat desiredFormat, VkFormat& outFormat) {
+TResult core::MRenderer::getDepthStencilFormat(VkFormat desiredFormat, VkFormat& outFormat) {
   std::vector<VkFormat> depthFormats = {
       VK_FORMAT_D32_SFLOAT_S8_UINT,
       VK_FORMAT_D24_UNORM_S8_UINT,
@@ -410,8 +434,7 @@ TResult core::MRenderer::getDepthStencilFormat(
   };
 
   VkFormatProperties formatProps;
-  vkGetPhysicalDeviceFormatProperties(physicalDevice.device, desiredFormat,
-                                      &formatProps);
+  vkGetPhysicalDeviceFormatProperties(physicalDevice.device, desiredFormat, &formatProps);
   if (formatProps.optimalTilingFeatures &
       VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
     outFormat = desiredFormat;
@@ -425,10 +448,8 @@ TResult core::MRenderer::getDepthStencilFormat(
 
   for (auto& format : depthFormats) {
     VkFormatProperties formatProps;
-    vkGetPhysicalDeviceFormatProperties(physicalDevice.device, format,
-                                        &formatProps);
-    if (formatProps.optimalTilingFeatures &
-        VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+    vkGetPhysicalDeviceFormatProperties(physicalDevice.device, format, &formatProps);
+    if (formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
       outFormat = format;
       return RE_WARNING;
     }
@@ -439,8 +460,7 @@ TResult core::MRenderer::getDepthStencilFormat(
 }
 
 
-VkPipelineShaderStageCreateInfo core::MRenderer::loadShader(
-    const char* path, VkShaderStageFlagBits stage) {
+VkPipelineShaderStageCreateInfo core::MRenderer::loadShader(const char* path, VkShaderStageFlagBits stage) {
   std::string fullPath = RE_PATH_SHADERS + std::string(path);
   std::vector<char> shaderCode = util::readFile(fullPath.c_str());
 
@@ -453,16 +473,14 @@ VkPipelineShaderStageCreateInfo core::MRenderer::loadShader(
   return stageCreateInfo;
 }
 
-VkShaderModule core::MRenderer::createShaderModule(
-    std::vector<char>& shaderCode) {
+VkShaderModule core::MRenderer::createShaderModule(std::vector<char>& shaderCode) {
   VkShaderModuleCreateInfo smInfo{};
   smInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
   smInfo.codeSize = shaderCode.size();
   smInfo.pCode = reinterpret_cast<uint32_t*>(shaderCode.data());
 
   VkShaderModule shaderModule;
-  if ((vkCreateShaderModule(logicalDevice.device, &smInfo, nullptr,
-                            &shaderModule) != VK_SUCCESS)) {
+  if ((vkCreateShaderModule(logicalDevice.device, &smInfo, nullptr, &shaderModule) != VK_SUCCESS)) {
     RE_LOG(Warning, "failed to create requested shader module.");
     return VK_NULL_HANDLE;
   };
@@ -480,8 +498,7 @@ TResult core::MRenderer::checkInstanceValidationLayers() {
   // enumerate instance layers
   checkResult = vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
   availableValidationLayers.resize(layerCount);
-  checkResult = vkEnumerateInstanceLayerProperties(
-      &layerCount, availableValidationLayers.data());
+  checkResult = vkEnumerateInstanceLayerProperties(&layerCount, availableValidationLayers.data());
   if (checkResult != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to enumerate instance layer properties.");
     return RE_CRITICAL;
@@ -1303,9 +1320,7 @@ TResult core::MRenderer::generateSingleMipMap(VkCommandBuffer cmdBuffer,
     barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
-    vkCmdPipelineBarrier(cmdBuffer, srcStageMask,
-                         VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0,
-                         nullptr, 1, &barrier);
+    vkCmdPipelineBarrier(cmdBuffer, srcStageMask, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
   }
 
   VkImageBlit blit{};
@@ -1323,9 +1338,7 @@ TResult core::MRenderer::generateSingleMipMap(VkCommandBuffer cmdBuffer,
   blit.dstSubresource.baseArrayLayer = layer;
   blit.dstSubresource.mipLevel = mipLevel;
 
-  vkCmdBlitImage(cmdBuffer, pTexture->texture.image,
-                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, pTexture->texture.image,
-                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, filter);
+  vkCmdBlitImage(cmdBuffer, pTexture->texture.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, pTexture->texture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, filter);
 
   // convert source mip map to its original layout
   barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
@@ -1342,9 +1355,7 @@ TResult core::MRenderer::generateSingleMipMap(VkCommandBuffer cmdBuffer,
     case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL: {
       barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-      vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                           VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr,
-                           0, nullptr, 1, &barrier);
+      vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
       barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
       barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -1354,9 +1365,7 @@ TResult core::MRenderer::generateSingleMipMap(VkCommandBuffer cmdBuffer,
     }
   }
 
-  vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                       VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0,
-                       nullptr, 1, &barrier);
+  vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
   return RE_OK;
 }
@@ -1387,9 +1396,7 @@ VkQueue core::MRenderer::getCommandQueue(ECmdType type) {
   }
 }
 
-VkCommandBuffer core::MRenderer::createCommandBuffer(ECmdType type,
-                                                     VkCommandBufferLevel level,
-                                                     bool begin) {
+VkCommandBuffer core::MRenderer::createCommandBuffer(ECmdType type, VkCommandBufferLevel level, bool begin) {
   VkCommandBuffer newCommandBuffer;
   VkCommandBufferAllocateInfo allocateInfo{};
 
@@ -1398,8 +1405,7 @@ VkCommandBuffer core::MRenderer::createCommandBuffer(ECmdType type,
   allocateInfo.commandBufferCount = 1;
   allocateInfo.level = level;
 
-  vkAllocateCommandBuffers(logicalDevice.device, &allocateInfo,
-                           &newCommandBuffer);
+  vkAllocateCommandBuffers(logicalDevice.device, &allocateInfo, &newCommandBuffer);
 
   if (begin) {
     VkCommandBufferBeginInfo beginInfo{};
@@ -1420,9 +1426,7 @@ void core::MRenderer::beginCommandBuffer(VkCommandBuffer cmdBuffer) {
   vkBeginCommandBuffer(cmdBuffer, &beginInfo);
 }
 
-void core::MRenderer::flushCommandBuffer(VkCommandBuffer cmdBuffer,
-                                         ECmdType type, bool free,
-                                         bool useFence) {
+void core::MRenderer::flushCommandBuffer(VkCommandBuffer cmdBuffer, ECmdType type, bool free, bool useFence) {
   vkEndCommandBuffer(cmdBuffer);
 
   VkSubmitInfo submitInfo{};
@@ -1456,16 +1460,11 @@ void core::MRenderer::flushCommandBuffer(VkCommandBuffer cmdBuffer,
   }
 
   if (free) {
-    vkFreeCommandBuffers(logicalDevice.device, getCommandPool(type), 1,
-                         &cmdBuffer);
+    vkFreeCommandBuffers(logicalDevice.device, getCommandPool(type), 1, &cmdBuffer);
   }
 }
 
-VkImageView core::MRenderer::createImageView(VkImage image, VkFormat format,
-                                             uint32_t levelCount,
-                                             uint32_t layerCount,
-                                             uint32_t baseLevel,
-                                             uint32_t baseLayer) {
+VkImageView core::MRenderer::createImageView(VkImage image, VkFormat format, uint32_t levelCount, uint32_t layerCount, uint32_t baseLevel, uint32_t baseLayer) {
   VkImageView imageView = nullptr;
 
   VkImageViewCreateInfo viewInfo{};
@@ -1492,17 +1491,13 @@ VkImageView core::MRenderer::createImageView(VkImage image, VkFormat format,
   viewInfo.subresourceRange.baseArrayLayer = baseLayer;
   viewInfo.subresourceRange.layerCount = layerCount;
 
-  if (format == VK_FORMAT_D32_SFLOAT_S8_UINT ||
-      format == VK_FORMAT_D24_UNORM_S8_UINT ||
-      format == VK_FORMAT_D16_UNORM_S8_UINT) {
-    viewInfo.subresourceRange.aspectMask =
-        VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+  if (format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT || format == VK_FORMAT_D16_UNORM_S8_UINT) {
+    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
   } else if (format == VK_FORMAT_D32_SFLOAT) {
     viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
   }
 
-  if (vkCreateImageView(logicalDevice.device, &viewInfo, nullptr, &imageView) !=
-      VK_SUCCESS) {
+  if (vkCreateImageView(logicalDevice.device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
     RE_LOG(Error, "failed to create image view with format id %d.", format);
 
     return nullptr;
@@ -1582,15 +1577,13 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
 
 void core::MRenderer::unbindEntity(uint32_t index) {
   if (index > system.bindings.size() - 1) {
-    RE_LOG(Error, "Failed to unbind entity at %d. Index is out of bounds.",
-           index);
+    RE_LOG(Error, "Failed to unbind entity at %d. Index is out of bounds.", index);
     return;
   }
 
 #ifndef NDEBUG
   if (system.bindings[index].pEntity == nullptr) {
-    RE_LOG(Warning, "Failed to unbind entity at %d. It's already unbound.",
-           index);
+    RE_LOG(Warning, "Failed to unbind entity at %d. It's already unbound.", index);
     return;
   }
 #endif
@@ -1626,14 +1619,10 @@ void core::MRenderer::setCamera(ACamera* pCamera) {
 void core::MRenderer::setSunCamera(const char* name) {
   if (ACamera* pCamera = core::ref.getActor(name)->getAs<ACamera>()) {
 #ifndef NDEBUG
-    RE_LOG(Log, "Selecting camera '%s' as sun camera / shadow projector.",
-           name);
+    RE_LOG(Log, "Selecting camera '%s' as sun camera / shadow projector.", name);
 #endif
     if (pCamera->getProjectionType() != ECameraProjection::Orthogtaphic) {
-      RE_LOG(Error,
-             "Failed to set camera '%s' as sun camera. Camera must have an "
-             "orthographic projection.",
-             name);
+      RE_LOG(Error, "Failed to set camera '%s' as sun camera. Camera must have an orthographic projection.", name);
 
       return;
     }
@@ -1644,19 +1633,13 @@ void core::MRenderer::setSunCamera(const char* name) {
     return;
   }
 
-  RE_LOG(Error,
-         "Failed to set sun / shadow projection camera '%s' - not found.",
-         name);
+  RE_LOG(Error, "Failed to set sun / shadow projection camera '%s' - not found.", name);
 }
 
 void core::MRenderer::setSunCamera(ACamera* pCamera) {
   if (pCamera != nullptr) {
     if (pCamera->getProjectionType() != ECameraProjection::Orthogtaphic) {
-      RE_LOG(Error,
-             "Failed to set camera '%s' as sun camera. Camera must have an "
-             "orthographic projection.",
-             pCamera->getName());
-
+      RE_LOG(Error, "Failed to set camera '%s' as sun camera. Camera must have an orthographic projection.", pCamera->getName());
       return;
     }
 
@@ -1665,8 +1648,7 @@ void core::MRenderer::setSunCamera(ACamera* pCamera) {
     return;
   }
 
-  RE_LOG(Error,
-         "Failed to set sun / shadow projection camera, received nullptr.");
+  RE_LOG(Error, "Failed to set sun / shadow projection camera, received nullptr.");
 }
 
 ACamera* core::MRenderer::getCamera() { return view.pActiveCamera; }

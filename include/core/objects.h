@@ -142,8 +142,8 @@ struct RComputePipelineInfo {
 
 struct RDynamicRenderingInfo {
   EPipeline pipeline;
-  std::vector<VkImageView> imageViews;
-  std::vector<VkImageLayout> imageLayouts;
+  std::vector<struct RTexture*> pColorAttachments;
+  std::vector<VkImageView> overrideColorViews;  // if 0 - main view of color RTexture is used
   struct RTexture* pDepthAttachment = nullptr;
   struct RTexture* pStencilAttachment = nullptr;
   VkExtent2D extent;
@@ -153,12 +153,16 @@ struct RDynamicRenderingInfo {
 struct RDynamicRenderingPass {
   std::vector<std::pair<EPipeline, struct RDynamicRenderingPipelineInfo>>
       usedPipelines;
+  VkViewport viewport;
+  VkRect2D scissor;
 };
 
 struct RDynamicRenderingPipelineInfo {
   std::vector<VkRenderingAttachmentInfo> colorAttachmentInfo;
+  std::vector<VkFormat> colorAttachmentFormats;
   VkRenderingAttachmentInfo depthAttachmentInfo;
   VkRenderingAttachmentInfo stencilAttachmentInfo;
+  VkPipelineRenderingCreateInfo pipelineCreateInfo;
 };
 
 struct REntityBindInfo {
@@ -181,6 +185,8 @@ struct RGraphicsPipelineInfo {
   uint32_t colorBlendAttachmentCount;
   std::string vertexShader;
   std::string fragmentShader;
+
+  EDynamicRenderPass dynamicRenderPass = EDynamicRenderPass::Null;
   uint32_t subpass = 0;
   VkBool32 blendEnable = VK_FALSE;
   VkPrimitiveTopology primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;

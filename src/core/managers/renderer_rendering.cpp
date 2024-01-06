@@ -139,7 +139,7 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
 }
 
 void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
-  // initial variables
+  /*// initial variables
   uint32_t dynamicOffset = 0, mipLevels = 0, dimension = 0;
   size_t layerOffset = 0;
   size_t layerSize = core::vulkan::envFilterExtent *
@@ -275,7 +275,7 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   }
 
   // no need to render new environment maps every frame
-  renderView.generateEnvironmentMapsImmediate = false;
+  renderView.generateEnvironmentMapsImmediate = false;*/
 }
 
 void core::MRenderer::renderEnvironmentMapsSequenced(
@@ -283,7 +283,7 @@ void core::MRenderer::renderEnvironmentMapsSequenced(
   if (renderView.framesRendered % frameInterval) return;
 
   RTexture* pCubemap = nullptr;
-  RRenderPass* pRenderPass = getRenderPass(ERenderPass::Environment);
+  RDynamicRenderingPass* pRenderPass = getRenderPass(EDynamicRenderPass::Environment);
 
   // if current pipeline exceeds the number of render pass pipelines - reset
   // everything and stop

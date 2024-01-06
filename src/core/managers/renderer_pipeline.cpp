@@ -57,8 +57,7 @@ TResult core::MRenderer::createDefaultFramebuffers() {
     return chkResult;
   }
 
-  // framebuffer for rendering environment map source
-  return createFramebuffer(ERenderPass::Environment, {RTGT_ENVSRC}, RFB_ENV);
+  return RE_OK;
 }
 
 TResult core::MRenderer::createRenderPasses() {
@@ -152,24 +151,6 @@ TResult core::MRenderer::createRenderPasses() {
       fGetClearValues(clearColor, 1, clearDepth);
 
   //
-  // CUBEMAP render pass
-  //
-
-  passType = ERenderPass::Environment;
-  system.renderPasses.emplace(passType, RRenderPass{});
-  RE_LOG(Log, "Creating render pass E%d", passType);
-
-  colorAttachment.format = core::vulkan::formatHDR16;
-  colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-  newRenderPass = createRenderPass(logicalDevice.device, 1, &colorAttachment,
-                                   nullptr, passType);
-  system.renderPasses.at(passType).renderPass = newRenderPass;
-  system.renderPasses.at(passType).clearValues =
-      fGetClearValues(clearColor, 1, clearDepth);
-
-  //
   // SHADOW render pass
   //
   passType = ERenderPass::Shadow;
@@ -236,8 +217,8 @@ TResult core::MRenderer::configureRenderPasses() {
   scissor.extent = {core::vulkan::envFilterExtent,
                     core::vulkan::envFilterExtent};
 
-  getRenderPass(ERenderPass::Environment)->viewport = viewport;
-  getRenderPass(ERenderPass::Environment)->scissor = scissor;
+  getRenderPass(EDynamicRenderPass::Environment)->viewport = viewport;
+  getRenderPass(EDynamicRenderPass::Environment)->scissor = scissor;
 
   return RE_OK;
 }
@@ -248,11 +229,65 @@ RRenderPass* core::MRenderer::getRenderPass(ERenderPass type) {
   }
 
   RE_LOG(Error, "Failed to get render pass E%d, it does not exist.", type);
-  return VK_NULL_HANDLE;
+  return nullptr;
 }
 
 VkRenderPass& core::MRenderer::getVkRenderPass(ERenderPass type) {
   return system.renderPasses.at(type).renderPass;
+}
+
+TResult core::MRenderer::createDynamicRenderPasses() {
+  // Create environment prefiltered pass
+  {
+    std::vector<RTexture*> pColorAttachments(6, core::resources.getTexture(RTGT_ENVFILTER));
+    std::vector<VkImageView> overrideViews(pColorAttachments.size());
+
+    for (int32_t i = 0; i < overrideViews.size(); ++i) {
+      overrideViews[i] = pColorAttachments[i]->texture.layerAndMipViews[i][0];
+    }
+
+    RDynamicRenderingInfo info{};
+    info.pColorAttachments = pColorAttachments;
+    info.overrideColorViews = overrideViews;
+    info.pipeline = EPipeline::EnvFilter;
+    info.extent = { core::vulkan::envFilterExtent, core::vulkan::envFilterExtent };
+    info.clearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
+
+    setupDynamicRenderPass(EDynamicRenderPass::Environment, &info);
+  }
+
+  // Create environment irradiance pass
+  {
+    std::vector<RTexture*> pColorAttachments(6, core::resources.getTexture(RTGT_ENVIRRAD));
+    std::vector<VkImageView> overrideViews(pColorAttachments.size());
+
+    for (int32_t i = 0; i < overrideViews.size(); ++i) {
+      overrideViews[i] = pColorAttachments[i]->texture.layerAndMipViews[i][0];
+    }
+
+    RDynamicRenderingInfo info{};
+    info.pColorAttachments = pColorAttachments;
+    info.overrideColorViews = overrideViews;
+    info.pipeline = EPipeline::EnvIrradiance;
+    info.extent = { core::vulkan::envIrradianceExtent, core::vulkan::envIrradianceExtent };
+    info.clearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
+
+    setupDynamicRenderPass(EDynamicRenderPass::Environment, &info);
+  }
+
+  return RE_OK;
+}
+
+RDynamicRenderingPass* core::MRenderer::getRenderPass(EDynamicRenderPass type) {
+  if (dynamicRendering.passes.contains(type)) {
+    return &dynamicRendering.passes.at(type);
+  }
+
+  RE_LOG(
+      Error,
+      "Failed to get dynamic rendering data for pass E%d, it does not exist.",
+      type);
+  return nullptr;
 }
 
 TResult core::MRenderer::createPipelineLayouts() {
@@ -493,7 +528,8 @@ TResult core::MRenderer::createGraphicsPipelines() {
     RGraphicsPipelineInfo pipelineInfo{};
     pipelineInfo.pipeline = EPipeline::EnvFilter;
     pipelineInfo.pipelineLayout = EPipelineLayout::Environment;
-    pipelineInfo.renderPass = ERenderPass::Environment;
+    pipelineInfo.renderPass = ERenderPass::Null;
+    pipelineInfo.dynamicRenderPass = EDynamicRenderPass::Environment;
     pipelineInfo.vertexShader = "vs_environment.spv";
     pipelineInfo.fragmentShader = "fs_envFilter.spv";
     pipelineInfo.colorBlendAttachmentCount = 1;
@@ -816,15 +852,16 @@ TResult core::MRenderer::configureRenderer() {
   pRenderPass->usedLayout = getPipelineLayout(EPipelineLayout::Scene);
   pRenderPass->usedPipelines.emplace_back(EPipeline::Present);
 
-  // configure 'environment' cubemap render pass
-  pRenderPass = getRenderPass(ERenderPass::Environment);
-  pRenderPass->usedLayout = getPipelineLayout(EPipelineLayout::Environment);
-  pRenderPass->usedPipelines.emplace_back(EPipeline::EnvFilter);
-  pRenderPass->usedPipelines.emplace_back(EPipeline::EnvIrradiance);
-  pRenderPass->viewport.width =
+  //
+  // Configure dynamic rendering passes
+  //
+
+  /* ENVIRONMENT */
+  RDynamicRenderingPass* pDynamicRenderingPass = getRenderPass(EDynamicRenderPass::Environment);
+  pDynamicRenderingPass->viewport.width =
       static_cast<float>(core::vulkan::envFilterExtent);
-  pRenderPass->viewport.height = -pRenderPass->viewport.width;
-  pRenderPass->viewport.y = pRenderPass->viewport.width;
+  pDynamicRenderingPass->viewport.height = -pDynamicRenderingPass->viewport.width;
+  pDynamicRenderingPass->viewport.y = pDynamicRenderingPass->viewport.width;
 
   return RE_OK;
 }
