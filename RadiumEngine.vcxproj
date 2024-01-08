@@ -148,6 +148,7 @@
   <ItemGroup>
     <ClCompile Include="src\core\managers\renderer_debug.cpp" />
     <ClCompile Include="src\core\managers\renderer_descriptor.cpp" />
+    <ClCompile Include="src\core\managers\renderer_pass.cpp" />
     <ClCompile Include="src\core\world\actors\light.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
     </ClCompile>

@@ -29,10 +29,6 @@ class MRenderer {
     VkExtent2D imageExtent;
   } compute;
 
-  struct {
-    std::unordered_map<EDynamicRenderingPass, RDynamicRenderingPass> passes;
-  } dynamicRendering;
-
   struct REnvironmentData {
     REnvironmentPCB envPushBlock;
     std::vector<VkDescriptorSet> envDescriptorSets;
@@ -97,24 +93,21 @@ class MRenderer {
 
   // render system data - passes, pipelines, mesh data to render
   struct {
-    std::unordered_map<EPipelineLayout, VkPipelineLayout> layouts;
-    std::unordered_map<EPipeline, VkPipeline> graphicsPipelines;
-    std::unordered_map<EComputePipeline, VkPipeline> computePipelines;
+    std::unordered_map<EDynamicRenderingPass, RRenderPass> dynamicRenderingPasses;
     std::unordered_map<ERenderPass, RRenderPass> renderPasses;
+    std::unordered_map<EPipelineLayout, VkPipelineLayout> layouts;
+    std::unordered_map<EPipeline, RPipeline> graphicsPipelines;
+    std::unordered_map<EComputePipeline, VkPipeline> computePipelines;
     VkRenderPassBeginInfo renderPassBeginInfo;
-    std::unordered_map<std::string, RFramebuffer>
-        framebuffers;  // general purpose, swapchain uses its own set
+    std::unordered_map<std::string, RFramebuffer> framebuffers;  // general purpose, swapchain uses its own set
 
     VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> descriptorSets;
-    std::unordered_map<EDescriptorSetLayout, VkDescriptorSetLayout>
-        descriptorSetLayouts;
+    std::unordered_map<EDescriptorSetLayout, VkDescriptorSetLayout> descriptorSetLayouts;
 
-    std::vector<REntityBindInfo>
-        bindings;  // entities rendered during the current frame
+    std::vector<REntityBindInfo> bindings;  // entities rendered during the current frame
     std::vector<VkDrawIndexedIndirectCommand> drawCommands;
-    std::unordered_map<EPipeline, std::vector<WPrimitive*>>
-        primitivesByPipeline;  // TODO
+    std::unordered_map<EPipeline, std::vector<WPrimitive*>> primitivesByPipeline;  // TODO
   } system;
 
   // current camera view data
@@ -143,14 +136,13 @@ class MRenderer {
     void* pCurrentPipeline = nullptr;
 
     RRenderPass* pCurrentRenderPass = nullptr;
+    VkPipelineLayout currentPipelineLayout = VK_NULL_HANDLE;
     uint32_t currentFrameIndex = 0;
     uint32_t frameInFlight = 0;
     uint32_t framesRendered = 0;
-    bool generateEnvironmentMapsImmediate =
-        false;  // queue single pass environment map gen (slow)
-    bool generateEnvironmentMaps =
-        false;  // queue sequenced environment map gen (fast)
-    bool isEnvironmentPass = false;  // is in the process of generating
+    bool generateEnvironmentMapsImmediate = false;  // queue single pass environment map gen (slow)
+    bool generateEnvironmentMaps = false;           // queue sequenced environment map gen (fast)
+    bool isEnvironmentPass = false;                 // is in the process of generating
 
     void refresh() {
       pCurrentMesh = nullptr;
@@ -247,15 +239,6 @@ class MRenderer {
 
   TResult createDefaultFramebuffers();
 
-  TResult createRenderPasses();
-  void destroyRenderPasses();
-  TResult configureRenderPasses();
-  RRenderPass* getRenderPass(ERenderPass type);
-  VkRenderPass& getVkRenderPass(ERenderPass type);
-
-  TResult createDynamicRenderingPasses();
-  RDynamicRenderingPass* getDynamicRenderingPass(EDynamicRenderingPass type);
-
   TResult createPipelineLayouts();
   TResult createGraphicsPipelines();
   void destroyGraphicsPipelines();
@@ -264,34 +247,43 @@ class MRenderer {
   VkPipelineLayout& getPipelineLayout(EPipelineLayout type);
   TResult createGraphicsPipeline(RGraphicsPipelineInfo* pipelineInfo);
   TResult createComputePipeline(RComputePipelineInfo* pipelineInfo);
-  VkPipeline& getGraphicsPipeline(EPipeline type);
+  RPipeline& getGraphicsPipeline(EPipeline type);
   VkPipeline& getComputePipeline(EComputePipeline type);
 
   // check if pipeline flag is present in the flag array
   bool checkPipeline(uint32_t pipelineFlags, EPipeline pipelineFlag);
 
-  TResult configureRenderer();
-
   //
-  // ***UTIL
+  // ***PASS
   //
 
- private:
-  /* Setting render pass type is optional. If set - will create a multi subpass render pass for selected types and will expect a type-dependent color attachment layout */
-  VkRenderPass createRenderPass(VkDevice device, uint32_t colorAttachmentCount,
-                                VkAttachmentDescription* pColorAttachments,
-                                VkAttachmentDescription* pDepthAttachment,
-                                ERenderPass passType);
-
-  TResult createFramebuffer(ERenderPass renderPass,
-                            const std::vector<std::string>& attachmentNames,
-                            const char* framebufferName);
+  /* Will create a multi subpass render pass for selected types and will expect a type-dependent color attachment layout */
+  VkRenderPass createRenderPass(ERenderPass renderPassId, EPipeline pipeline, RRenderPassInfo* info);
 
   // Create new dynamic rendering pass and/or add new/update existing attached pipeline
   TResult setupDynamicRenderPass(EDynamicRenderingPass passType, EPipeline pipeline, RDynamicRenderingInfo* info);
 
   // Actualize dynamic rendering info, e.g. if textures had layout changed. If no pipeline index is set - will refresh all
   void refreshDynamicRenderPass(EDynamicRenderingPass passType, int32_t pipelineIndex = -1);
+
+  TResult createRenderPasses();
+  void destroyRenderPasses();
+  RRenderPass* getRenderPass(ERenderPass type);
+  VkRenderPass& getVkRenderPass(ERenderPass type);
+
+  TResult createDynamicRenderingPasses();
+  RRenderPass* getDynamicRenderingPass(EDynamicRenderingPass type);
+
+  TResult configureRenderPasses();
+
+  //
+  // ***UTIL
+  //
+
+ private:
+  TResult createFramebuffer(ERenderPass renderPass,
+                            const std::vector<std::string>& attachmentNames,
+                            const char* framebufferName);
 
   // create single layer render target for fragment shader output
   // uses swapchain resolution

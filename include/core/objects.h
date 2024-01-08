@@ -147,28 +147,6 @@ struct RDynamicRenderingInfo {
   VkClearValue clearValue = {0.0f, 0.0f, 0.0f, 0.0f};
 };
 
-struct RDynamicRenderingPass {
-  EDynamicRenderingPass renderPass;
-  std::vector<struct RDynamicRenderingPipeline> pipelines;
-
-  struct RDynamicRenderingPipeline* getPipeline(EPipeline pipeline);
-};
-
-struct RDynamicRenderingPipeline {
-  EPipeline pipeline;
-  VkPipelineLayout usedLayout;
-  std::vector<VkRenderingAttachmentInfo> colorAttachmentInfo;
-  std::vector<VkFormat> colorAttachmentFormats;
-  VkRenderingAttachmentInfo depthAttachmentInfo;
-  VkRenderingAttachmentInfo stencilAttachmentInfo;
-  VkPipelineRenderingCreateInfo pipelineCreateInfo;
-  std::vector<struct RTexture*> pColorAttachments;
-  RTexture* pDepthAttachment = nullptr;
-  RTexture* pStencilAttachment = nullptr;
-  VkViewport viewport;
-  VkRect2D scissor;
-};
-
 struct REntityBindInfo {
   AEntity* pEntity = nullptr;
   uint32_t vertexOffset = 0u;
@@ -249,8 +227,22 @@ struct RMaterialInfo {
 };
 
 struct RPipeline {
+  VkPipeline pipeline = VK_NULL_HANDLE;
   EPipeline pipelineId = EPipeline::Null;
   uint32_t subpassIndex = 0;
+  VkViewport viewport;
+  VkRect2D scissor;
+
+  struct {
+    std::vector<VkRenderingAttachmentInfo> colorAttachmentInfo;
+    std::vector<VkFormat> colorAttachmentFormats;
+    VkRenderingAttachmentInfo depthAttachmentInfo;
+    VkRenderingAttachmentInfo stencilAttachmentInfo;
+    VkPipelineRenderingCreateInfo pipelineCreateInfo;
+    std::vector<struct RTexture*> pColorAttachments;
+    struct RTexture* pDepthAttachment = nullptr;
+    struct RTexture* pStencilAttachment = nullptr;
+  } dynamic;
 };
 
 struct RPrimitiveInfo {
@@ -266,13 +258,22 @@ struct RPrimitiveInfo {
 };
 
 struct RRenderPass {
-  VkRenderPass renderPass;
-  std::vector<RPipeline> usedPipelines;
+  EDynamicRenderingPass dynamicPass = EDynamicRenderingPass::Null;  // if not 'Null' - then this is should be treated as a dynamic rendering pass
+  VkRenderPass renderPass = nullptr;
   RFramebuffer* pFramebuffer = nullptr;
-  VkPipelineLayout usedLayout;
-  VkViewport viewport;
-  VkRect2D scissor;
+  VkPipelineLayout layout = VK_NULL_HANDLE;
   std::vector<VkClearValue> clearValues;
+  std::vector<RPipeline*> pipelines;
+
+  RPipeline* getPipeline(EPipeline pipeline);
+};
+
+struct RRenderPassInfo {
+  std::vector<VkAttachmentDescription> colorAttachmentInfo;
+  VkAttachmentDescription depthAttachmentInfo;
+  EPipelineLayout layout;
+  uint32_t viewportWidth;
+  uint32_t viewportHeight;
 };
 
 // stored by WModel, used to create a valid sampler for a specific texture

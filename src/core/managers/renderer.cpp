@@ -770,17 +770,16 @@ TResult core::MRenderer::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSceneBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createRendererDefaults();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSetLayouts();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createPipelineLayouts();
 
   if (chkResult <= RE_ERRORLIMIT) chkResult = createRenderPasses();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDynamicRenderingPasses();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = configureRenderPasses();
 
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createPipelineLayouts();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createGraphicsPipelines();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createComputePipelines();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDefaultFramebuffers();
 
-  if (chkResult <= RE_ERRORLIMIT) chkResult = configureRenderer();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = configureRenderPasses();
 
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createUniformBuffers();

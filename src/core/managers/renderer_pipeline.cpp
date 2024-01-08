@@ -60,208 +60,6 @@ TResult core::MRenderer::createDefaultFramebuffers() {
   return RE_OK;
 }
 
-TResult core::MRenderer::createRenderPasses() {
-  // lambda for quickly filling common clear values for render targets
-  auto fGetClearValues = [](VkClearColorValue colorValue,
-                            int8_t colorValueCount,
-                            VkClearDepthStencilValue depthValue) {
-    std::vector<VkClearValue> clearValues;
-    clearValues.resize(colorValueCount + 1);
-
-    for (int8_t i = 0; i < colorValueCount; ++i) {
-      clearValues[i].color = colorValue;
-    }
-
-    clearValues[colorValueCount].depthStencil = depthValue;
-    return clearValues;
-  };
-  
-  // standard info setup
-  VkAttachmentDescription colorAttachment{};
-  colorAttachment.format = swapchain.formatData.format;
-  colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-  colorAttachment.loadOp =
-      VK_ATTACHMENT_LOAD_OP_CLEAR;  // clearing contents on new frame
-  colorAttachment.storeOp =
-      VK_ATTACHMENT_STORE_OP_STORE; // storing contents in memory while rendering
-  colorAttachment.stencilLoadOp =
-      VK_ATTACHMENT_LOAD_OP_DONT_CARE;  // ignore stencil buffer
-  colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-  colorAttachment.initialLayout =
-      VK_IMAGE_LAYOUT_UNDEFINED;    // not important, since it's cleared at the
-                                    // frame start
-  colorAttachment.finalLayout =
-      VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;  // swap chain image to be presented
-
-  VkAttachmentDescription depthAttachment{};
-  depthAttachment.format = core::vulkan::formatDepth;
-  depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-  depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-  depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-  depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-  depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-  depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  depthAttachment.finalLayout =
-      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-  // common clear color and clear depth values
-  const VkClearColorValue clearColor = {0.0f, 0.0f, 0.0f, 0.0f};
-  const VkClearDepthStencilValue clearDepth = {1.0f};
-
-  //
-  // DEFERRED render pass
-  // all models are rendered to 5 separate color maps forming G-buffer
-  // then they are combined into 1 PBR color attachment
-
-  ERenderPass passType = ERenderPass::Deferred;
-  system.renderPasses.emplace(passType, RRenderPass{});
-  RE_LOG(Log, "Creating render pass E%d", passType);
-
-  colorAttachment.format = core::vulkan::formatHDR16;
-  colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-  // deferred render targets: position, color, normal, physical, emissive
-  // + PBR render target
-  uint32_t attachmentCount = 6;
-  std::vector<VkAttachmentDescription> deferredColorAttachments(attachmentCount, colorAttachment);
-
-  VkRenderPass newRenderPass = createRenderPass(
-      logicalDevice.device, attachmentCount, deferredColorAttachments.data(),
-      &depthAttachment, passType);
-  system.renderPasses.at(passType).renderPass = newRenderPass;
-  system.renderPasses.at(passType).clearValues =
-      fGetClearValues(clearColor, attachmentCount, clearDepth);
-
-  //
-  // PRESENT render pass
-  // the 16 bit float color map is rendered to the compatible surface target
-  passType = ERenderPass::Present;
-  system.renderPasses.emplace(passType, RRenderPass{});
-  RE_LOG(Log, "Creating render pass E%d", passType);
-
-  colorAttachment.format = swapchain.formatData.format;
-  colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-  newRenderPass = createRenderPass(logicalDevice.device, 1, &colorAttachment,
-                                   &depthAttachment, passType);
-  system.renderPasses.at(passType).renderPass = newRenderPass;
-  system.renderPasses.at(passType).clearValues =
-      fGetClearValues(clearColor, 1, clearDepth);
-
-  //
-  // SHADOW render pass
-  //
-  passType = ERenderPass::Shadow;
-  system.renderPasses.emplace(passType, RRenderPass{});
-  RE_LOG(Log, "Creating render pass E%d", passType);
-
-  depthAttachment.format = core::vulkan::formatShadow;
-
-  newRenderPass = createRenderPass(logicalDevice.device, 0, nullptr,
-                                   &depthAttachment, passType);
-  system.renderPasses.at(passType).renderPass = newRenderPass;
-  system.renderPasses.at(passType).clearValues =
-      fGetClearValues(clearColor, 0, clearDepth);
-
-  return RE_OK;
-}
-
-void core::MRenderer::destroyRenderPasses() {
-  RE_LOG(Log, "Destroying render passes.");
-
-  for (auto& it : system.renderPasses) {
-    vkDestroyRenderPass(logicalDevice.device, it.second.renderPass, nullptr);
-  }
-}
-
-TResult core::MRenderer::configureRenderPasses() {
-  system.renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-  system.renderPassBeginInfo.renderArea.offset = {0, 0};
-  system.renderPassBeginInfo.renderArea.extent = swapchain.imageExtent;
-
-  // must be set up during frame drawing
-  system.renderPassBeginInfo.renderPass = VK_NULL_HANDLE;
-  system.renderPassBeginInfo.framebuffer = VK_NULL_HANDLE;
-
-  // set viewports and scissors for screen render passes
-  VkViewport viewport{};
-  viewport.x = 0.0f;
-  viewport.y = static_cast<float>(swapchain.imageExtent.height);
-  viewport.width = static_cast<float>(swapchain.imageExtent.width);
-  viewport.height = -viewport.y;
-  viewport.minDepth = 0.0f;
-  viewport.maxDepth = 1.0f;
-
-  VkRect2D scissor{};
-  scissor.offset = {0, 0};
-  scissor.extent = swapchain.imageExtent;
-
-  getRenderPass(ERenderPass::Deferred)->viewport = viewport;
-  getRenderPass(ERenderPass::Deferred)->scissor = scissor;
-  getRenderPass(ERenderPass::Present)->viewport = viewport;
-  getRenderPass(ERenderPass::Present)->scissor = scissor;
-
-  viewport.y = static_cast<float>(config::shadowResolution);
-  viewport.width = viewport.y;
-  viewport.height = -viewport.y;
-  scissor.extent = {config::shadowResolution, config::shadowResolution};
-
-  getRenderPass(ERenderPass::Shadow)->viewport = viewport;
-  getRenderPass(ERenderPass::Shadow)->scissor = scissor;
-
-  return RE_OK;
-}
-
-RRenderPass* core::MRenderer::getRenderPass(ERenderPass type) {
-  if (system.renderPasses.contains(type)) {
-    return &system.renderPasses.at(type);
-  }
-
-  RE_LOG(Error, "Failed to get render pass E%d, it does not exist.", type);
-  return nullptr;
-}
-
-VkRenderPass& core::MRenderer::getVkRenderPass(ERenderPass type) {
-  return system.renderPasses.at(type).renderPass;
-}
-
-TResult core::MRenderer::createDynamicRenderingPasses() {
-  // Create environment prefiltered pass
-  // Cubemaps should've been created by createImageTargets() earlier
-  {
-    RDynamicRenderingInfo info{};
-    info.pColorAttachments = { environment.pCubemaps[0] };  // RTGT_ENVFILTER
-    info.clearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
-
-    setupDynamicRenderPass(EDynamicRenderingPass::Environment, EPipeline::EnvFilter, &info);
-  }
-
-  // Create environment irradiance pass
-  {
-    RDynamicRenderingInfo info{};
-    info.pColorAttachments = { environment.pCubemaps[1] };  // RTGT_ENVIRRAD
-    info.clearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
-
-    setupDynamicRenderPass(EDynamicRenderingPass::Environment, EPipeline::EnvIrradiance, &info);
-  }
-
-  return RE_OK;
-}
-
-RDynamicRenderingPass* core::MRenderer::getDynamicRenderingPass(EDynamicRenderingPass type) {
-  if (dynamicRendering.passes.contains(type)) {
-    return &dynamicRendering.passes.at(type);
-  }
-
-  RE_LOG(
-      Error,
-      "Failed to get dynamic rendering data for pass E%d, it does not exist.",
-      type);
-  return nullptr;
-}
-
 TResult core::MRenderer::createPipelineLayouts() {
   RE_LOG(Log, "Creating graphics pipelines.");
 
@@ -524,7 +322,7 @@ void core::MRenderer::destroyGraphicsPipelines() {
   destroyDescriptorSetLayouts();
 
   for (auto& pipeline : system.graphicsPipelines) {
-    vkDestroyPipeline(logicalDevice.device, pipeline.second, nullptr);
+    vkDestroyPipeline(logicalDevice.device, pipeline.second.pipeline, nullptr);
   }
 
   for (auto& layout : system.layouts) {
@@ -678,8 +476,8 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
       break;
     }
     case false: {
-      viewportInfo.pViewports = &getRenderPass(pipelineInfo->renderPass)->viewport;
-      viewportInfo.pScissors = &getRenderPass(pipelineInfo->renderPass)->scissor;
+      viewportInfo.pViewports = &getRenderPass(pipelineInfo->renderPass)->getPipeline(pipelineInfo->pipeline)->viewport;
+      viewportInfo.pScissors = &getRenderPass(pipelineInfo->renderPass)->getPipeline(pipelineInfo->pipeline)->scissor;
       break;
     }
   }
@@ -776,11 +574,11 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
   graphicsPipelineInfo.basePipelineIndex = -1;
 
   if (isDynamicRendering) {
-    RDynamicRenderingPipeline* pPipeline = getDynamicRenderingPass(pipelineInfo->dynamicRenderPass)->getPipeline(pipelineInfo->pipeline);
+    RPipeline* pPipeline = getDynamicRenderingPass(pipelineInfo->dynamicRenderPass)->getPipeline(pipelineInfo->pipeline);
 
     if (pPipeline) {
-      graphicsPipelineInfo.pNext = &pPipeline->pipelineCreateInfo;
-      pPipeline->usedLayout = getPipelineLayout(pipelineInfo->pipelineLayout);
+      graphicsPipelineInfo.pNext = &pPipeline->dynamic.pipelineCreateInfo;
+      getDynamicRenderingPass(pipelineInfo->dynamicRenderPass)->layout = graphicsPipelineInfo.layout;
     } else {
       RE_LOG(Error, "Failed to configure dynamic rendering pass %d, pipeline %d. Seems like provided pipeline does not belong to this pass.",
         pipelineInfo->dynamicRenderPass, pipelineInfo->pipeline);
@@ -788,16 +586,20 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
     }
   }
 
-  system.graphicsPipelines.emplace(pipelineInfo->pipeline, VK_NULL_HANDLE);
+  // add new pipeline structure and fill it with data
+  system.graphicsPipelines.emplace(pipelineInfo->pipeline);
 
   if (vkCreateGraphicsPipelines(
           logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
           nullptr,
-          &getGraphicsPipeline(pipelineInfo->pipeline)) != VK_SUCCESS) {
+          &getGraphicsPipeline(pipelineInfo->pipeline).pipeline) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create pipeline E%d.", pipelineInfo->pipeline);
 
     return RE_CRITICAL;
   }
+
+  system.graphicsPipelines.at(pipelineInfo->pipeline).pipelineId = pipelineInfo->pipeline;
+  system.graphicsPipelines.at(pipelineInfo->pipeline).subpassIndex = pipelineInfo->subpass;
 
   for (auto& stage : shaderStages) {
     vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
@@ -811,7 +613,7 @@ TResult core::MRenderer::createComputePipeline(RComputePipelineInfo* pipelineInf
   return RE_OK;
 }
 
-VkPipeline& core::MRenderer::getGraphicsPipeline(EPipeline type) {
+RPipeline& core::MRenderer::getGraphicsPipeline(EPipeline type) {
   // not error checked
   return system.graphicsPipelines.at(type);
 }
@@ -824,29 +626,4 @@ VkPipeline& core::MRenderer::getComputePipeline(EComputePipeline type) {
 bool core::MRenderer::checkPipeline(uint32_t pipelineFlags,
                                     EPipeline pipelineFlag) {
   return pipelineFlags & pipelineFlag;
-}
-
-TResult core::MRenderer::configureRenderer() {
-  // NOTE: order of pipeline 'emplacement' is important
-
-  /* SHADOW */
-  RRenderPass* pRenderPass = getRenderPass(ERenderPass::Shadow);
-  pRenderPass->usedLayout = getPipelineLayout(EPipelineLayout::Scene);
-  pRenderPass->usedPipelines.emplace_back(EPipeline::Shadow);
-
-  /* DEFERRED */
-  pRenderPass = getRenderPass(ERenderPass::Deferred);
-  pRenderPass->usedLayout = getPipelineLayout(EPipelineLayout::Scene);
-  pRenderPass->usedPipelines.emplace_back(EPipeline::OpaqueCullBack, 0);
-  pRenderPass->usedPipelines.emplace_back(EPipeline::OpaqueCullNone, 0);
-  pRenderPass->usedPipelines.emplace_back(EPipeline::BlendCullNone, 0);
-  pRenderPass->usedPipelines.emplace_back(EPipeline::Skybox, 2);
-
-  /* PRESENT */
-  // uses swapchain framebuffers
-  pRenderPass = getRenderPass(ERenderPass::Present);
-  pRenderPass->usedLayout = getPipelineLayout(EPipelineLayout::Scene);
-  pRenderPass->usedPipelines.emplace_back(EPipeline::Present);
-
-  return RE_OK;
 }
