@@ -300,73 +300,62 @@ TResult core::MRenderer::createFramebuffer(
   return RE_OK;
 }
 
-TResult core::MRenderer::setupDynamicRenderPass(EDynamicRenderPass passType, RDynamicRenderingInfo* info) {
-  if (!info->overrideColorViews.empty() &&
-    info->overrideColorViews.size() != info->pColorAttachments.size()) {
-    RE_LOG(Error, "Failed to create / update dynamic render pass E%d. Override image views are used, but their count is not equal to color attachment count.", passType);
-    return RE_ERROR;
-  }
-
+TResult core::MRenderer::setupDynamicRenderPass(EDynamicRenderingPass passType, EPipeline pipeline, RDynamicRenderingInfo* info) {
   // Get or create the dynamic render pass
-  RDynamicRenderingPass& renderPass = dynamicRendering.passes[passType];
-  RDynamicRenderingPipelineInfo* pPipelineInfo = nullptr;
-  const bool useOverrideColorViews = !info->overrideColorViews.empty();
+  RDynamicRenderingPass* pRenderPass = &dynamicRendering.passes[passType];
+  pRenderPass->renderPass = passType;
   const uint32_t colorAttachmentCount = static_cast<uint32_t>(info->pColorAttachments.size());
 
   // Get or create pipeline info
-  for (size_t i = 0; i < renderPass.usedPipelines.size(); ++i) {
-    if (renderPass.usedPipelines.at(i).first == info->pipeline) {
-      pPipelineInfo = &renderPass.usedPipelines.at(i).second;
-      break;
-    }
-  }
+  RDynamicRenderingPipeline* pPipeline = pRenderPass->getPipeline(pipeline);
 
-  if (!pPipelineInfo) {
-    renderPass.usedPipelines.emplace_back(info->pipeline);
-    pPipelineInfo = &renderPass.usedPipelines.back().second;
+  if (!pPipeline) {
+    pRenderPass->pipelines.emplace_back();
+    pRenderPass->pipelines.back().pipeline = pipeline;
+    pPipeline = &pRenderPass->pipelines.back();
   }
 
   // Set the chosen pipeline info
-  pPipelineInfo->colorAttachmentInfo.resize(colorAttachmentCount);
+  pPipeline->colorAttachmentInfo.resize(colorAttachmentCount);
 
   for (uint32_t i = 0; i < colorAttachmentCount; ++i) {
-    pPipelineInfo->colorAttachmentInfo[i].sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-    pPipelineInfo->colorAttachmentInfo[i].imageLayout = info->pColorAttachments[i]->texture.imageLayout;
-    pPipelineInfo->colorAttachmentInfo[i].imageView = (useOverrideColorViews) ? info->overrideColorViews[i] : info->pColorAttachments[i]->texture.view;
-    pPipelineInfo->colorAttachmentInfo[i].clearValue = info->clearValue;
-    pPipelineInfo->colorAttachmentInfo[i].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    pPipelineInfo->colorAttachmentInfo[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    pPipeline->colorAttachmentInfo[i].sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    pPipeline->colorAttachmentInfo[i].imageLayout = info->pColorAttachments[i]->texture.imageLayout;
+    pPipeline->colorAttachmentInfo[i].imageView = info->pColorAttachments[i]->texture.view;
+    pPipeline->colorAttachmentInfo[i].clearValue = info->clearValue;
+    pPipeline->colorAttachmentInfo[i].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    pPipeline->colorAttachmentInfo[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
   }
 
   if (info->pDepthAttachment) {
-    pPipelineInfo->depthAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-    pPipelineInfo->depthAttachmentInfo.imageLayout = info->pDepthAttachment->texture.imageLayout;
-    pPipelineInfo->depthAttachmentInfo.imageView = info->pDepthAttachment->texture.view;
-    pPipelineInfo->depthAttachmentInfo.clearValue = { 1.0f, 0.0f, 0.0f, 0.0f };
-    pPipelineInfo->depthAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    pPipelineInfo->depthAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    pPipeline->depthAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    pPipeline->depthAttachmentInfo.imageLayout = info->pDepthAttachment->texture.imageLayout;
+    pPipeline->depthAttachmentInfo.imageView = info->pDepthAttachment->texture.view;
+    pPipeline->depthAttachmentInfo.clearValue = { 1.0f, 0.0f, 0.0f, 0.0f };
+    pPipeline->depthAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    pPipeline->depthAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
   }
 
   if (info->pStencilAttachment) {
-    pPipelineInfo->stencilAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-    pPipelineInfo->stencilAttachmentInfo.imageLayout = info->pStencilAttachment->texture.imageLayout;
-    pPipelineInfo->stencilAttachmentInfo.imageView = info->pStencilAttachment->texture.view;
-    pPipelineInfo->stencilAttachmentInfo.clearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
-    pPipelineInfo->stencilAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    pPipelineInfo->stencilAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    pPipeline->stencilAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+    pPipeline->stencilAttachmentInfo.imageLayout = info->pStencilAttachment->texture.imageLayout;
+    pPipeline->stencilAttachmentInfo.imageView = info->pStencilAttachment->texture.view;
+    pPipeline->stencilAttachmentInfo.clearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
+    pPipeline->stencilAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    pPipeline->stencilAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
   }
 
-  pPipelineInfo->colorAttachmentFormats.resize(colorAttachmentCount);
+  pPipeline->colorAttachmentFormats.resize(colorAttachmentCount);
 
   for (uint32_t j = 0; j < colorAttachmentCount; ++j) {
-    pPipelineInfo->colorAttachmentFormats[j] = info->pColorAttachments[j]->texture.imageFormat;
+    pPipeline->colorAttachmentFormats[j] = info->pColorAttachments[j]->texture.imageFormat;
   }
 
   // this data will be used during graphics pipeline creation
-  VkPipelineRenderingCreateInfo& pipelineCreateInfo = pPipelineInfo->pipelineCreateInfo;
+  VkPipelineRenderingCreateInfo& pipelineCreateInfo = pPipeline->pipelineCreateInfo;
   pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
   pipelineCreateInfo.colorAttachmentCount = static_cast<uint32_t>(colorAttachmentCount);
-  pipelineCreateInfo.pColorAttachmentFormats = pPipelineInfo->colorAttachmentFormats.data();
+  pipelineCreateInfo.pColorAttachmentFormats = pPipeline->colorAttachmentFormats.data();
   pipelineCreateInfo.viewMask = 0;
 
   if (info->pDepthAttachment) {
@@ -377,10 +366,58 @@ TResult core::MRenderer::setupDynamicRenderPass(EDynamicRenderPass passType, RDy
     pipelineCreateInfo.stencilAttachmentFormat = info->pStencilAttachment->texture.imageFormat;
   }
 
-  RE_LOG(Log, "Dynamic rendering pass E%d, pipeline E%d were set.", passType,
-         info->pipeline);
+  RE_LOG(Log, "Dynamic rendering pass E%d, pipeline E%d were set.", passType, pipeline);
+
+  pPipeline->pColorAttachments = info->pColorAttachments;
+  pPipeline->pDepthAttachment = info->pDepthAttachment;
+  pPipeline->pStencilAttachment = info->pStencilAttachment;
+
+  VkViewport& viewport = pPipeline->viewport;
+  viewport.y = pPipeline->pColorAttachments.at(0)->texture.height;
+  viewport.height = -viewport.y;
+  viewport.width = pPipeline->pColorAttachments.at(0)->texture.width;
+
+  VkRect2D& scissor = pPipeline->scissor;
+  scissor.extent.width = viewport.width;
+  scissor.extent.height = viewport.y;
+  scissor.offset = { 0, 0 };
 
   return RE_OK;
+}
+
+void core::MRenderer::refreshDynamicRenderPass(EDynamicRenderingPass passType, int32_t pipelineIndex) {
+  RDynamicRenderingPass* pRenderingPass = getDynamicRenderingPass(passType);
+
+  if (!pRenderingPass) return;
+
+  auto fRefreshPipelineInfo = [&](uint32_t index) {
+    if (index > pRenderingPass->pipelines.size() - 1) return;
+
+    RDynamicRenderingPipeline& pipelineInfo = pRenderingPass->pipelines.at(index);
+
+    auto& colorAttachmentVector = pipelineInfo.colorAttachmentInfo;
+    for (int32_t i = 0; i < colorAttachmentVector.size(); ++i) {
+      colorAttachmentVector[i].imageLayout = pipelineInfo.pColorAttachments[i]->texture.imageLayout;
+    }
+
+    if (pipelineInfo.pDepthAttachment) {
+      pipelineInfo.depthAttachmentInfo.imageLayout = pipelineInfo.pDepthAttachment->texture.imageLayout;
+    }
+
+    if (pipelineInfo.pStencilAttachment) {
+      pipelineInfo.depthAttachmentInfo.imageLayout = pipelineInfo.pStencilAttachment->texture.imageLayout;
+    }
+  };
+
+  if (pipelineIndex == -1) {
+    for (int32_t i = 0; i < pRenderingPass->pipelines.size(); ++i) {
+      fRefreshPipelineInfo(i);
+    }
+
+    return;
+  }
+
+  fRefreshPipelineInfo(pipelineIndex);
 }
 
 RTexture* core::MRenderer::createFragmentRenderTarget(const char* name, uint32_t width, uint32_t height) {
@@ -935,6 +972,8 @@ void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer,
                                      RTexture* pTexture,
                                      VkImageLayout newLayout,
                                      VkImageSubresourceRange subresourceRange) {
+  if (pTexture->texture.imageLayout == newLayout) return;
+
   setImageLayout(cmdBuffer, pTexture->texture.image,
                  pTexture->texture.imageLayout, newLayout, subresourceRange);
   

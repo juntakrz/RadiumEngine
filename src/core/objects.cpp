@@ -72,3 +72,14 @@ std::vector<VkVertexInputAttributeDescription> RVertex::getAttributeDescs() {
 
   return attrDescs;
 }
+
+RDynamicRenderingPipeline* RDynamicRenderingPass::getPipeline(EPipeline pipeline) {
+  for (auto& it : pipelines) {
+    if (pipeline == it.pipeline) {
+      return &it;
+    }
+  }
+
+  RE_LOG(Error, "Failed to get pipeline E%d from dynamic rendering pass E%d.", pipeline, renderPass);
+  return nullptr;
+}

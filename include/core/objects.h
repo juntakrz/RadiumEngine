@@ -70,7 +70,7 @@ enum class EDescriptorSetLayout {
   Dummy
 };
 
-enum class EDynamicRenderPass {
+enum class EDynamicRenderingPass {
   Null,
   Environment
 };
@@ -141,28 +141,32 @@ struct RComputePipelineInfo {
 };
 
 struct RDynamicRenderingInfo {
-  EPipeline pipeline;
   std::vector<struct RTexture*> pColorAttachments;
-  std::vector<VkImageView> overrideColorViews;  // if 0 - main view of color RTexture is used
   struct RTexture* pDepthAttachment = nullptr;
   struct RTexture* pStencilAttachment = nullptr;
-  VkExtent2D extent;
   VkClearValue clearValue = {0.0f, 0.0f, 0.0f, 0.0f};
 };
 
 struct RDynamicRenderingPass {
-  std::vector<std::pair<EPipeline, struct RDynamicRenderingPipelineInfo>>
-      usedPipelines;
-  VkViewport viewport;
-  VkRect2D scissor;
+  EDynamicRenderingPass renderPass;
+  std::vector<struct RDynamicRenderingPipeline> pipelines;
+
+  struct RDynamicRenderingPipeline* getPipeline(EPipeline pipeline);
 };
 
-struct RDynamicRenderingPipelineInfo {
+struct RDynamicRenderingPipeline {
+  EPipeline pipeline;
+  VkPipelineLayout usedLayout;
   std::vector<VkRenderingAttachmentInfo> colorAttachmentInfo;
   std::vector<VkFormat> colorAttachmentFormats;
   VkRenderingAttachmentInfo depthAttachmentInfo;
   VkRenderingAttachmentInfo stencilAttachmentInfo;
   VkPipelineRenderingCreateInfo pipelineCreateInfo;
+  std::vector<struct RTexture*> pColorAttachments;
+  RTexture* pDepthAttachment = nullptr;
+  RTexture* pStencilAttachment = nullptr;
+  VkViewport viewport;
+  VkRect2D scissor;
 };
 
 struct REntityBindInfo {
@@ -186,7 +190,7 @@ struct RGraphicsPipelineInfo {
   std::string vertexShader;
   std::string fragmentShader;
 
-  EDynamicRenderPass dynamicRenderPass = EDynamicRenderPass::Null;
+  EDynamicRenderingPass dynamicRenderPass = EDynamicRenderingPass::Null;
   uint32_t subpass = 0;
   VkBool32 blendEnable = VK_FALSE;
   VkPrimitiveTopology primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;

@@ -30,7 +30,7 @@ class MRenderer {
   } compute;
 
   struct {
-    std::unordered_map<EDynamicRenderPass, RDynamicRenderingPass> passes;
+    std::unordered_map<EDynamicRenderingPass, RDynamicRenderingPass> passes;
   } dynamicRendering;
 
   struct REnvironmentData {
@@ -39,12 +39,10 @@ class MRenderer {
     VkDescriptorSet LUTDescriptorSet;
     std::vector<RBuffer> transformBuffers;
     VkDeviceSize transformOffset = 0u;
-    RTexture* pSourceTexture;
-    VkImageSubresourceRange sourceRange;
-    std::vector<RTexture*> destinationTextures;
-    std::vector<VkImageSubresourceRange> destinationRanges;
+    std::vector<RTexture*> pCubemaps;
+    VkImageSubresourceRange subresourceRange;
     VkImageCopy copyRegion;
-    int32_t genInterval = 3;
+    int32_t genInterval = 1;
 
     struct {
       uint32_t pipeline = 0;  // ENVFILTER or ENVIRRAD
@@ -255,8 +253,8 @@ class MRenderer {
   RRenderPass* getRenderPass(ERenderPass type);
   VkRenderPass& getVkRenderPass(ERenderPass type);
 
-  TResult createDynamicRenderPasses();
-  RDynamicRenderingPass* getRenderPass(EDynamicRenderPass type);
+  TResult createDynamicRenderingPasses();
+  RDynamicRenderingPass* getDynamicRenderingPass(EDynamicRenderingPass type);
 
   TResult createPipelineLayouts();
   TResult createGraphicsPipelines();
@@ -289,8 +287,11 @@ class MRenderer {
                             const std::vector<std::string>& attachmentNames,
                             const char* framebufferName);
 
-  TResult setupDynamicRenderPass(EDynamicRenderPass passType,
-                                  RDynamicRenderingInfo* info);
+  // Create new dynamic rendering pass and/or add new/update existing attached pipeline
+  TResult setupDynamicRenderPass(EDynamicRenderingPass passType, EPipeline pipeline, RDynamicRenderingInfo* info);
+
+  // Actualize dynamic rendering info, e.g. if textures had layout changed. If no pipeline index is set - will refresh all
+  void refreshDynamicRenderPass(EDynamicRenderingPass passType, int32_t pipelineIndex = -1);
 
   // create single layer render target for fragment shader output
   // uses swapchain resolution
@@ -519,7 +520,7 @@ class MRenderer {
                          VkDescriptorSet* pSceneSets, const uint32_t setCount);
 
   void executeDynamicRendering(VkCommandBuffer commandBuffer,
-                               EDynamicRenderPass renderPass);
+                               EDynamicRenderingPass renderPass);
 
   void executeComputeImage(VkCommandBuffer commandBuffer,
                            EComputePipeline pipeline);
