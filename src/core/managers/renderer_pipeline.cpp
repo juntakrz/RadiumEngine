@@ -180,13 +180,18 @@ TResult core::MRenderer::createPipelineLayouts() {
   descriptorSetLayouts = {
       getDescriptorSetLayout(EDescriptorSetLayout::ComputeImage)};
 
+  VkPushConstantRange computeImagePushConstRange{};
+  computeImagePushConstRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+  computeImagePushConstRange.offset = 0;
+  computeImagePushConstRange.size = sizeof(RComputeImagePCB);
+
   layoutInfo = VkPipelineLayoutCreateInfo{};
   layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
   layoutInfo.setLayoutCount =
       static_cast<uint32_t>(descriptorSetLayouts.size());
   layoutInfo.pSetLayouts = descriptorSetLayouts.data();
-  layoutInfo.pushConstantRangeCount = 0;
-  layoutInfo.pPushConstantRanges = nullptr;
+  layoutInfo.pushConstantRangeCount = 1;
+  layoutInfo.pPushConstantRanges = &computeImagePushConstRange;
 
   if (vkCreatePipelineLayout(logicalDevice.device, &layoutInfo, nullptr,
                              &getPipelineLayout(layoutType)) != VK_SUCCESS) {

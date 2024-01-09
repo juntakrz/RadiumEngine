@@ -27,6 +27,7 @@ class MRenderer {
     std::vector<RTexture*> pImages;
     VkDescriptorSet imageDescriptorSet;
     VkExtent2D imageExtent;
+    RComputeImagePCB imagePCB;
   } compute;
 
   struct REnvironmentData {
@@ -58,8 +59,9 @@ class MRenderer {
   } lighting;
 
   struct RSceneBuffers {
-    RBuffer vertexBuffer;
+    RBuffer vertexBuffer;         // TODO: replace with 'vertexSSBO' and reference vertices via device memory
     RBuffer indexBuffer;
+    RBuffer vertexSSBO;
     RBuffer rootTransformBuffer;
     RBuffer nodeTransformBuffer;
     RBuffer skinTransformBuffer;
@@ -308,26 +310,7 @@ class MRenderer {
   std::vector<const char*> getRequiredInstanceExtensions();
   std::vector<VkExtensionProperties> getInstanceExtensions();
 
- public:
-  /* create buffer for CPU/iGPU or dedicated GPU use:
-  defining inData makes the method copy data to an outgoing buffer internally,
-  otherwise empty but allocated VkBuffer is the result e.g. for a later data
-  copy.
-  */
-  TResult createBuffer(EBufferMode mode, VkDeviceSize size, RBuffer& outBuffer,
-                       void* inData);
-
-  // copy buffer with SRC and DST bits, uses transfer command buffer and pool
-  TResult copyBuffer(VkBuffer srcBuffer, VkBuffer& dstBuffer,
-                     VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
-  TResult copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
-                     VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
-
-  // expects 'optimal layout' image as a source
-  TResult copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
-                            uint32_t width, uint32_t height,
-                            uint32_t layerCount);
-
+public:
   TResult copyImage(VkCommandBuffer cmdBuffer, VkImage srcImage,
                     VkImage dstImage, VkImageLayout srcImageLayout,
                     VkImageLayout dstImageLayout, VkImageCopy& copyRegion);
@@ -392,6 +375,30 @@ class MRenderer {
   ACamera* getCamera();
 
   void setIBLScale(float newScale);
+
+  //
+  // ***BUFFER
+  //
+
+ public:
+   /* create buffer for CPU/iGPU or dedicated GPU use:
+   defining inData makes the method copy data to an outgoing buffer internally,
+   otherwise empty but allocated VkBuffer is the result e.g. for a later data
+   copy.
+   */
+   TResult createBuffer(EBufferMode mode, VkDeviceSize size, RBuffer& outBuffer,
+     void* inData);
+
+   // copy buffer with SRC and DST bits, uses transfer command buffer and pool
+   TResult copyBuffer(VkBuffer srcBuffer, VkBuffer& dstBuffer,
+     VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
+   TResult copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
+     VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
+
+   // expects 'optimal layout' image as a source
+   TResult copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
+     uint32_t width, uint32_t height,
+     uint32_t layerCount);
 
   //
   // ***PHYSICAL DEVICE

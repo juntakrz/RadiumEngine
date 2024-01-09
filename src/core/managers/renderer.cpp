@@ -131,6 +131,11 @@ TResult core::MRenderer::createSceneBuffers() {
   createBuffer(EBufferMode::DGPU_VERTEX, config::scene::getVertexBufferSize(),
                scene.vertexBuffer, nullptr);
 
+  RE_LOG(Log, "Allocating scene storage buffer for %d vertices.",
+    config::scene::vertexBudget);
+  createBuffer(EBufferMode::DGPU_STORAGE, config::scene::getVertexBufferSize(),
+    scene.vertexSSBO, nullptr);
+
   RE_LOG(Log, "Allocating scene buffer for %d indices.",
          config::scene::indexBudget);
   createBuffer(EBufferMode::DGPU_INDEX, config::scene::getIndexBufferSize(),
@@ -162,6 +167,8 @@ void core::MRenderer::destroySceneBuffers() {
   RE_LOG(Log, "Destroying scene buffers.");
   vmaDestroyBuffer(memAlloc, scene.vertexBuffer.buffer,
                    scene.vertexBuffer.allocation);
+  vmaDestroyBuffer(memAlloc, scene.vertexSSBO.buffer,
+                  scene.vertexSSBO.allocation);
   vmaDestroyBuffer(memAlloc, scene.indexBuffer.buffer,
                    scene.indexBuffer.allocation);
   vmaDestroyBuffer(memAlloc, scene.rootTransformBuffer.buffer,

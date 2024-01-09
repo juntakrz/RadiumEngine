@@ -225,6 +225,8 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
 
       setImageLayout(commandBuffer, pCubemap, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, environment.subresourceRange);
     }
+
+    generateMipMaps(pCubemap, pCubemap->texture.levelCount);
   }
 }
 
@@ -500,11 +502,14 @@ void core::MRenderer::executeDynamicRendering(VkCommandBuffer commandBuffer,
 
 void core::MRenderer::executeComputeImage(VkCommandBuffer commandBuffer,
                                           EComputePipeline pipeline) {
+  VkPipelineLayout layout = getPipelineLayout(EPipelineLayout::ComputeImage);
+
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
                     getComputePipeline(pipeline));
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
-                          getPipelineLayout(EPipelineLayout::ComputeImage), 0, 1,
-                          &compute.imageDescriptorSet, 0, nullptr);
+                          layout, 0, 1, &compute.imageDescriptorSet, 0, nullptr);
+  vkCmdPushConstants(commandBuffer, layout, VK_SHADER_STAGE_COMPUTE_BIT, 0,
+                          sizeof(RComputeImagePCB), &compute.imagePCB);
   vkCmdDispatch(
       commandBuffer,
       compute.imageExtent.width / core::vulkan::computeGroupCountX_2D,
@@ -594,6 +599,7 @@ void core::MRenderer::renderFrame() {
   }
 
   if (renderView.generateEnvironmentMaps) {
+  //if (renderView.generateEnvironmentMaps && renderView.framesRendered > 1) {
     renderEnvironmentMapsSequenced(cmdBuffer, environment.genInterval);
   }
 

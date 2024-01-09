@@ -146,6 +146,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\core\managers\renderer_buffer.cpp" />
     <ClCompile Include="src\core\managers\renderer_debug.cpp" />
     <ClCompile Include="src\core\managers\renderer_descriptor.cpp" />
     <ClCompile Include="src\core\managers\renderer_pass.cpp" />

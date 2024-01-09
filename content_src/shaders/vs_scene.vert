@@ -1,4 +1,4 @@
-#version 450
+#version 460
 #define RE_MAXJOINTS 128
 
 layout(binding = 0) uniform UBOView {

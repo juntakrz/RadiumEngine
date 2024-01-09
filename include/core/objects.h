@@ -39,6 +39,7 @@ enum class EBufferMode {  // VkBuffer creation mode
   CPU_INDEX,          // create index buffer for the iGPU (UNUSED)
   DGPU_VERTEX,        // create dedicated GPU vertex buffer
   DGPU_INDEX,         // create dedicated GPU index buffer
+  DGPU_STORAGE,       // create dedicated GPU storage buffer
   STAGING             // create staging buffer only
 };
 
@@ -371,6 +372,10 @@ struct RVulkanTexture : public ktxVulkanTexture {
 //
 // uniform buffer objects and push contant blocks
 // 
+
+struct RComputeImagePCB {
+  uint32_t uint0;
+};
 
 struct REnvironmentPCB {
   float roughness;
