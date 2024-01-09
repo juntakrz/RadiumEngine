@@ -98,8 +98,8 @@ class MRenderer {
     std::unordered_map<EPipelineLayout, VkPipelineLayout> layouts;
     std::unordered_map<EPipeline, RPipeline> graphicsPipelines;
     std::unordered_map<EComputePipeline, VkPipeline> computePipelines;
-    VkRenderPassBeginInfo renderPassBeginInfo;
     std::unordered_map<std::string, RFramebuffer> framebuffers;  // general purpose, swapchain uses its own set
+    std::vector<RViewport> viewports;
 
     VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> descriptorSets;
@@ -108,6 +108,8 @@ class MRenderer {
     std::vector<REntityBindInfo> bindings;  // entities rendered during the current frame
     std::vector<VkDrawIndexedIndirectCommand> drawCommands;
     std::unordered_map<EPipeline, std::vector<WPrimitive*>> primitivesByPipeline;  // TODO
+
+    VkRenderPassBeginInfo renderPassBeginInfo;
   } system;
 
   // current camera view data
@@ -133,9 +135,9 @@ class MRenderer {
   struct {
     void* pCurrentMesh = nullptr;
     void* pCurrentMaterial = nullptr;
-    void* pCurrentPipeline = nullptr;
 
     RRenderPass* pCurrentRenderPass = nullptr;
+    RPipeline* pCurrentPipeline = nullptr;
     VkPipelineLayout currentPipelineLayout = VK_NULL_HANDLE;
     uint32_t currentFrameIndex = 0;
     uint32_t frameInFlight = 0;
@@ -147,7 +149,7 @@ class MRenderer {
     void refresh() {
       pCurrentMesh = nullptr;
       pCurrentMaterial = nullptr;
-      pCurrentPipeline = nullptr;
+      //pCurrentPipeline = nullptr;
     }
   } renderView;
 
@@ -258,7 +260,7 @@ class MRenderer {
   //
 
   /* Will create a multi subpass render pass for selected types and will expect a type-dependent color attachment layout */
-  VkRenderPass createRenderPass(ERenderPass renderPassId, EPipeline pipeline, RRenderPassInfo* info);
+  TResult createRenderPass(ERenderPass renderPassId, EPipeline pipeline, RRenderPassInfo* info);
 
   // Create new dynamic rendering pass and/or add new/update existing attached pipeline
   TResult setupDynamicRenderPass(EDynamicRenderingPass passType, EPipeline pipeline, RDynamicRenderingInfo* info);
@@ -289,6 +291,9 @@ class MRenderer {
   // uses swapchain resolution
   RTexture* createFragmentRenderTarget(const char* name, uint32_t width = 0,
                                        uint32_t height = 0);
+
+  TResult createViewports();
+  void setViewport(VkCommandBuffer commandBuffer, EViewport index);
 
   void setResourceName(VkDevice device, VkObjectType objectType,
                        uint64_t handle, const char* name);

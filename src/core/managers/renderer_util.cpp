@@ -127,6 +127,59 @@ RTexture* core::MRenderer::createFragmentRenderTarget(const char* name, uint32_t
   return pNewTexture;
 }
 
+TResult core::MRenderer::createViewports() {
+  system.viewports.resize(EViewport::vpCount);
+
+  VkViewport viewport{};
+  viewport.x = 0;
+  viewport.minDepth = 0.0f;
+  viewport.maxDepth = 1.0f;
+
+  VkRect2D scissor{};
+  scissor.offset = { 0, 0 };
+
+  // EnvFilter
+  viewport.y = static_cast<float>(core::vulkan::envFilterExtent);
+  viewport.width = static_cast<float>(core::vulkan::envFilterExtent);
+  viewport.height = -static_cast<float>(core::vulkan::envFilterExtent);
+  scissor.extent = { core::vulkan::envFilterExtent, core::vulkan::envFilterExtent };
+  system.viewports.at(EViewport::vpEnvFilter).viewport = viewport;
+  system.viewports.at(EViewport::vpEnvFilter).scissor = scissor;
+
+  // EnvIrrad
+  viewport.y = static_cast<float>(core::vulkan::envIrradianceExtent);
+  viewport.width = static_cast<float>(core::vulkan::envIrradianceExtent);
+  viewport.height = -static_cast<float>(core::vulkan::envIrradianceExtent);
+  scissor.extent = { core::vulkan::envIrradianceExtent, core::vulkan::envIrradianceExtent };
+  system.viewports.at(EViewport::vpEnvIrrad).viewport = viewport;
+  system.viewports.at(EViewport::vpEnvIrrad).scissor = scissor;
+
+  // Shadow
+  viewport.y = static_cast<float>(config::shadowResolution);
+  viewport.width = static_cast<float>(config::shadowResolution);
+  viewport.height = -static_cast<float>(config::shadowResolution);
+  scissor.extent = { config::shadowResolution, config::shadowResolution };
+  system.viewports.at(EViewport::vpShadow).viewport = viewport;
+  system.viewports.at(EViewport::vpShadow).scissor = scissor;
+
+  // Main
+  viewport.y = static_cast<float>(config::renderHeight);
+  viewport.width = static_cast<float>(config::renderWidth);
+  viewport.height = -static_cast<float>(config::renderHeight);
+  scissor.extent = { config::renderWidth, config::renderHeight };
+  system.viewports.at(EViewport::vpMain).viewport = viewport;
+  system.viewports.at(EViewport::vpMain).scissor = scissor;
+
+  return RE_OK;
+}
+
+void core::MRenderer::setViewport(VkCommandBuffer commandBuffer, EViewport index) {
+  vkCmdSetViewport(commandBuffer, 0, 1, &system.viewports[index].viewport);
+  vkCmdSetScissor(commandBuffer, 0, 1, &system.viewports[index].scissor);
+  system.renderPassBeginInfo.renderArea.offset = system.viewports[index].scissor.offset;
+  system.renderPassBeginInfo.renderArea.extent = system.viewports[index].scissor.extent;
+}
+
 void core::MRenderer::setResourceName(VkDevice device, VkObjectType objectType,
                                       uint64_t handle, const char* name) {
   /*if (s_vkSetDebugUtilsObjectName && handle && name) {

@@ -32,9 +32,14 @@ void core::MRenderer::drawBoundEntities(VkCommandBuffer cmdBuffer,
   WModel* pModel = nullptr;
   renderView.refresh();
 
-  for (auto& pipeline : renderView.pCurrentRenderPass->pipelines) {
-    if (pipeline.subpassIndex != subpassIndex) {
+  for (auto& pPipeline : renderView.pCurrentRenderPass->pipelines) {
+    if (pPipeline->subpassIndex != subpassIndex) {
       continue;
+    }
+
+    if (renderView.pCurrentPipeline != pPipeline) {
+      renderView.pCurrentPipeline = pPipeline;
+      vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pPipeline->pipeline);
     }
 
     for (auto& bindInfo : system.bindings) {
@@ -49,7 +54,7 @@ void core::MRenderer::drawBoundEntities(VkCommandBuffer cmdBuffer,
       auto& primitives = pModel->getPrimitives();
 
       for (const auto& primitive : primitives) {
-        renderPrimitive(cmdBuffer, primitive, pipeline.pipelineId, &bindInfo);
+        renderPrimitive(cmdBuffer, primitive, pPipeline->pipelineId, &bindInfo);
       }
     }
   }
@@ -60,7 +65,13 @@ void core::MRenderer::drawBoundEntities(VkCommandBuffer cmdBuffer,
   // go through bound models and generate draw calls for each
   AEntity* pEntity = nullptr;
   WModel* pModel = nullptr;
+  RPipeline* pPipeline = &getGraphicsPipeline(forcedPipeline);
   renderView.refresh();
+
+  if (renderView.pCurrentPipeline != pPipeline) {
+    renderView.pCurrentPipeline = pPipeline;
+    vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pPipeline->pipeline);
+  }
 
   for (auto& bindInfo : system.bindings) {
     if ((pEntity = bindInfo.pEntity) == nullptr) {
@@ -86,14 +97,6 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
   if (!checkPipeline(pPrimitive->pMaterial->pipelineFlags, pipelineFlag)) {
     // does not belong to the current pipeline
     return;
-  }
-
-  VkPipeline pipeline = getGraphicsPipeline(pipelineFlag);
-
-  if (renderView.pCurrentPipeline != pipeline) {
-    vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-
-    renderView.pCurrentPipeline = pipeline;
   }
 
   WModel::Node* pNode = reinterpret_cast<WModel::Node*>(pPrimitive->pOwnerNode);
@@ -140,11 +143,12 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
 
 void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
   RTexture* pCubemap = nullptr;
+  EViewport viewportIndex = vpEnvFilter;
   auto *pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::Environment);
   renderView.pCurrentRenderPass = pRenderPass;
 
   for (int32_t i = 0; i < pRenderPass->pipelines.size(); ++i) {
-    const RPipeline* pPipeline = &pRenderPass->pipelines.at(i);
+    const RPipeline* pPipeline = pRenderPass->pipelines.at(i);
     const EPipeline currentPipelineId = pPipeline->pipelineId;
 
     // render targets must be stored in the same sequence as their related
@@ -152,10 +156,12 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
     switch (currentPipelineId) {
       case EPipeline::EnvFilter: {
         pCubemap = environment.pCubemaps[0];  // RTGT_ENVFILTER
+        viewportIndex = EViewport::vpEnvFilter;
         break;
       }
       case EPipeline::EnvIrradiance: {
         pCubemap = environment.pCubemaps[1];  // RTGT_ENVIRRAD
+        viewportIndex = EViewport::vpEnvIrrad;
         break;
       }
     }
@@ -173,10 +179,7 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, &scene.vertexBuffer.buffer, &offset);
     vkCmdBindIndexBuffer(commandBuffer, scene.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-    vkCmdSetViewport(commandBuffer, 0, 1, &pPipeline->viewport);
-    vkCmdSetScissor(commandBuffer, 0, 1, &pPipeline->scissor);
-
-    for (int32_t j = 0; j < pCubemap->texture.layerCount; ++j) {
+    for (uint32_t j = 0; j < pCubemap->texture.layerCount; ++j) {
       environment.subresourceRange.baseArrayLayer = j;
       setImageLayout(commandBuffer, pCubemap, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, environment.subresourceRange);
       refreshDynamicRenderPass(EDynamicRenderingPass::Environment, environment.tracking.pipeline);
@@ -184,7 +187,7 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
       VkRenderingInfo renderingInfo{};
       renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
       renderingInfo.colorAttachmentCount = static_cast<uint32_t>(pPipeline->dynamic.colorAttachmentInfo.size());
-      renderingInfo.renderArea = pPipeline->scissor;
+      renderingInfo.renderArea = system.viewports[viewportIndex].scissor;
       renderingInfo.layerCount = 1;
       renderingInfo.viewMask = NULL;
 
@@ -194,6 +197,8 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
       renderingInfo.pColorAttachments = &attachmentInfo;
 
       vkCmdBeginRendering(commandBuffer, &renderingInfo);
+
+      setViewport(commandBuffer, viewportIndex);
 
       dynamicOffset = static_cast<uint32_t>(environment.transformOffset * j);
 
@@ -228,6 +233,7 @@ void core::MRenderer::renderEnvironmentMapsSequenced(
   if (renderView.framesRendered % frameInterval) return;
 
   RTexture* pCubemap = nullptr;
+  EViewport viewportIndex = EViewport::vpEnvFilter;
   auto *pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::Environment);
   renderView.pCurrentRenderPass = pRenderPass;
 
@@ -241,7 +247,7 @@ void core::MRenderer::renderEnvironmentMapsSequenced(
     return;
   }
 
-  const RPipeline* pPipeline = &pRenderPass->pipelines.at(environment.tracking.pipeline);
+  const RPipeline* pPipeline = pRenderPass->pipelines.at(environment.tracking.pipeline);
   const EPipeline currentPipelineId = pPipeline->pipelineId;
 
   // render targets must be stored in the same sequence as their related
@@ -249,10 +255,12 @@ void core::MRenderer::renderEnvironmentMapsSequenced(
   switch (currentPipelineId) {
     case EPipeline::EnvFilter: {
       pCubemap = environment.pCubemaps[0];  // RTGT_ENVFILTER
+      viewportIndex = EViewport::vpEnvFilter;
       break;
     }
     case EPipeline::EnvIrradiance: {
       pCubemap = environment.pCubemaps[1];  // RTGT_ENVIRRAD
+      viewportIndex = EViewport::vpEnvIrrad;
       break;
     }
   }
@@ -293,9 +301,6 @@ void core::MRenderer::renderEnvironmentMapsSequenced(
   vkCmdBindVertexBuffers(commandBuffer, 0, 1, &scene.vertexBuffer.buffer, &offset);
   vkCmdBindIndexBuffer(commandBuffer, scene.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-  vkCmdSetViewport(commandBuffer, 0, 1, &pPipeline->viewport);
-  vkCmdSetScissor(commandBuffer, 0, 1, &pPipeline->scissor);
-
   environment.subresourceRange.baseArrayLayer = environment.tracking.layer;
   setImageLayout(commandBuffer, pCubemap, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, environment.subresourceRange);
   refreshDynamicRenderPass(EDynamicRenderingPass::Environment, environment.tracking.pipeline);
@@ -303,7 +308,7 @@ void core::MRenderer::renderEnvironmentMapsSequenced(
   VkRenderingInfo renderingInfo{};
   renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
   renderingInfo.colorAttachmentCount = static_cast<uint32_t>(pPipeline->dynamic.colorAttachmentInfo.size());
-  renderingInfo.renderArea = pPipeline->scissor;
+  renderingInfo.renderArea = system.viewports[viewportIndex].scissor;
   renderingInfo.layerCount = 1;
   renderingInfo.viewMask = NULL;
 
@@ -313,6 +318,8 @@ void core::MRenderer::renderEnvironmentMapsSequenced(
   renderingInfo.pColorAttachments = &attachmentInfo;
 
   vkCmdBeginRendering(commandBuffer, &renderingInfo);
+
+  setViewport(commandBuffer, viewportIndex);
 
   dynamicOffset = static_cast<uint32_t>(environment.transformOffset * environment.tracking.layer);
 
@@ -400,9 +407,6 @@ void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer,
 
   system.renderPassBeginInfo.renderPass =
       renderView.pCurrentRenderPass->renderPass;
-  system.renderPassBeginInfo.renderArea.extent = {
-      static_cast<uint32_t>(renderView.pCurrentRenderPass->viewport.width),
-      static_cast<uint32_t>(renderView.pCurrentRenderPass->viewport.y)};
   system.renderPassBeginInfo.pClearValues =
       renderView.pCurrentRenderPass->clearValues.data();
   system.renderPassBeginInfo.clearValueCount =
@@ -415,12 +419,6 @@ void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer,
 
       vkCmdBeginRenderPass(commandBuffer, &system.renderPassBeginInfo,
                            VK_SUBPASS_CONTENTS_INLINE);
-
-      vkCmdSetViewport(commandBuffer, 0, 1,
-                       &renderView.pCurrentRenderPass->viewport);
-
-      vkCmdSetScissor(commandBuffer, 0, 1,
-                      &renderView.pCurrentRenderPass->scissor);
 
       renderFullscreenQuad(commandBuffer, EPipelineLayout::Scene, EPipeline::Present,
           &core::resources.getMaterial(RMAT_PRESENT)->descriptorSet);
@@ -449,11 +447,6 @@ void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer,
   vkCmdBeginRenderPass(commandBuffer, &system.renderPassBeginInfo,
                        VK_SUBPASS_CONTENTS_INLINE);
 
-  vkCmdSetViewport(commandBuffer, 0, 1,
-                   &renderView.pCurrentRenderPass->viewport);
-
-  vkCmdSetScissor(commandBuffer, 0, 1, &renderView.pCurrentRenderPass->scissor);
-
   VkDeviceSize offset = 0u;
   vkCmdBindVertexBuffers(commandBuffer, 0, 1, &scene.vertexBuffer.buffer,
                          &offset);
@@ -463,7 +456,7 @@ void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer,
   const uint32_t dynamicOffset =
       config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                          renderView.pCurrentRenderPass->usedLayout, 0,
+                          renderView.pCurrentRenderPass->layout, 0,
                           setCount, pSceneSets, 1, &dynamicOffset);
 
   drawBoundEntities(commandBuffer);
@@ -524,11 +517,14 @@ void core::MRenderer::renderFullscreenQuad(VkCommandBuffer commandBuffer,
                                            VkDescriptorSet* pAttachmentSet,
                                            VkDescriptorSet* pSceneSet,
                                            uint32_t sceneDynamicOffset) {
-  RPipeline* pPipeline = &system.graphicsPipelines.at(pipeline);
-  if (renderView.pCurrentPipeline != pPipeline);
+  RPipeline* pPipeline = &getGraphicsPipeline(pipeline);
 
-  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    getGraphicsPipeline(pipeline));
+  if (renderView.pCurrentPipeline != pPipeline) {
+    renderView.pCurrentPipeline = pPipeline;
+
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+      getGraphicsPipeline(pipeline).pipeline);
+  }
 
   if (pSceneSet) {
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -539,6 +535,7 @@ void core::MRenderer::renderFullscreenQuad(VkCommandBuffer commandBuffer,
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           getPipelineLayout(pipelineLayout), 2, 1,
                           pAttachmentSet, 0, nullptr);
+
   vkCmdDraw(commandBuffer, 6, 1, 0, 0);
 }
 
@@ -600,9 +597,10 @@ void core::MRenderer::renderFrame() {
     renderEnvironmentMapsSequenced(cmdBuffer, environment.genInterval);
   }
 
-  renderEnvironmentMaps(cmdBuffer);
-
+  setViewport(cmdBuffer, EViewport::vpShadow);
   executeRenderPass(cmdBuffer, ERenderPass::Shadow, frameSets, 1);
+
+  setViewport(cmdBuffer, EViewport::vpMain);
   executeRenderPass(cmdBuffer, ERenderPass::Deferred, frameSets, 1);
   executeRenderPass(cmdBuffer, ERenderPass::Present, frameSets, 1);
 

@@ -123,6 +123,8 @@ enum class ERenderPass {
 
 enum class ETransformType { Translation, Rotation, Scale, Weight, Undefined };
 
+enum EViewport { vpEnvFilter, vpEnvIrrad, vpShadow, vpMain, vpCount };  // 'Count' is a hack
+
 struct RBuffer {
   VkBuffer buffer;
   VmaAllocation allocation;
@@ -164,6 +166,7 @@ struct RGraphicsPipelineInfo {
   ERenderPass renderPass;
   EPipelineLayout pipelineLayout;
   EPipeline pipeline;
+  EViewport viewportId;
   uint32_t colorBlendAttachmentCount;
   std::string vertexShader;
   std::string fragmentShader;
@@ -230,8 +233,6 @@ struct RPipeline {
   VkPipeline pipeline = VK_NULL_HANDLE;
   EPipeline pipelineId = EPipeline::Null;
   uint32_t subpassIndex = 0;
-  VkViewport viewport;
-  VkRect2D scissor;
 
   struct {
     std::vector<VkRenderingAttachmentInfo> colorAttachmentInfo;
@@ -274,6 +275,8 @@ struct RRenderPassInfo {
   EPipelineLayout layout;
   uint32_t viewportWidth;
   uint32_t viewportHeight;
+  std::vector<VkClearValue> clearValues;
+  uint32_t subpassIndex;
 };
 
 // stored by WModel, used to create a valid sampler for a specific texture
@@ -300,6 +303,11 @@ struct RTextureInfo {
   bool detailedViews = false;
   VkMemoryPropertyFlags memoryFlags = NULL;
   VmaMemoryUsage vmaMemoryUsage = VMA_MEMORY_USAGE_AUTO;
+};
+
+struct RViewport {
+  VkViewport viewport;
+  VkRect2D scissor;
 };
 
 struct RVertex {

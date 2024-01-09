@@ -771,6 +771,7 @@ TResult core::MRenderer::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createRendererDefaults();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSetLayouts();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createPipelineLayouts();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createViewports();
 
   if (chkResult <= RE_ERRORLIMIT) chkResult = createRenderPasses();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDynamicRenderingPasses();

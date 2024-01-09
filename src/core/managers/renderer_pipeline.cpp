@@ -213,6 +213,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
         static_cast<uint32_t>(scene.pGBufferTargets.size());
     pipelineInfo.cullMode = VK_CULL_MODE_BACK_BIT;
     pipelineInfo.blendEnable = VK_FALSE;
+    pipelineInfo.viewportId = EViewport::vpMain;
 
     RE_CHECK(createGraphicsPipeline(&pipelineInfo));
 
@@ -245,6 +246,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
     pipelineInfo.colorBlendAttachmentCount = 1;
     pipelineInfo.cullMode = VK_CULL_MODE_BACK_BIT;
     pipelineInfo.blendEnable = VK_FALSE;
+    pipelineInfo.viewportId = EViewport::vpMain;
 
     RE_CHECK(createGraphicsPipeline(&pipelineInfo));
   }
@@ -261,6 +263,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
     pipelineInfo.colorBlendAttachmentCount = 1;
     pipelineInfo.cullMode = VK_CULL_MODE_BACK_BIT;
     pipelineInfo.blendEnable = VK_FALSE;
+    pipelineInfo.viewportId = EViewport::vpMain;
 
     RE_CHECK(createGraphicsPipeline(&pipelineInfo));
   }
@@ -275,6 +278,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
     pipelineInfo.fragmentShader = "fs_shadowPass.spv";
     pipelineInfo.colorBlendAttachmentCount = 0;
     pipelineInfo.blendEnable = VK_TRUE;
+    pipelineInfo.viewportId = EViewport::vpShadow;
 
     RE_CHECK(createGraphicsPipeline(&pipelineInfo));
   }
@@ -288,6 +292,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
     pipelineInfo.vertexShader = "vs_quad.spv";
     pipelineInfo.fragmentShader = "fs_present.spv";
     pipelineInfo.colorBlendAttachmentCount = 1;
+    pipelineInfo.viewportId = EViewport::vpMain;
 
     RE_CHECK(createGraphicsPipeline(&pipelineInfo));
   }
@@ -303,6 +308,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
     pipelineInfo.vertexShader = "vs_environment.spv";
     pipelineInfo.fragmentShader = "fs_envFilter.spv";
     pipelineInfo.colorBlendAttachmentCount = 1u;
+    pipelineInfo.viewportId = EViewport::vpEnvFilter;
 
     RE_CHECK(createGraphicsPipeline(&pipelineInfo));
 
@@ -310,6 +316,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
     pipelineInfo.pipeline = EPipeline::EnvIrradiance;
     pipelineInfo.fragmentShader = "fs_envIrradiance.spv";
     pipelineInfo.colorBlendAttachmentCount = 1u;
+    pipelineInfo.viewportId = EViewport::vpEnvIrrad;
 
     RE_CHECK(createGraphicsPipeline(&pipelineInfo));
   }
@@ -468,19 +475,8 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
   viewportInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
   viewportInfo.viewportCount = 1;
   viewportInfo.scissorCount = 1;
-
-  switch (isDynamicRendering) {
-    case true: {
-      viewportInfo.pViewports = &getDynamicRenderingPass(pipelineInfo->dynamicRenderPass)->getPipeline(pipelineInfo->pipeline)->viewport;
-      viewportInfo.pScissors = &getDynamicRenderingPass(pipelineInfo->dynamicRenderPass)->getPipeline(pipelineInfo->pipeline)->scissor;
-      break;
-    }
-    case false: {
-      viewportInfo.pViewports = &getRenderPass(pipelineInfo->renderPass)->getPipeline(pipelineInfo->pipeline)->viewport;
-      viewportInfo.pScissors = &getRenderPass(pipelineInfo->renderPass)->getPipeline(pipelineInfo->pipeline)->scissor;
-      break;
-    }
-  }
+  viewportInfo.pViewports = &system.viewports[pipelineInfo->viewportId].viewport;
+  viewportInfo.pScissors = &system.viewports[pipelineInfo->viewportId].scissor;
 
   VkPipelineDepthStencilStateCreateInfo depthStencilInfo{};
   depthStencilInfo.sType =
@@ -587,7 +583,7 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
   }
 
   // add new pipeline structure and fill it with data
-  system.graphicsPipelines.emplace(pipelineInfo->pipeline);
+  system.graphicsPipelines.emplace(pipelineInfo->pipeline, RPipeline{});
 
   if (vkCreateGraphicsPipelines(
           logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,

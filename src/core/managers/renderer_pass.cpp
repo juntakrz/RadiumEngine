@@ -3,26 +3,25 @@
 #include "core/material/texture.h"
 #include "core/managers/renderer.h"
 
-VkRenderPass core::MRenderer::createRenderPass(ERenderPass renderPassId, EPipeline pipeline, RRenderPassInfo* info) {
+TResult core::MRenderer::createRenderPass(ERenderPass renderPassId, EPipeline pipeline, RRenderPassInfo* info) {
   // If render pass already exists - don't proceed with its creation, but only add pipeline entry if not present as well
-  const bool renderPassExists = system.renderPasses.try_emplace(renderPassId).second;
+  const bool renderPassExists = !system.renderPasses.try_emplace(renderPassId).second;
+  RRenderPass* pRenderPass = &system.renderPasses.at(renderPassId);
   RPipeline* pPipeline = system.renderPasses.at(renderPassId).getPipeline(pipeline);
 
   if (!pPipeline) {
     pPipeline = &system.graphicsPipelines[pipeline];
-    system.renderPasses.at(renderPassId).pipelines.emplace_back(pPipeline);
+    pPipeline->pipelineId = pipeline;
+    pRenderPass->pipelines.emplace_back(pPipeline);
   }
 
-  pPipeline->viewport.y = info->viewportHeight;
-  pPipeline->viewport.width = info->viewportWidth;
-  pPipeline->viewport.height = -info->viewportHeight;
-  pPipeline->scissor.extent.width = info->viewportWidth;
-  pPipeline->scissor.extent.height = info->viewportHeight;
+  pPipeline->subpassIndex = info->subpassIndex;
 
-  system.renderPasses.at(renderPassId).layout = getPipelineLayout(info->layout);
+  pRenderPass->layout = getPipelineLayout(info->layout);
+  pRenderPass->clearValues = info->clearValues;
 
   if (renderPassExists) {
-    return system.renderPasses.at(renderPassId).renderPass;
+    return RE_OK;
   }
 
   RE_LOG(Log, "Creating render pass E%d", renderPassId);
@@ -47,7 +46,6 @@ VkRenderPass core::MRenderer::createRenderPass(ERenderPass renderPassId, EPipeli
   VkAttachmentReference depthReference = {
       colorAttachmentCount, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
 
-  VkRenderPassCreateInfo renderPassInfo{};
   std::vector<VkSubpassDescription> subpassDescriptions;
   std::vector<VkSubpassDependency> subpassDependencies;
 
@@ -202,6 +200,7 @@ VkRenderPass core::MRenderer::createRenderPass(ERenderPass renderPassId, EPipeli
   }
 
   // Create render pass
+  VkRenderPassCreateInfo renderPassInfo{};
   renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
   renderPassInfo.pNext = NULL;
   renderPassInfo.attachmentCount = colorAttachmentCount;
@@ -219,10 +218,12 @@ VkRenderPass core::MRenderer::createRenderPass(ERenderPass renderPassId, EPipeli
     vkCreateRenderPass(logicalDevice.device, &renderPassInfo, NULL, &newRenderPass);
   assert(result == VK_SUCCESS);
 
+  pRenderPass->renderPass = newRenderPass;
+
   /*setResourceName(device, VK_OBJECT_TYPE_RENDER_PASS, (uint64_t)renderPass,
                   "CreateRenderPass");*/
 
-  return newRenderPass;
+  return RE_OK;
 }
 
 TResult core::MRenderer::setupDynamicRenderPass(EDynamicRenderingPass passType, EPipeline pipeline, RDynamicRenderingInfo* info) {
@@ -300,16 +301,6 @@ TResult core::MRenderer::setupDynamicRenderPass(EDynamicRenderingPass passType, 
   pPipeline->dynamic.pColorAttachments = info->pColorAttachments;
   pPipeline->dynamic.pDepthAttachment = info->pDepthAttachment;
   pPipeline->dynamic.pStencilAttachment = info->pStencilAttachment;
-
-  VkViewport& viewport = pPipeline->viewport;
-  viewport.y = pPipeline->dynamic.pColorAttachments.at(0)->texture.height;
-  viewport.height = -viewport.y;
-  viewport.width = pPipeline->dynamic.pColorAttachments.at(0)->texture.width;
-
-  VkRect2D& scissor = pPipeline->scissor;
-  scissor.extent.width = viewport.width;
-  scissor.extent.height = viewport.y;
-  scissor.offset = { 0, 0 };
 
   return RE_OK;
 }
@@ -399,61 +390,80 @@ TResult core::MRenderer::createRenderPasses() {
 
   //
   // DEFERRED render pass
-  // all models are rendered to 5 separate color maps forming G-buffer
-  // then they are combined into 1 PBR color attachment
+  // 
+  {
+    // all models are rendered to 5 separate color maps forming G-buffer
+    // then they are combined into 1 PBR color attachment
+    colorAttachment.format = core::vulkan::formatHDR16;
+    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-  ERenderPass passType = ERenderPass::Deferred;
-  colorAttachment.format = core::vulkan::formatHDR16;
-  colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    // deferred render targets: position, color, normal, physical, emissive
+    // + PBR render target
+    uint32_t attachmentCount = 6;
+    std::vector<VkAttachmentDescription> deferredColorAttachments(attachmentCount, colorAttachment);
 
-  // deferred render targets: position, color, normal, physical, emissive
-  // + PBR render target
-  uint32_t attachmentCount = 6;
-  std::vector<VkAttachmentDescription> deferredColorAttachments(attachmentCount, colorAttachment);
+    RRenderPassInfo passInfo{};
+    passInfo.colorAttachmentInfo = deferredColorAttachments;
+    passInfo.depthAttachmentInfo = depthAttachment;
+    passInfo.layout = EPipelineLayout::Scene;
+    passInfo.viewportWidth = config::renderWidth;
+    passInfo.viewportHeight = config::renderHeight;
+    passInfo.clearValues = fGetClearValues(clearColor, attachmentCount, clearDepth);
+    passInfo.subpassIndex = 0;
 
-  RRenderPassInfo passInfo{};
-  passInfo.colorAttachmentInfo = deferredColorAttachments;
+    createRenderPass(ERenderPass::Deferred, EPipeline::OpaqueCullBack, &passInfo);
+    createRenderPass(ERenderPass::Deferred, EPipeline::OpaqueCullNone, &passInfo);
+    createRenderPass(ERenderPass::Deferred, EPipeline::BlendCullNone, &passInfo);
+    // TODO: add mask pipeline
 
-  VkRenderPass newRenderPass = createRenderPass(
-    logicalDevice.device, attachmentCount, deferredColorAttachments.data(),
-    &depthAttachment, passType);
-  system.renderPasses.at(passType).renderPass = newRenderPass;
-  system.renderPasses.at(passType).clearValues =
-    fGetClearValues(clearColor, attachmentCount, clearDepth);
+    passInfo.subpassIndex = 1;
+
+    createRenderPass(ERenderPass::Deferred, EPipeline::PBR, &passInfo);
+
+    passInfo.subpassIndex = 2;
+
+    createRenderPass(ERenderPass::Deferred, EPipeline::Skybox, &passInfo);
+  }
 
   //
   // PRESENT render pass
-  // the 16 bit float color map is rendered to the compatible surface target
-  passType = ERenderPass::Present;
-  system.renderPasses.emplace(passType, RRenderPass{});
-  RE_LOG(Log, "Creating render pass E%d", passType);
+  // 
+  {
+    // the 16 bit float color map is rendered to the compatible surface target
+    colorAttachment.format = swapchain.formatData.format;
+    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
-  colorAttachment.format = swapchain.formatData.format;
-  colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    RRenderPassInfo passInfo{};
+    passInfo.colorAttachmentInfo = { colorAttachment };
+    passInfo.depthAttachmentInfo = depthAttachment;
+    passInfo.layout = EPipelineLayout::Scene;
+    passInfo.viewportWidth = config::renderWidth;
+    passInfo.viewportHeight = config::renderHeight;
+    passInfo.clearValues = fGetClearValues(clearColor, 1, clearDepth);
+    passInfo.subpassIndex = 0;
 
-  newRenderPass = createRenderPass(logicalDevice.device, 1, &colorAttachment,
-    &depthAttachment, passType);
-  system.renderPasses.at(passType).renderPass = newRenderPass;
-  system.renderPasses.at(passType).clearValues =
-    fGetClearValues(clearColor, 1, clearDepth);
+    createRenderPass(ERenderPass::Present, EPipeline::Present, &passInfo);
+  }
 
   //
   // SHADOW render pass
   //
-  passType = ERenderPass::Shadow;
-  system.renderPasses.emplace(passType, RRenderPass{});
-  RE_LOG(Log, "Creating render pass E%d", passType);
+  {
+    depthAttachment.format = core::vulkan::formatShadow;
 
-  depthAttachment.format = core::vulkan::formatShadow;
+    RRenderPassInfo passInfo{};
+    passInfo.colorAttachmentInfo = {};
+    passInfo.depthAttachmentInfo = depthAttachment;
+    passInfo.layout = EPipelineLayout::Scene;
+    passInfo.viewportWidth = config::shadowResolution;
+    passInfo.viewportHeight = config::shadowResolution;
+    passInfo.clearValues = fGetClearValues(clearColor, 0, clearDepth);
+    passInfo.subpassIndex = 0;
 
-  newRenderPass = createRenderPass(logicalDevice.device, 0, nullptr,
-    &depthAttachment, passType);
-  system.renderPasses.at(passType).renderPass = newRenderPass;
-  system.renderPasses.at(passType).clearValues =
-    fGetClearValues(clearColor, 0, clearDepth);
-
+    createRenderPass(ERenderPass::Shadow, EPipeline::Shadow, &passInfo);
+  }
   return RE_OK;
 }
 
@@ -514,55 +524,6 @@ RRenderPass* core::MRenderer::getDynamicRenderingPass(EDynamicRenderingPass type
 }
 
 TResult core::MRenderer::configureRenderPasses() {
-  auto fSetDataForAllPipelines = [](RRenderPass* pInRenderPass, VkViewport& viewport, VkRect2D& scissor) {
-    for (auto& it : pInRenderPass->pipelines) {
-      it->viewport = viewport;
-      it->scissor = scissor;
-    }
-    };
-
-  // NOTE: order of pipeline 'emplacement' is important
-
-  /* DEFERRED */
-  // set viewports and scissors for screen render passes
-  VkViewport viewport{};
-  viewport.x = 0.0f;
-  viewport.y = static_cast<float>(swapchain.imageExtent.height);
-  viewport.width = static_cast<float>(swapchain.imageExtent.width);
-  viewport.height = -viewport.y;
-  viewport.minDepth = 0.0f;
-  viewport.maxDepth = 1.0f;
-
-  VkRect2D scissor{};
-  scissor.offset = { 0, 0 };
-  scissor.extent = swapchain.imageExtent;
-
-  RRenderPass* pRenderPass = getRenderPass(ERenderPass::Deferred);
-  pRenderPass->layout = getPipelineLayout(EPipelineLayout::Scene);
-  pRenderPass->pipelines.emplace_back(EPipeline::OpaqueCullBack, 0);
-  pRenderPass->pipelines.emplace_back(EPipeline::OpaqueCullNone, 0);
-  pRenderPass->pipelines.emplace_back(EPipeline::BlendCullNone, 0);
-  pRenderPass->pipelines.emplace_back(EPipeline::Skybox, 2);
-  fSetDataForAllPipelines(pRenderPass, viewport, scissor);
-
-  /* PRESENT */
-  // uses swapchain framebuffers
-  pRenderPass = getRenderPass(ERenderPass::Present);
-  pRenderPass->layout = getPipelineLayout(EPipelineLayout::Scene);
-  pRenderPass->pipelines.emplace_back(EPipeline::Present);
-  fSetDataForAllPipelines(pRenderPass, viewport, scissor);
-
-  /* SHADOW */
-  viewport.y = static_cast<float>(config::shadowResolution);
-  viewport.width = viewport.y;
-  viewport.height = -viewport.y;
-  scissor.extent = { config::shadowResolution, config::shadowResolution };
-
-  pRenderPass = getRenderPass(ERenderPass::Shadow);
-  pRenderPass->layout = getPipelineLayout(EPipelineLayout::Scene);
-  pRenderPass->pipelines.emplace_back(EPipeline::Shadow);
-  fSetDataForAllPipelines(pRenderPass, viewport, scissor);
-
   // render pass begin / initialize setup
   system.renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
   system.renderPassBeginInfo.renderArea.offset = { 0, 0 };
