@@ -6,7 +6,7 @@ layout (location = 0) out vec4 outColor;
 layout (set = 2, binding = 0) uniform samplerCube samplerEnv;
 
 layout (push_constant) uniform envPCB {
-	float roughness;
+	layout(offset = 16) float roughness;
 	uint numSamples;
 } pushBlock;
 

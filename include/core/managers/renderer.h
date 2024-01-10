@@ -31,7 +31,7 @@ class MRenderer {
   } compute;
 
   struct REnvironmentData {
-    REnvironmentPCB envPushBlock;
+    REnvironmentFragmentPCB envPushBlock;
     std::vector<VkDescriptorSet> envDescriptorSets;
     VkDescriptorSet LUTDescriptorSet;
     std::vector<RBuffer> transformBuffers;

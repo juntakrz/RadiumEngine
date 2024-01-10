@@ -218,13 +218,10 @@ struct RMaterialInfo {
     int8_t extra = 0;
   } texCoordSets;
 
-  glm::vec4 F0 = {0.04f, 0.04f, 0.04f, 0.0f};
-  glm::vec4 baseColorFactor = {1.0f, 1.0f, 1.0f, 1.0f};
-  glm::vec4 emissiveFactor = {0.0f, 0.0f, 0.0f, 1.0f};
   float metallicFactor = 0.0f;
   float roughnessFactor = 1.0f;
   float bumpIntensity = 1.0f;
-  float materialIntensity = 1.0f;
+  float emissiveIntensity = 0.0f;
 
   // if 'Null' - pipeline is determined using material properties
   uint32_t pipelineFlags = EPipeline::Null;
@@ -377,7 +374,7 @@ struct RComputeImagePCB {
   uint32_t uint0;
 };
 
-struct REnvironmentPCB {
+struct REnvironmentFragmentPCB {
   float roughness;
   uint32_t samples;
 };
@@ -399,12 +396,9 @@ struct RLightingUBO {
   float scaleIBLAmbient = 1.0f;
 };
 
-// push constant block used by RMaterial
-// (96 bytes of 128 Vulkan spec)
-struct RMaterialPCB {
-  glm::vec4 baseColorFactor;
-  glm::vec4 emissiveFactor;
-  glm::vec4 f0;
+// Push constant block used by the scene fragment shader
+// (48 bytes, 64 bytes total of 128 Vulkan spec)
+struct RSceneFragmentPCB {
   int32_t baseColorTextureSet;
   int32_t normalTextureSet;
   int32_t metallicRoughnessTextureSet;
@@ -416,18 +410,21 @@ struct RMaterialPCB {
   float alphaMode;
   float alphaCutoff;
   float bumpIntensity;
-  float materialIntensity;
+  float emissiveIntensity;
+};
+
+// Push constant block used by the scene vertex shader
+// (16 bytes, 64 bytes total of 128 Vulkan spec)
+struct RSceneVertexPCB {
+  VkDeviceAddress intoVertexBufferAddress = 0u;
+  uint32_t cascadeIndex = 0u;
+  uint32_t padding = 0u;
 };
 
 struct RMeshUBO {
   glm::mat4 nodeMatrix = glm::mat4(1.0f);
   float jointCount = 0.0f;
   std::vector<glm::mat4> jointMatrices;
-};
-
-// camera push constant block for vertex shader
-struct RScenePCB {
-  uint32_t cascadeIndex = 0u;
 };
 
 // camera and view matrix UBO for vertex shader

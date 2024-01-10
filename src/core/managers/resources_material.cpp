@@ -76,12 +76,12 @@ RMaterial* core::MResources::createMaterial(
   newMat.pEmissive = assignTexture(pDesc->textures.emissive.c_str());
   newMat.pExtra = assignTexture(pDesc->textures.extra.c_str());
 
-  newMat.pushConstantBlock.baseColorFactor = pDesc->baseColorFactor;
-  newMat.pushConstantBlock.emissiveFactor = pDesc->emissiveFactor;
   newMat.pushConstantBlock.metallicFactor = pDesc->metallicFactor;
   newMat.pushConstantBlock.roughnessFactor = pDesc->roughnessFactor;
   newMat.pushConstantBlock.alphaMode = static_cast<float>(pDesc->alphaMode);
   newMat.pushConstantBlock.alphaCutoff = pDesc->alphaCutoff;
+  newMat.pushConstantBlock.bumpIntensity = pDesc->bumpIntensity;
+  newMat.pushConstantBlock.emissiveIntensity = pDesc->emissiveIntensity;
 
   // disable reading from texture in shader if no texture is available
   newMat.pushConstantBlock.baseColorTextureSet =
@@ -116,10 +116,6 @@ RMaterial* core::MResources::createMaterial(
   if (newMat.pExtra) {
     newMat.pLinearTextures.emplace_back(newMat.pExtra);
   }
-
-  newMat.pushConstantBlock.bumpIntensity = pDesc->bumpIntensity;
-  newMat.pushConstantBlock.materialIntensity = pDesc->materialIntensity;
-  newMat.pushConstantBlock.f0 = pDesc->F0;
 
   newMat.pipelineFlags = pDesc->pipelineFlags;
 

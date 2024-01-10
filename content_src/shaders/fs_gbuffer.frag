@@ -22,21 +22,19 @@ layout (set = 2, binding = 4) uniform sampler2D emissiveMap;
 layout (set = 2, binding = 5) uniform sampler2D extraMap;		// TODO: implement extra map in shader
 
 layout (push_constant) uniform Material {
-	vec4 baseColorFactor;
-	vec4 emissiveFactor;
-	vec4 f0;
+	layout(offset = 16) 
 	int baseColorTextureSet;
 	int physicalDescriptorTextureSet;
 	int normalTextureSet;	
-	int occlusionTextureSet;
+	int occlusionTextureSet;	// 16
 	int emissiveTextureSet;
 	int extraTextureSet;
 	float metallicFactor;	
-	float roughnessFactor;	
+	float roughnessFactor;		// 32
 	float alphaMask;	
 	float alphaMaskCutoff;
 	float bumpIntensity;
-	float materialIntensity;
+	float emissiveIntensity;	// 48
 } material;
 
 layout (location = 0) out vec4 outPosition;
@@ -66,38 +64,33 @@ vec3 getNormal() {
 void main() {
 	float perceptualRoughness;
 	float metallic;
-    vec4 baseColor = vec4(0.0);
 
 	// initialize outgoing data
 	outPosition = vec4(0.0);
-	outColor = vec4(0.0);
+	outColor = vec4(1.0);
     outNormal = vec4(0.0);
 	outPhysical = vec4(0.0);
 	outEmissive = vec4(0.0);
-	
-	const float emissiveFactor = 1.0;		// TODO: replace with value from material push constant
 
 	// 1. extract fragment position in world space
 	outPosition = vec4(inWorldPos, 1.0);
 
 	// 2. extract color / diffuse / albedo
 	if (material.baseColorTextureSet > -1) {
-		baseColor = texture(colorMap, material.baseColorTextureSet == 0 ? inUV0 : inUV1) * material.baseColorFactor;
-	} else {
-		baseColor = material.baseColorFactor;
+		outColor = texture(colorMap, material.baseColorTextureSet == 0 ? inUV0 : inUV1);
 	}
 
 	// TODO: discard on alphaMask == 1.0 here and depth-sort everything, unless requested by the material
-	if (material.alphaMask > 0.9 && baseColor.a < material.alphaMaskCutoff && material.alphaMaskCutoff < 1.1) {
+	if (material.alphaMask > 0.9 && outColor.a < material.alphaMaskCutoff && material.alphaMaskCutoff < 1.1) {
 		discard;
 	}
 
-	baseColor *= inColor0;
-	outColor = baseColor;
+	// apply vertex colors if present
+	outColor *= inColor0;
 
 	// 3. extract normal for this fragment
 	vec3 normal = (material.normalTextureSet > -1) ? getNormal() : normalize(inNormal);
-	outNormal = vec4(normal, 1.0);
+	outNormal = vec4(normal, 1.0) * material.bumpIntensity;
 
 	// 4. extract physical properties
 	
@@ -107,8 +100,8 @@ void main() {
 	perceptualRoughness = material.roughnessFactor;
 	metallic = material.metallicFactor;
 	if (material.physicalDescriptorTextureSet > -1) {
-		// Roughness is stored in the 'g' channel, metallic is stored in the 'b' channel.
-		// This layout intentionally reserves the 'r' channel for (optional) occlusion map data
+		// In texture roughness is stored in the 'g' channel, metallic is stored in the 'b' channel.
+		// This layout intentionally reserves the 'r' channel for (optional) ambient occlusion map data
 		vec4 physicalSample = texture(physicalDescriptorMap, material.physicalDescriptorTextureSet == 0 ? inUV0 : inUV1);
 		physicalSample.g = pow(physicalSample.g, 1.0 / 2.2);
 		physicalSample.b = pow(physicalSample.b, 1.0 / 2.2);
@@ -130,7 +123,10 @@ void main() {
 
 	// 5. extract emissive color
 	if (material.emissiveTextureSet > -1) {
-		vec3 emissive = texture(emissiveMap, material.emissiveTextureSet == 0 ? inUV0 : inUV1).rgb * emissiveFactor;
+		vec3 emissive = texture(emissiveMap, material.emissiveTextureSet == 0 ? inUV0 : inUV1).rgb;
 		outEmissive = vec4(emissive, 1.0);
 	}
+
+	// brighten or darken color emission
+	outEmissive += vec4(material.emissiveIntensity);
 }

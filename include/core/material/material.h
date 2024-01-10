@@ -17,7 +17,7 @@ struct RMaterial {
   RTexture* pEmissive = nullptr;
   RTexture* pExtra = nullptr;
 
-  RMaterialPCB pushConstantBlock;
+  RSceneFragmentPCB pushConstantBlock;
   VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
 
   // will materials manager automatically try to delete textures

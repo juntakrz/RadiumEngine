@@ -116,6 +116,16 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
     renderView.pCurrentMesh = pMesh;
   }
 
+  //
+  /*VkDeviceAddress vSize = sizeof(RVertex);
+  VkDeviceAddress primitiveOffset = static_cast<VkDeviceAddress>(pBindInfo->vertexOffset) + static_cast<VkDeviceAddress>(pPrimitive->vertexOffset);
+  VkDeviceAddress vOffset = primitiveOffset * vSize;
+  VkDeviceAddress primitiveVertexAddress = scene.vertexSSBOAddress + vOffset;*/
+  VkDeviceAddress primitiveVertexAddress = scene.vertexSSBOAddress;
+  vkCmdPushConstants(cmdBuffer, renderView.pCurrentRenderPass->layout, VK_SHADER_STAGE_VERTEX_BIT,
+    0, sizeof(VkDeviceAddress), &primitiveVertexAddress);
+  //
+
   // bind material descriptor set only if material is different (binding 2)
   if (renderView.pCurrentMaterial != pPrimitive->pMaterial) {
     vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -125,7 +135,7 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
     // environment render pass uses global push constant block for fragment shader
     if (!renderView.generateEnvironmentMapsImmediate && !renderView.isEnvironmentPass) {
       vkCmdPushConstants(cmdBuffer, renderView.pCurrentRenderPass->layout,
-                         VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(RMaterialPCB),
+                         VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(RSceneVertexPCB), sizeof(RSceneFragmentPCB),
                          &pPrimitive->pMaterial->pushConstantBlock);
     }
 
@@ -214,7 +224,7 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
         // 1);
 
         vkCmdPushConstants(commandBuffer, renderView.pCurrentRenderPass->layout,
-          VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(REnvironmentPCB),
+          VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(REnvironmentFragmentPCB),
           &environment.envPushBlock);
       }
       renderView.isEnvironmentPass = true;
@@ -337,7 +347,7 @@ void core::MRenderer::renderEnvironmentMapsSequenced(
     // 1);
 
     vkCmdPushConstants(commandBuffer, renderView.pCurrentRenderPass->layout,
-                       VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(REnvironmentPCB),
+                       VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(RSceneVertexPCB), sizeof(REnvironmentFragmentPCB),
                        &environment.envPushBlock);
   }
   renderView.isEnvironmentPass = true;
