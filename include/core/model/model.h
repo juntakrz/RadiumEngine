@@ -109,6 +109,7 @@ class WModel {
 
   size_t m_sceneVertexOffset = 0u;
   size_t m_sceneIndexOffset = 0u;
+  VkDeviceAddress m_sceneVertexBufferAddress = 0u;
   uint32_t m_vertexCount = 0u;
   uint32_t m_indexCount = 0u;
   bool m_isBoundToScene = false;

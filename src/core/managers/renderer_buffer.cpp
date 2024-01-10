@@ -275,7 +275,7 @@ TResult core::MRenderer::createBuffer(EBufferMode mode, VkDeviceSize size, RBuff
 
     // destination buffer
     bufferCreateInfo.usage =
-      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 
     allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
     allocInfo.flags = NULL;

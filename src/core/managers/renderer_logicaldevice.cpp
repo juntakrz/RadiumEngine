@@ -28,6 +28,12 @@ TResult core::MRenderer::initLogicalDevice(
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
   dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
 
+  // Vulkan 1.3: Enabling buffer device address
+  VkPhysicalDeviceBufferDeviceAddressFeatures bdaFeatures{};
+  bdaFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+  bdaFeatures.bufferDeviceAddress = VK_TRUE;
+  bdaFeatures.pNext = &dynamicRenderingFeatures;
+
   VkDeviceCreateInfo deviceCreateInfo{};
   deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
   deviceCreateInfo.pQueueCreateInfos = deviceQueues.data();
@@ -43,7 +49,7 @@ TResult core::MRenderer::initLogicalDevice(
   deviceCreateInfo.ppEnabledLayerNames = requiredLayers.data();
 
   //Vulkan 1.3: Enabling dynamic rendering
-  deviceCreateInfo.pNext = &dynamicRenderingFeatures;
+  deviceCreateInfo.pNext = &bdaFeatures;
 
   if (bRequireValidationLayers) {
     deviceCreateInfo.enabledLayerCount =

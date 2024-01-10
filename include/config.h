@@ -98,7 +98,7 @@ const uint32_t APIversion = VK_API_VERSION_1_3;
 
 // mandatory extensions required by the renderer
 const std::vector<const char*> requiredExtensions = {
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
 const VkFormat formatLDR = VK_FORMAT_B8G8R8A8_SRGB;

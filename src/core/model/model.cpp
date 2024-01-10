@@ -252,6 +252,7 @@ void WModel::setPrimitiveMaterial(const int32_t meshIndex,
 void WModel::setSceneBindingData(size_t vertexOffset, size_t indexOffset) {
   m_sceneVertexOffset = vertexOffset;
   m_sceneIndexOffset = indexOffset;
+  m_sceneVertexBufferAddress = core::renderer.getSceneBuffers()->vertexSSBOAddress + vertexOffset * sizeof(RVertex);
   m_isBoundToScene = true;
 }
 

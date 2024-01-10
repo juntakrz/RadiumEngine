@@ -82,6 +82,7 @@ TResult core::MRenderer::createMemAlloc() {
   allocCreateInfo.physicalDevice = physicalDevice.device;
   allocCreateInfo.device = logicalDevice.device;
   allocCreateInfo.vulkanApiVersion = core::vulkan::APIversion;
+  allocCreateInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 
   if (vmaCreateAllocator(&allocCreateInfo, &memAlloc) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create Vulkan memory allocator.");
@@ -135,6 +136,12 @@ TResult core::MRenderer::createSceneBuffers() {
     config::scene::vertexBudget);
   createBuffer(EBufferMode::DGPU_STORAGE, config::scene::getVertexBufferSize(),
     scene.vertexSSBO, nullptr);
+
+  VkBufferDeviceAddressInfo bdaInfo{};
+  bdaInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+  bdaInfo.buffer = scene.vertexSSBO.buffer;
+
+  scene.vertexSSBOAddress = vkGetBufferDeviceAddress(logicalDevice.device, &bdaInfo);
 
   RE_LOG(Log, "Allocating scene buffer for %d indices.",
          config::scene::indexBudget);
