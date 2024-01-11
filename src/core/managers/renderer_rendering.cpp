@@ -116,15 +116,9 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
     renderView.pCurrentMesh = pMesh;
   }
 
-  //
-  /*VkDeviceAddress vSize = sizeof(RVertex);
-  VkDeviceAddress primitiveOffset = static_cast<VkDeviceAddress>(pBindInfo->vertexOffset) + static_cast<VkDeviceAddress>(pPrimitive->vertexOffset);
-  VkDeviceAddress vOffset = primitiveOffset * vSize;
-  VkDeviceAddress primitiveVertexAddress = scene.vertexSSBOAddress + vOffset;*/
-  VkDeviceAddress primitiveVertexAddress = scene.vertexSSBOAddress;
   vkCmdPushConstants(cmdBuffer, renderView.pCurrentRenderPass->layout, VK_SHADER_STAGE_VERTEX_BIT,
-    0, sizeof(VkDeviceAddress), &primitiveVertexAddress);
-  //
+    0, sizeof(VkDeviceAddress), &scene.vertexBufferAddress);
+
 
   // bind material descriptor set only if material is different (binding 2)
   if (renderView.pCurrentMaterial != pPrimitive->pMaterial) {
@@ -147,8 +141,7 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
   uint32_t indexOffset = pBindInfo->indexOffset + pPrimitive->indexOffset;
 
   // TODO: implement draw indirect
-  vkCmdDrawIndexed(cmdBuffer, pPrimitive->indexCount, 1, indexOffset,
-                   vertexOffset, 0);
+  vkCmdDrawIndexed(cmdBuffer, pPrimitive->indexCount, 1, indexOffset, vertexOffset, 0);
 }
 
 void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
@@ -185,10 +178,6 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
     dimension = pCubemap->texture.width;
 
     // start rendering an appropriate camera view / layer
-    VkDeviceSize offset = 0u;
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, &scene.vertexBuffer.buffer, &offset);
-    vkCmdBindIndexBuffer(commandBuffer, scene.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-
     for (uint32_t j = 0; j < pCubemap->texture.layerCount; ++j) {
       environment.subresourceRange.baseArrayLayer = j;
       setImageLayout(commandBuffer, pCubemap, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, environment.subresourceRange);
@@ -309,10 +298,6 @@ void core::MRenderer::renderEnvironmentMapsSequenced(
   dimension = pCubemap->texture.width;
 
   // start rendering an appropriate camera view / layer
-  VkDeviceSize offset = 0u;
-  vkCmdBindVertexBuffers(commandBuffer, 0, 1, &scene.vertexBuffer.buffer, &offset);
-  vkCmdBindIndexBuffer(commandBuffer, scene.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-
   environment.subresourceRange.baseArrayLayer = environment.tracking.layer;
   setImageLayout(commandBuffer, pCubemap, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, environment.subresourceRange);
   refreshDynamicRenderPass(EDynamicRenderingPass::Environment, environment.tracking.pipeline);
@@ -459,12 +444,6 @@ void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer,
   vkCmdBeginRenderPass(commandBuffer, &system.renderPassBeginInfo,
                        VK_SUBPASS_CONTENTS_INLINE);
 
-  VkDeviceSize offset = 0u;
-  vkCmdBindVertexBuffers(commandBuffer, 0, 1, &scene.vertexBuffer.buffer,
-                         &offset);
-  vkCmdBindIndexBuffer(commandBuffer, scene.indexBuffer.buffer, 0,
-                       VK_INDEX_TYPE_UINT32);
-
   const uint32_t dynamicOffset =
       config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -607,6 +586,8 @@ void core::MRenderer::renderFrame() {
     RE_LOG(Error, "Failure when trying to record command buffer.");
     return;
   }
+
+  vkCmdBindIndexBuffer(cmdBuffer, scene.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
   if (renderView.generateEnvironmentMaps) {
   //if (renderView.generateEnvironmentMaps && renderView.framesRendered > 1) {

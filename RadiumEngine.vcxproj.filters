@@ -287,8 +287,6 @@
     <None Include=".gitattributes" />
     <None Include="content\shaders\default.vert" />
     <None Include="content\shaders\default.frag" />
-    <None Include="content_src\shaders\fs_default.frag" />
-    <None Include="content_src\shaders\vs_default.vert" />
     <None Include="config\config.json" />
     <None Include="content\shaders\fs_default.spv" />
     <None Include="content\shaders\shaders" />

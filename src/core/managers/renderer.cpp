@@ -127,21 +127,16 @@ TResult core::MRenderer::createSceneBuffers() {
       static_cast<uint32_t>(util::getVulkanAlignedSize(
           sizeof(glm::mat4) * RE_MAXJOINTS, core::vulkan::minBufferAlignment));
 
-  RE_LOG(Log, "Allocating scene buffer for %d vertices.",
-         config::scene::vertexBudget);
-  createBuffer(EBufferMode::DGPU_VERTEX, config::scene::getVertexBufferSize(),
-               scene.vertexBuffer, nullptr);
-
-  RE_LOG(Log, "Allocating scene storage buffer for %d vertices.",
+  RE_LOG(Log, "Allocating scene storage vertex buffer for %d vertices.",
     config::scene::vertexBudget);
   createBuffer(EBufferMode::DGPU_STORAGE, config::scene::getVertexBufferSize(),
-    scene.vertexSSBO, nullptr);
+    scene.vertexBuffer, nullptr);
 
   VkBufferDeviceAddressInfo bdaInfo{};
   bdaInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
-  bdaInfo.buffer = scene.vertexSSBO.buffer;
+  bdaInfo.buffer = scene.vertexBuffer.buffer;
 
-  scene.vertexSSBOAddress = vkGetBufferDeviceAddress(logicalDevice.device, &bdaInfo);
+  scene.vertexBufferAddress = vkGetBufferDeviceAddress(logicalDevice.device, &bdaInfo);
 
   RE_LOG(Log, "Allocating scene buffer for %d indices.",
          config::scene::indexBudget);
@@ -174,8 +169,6 @@ void core::MRenderer::destroySceneBuffers() {
   RE_LOG(Log, "Destroying scene buffers.");
   vmaDestroyBuffer(memAlloc, scene.vertexBuffer.buffer,
                    scene.vertexBuffer.allocation);
-  vmaDestroyBuffer(memAlloc, scene.vertexSSBO.buffer,
-                  scene.vertexSSBO.allocation);
   vmaDestroyBuffer(memAlloc, scene.indexBuffer.buffer,
                    scene.indexBuffer.allocation);
   vmaDestroyBuffer(memAlloc, scene.rootTransformBuffer.buffer,

@@ -543,17 +543,12 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
   colorBlendInfo.blendConstants[2] = 0.0f;
   colorBlendInfo.blendConstants[3] = 0.0f;
 
-  VkVertexInputBindingDescription bindingDesc = RVertex::getBindingDesc();
-  auto attributeDescs = RVertex::getAttributeDescs();
-
+  // Vulkan 1.3 - using storage buffer to access vertex data instead
   VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
   vertexInputInfo.sType =
       VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-  vertexInputInfo.vertexBindingDescriptionCount = 1;
-  vertexInputInfo.pVertexBindingDescriptions = &bindingDesc;
-  vertexInputInfo.vertexAttributeDescriptionCount =
-      static_cast<uint32_t>(attributeDescs.size());
-  vertexInputInfo.pVertexAttributeDescriptions = attributeDescs.data();
+  vertexInputInfo.vertexBindingDescriptionCount = 0;
+  vertexInputInfo.vertexAttributeDescriptionCount = 0;
 
   std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
   if (!pipelineInfo->vertexShader.empty()) {

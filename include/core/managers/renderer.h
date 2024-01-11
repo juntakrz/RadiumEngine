@@ -59,16 +59,15 @@ class MRenderer {
   } lighting;
 
   struct RSceneBuffers {
-    RBuffer vertexBuffer;         // TODO: replace with 'vertexSSBO' and reference vertices via device memory
+    RBuffer vertexBuffer;
     RBuffer indexBuffer;
-    RBuffer vertexSSBO;
     RBuffer rootTransformBuffer;
     RBuffer nodeTransformBuffer;
     RBuffer skinTransformBuffer;
     uint32_t currentVertexOffset = 0u;
     uint32_t currentIndexOffset = 0u;
     VkDescriptorSet transformDescriptorSet;
-    VkDeviceAddress vertexSSBOAddress = 0u;
+    VkDeviceAddress vertexBufferAddress = 0u;
 
     std::vector<RTexture*> pGBufferTargets;
     VkDescriptorSet GBufferDescriptorSet;

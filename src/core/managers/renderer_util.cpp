@@ -957,8 +957,7 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
   copyInfo.dstOffset = scene.currentVertexOffset * sizeof(RVertex);
   copyInfo.size = sizeof(RVertex) * pModel->m_vertexCount;
 
-  copyBuffer(&pModel->staging.vertexBuffer, &scene.vertexBuffer, &copyInfo);    // TODO: Deprecate
-  copyBuffer(&pModel->staging.vertexBuffer, &scene.vertexSSBO, &copyInfo);
+  copyBuffer(&pModel->staging.vertexBuffer, &scene.vertexBuffer, &copyInfo);
 
   // copy index buffer
   copyInfo.dstOffset = scene.currentIndexOffset * sizeof(uint32_t);
