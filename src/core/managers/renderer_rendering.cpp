@@ -116,10 +116,6 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
     renderView.pCurrentMesh = pMesh;
   }
 
-  vkCmdPushConstants(cmdBuffer, renderView.pCurrentRenderPass->layout, VK_SHADER_STAGE_VERTEX_BIT,
-    0, sizeof(VkDeviceAddress), &scene.vertexBufferAddress);
-
-
   // bind material descriptor set only if material is different (binding 2)
   if (renderView.pCurrentMaterial != pPrimitive->pMaterial) {
     vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -587,6 +583,8 @@ void core::MRenderer::renderFrame() {
     return;
   }
 
+  VkDeviceSize vbOffset = 0u;
+  vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &scene.vertexBuffer.buffer, &vbOffset);
   vkCmdBindIndexBuffer(cmdBuffer, scene.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
   if (renderView.generateEnvironmentMaps) {

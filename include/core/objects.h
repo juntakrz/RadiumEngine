@@ -432,6 +432,7 @@ struct RSceneUBO {
   alignas(16) glm::mat4 view = glm::mat4(1.0f);
   alignas(16) glm::mat4 projection = glm::mat4(1.0f);
   alignas(16) glm::vec3 cameraPosition = glm::vec3(0.0f);
+  VkDeviceAddress vertexBufferAddress = 0u;
 };
 
 struct WAnimationInfo {
