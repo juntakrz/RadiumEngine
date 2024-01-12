@@ -59,9 +59,9 @@ class MRenderer {
   } lighting;
 
   struct RMaterialBuffers {
-    RBuffer imageBuffer;
-    size_t currentImageBufferOffset = 0u;
-    int32_t currentImageBufferIndex = 0u;
+    RBuffer imageBuffer;    // UNUSED - but may store sampler descriptors in the future
+    VkDescriptorSet descriptorSet;
+    uint32_t currentSampler2DIndex = 0u;
   } material;
 
   struct RSceneBuffers {
@@ -412,6 +412,8 @@ public:
   //
 
  public:
+  RVkPhysicalDevice& getPhysicalDevice();
+
   // find all available physical devices and store them in graphics manager
   TResult enumPhysicalDevices();
 

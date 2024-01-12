@@ -75,6 +75,7 @@ const size_t indexBudget = 100000000u;                  // ~400 MBs for index da
 const size_t entityBudget = 10000u;                     // ~0.6 MBs for root transformation matrices
 const size_t nodeBudget = RE_MAXJOINTS * entityBudget;  // ~164 MBs for node transformation matrices
 const size_t cameraBudget = 64u;                        // ~9 KBs for camera MVP data
+const uint32_t sampler2DBudget = 131072u;
 size_t getVertexBufferSize();
 size_t getIndexBufferSize();
 size_t getRootTransformBufferSize();

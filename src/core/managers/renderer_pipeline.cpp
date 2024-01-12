@@ -95,7 +95,9 @@ TResult core::MRenderer::createPipelineLayouts() {
   std::vector<VkDescriptorSetLayout> descriptorSetLayouts{
       getDescriptorSetLayout(EDescriptorSetLayout::Scene),    // 0
       getDescriptorSetLayout(EDescriptorSetLayout::Model),    // 1
-      getDescriptorSetLayout(EDescriptorSetLayout::Material)  // 2
+      getDescriptorSetLayout(EDescriptorSetLayout::Material), // 2
+
+      getDescriptorSetLayout(EDescriptorSetLayout::MaterialEXT)
   };
 
   VkPipelineLayoutCreateInfo layoutInfo{};

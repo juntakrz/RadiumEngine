@@ -71,23 +71,22 @@ void RMaterial::createDescriptorSet() {
                          writeDescriptorSets.data(), 0, nullptr);
 
   // !TEST!
-  RBuffer stagingBuffer;
-  core::renderer.createBuffer(EBufferType::STAGING, sizeof(VkDescriptorImageInfo), stagingBuffer, &imageDescriptors[0]);
+  auto materialBuffer = core::renderer.getMaterialBuffers();
 
-  auto mb = core::renderer.getMaterialBuffers();
-  RBuffer* pMaterialBuffer = &mb->imageBuffer;
+  VkDescriptorImageInfo& descriptorImageInfo = imageDescriptors[0];
+  VkWriteDescriptorSet writeDescriptorSet{};
 
-  VkBufferCopy copyRegion{};
-  copyRegion.srcOffset = 0;
-  copyRegion.dstOffset = mb->currentImageBufferOffset;
-  copyRegion.size = sizeof(VkDescriptorImageInfo);
+  writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+  writeDescriptorSet.dstSet = materialBuffer->descriptorSet;
+  writeDescriptorSet.dstArrayElement = materialBuffer->currentSampler2DIndex;
+  writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  writeDescriptorSet.descriptorCount = 1;
+  writeDescriptorSet.pImageInfo = &descriptorImageInfo;
 
-  core::renderer.copyBuffer(&stagingBuffer, pMaterialBuffer, &copyRegion);
+  vkUpdateDescriptorSets(core::renderer.logicalDevice.device, 1u, &writeDescriptorSet, 0, nullptr);
 
-  mb->currentImageBufferOffset += sizeof(VkDescriptorImageInfo);
+  pushConstantBlock.materialIndex = materialBuffer->currentSampler2DIndex;
+  materialBuffer->currentSampler2DIndex++;
 
-  pushConstantBlock.materialIndex = mb->currentImageBufferIndex;
-  mb->currentImageBufferIndex++;
-
-  vmaDestroyBuffer(core::renderer.memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
+  // !TEST!
 }

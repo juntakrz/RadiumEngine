@@ -591,7 +591,7 @@ void core::MRenderer::renderFrame() {
   //if (renderView.generateEnvironmentMaps && renderView.framesRendered > 1) {
     renderEnvironmentMapsSequenced(cmdBuffer, environment.genInterval);
   }
-
+  vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, getPipelineLayout(EPipelineLayout::Scene), 3, 1, &material.descriptorSet, 0, nullptr);
   setViewport(cmdBuffer, EViewport::vpShadow);
   executeRenderPass(cmdBuffer, ERenderPass::Shadow, frameSets, 1);
 

@@ -22,10 +22,21 @@ TResult core::MRenderer::initLogicalDevice(
     deviceQueues.emplace_back(queueCreateInfo);
   }
 
+  // Vulkan 1.3: Enabling descriptor indexing
+  VkPhysicalDeviceDescriptorIndexingFeaturesEXT descriptorIndexingFeatures{};
+  descriptorIndexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
+  descriptorIndexingFeatures.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+  descriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
+  descriptorIndexingFeatures.descriptorBindingPartiallyBound = VK_TRUE;
+  descriptorIndexingFeatures.descriptorBindingUpdateUnusedWhilePending = VK_TRUE;
+  descriptorIndexingFeatures.descriptorBindingVariableDescriptorCount = VK_TRUE;
+  descriptorIndexingFeatures.runtimeDescriptorArray = VK_TRUE;
+
   // Vulkan 1.3: Enabling buffer device address
   VkPhysicalDeviceBufferDeviceAddressFeatures bdaFeatures{};
   bdaFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
   bdaFeatures.bufferDeviceAddress = VK_TRUE;
+  bdaFeatures.pNext = &descriptorIndexingFeatures;
 
   // Vulkan 1.3: Enabling dynamic rendering
   VkPhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures{};
@@ -38,7 +49,7 @@ TResult core::MRenderer::initLogicalDevice(
   deviceCreateInfo.pQueueCreateInfos = deviceQueues.data();
   deviceCreateInfo.queueCreateInfoCount =
       static_cast<uint32_t>(deviceQueues.size());
-  deviceCreateInfo.pEnabledFeatures = &physicalDeviceData.features;
+  deviceCreateInfo.pEnabledFeatures = &physicalDeviceData.deviceFeatures.features;
   deviceCreateInfo.enabledExtensionCount =
       static_cast<uint32_t>(core::vulkan::requiredExtensions.size());
   deviceCreateInfo.ppEnabledExtensionNames =

@@ -1,6 +1,10 @@
 #include "pch.h"
 #include "core/managers/renderer.h"
 
+RVkPhysicalDevice& core::MRenderer::getPhysicalDevice() {
+  return physicalDevice;
+}
+
 TResult core::MRenderer::enumPhysicalDevices() {
   uint32_t numDevices = 0, index = 0;
   std::vector<VkPhysicalDevice> physicalDevices;
@@ -52,12 +56,21 @@ TResult core::MRenderer::setPhysicalDeviceData(VkPhysicalDevice device,
   TResult chkResult = RE_OK, finalResult = RE_OK;
 
   outDeviceData.device = device;
-  outDeviceData.descriptorBufferProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT;
+
+  // Setup device properties
   outDeviceData.deviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+
+  outDeviceData.descriptorBufferProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT;
   outDeviceData.deviceProperties.pNext = &outDeviceData.descriptorBufferProperties;
 
+  outDeviceData.descriptorIndexingProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES;
+  outDeviceData.descriptorBufferProperties.pNext = &outDeviceData.descriptorIndexingProperties;
+
+  // Setup device features
+  outDeviceData.deviceFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+
   vkGetPhysicalDeviceProperties2(device, &outDeviceData.deviceProperties);
-  vkGetPhysicalDeviceFeatures(device, &outDeviceData.features);
+  vkGetPhysicalDeviceFeatures2(device, &outDeviceData.deviceFeatures);
   vkGetPhysicalDeviceMemoryProperties(device, &outDeviceData.memProperties);
 
   // detect if device supports required queue families
@@ -76,8 +89,8 @@ TResult core::MRenderer::setPhysicalDeviceData(VkPhysicalDevice device,
   // detect if device is discrete and supports OpenGL 4.0 at the least
   if (!(outDeviceData.deviceProperties.properties.deviceType ==
         VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) &&
-      !outDeviceData.features.tessellationShader &&
-      !outDeviceData.features.geometryShader) {
+      !outDeviceData.deviceFeatures.features.tessellationShader &&
+      !outDeviceData.deviceFeatures.features.geometryShader) {
     finalResult = RE_ERROR;
   }
 

@@ -39,7 +39,7 @@ TResult core::MRenderer::createDescriptorPool() {
   poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
   poolInfo.pPoolSizes = poolSizes.data();
   poolInfo.maxSets = maxSets;
-  poolInfo.flags = 0;
+  poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT;
 
   if (vkCreateDescriptorPool(logicalDevice.device, &poolInfo, nullptr,
                              &system.descriptorPool) != VK_SUCCESS) {
@@ -156,6 +156,46 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
             &system.descriptorSetLayouts.at(EDescriptorSetLayout::Material)) !=
         VK_SUCCESS) {
       RE_LOG(Critical, "Failed to create material descriptor set layout.");
+      return RE_CRITICAL;
+    }
+  }
+
+  // MaterialEXT descriptor layout
+  {
+    system.descriptorSetLayouts.emplace(EDescriptorSetLayout::MaterialEXT,
+      VK_NULL_HANDLE);
+
+    const VkDescriptorBindingFlagsEXT bindingFlags =
+      VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT |
+      VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT |
+      VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT |
+      VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT_EXT;
+
+    VkDescriptorSetLayoutBindingFlagsCreateInfoEXT bindingFlagsCreateInfo{};
+    bindingFlagsCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
+    bindingFlagsCreateInfo.bindingCount = 1;
+    bindingFlagsCreateInfo.pBindingFlags = &bindingFlags;
+
+    std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
+        {0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        physicalDevice.descriptorIndexingProperties.maxDescriptorSetUpdateAfterBindSampledImages - 16,
+        VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}
+    };
+
+    VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
+    setLayoutCreateInfo.sType =
+      VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    setLayoutCreateInfo.pBindings = setLayoutBindings.data();
+    setLayoutCreateInfo.bindingCount =
+      static_cast<uint32_t>(setLayoutBindings.size());
+    setLayoutCreateInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
+    setLayoutCreateInfo.pNext = &bindingFlagsCreateInfo;
+
+    if (vkCreateDescriptorSetLayout(
+      logicalDevice.device, &setLayoutCreateInfo, nullptr,
+      &system.descriptorSetLayouts.at(EDescriptorSetLayout::MaterialEXT)) !=
+      VK_SUCCESS) {
+      RE_LOG(Critical, "Failed to create extended material descriptor set layout.");
       return RE_CRITICAL;
     }
   }
@@ -614,6 +654,34 @@ TResult core::MRenderer::createDescriptorSets() {
   }
 
 #ifndef NDEBUG
+  RE_LOG(Log, "Creating extended material descriptor set.");
+#endif
+  {
+    VkDescriptorSetLayout MaterialEXTLayout =
+      core::renderer.getDescriptorSetLayout(EDescriptorSetLayout::MaterialEXT);
+
+    uint32_t hardcodedCountNeedsReplacing = 64u; // TODO: make this good
+
+    VkDescriptorSetVariableDescriptorCountAllocateInfoEXT variableAllocateInfo{};
+    variableAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT;
+    variableAllocateInfo.descriptorSetCount = 1;
+    variableAllocateInfo.pDescriptorCounts = &hardcodedCountNeedsReplacing;
+
+    VkDescriptorSetAllocateInfo allocateInfo{};
+    allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocateInfo.descriptorPool = core::renderer.getDescriptorPool();
+    allocateInfo.pSetLayouts = &MaterialEXTLayout;
+    allocateInfo.descriptorSetCount = 1;
+    allocateInfo.pNext = &variableAllocateInfo;
+
+    if (vkAllocateDescriptorSets(core::renderer.logicalDevice.device,
+      &allocateInfo, &material.descriptorSet) != VK_SUCCESS) {
+      RE_LOG(Error, "Failed to allocate descriptor set for extended material storage.");
+      return RE_CRITICAL;
+    };
+  }
+
+#ifndef NDEBUG
   RE_LOG(Log, "Creating compute image descriptor set.");
 #endif
   {
@@ -634,6 +702,7 @@ TResult core::MRenderer::createDescriptorSets() {
       return RE_CRITICAL;
     };
   }
+
   return RE_OK;
 }
 

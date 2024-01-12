@@ -1,4 +1,5 @@
 #version 460
+#extension GL_EXT_nonuniform_qualifier : require
 
 layout (location = 0) in vec3 inWorldPos;
 layout (location = 1) in vec3 inNormal;
@@ -20,6 +21,8 @@ layout (set = 2, binding = 2) uniform sampler2D physicalDescriptorMap;
 layout (set = 2, binding = 3) uniform sampler2D aoMap;
 layout (set = 2, binding = 4) uniform sampler2D emissiveMap;
 layout (set = 2, binding = 5) uniform sampler2D extraMap;		// TODO: implement extra map in shader
+
+layout (set = 3, binding = 0) uniform sampler2D samplers[];
 
 layout (push_constant) uniform Material {
 	layout(offset = 16) 
@@ -78,7 +81,8 @@ void main() {
 
 	// 2. extract color / diffuse / albedo
 	if (material.baseColorTextureSet > -1) {
-		outColor = texture(colorMap, material.baseColorTextureSet == 0 ? inUV0 : inUV1);
+		//outColor = texture(colorMap, material.baseColorTextureSet == 0 ? inUV0 : inUV1);
+		outColor = texture(samplers[material.materialIndex], material.baseColorTextureSet == 0 ? inUV0 : inUV1);
 	}
 
 	// TODO: discard on alphaMask == 1.0 here and depth-sort everything, unless requested by the material

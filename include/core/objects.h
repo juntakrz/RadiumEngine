@@ -67,6 +67,7 @@ enum class EComputePipeline {
 enum class EDescriptorSetLayout {
   Scene,
   Material,
+  MaterialEXT,
   PBRInput,
   Model,
   Environment,
@@ -355,9 +356,10 @@ struct RVkSwapChainInfo {
 
 struct RVkPhysicalDevice {
   VkPhysicalDevice device = VK_NULL_HANDLE;
-  VkPhysicalDeviceFeatures features;
+  VkPhysicalDeviceFeatures2 deviceFeatures;
   VkPhysicalDeviceProperties2 deviceProperties;
   VkPhysicalDeviceDescriptorBufferPropertiesEXT descriptorBufferProperties;
+  VkPhysicalDeviceDescriptorIndexingPropertiesEXT descriptorIndexingProperties;
   VkPhysicalDeviceMemoryProperties memProperties;
   RVkQueueFamilyIndices queueFamilyIndices;
   RVkSwapChainInfo swapChainInfo;

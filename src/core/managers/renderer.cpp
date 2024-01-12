@@ -182,9 +182,6 @@ TResult core::MRenderer::createSceneBuffers() {
                config::scene::getSkinTransformBufferSize(),
                scene.skinTransformBuffer, nullptr);
 
-  VkDeviceSize testBufferSize = sizeof(VkDescriptorImageInfo) * 100000;
-  createBuffer(EBufferType::DGPU_SAMPLER, testBufferSize, material.imageBuffer, nullptr);
-
   return RE_OK;
 }
 
