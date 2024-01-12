@@ -62,12 +62,32 @@ void RMaterial::createDescriptorSet() {
     writeDescriptorSets[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     writeDescriptorSets[i].dstSet = descriptorSet;
     writeDescriptorSets[i].dstBinding = i;
-    writeDescriptorSets[i].descriptorType =
-        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    writeDescriptorSets[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     writeDescriptorSets[i].descriptorCount = 1;
     writeDescriptorSets[i].pImageInfo = &imageDescriptors[i];
   }
 
   vkUpdateDescriptorSets(core::renderer.logicalDevice.device, writeSize,
                          writeDescriptorSets.data(), 0, nullptr);
+
+  // !TEST!
+  RBuffer stagingBuffer;
+  core::renderer.createBuffer(EBufferType::STAGING, sizeof(VkDescriptorImageInfo), stagingBuffer, &imageDescriptors[0]);
+
+  auto mb = core::renderer.getMaterialBuffers();
+  RBuffer* pMaterialBuffer = &mb->imageBuffer;
+
+  VkBufferCopy copyRegion{};
+  copyRegion.srcOffset = 0;
+  copyRegion.dstOffset = mb->currentImageBufferOffset;
+  copyRegion.size = sizeof(VkDescriptorImageInfo);
+
+  core::renderer.copyBuffer(&stagingBuffer, pMaterialBuffer, &copyRegion);
+
+  mb->currentImageBufferOffset += sizeof(VkDescriptorImageInfo);
+
+  pushConstantBlock.materialIndex = mb->currentImageBufferIndex;
+  mb->currentImageBufferIndex++;
+
+  vmaDestroyBuffer(core::renderer.memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
 }

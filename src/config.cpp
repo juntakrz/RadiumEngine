@@ -40,7 +40,8 @@ size_t config::scene::getMaxCameraCount() { return cameraBudget; }
 
 VkFormat core::vulkan::formatDepth;
 VkFormat core::vulkan::formatShadow;
-VkDeviceSize core::vulkan::minBufferAlignment = 64u;
+VkDeviceSize core::vulkan::minUniformBufferAlignment = 64u;
+VkDeviceSize core::vulkan::descriptorBufferOffsetAlignment = 64u;
 
 uint32_t config::scene::cameraBlockSize = 0u;
 uint32_t config::scene::nodeBlockSize = 0u;

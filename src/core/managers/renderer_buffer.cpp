@@ -2,18 +2,55 @@
 #include "core/core.h"
 #include "core/managers/renderer.h"
 
-TResult core::MRenderer::createBuffer(EBufferMode mode, VkDeviceSize size, RBuffer& outBuffer, void* inData)
+TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuffer& outBuffer, void* inData)
 {
-  switch ((uint8_t)mode) {
-  case (uint8_t)EBufferMode::CPU_UNIFORM: {
+  outBuffer.type = type;
+  RBuffer stagingBuffer;
+  VmaAllocationCreateInfo allocInfo{};
+  VkBufferCreateInfo bufferCreateInfo{};
+  bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 
-    VkBufferCreateInfo bufferCreateInfo{};
-    bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  std::vector<uint32_t> queueFamilyIndices = {
+    (uint32_t)physicalDevice.queueFamilyIndices.graphics.at(0),
+    (uint32_t)physicalDevice.queueFamilyIndices.transfer.at(0)
+  };
+
+  switch ((uint8_t)type) {
+  case (uint8_t)EBufferType::STAGING: {
+    bufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    bufferCreateInfo.size = size;
+    bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    bufferCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();
+    bufferCreateInfo.queueFamilyIndexCount =
+      static_cast<uint32_t>(queueFamilyIndices.size());
+
+    allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+
+    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo, &outBuffer.buffer,
+      &outBuffer.allocation, &outBuffer.allocInfo) != VK_SUCCESS) {
+      RE_LOG(Error, "Failed to create staging buffer for STAGING mode.");
+      return RE_ERROR;
+    }
+
+    if (inData) {
+      void* pData = nullptr;
+      if (vmaMapMemory(memAlloc, outBuffer.allocation, &pData) != VK_SUCCESS) {
+        RE_LOG(Error, "Failed to map memory for staging buffer data.");
+        return RE_ERROR;
+      };
+      memcpy(pData, inData, size);
+      vmaUnmapMemory(memAlloc, outBuffer.allocation);
+      outBuffer.allocInfo.pUserData = pData;
+    }
+
+    return RE_OK;
+  }
+  case (uint8_t)EBufferType::CPU_UNIFORM: {
     bufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     bufferCreateInfo.size = size;
     bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    VmaAllocationCreateInfo allocInfo{};
     allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
     allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
       VMA_ALLOCATION_CREATE_MAPPED_BIT;
@@ -31,14 +68,11 @@ TResult core::MRenderer::createBuffer(EBufferMode mode, VkDeviceSize size, RBuff
     return RE_OK;
   }
 
-  case (uint8_t)EBufferMode::CPU_VERTEX: {
-    VkBufferCreateInfo bufferCreateInfo{};
-    bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  case (uint8_t)EBufferType::CPU_VERTEX: {
     bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
     bufferCreateInfo.size = size;
     bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    VmaAllocationCreateInfo allocInfo{};
     allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
     allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
@@ -61,14 +95,11 @@ TResult core::MRenderer::createBuffer(EBufferMode mode, VkDeviceSize size, RBuff
     return RE_OK;
   }
 
-  case (uint8_t)EBufferMode::CPU_INDEX: {
-    VkBufferCreateInfo bufferCreateInfo{};
-    bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  case (uint8_t)EBufferType::CPU_INDEX: {
     bufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
     bufferCreateInfo.size = size;
     bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    VmaAllocationCreateInfo allocInfo{};
     allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
     allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
@@ -91,51 +122,13 @@ TResult core::MRenderer::createBuffer(EBufferMode mode, VkDeviceSize size, RBuff
     return RE_OK;
   }
 
-  case (uint8_t)EBufferMode::DGPU_VERTEX: {
-    // staging buffer (won't be allocated if no data for it is provided)
-    VkBuffer stagingBuffer = VK_NULL_HANDLE;
-    VmaAllocation stagingAlloc{};
-    VmaAllocationInfo stagingAllocInfo{};
-
-    VkBufferCreateInfo bufferCreateInfo{};
-    bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+  case (uint8_t)EBufferType::DGPU_VERTEX: {
+    bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     bufferCreateInfo.size = size;
     bufferCreateInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
-
-    std::vector<uint32_t> queueFamilyIndices = {
-        (uint32_t)physicalDevice.queueFamilyIndices.graphics.at(0),
-        (uint32_t)physicalDevice.queueFamilyIndices.transfer.at(0) };
-
     bufferCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();
     bufferCreateInfo.queueFamilyIndexCount =
       static_cast<uint32_t>(queueFamilyIndices.size());
-
-    VmaAllocationCreateInfo allocInfo{};
-    allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
-    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
-    if (inData) {
-      if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
-        &stagingBuffer, &stagingAlloc,
-        &stagingAllocInfo) != VK_SUCCESS) {
-        RE_LOG(Error, "Failed to create staging buffer for DGPU_VERTEX mode.");
-        return RE_ERROR;
-      }
-
-      void* pData = nullptr;
-      if (vmaMapMemory(memAlloc, stagingAlloc, &pData) != VK_SUCCESS) {
-        RE_LOG(Error, "Failed to map memory for DGPU_VERTEX buffer data.");
-        return RE_ERROR;
-      };
-
-      memcpy(pData, inData, size);
-      vmaUnmapMemory(memAlloc, stagingAlloc);
-    }
-
-    // destination buffer
-    bufferCreateInfo.usage =
-      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
     allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
     allocInfo.flags = NULL;
@@ -154,59 +147,21 @@ TResult core::MRenderer::createBuffer(EBufferMode mode, VkDeviceSize size, RBuff
       copyInfo.dstOffset = 0;
       copyInfo.size = size;
 
-      copyBuffer(stagingBuffer, outBuffer.buffer, &copyInfo);
-
-      vmaDestroyBuffer(memAlloc, stagingBuffer, stagingAlloc);
+      createBuffer(EBufferType::STAGING, size, stagingBuffer, inData);
+      copyBuffer(stagingBuffer.buffer, outBuffer.buffer, &copyInfo);
+      vmaDestroyBuffer(memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
     }
 
     return RE_OK;
   }
 
-  case (uint8_t)EBufferMode::DGPU_INDEX: {
-
-    // staging buffer (won't be allocated if no data for it is provided)
-    VkBuffer stagingBuffer = VK_NULL_HANDLE;
-    VmaAllocation stagingAlloc{};
-    VmaAllocationInfo stagingAllocInfo{};
-
-    VkBufferCreateInfo bufferCreateInfo{};
-    bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+  case (uint8_t)EBufferType::DGPU_INDEX: {
+    bufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     bufferCreateInfo.size = size;
     bufferCreateInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
-
-    std::vector<uint32_t> queueFamilyIndices = {
-        (uint32_t)physicalDevice.queueFamilyIndices.graphics.at(0),
-        (uint32_t)physicalDevice.queueFamilyIndices.transfer.at(0) };
-
     bufferCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();
     bufferCreateInfo.queueFamilyIndexCount =
       static_cast<uint32_t>(queueFamilyIndices.size());
-
-    VmaAllocationCreateInfo allocInfo{};
-    allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
-    if (inData) {
-      if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
-        &stagingBuffer, &stagingAlloc,
-        &stagingAllocInfo) != VK_SUCCESS) {
-        RE_LOG(Error, "Failed to create staging buffer for DGPU_VERTEX mode.");
-        return RE_ERROR;
-      }
-
-      void* pData = nullptr;
-      if (vmaMapMemory(memAlloc, stagingAlloc, &pData) != VK_SUCCESS) {
-        RE_LOG(Error, "Failed to map memory for DGPU_INDEX buffer data.");
-        return RE_ERROR;
-      };
-      memcpy(pData, inData, size);
-      vmaUnmapMemory(memAlloc, stagingAlloc);
-    }
-
-    // destination vertex buffer
-    bufferCreateInfo.usage =
-      VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
     allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
     allocInfo.flags = NULL;
@@ -224,58 +179,20 @@ TResult core::MRenderer::createBuffer(EBufferMode mode, VkDeviceSize size, RBuff
       copyInfo.dstOffset = 0;
       copyInfo.size = size;
 
-      copyBuffer(stagingBuffer, outBuffer.buffer, &copyInfo);
-
-      vmaDestroyBuffer(memAlloc, stagingBuffer, stagingAlloc);
+      createBuffer(EBufferType::STAGING, size, stagingBuffer, inData);
+      copyBuffer(stagingBuffer.buffer, outBuffer.buffer, &copyInfo);
+      vmaDestroyBuffer(memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
     }
 
     return RE_OK;
   }
-  case (uint8_t)EBufferMode::DGPU_STORAGE: {
-    // staging buffer (won't be allocated if no data for it is provided)
-    VkBuffer stagingBuffer = VK_NULL_HANDLE;
-    VmaAllocation stagingAlloc{};
-    VmaAllocationInfo stagingAllocInfo{};
-
-    VkBufferCreateInfo bufferCreateInfo{};
-    bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+  case (uint8_t)EBufferType::DGPU_STORAGE: {
+    bufferCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
     bufferCreateInfo.size = size;
     bufferCreateInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
-
-    std::vector<uint32_t> queueFamilyIndices = {
-        (uint32_t)physicalDevice.queueFamilyIndices.graphics.at(0),
-        (uint32_t)physicalDevice.queueFamilyIndices.transfer.at(0) };
-
     bufferCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();
     bufferCreateInfo.queueFamilyIndexCount =
       static_cast<uint32_t>(queueFamilyIndices.size());
-
-    VmaAllocationCreateInfo allocInfo{};
-    allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
-    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
-    if (inData) {
-      if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
-        &stagingBuffer, &stagingAlloc,
-        &stagingAllocInfo) != VK_SUCCESS) {
-        RE_LOG(Error, "Failed to create staging buffer for DGPU_VERTEX mode.");
-        return RE_ERROR;
-      }
-
-      void* pData = nullptr;
-      if (vmaMapMemory(memAlloc, stagingAlloc, &pData) != VK_SUCCESS) {
-        RE_LOG(Error, "Failed to map memory for DGPU_VERTEX buffer data.");
-        return RE_ERROR;
-      };
-
-      memcpy(pData, inData, size);
-      vmaUnmapMemory(memAlloc, stagingAlloc);
-    }
-
-    // destination buffer
-    bufferCreateInfo.usage =
-      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
     allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
     allocInfo.flags = NULL;
@@ -294,49 +211,94 @@ TResult core::MRenderer::createBuffer(EBufferMode mode, VkDeviceSize size, RBuff
       copyInfo.dstOffset = 0;
       copyInfo.size = size;
 
-      copyBuffer(stagingBuffer, outBuffer.buffer, &copyInfo);
-
-      vmaDestroyBuffer(memAlloc, stagingBuffer, stagingAlloc);
+      createBuffer(EBufferType::STAGING, size, stagingBuffer, inData);
+      copyBuffer(stagingBuffer.buffer, outBuffer.buffer, &copyInfo);
+      vmaDestroyBuffer(memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
     }
+
+    VkBufferDeviceAddressInfo bdaInfo{};
+    bdaInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+    bdaInfo.buffer = outBuffer.buffer;
+
+    outBuffer.deviceAddress = vkGetBufferDeviceAddress(logicalDevice.device, &bdaInfo);
 
     return RE_OK;
   }
-  case (uint8_t)EBufferMode::STAGING: {
-    // staging buffer
-    VkBufferCreateInfo bufferCreateInfo{};
-    bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+  case (uint8_t)EBufferType::DGPU_SAMPLER: {
+    bufferCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+      | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT;
     bufferCreateInfo.size = size;
-    bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    std::vector<uint32_t> queueFamilyIndices = {
-        (uint32_t)physicalDevice.queueFamilyIndices.graphics.at(0),
-        (uint32_t)physicalDevice.queueFamilyIndices.transfer.at(0) };
-
+    bufferCreateInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
     bufferCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();
     bufferCreateInfo.queueFamilyIndexCount =
       static_cast<uint32_t>(queueFamilyIndices.size());
 
-    VmaAllocationCreateInfo allocInfo{};
-    allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    allocInfo.flags = NULL;
+    allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo, &outBuffer.buffer,
-      &outBuffer.allocation, &outBuffer.allocInfo) != VK_SUCCESS) {
-      RE_LOG(Error, "Failed to create staging buffer for STAGING mode.");
+    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
+      &outBuffer.buffer, &outBuffer.allocation,
+      &outBuffer.allocInfo) != VK_SUCCESS) {
+      RE_LOG(Error, "Failed to create DGPU_VERTEX buffer.");
       return RE_ERROR;
-    }
+    };
 
     if (inData) {
-      void* pData = nullptr;
-      if (vmaMapMemory(memAlloc, outBuffer.allocation, &pData) != VK_SUCCESS) {
-        RE_LOG(Error, "Failed to map memory for staging buffer data.");
-        return RE_ERROR;
-      };
-      memcpy(pData, inData, size);
-      vmaUnmapMemory(memAlloc, outBuffer.allocation);
-      outBuffer.allocInfo.pUserData = pData;
+      VkBufferCopy copyInfo{};
+      copyInfo.srcOffset = 0;
+      copyInfo.dstOffset = 0;
+      copyInfo.size = size;
+
+      createBuffer(EBufferType::STAGING, size, stagingBuffer, inData);
+      copyBuffer(stagingBuffer.buffer, outBuffer.buffer, &copyInfo);
+      vmaDestroyBuffer(memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
     }
+
+    VkBufferDeviceAddressInfo bdaInfo{};
+    bdaInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+    bdaInfo.buffer = outBuffer.buffer;
+
+    outBuffer.deviceAddress = vkGetBufferDeviceAddress(logicalDevice.device, &bdaInfo);
+
+    return RE_OK;
+  }
+  case (uint8_t)EBufferType::DGPU_RESOURCE: {
+    bufferCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+      | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT;
+    bufferCreateInfo.size = size;
+    bufferCreateInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+    bufferCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();
+    bufferCreateInfo.queueFamilyIndexCount =
+      static_cast<uint32_t>(queueFamilyIndices.size());
+
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    allocInfo.flags = NULL;
+    allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
+      &outBuffer.buffer, &outBuffer.allocation,
+      &outBuffer.allocInfo) != VK_SUCCESS) {
+      RE_LOG(Error, "Failed to create DGPU_VERTEX buffer.");
+      return RE_ERROR;
+    };
+
+    if (inData) {
+      VkBufferCopy copyInfo{};
+      copyInfo.srcOffset = 0;
+      copyInfo.dstOffset = 0;
+      copyInfo.size = size;
+
+      createBuffer(EBufferType::STAGING, size, stagingBuffer, inData);
+      copyBuffer(stagingBuffer.buffer, outBuffer.buffer, &copyInfo);
+      vmaDestroyBuffer(memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
+    }
+
+    VkBufferDeviceAddressInfo bdaInfo{};
+    bdaInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+    bdaInfo.buffer = outBuffer.buffer;
+
+    outBuffer.deviceAddress = vkGetBufferDeviceAddress(logicalDevice.device, &bdaInfo);
 
     return RE_OK;
   }

@@ -20,9 +20,11 @@
 
 // debug build settings
 #ifdef NDEBUG
-constexpr bool bRequireValidationLayers = false;
+constexpr bool requireValidationLayers = false;
+constexpr bool enableGPUAssistedValidation = false;
 #else
-constexpr bool bRequireValidationLayers = true;
+constexpr bool requireValidationLayers = true;
+constexpr bool enableGPUAssistedValidation = false;
 #endif
 
 // global constants

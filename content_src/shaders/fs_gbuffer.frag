@@ -35,6 +35,7 @@ layout (push_constant) uniform Material {
 	float alphaMaskCutoff;
 	float bumpIntensity;
 	float emissiveIntensity;	// 48
+	int materialIndex;
 } material;
 
 layout (location = 0) out vec4 outPosition;

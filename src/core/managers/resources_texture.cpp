@@ -296,7 +296,7 @@ TResult core::MResources::writeTexture(RTexture* pTexture, void* pData,
   }
 
   RBuffer staging;
-  core::renderer.createBuffer(EBufferMode::STAGING, dataSize, staging,
+  core::renderer.createBuffer(EBufferType::STAGING, dataSize, staging,
                               pData);
   core::renderer.copyBufferToImage(
       staging.buffer, pTexture->texture.image, pTexture->texture.width,

@@ -306,21 +306,35 @@ std::vector<const char*> core::MRenderer::getRequiredInstanceExtensions() {
   std::vector<const char*> requiredExtensions(ppExtensions,
                                               ppExtensions + extensionCount);
 
-  if (bRequireValidationLayers) {
+  if (requireValidationLayers) {
     requiredExtensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
   }
 
   return requiredExtensions;
 }
 
-std::vector<VkExtensionProperties> core::MRenderer::getInstanceExtensions() {
+std::vector<VkExtensionProperties> core::MRenderer::getInstanceExtensions(const char* layerName,
+                                                                          const char* extensionToCheck,
+                                                                          bool* pCheckResult) {
   uint32_t extensionCount = 0;
   std::vector<VkExtensionProperties> extensionProperties;
 
-  vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+  vkEnumerateInstanceExtensionProperties(layerName, &extensionCount, nullptr);
   extensionProperties.resize(extensionCount);
-  vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount,
+  vkEnumerateInstanceExtensionProperties(layerName, &extensionCount,
                                          extensionProperties.data());
+
+  // check if extension is available
+  if (extensionToCheck != nullptr && pCheckResult != nullptr) {
+    *pCheckResult = false;
+
+    for (auto& it : extensionProperties) {
+      if (strcmp(it.extensionName, extensionToCheck) == 0) {
+        *pCheckResult = true;
+        break;
+      }
+    }
+  }
 
   return extensionProperties;
 }

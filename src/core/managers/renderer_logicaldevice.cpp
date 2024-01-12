@@ -22,11 +22,16 @@ TResult core::MRenderer::initLogicalDevice(
     deviceQueues.emplace_back(queueCreateInfo);
   }
 
+  // Vulkan 1.3: Enabling buffer device address
+  VkPhysicalDeviceBufferDeviceAddressFeatures bdaFeatures{};
+  bdaFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+  bdaFeatures.bufferDeviceAddress = VK_TRUE;
+
   // Vulkan 1.3: Enabling dynamic rendering
   VkPhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures{};
-  dynamicRenderingFeatures.sType =
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
+  dynamicRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
   dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
+  dynamicRenderingFeatures.pNext = &bdaFeatures;
 
   VkDeviceCreateInfo deviceCreateInfo{};
   deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -45,7 +50,7 @@ TResult core::MRenderer::initLogicalDevice(
   //Vulkan 1.3: Enabling dynamic rendering
   deviceCreateInfo.pNext = &dynamicRenderingFeatures;
 
-  if (bRequireValidationLayers) {
+  if (requireValidationLayers) {
     deviceCreateInfo.enabledLayerCount =
         static_cast<uint32_t>(debug::validationLayers.size());
     deviceCreateInfo.ppEnabledLayerNames = debug::validationLayers.data();
@@ -56,7 +61,7 @@ TResult core::MRenderer::initLogicalDevice(
     RE_LOG(Error,
            "failed to create logical device using "
            "provided physical device: '%s'.",
-           physicalDeviceData.properties.deviceName);
+           physicalDeviceData.deviceProperties.properties.deviceName);
     return RE_ERROR;
   }
 
@@ -82,7 +87,7 @@ TResult core::MRenderer::initLogicalDevice(
 
   RE_LOG(Log,
          "Successfully created logical device for '%s', handle: 0x%016llX.",
-         physicalDeviceData.properties.deviceName, physicalDeviceData.device);
+         physicalDeviceData.deviceProperties.properties.deviceName, physicalDeviceData.device);
   return RE_OK;
 }
 

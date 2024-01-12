@@ -39,8 +39,8 @@ TResult core::MRenderer::initPhysicalDevice(const RVkPhysicalDevice& device) {
   physicalDevice = device;
 
   RE_LOG(Log, "Using physical device: %X %X '%s%'.",
-         physicalDevice.properties.vendorID, physicalDevice.properties.deviceID,
-         physicalDevice.properties.deviceName);
+         physicalDevice.deviceProperties.properties.vendorID, physicalDevice.deviceProperties.properties.deviceID,
+         physicalDevice.deviceProperties.properties.deviceName);
 
   return RE_OK;
 }
@@ -52,7 +52,11 @@ TResult core::MRenderer::setPhysicalDeviceData(VkPhysicalDevice device,
   TResult chkResult = RE_OK, finalResult = RE_OK;
 
   outDeviceData.device = device;
-  vkGetPhysicalDeviceProperties(device, &outDeviceData.properties);
+  outDeviceData.descriptorBufferProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT;
+  outDeviceData.deviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+  outDeviceData.deviceProperties.pNext = &outDeviceData.descriptorBufferProperties;
+
+  vkGetPhysicalDeviceProperties2(device, &outDeviceData.deviceProperties);
   vkGetPhysicalDeviceFeatures(device, &outDeviceData.features);
   vkGetPhysicalDeviceMemoryProperties(device, &outDeviceData.memProperties);
 
@@ -69,8 +73,8 @@ TResult core::MRenderer::setPhysicalDeviceData(VkPhysicalDevice device,
                                                outDeviceData.swapChainInfo);
   if (finalResult == RE_OK && chkResult != RE_OK) finalResult = chkResult;
 
-  // detect if device is discrete and at least Direct3D11 / OpenGL 4.0 capable
-  if (!(outDeviceData.properties.deviceType ==
+  // detect if device is discrete and supports OpenGL 4.0 at the least
+  if (!(outDeviceData.deviceProperties.properties.deviceType ==
         VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) &&
       !outDeviceData.features.tessellationShader &&
       !outDeviceData.features.geometryShader) {
@@ -154,7 +158,7 @@ TResult core::MRenderer::checkPhysicalDeviceExtensionSupport(
 
     if (!bExtSupported) {
       RE_LOG(Warning, "Required extension '%s' is not supported by '%s'.",
-             required, deviceData.properties.deviceName);
+             required, deviceData.deviceProperties.properties.deviceName);
 
       return RE_WARNING;
     }
@@ -229,7 +233,7 @@ TResult core::MRenderer::setPhysicalDeviceQueueFamilies(
       queueFamilyIndices.compute.empty() ||
       queueFamilyIndices.present.empty()) {
     RE_LOG(Error, "Couldn't retrieve queue families for '%s'.",
-           physicalDevice.properties.deviceName);
+           physicalDevice.deviceProperties.properties.deviceName);
 
     return RE_ERROR;
   }

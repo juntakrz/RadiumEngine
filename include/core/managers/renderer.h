@@ -58,6 +58,12 @@ class MRenderer {
     } tracking;
   } lighting;
 
+  struct RMaterialBuffers {
+    RBuffer imageBuffer;
+    size_t currentImageBufferOffset = 0u;
+    int32_t currentImageBufferIndex = 0u;
+  } material;
+
   struct RSceneBuffers {
     RBuffer vertexBuffer;
     RBuffer indexBuffer;
@@ -209,8 +215,8 @@ class MRenderer {
   // returns descriptor set used by the current frame in flight by default
   const VkDescriptorSet getDescriptorSet(uint32_t frameInFlight = -1);
 
+  RMaterialBuffers* getMaterialBuffers();
   RSceneBuffers* getSceneBuffers();
-
   RSceneUBO* getSceneUBO();
 
   void queueLightingUBOUpdate();
@@ -307,7 +313,9 @@ class MRenderer {
 
   TResult checkInstanceValidationLayers();
   std::vector<const char*> getRequiredInstanceExtensions();
-  std::vector<VkExtensionProperties> getInstanceExtensions();
+  std::vector<VkExtensionProperties> getInstanceExtensions(const char* layerName = nullptr,
+                                                           const char* extensionToCheck = nullptr,
+                                                           bool* pCheckResult = nullptr);
 
 public:
   TResult copyImage(VkCommandBuffer cmdBuffer, VkImage srcImage,
@@ -385,7 +393,7 @@ public:
    otherwise empty but allocated VkBuffer is the result e.g. for a later data
    copy.
    */
-   TResult createBuffer(EBufferMode mode, VkDeviceSize size, RBuffer& outBuffer,
+   TResult createBuffer(EBufferType type, VkDeviceSize size, RBuffer& outBuffer,
      void* inData);
 
    // copy buffer with SRC and DST bits, uses transfer command buffer and pool

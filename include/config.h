@@ -113,7 +113,8 @@ const uint32_t envIrradianceExtent = 64u;
 const VkColorSpaceKHR colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
 const VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 constexpr uint8_t maxFramesInFlight = MAX_FRAMES_IN_FLIGHT;
-extern VkDeviceSize minBufferAlignment;
+extern VkDeviceSize minUniformBufferAlignment;
+extern VkDeviceSize descriptorBufferOffsetAlignment;
 constexpr bool applyGLTFLeftHandedFix = false;    // currently ok for static models, but has issues with skin
 constexpr uint32_t computeGroupCountX_2D = 8u;    // NVidia GPUs do 32 groups per wave
 constexpr uint32_t computeGroupCountY_2D = 4u;    // AMD's do 64, using one size fits all

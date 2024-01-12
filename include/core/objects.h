@@ -33,14 +33,17 @@ enum EAnimationLoadMode {
   ExtractToStorageOnly
 };
 
-enum class EBufferMode {  // VkBuffer creation mode
-  CPU_UNIFORM,        // create uniform buffer for GPU programs
-  CPU_VERTEX,         // create vertex buffer for the iGPU (UNUSED)
-  CPU_INDEX,          // create index buffer for the iGPU (UNUSED)
-  DGPU_VERTEX,        // create dedicated GPU vertex buffer
-  DGPU_INDEX,         // create dedicated GPU index buffer
-  DGPU_STORAGE,       // create dedicated GPU storage buffer
-  STAGING             // create staging buffer only
+enum class EBufferType {  // VkBuffer creation mode
+  NONE,
+  STAGING,            // CPU staging buffer
+  CPU_UNIFORM,        // uniform buffer for GPU programs
+  CPU_VERTEX,         // vertex buffer for the iGPU (UNUSED)
+  CPU_INDEX,          // index buffer for the iGPU (UNUSED)
+  DGPU_VERTEX,        // dedicated GPU vertex buffer
+  DGPU_INDEX,         // dedicated GPU index buffer
+  DGPU_STORAGE,       // dedicated GPU storage buffer
+  DGPU_SAMPLER,       // dedicated GPU storage buffer for sampler descriptors
+  DGPU_RESOURCE,      // dedicated GPU storage buffer for resource descriptors
 };
 
 enum class ECameraProjection {
@@ -127,9 +130,11 @@ enum class ETransformType { Translation, Rotation, Scale, Weight, Undefined };
 enum EViewport { vpEnvFilter, vpEnvIrrad, vpShadow, vpMain, vpCount };  // 'Count' is a hack
 
 struct RBuffer {
+  EBufferType type = EBufferType::NONE;
   VkBuffer buffer;
   VmaAllocation allocation;
   VmaAllocationInfo allocInfo;
+  VkDeviceAddress deviceAddress = 0u;
 };
 
 struct RCameraInfo {
@@ -351,7 +356,8 @@ struct RVkSwapChainInfo {
 struct RVkPhysicalDevice {
   VkPhysicalDevice device = VK_NULL_HANDLE;
   VkPhysicalDeviceFeatures features;
-  VkPhysicalDeviceProperties properties;
+  VkPhysicalDeviceProperties2 deviceProperties;
+  VkPhysicalDeviceDescriptorBufferPropertiesEXT descriptorBufferProperties;
   VkPhysicalDeviceMemoryProperties memProperties;
   RVkQueueFamilyIndices queueFamilyIndices;
   RVkSwapChainInfo swapChainInfo;
@@ -411,6 +417,7 @@ struct RSceneFragmentPCB {
   float alphaCutoff;
   float bumpIntensity;
   float emissiveIntensity;
+  int32_t materialIndex;
 };
 
 // Push constant block used by the scene vertex shader

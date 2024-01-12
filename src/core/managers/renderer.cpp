@@ -32,9 +32,12 @@ TResult core::MRenderer::createInstance() {
 TResult core::MRenderer::createInstance(VkApplicationInfo* appInfo) {
   RE_LOG(Log, "Creating Vulkan instance.");
   
-  if (bRequireValidationLayers) {
+  if (requireValidationLayers) {
     RE_CHECK(checkInstanceValidationLayers());
   }
+
+  VkValidationFeaturesEXT validationFeatures{};
+  validationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
 
   std::vector<const char*> requiredExtensions = getRequiredInstanceExtensions();
 
@@ -45,7 +48,7 @@ TResult core::MRenderer::createInstance(VkApplicationInfo* appInfo) {
     static_cast<uint32_t>(requiredExtensions.size());
   instCreateInfo.ppEnabledExtensionNames = requiredExtensions.data();
 
-  if (!bRequireValidationLayers) {
+  if (!requireValidationLayers) {
     instCreateInfo.enabledLayerCount = 0;
     instCreateInfo.pNext = nullptr;
   }
@@ -53,12 +56,35 @@ TResult core::MRenderer::createInstance(VkApplicationInfo* appInfo) {
     instCreateInfo.enabledLayerCount =
       static_cast<uint32_t>(debug::validationLayers.size());
     instCreateInfo.ppEnabledLayerNames = debug::validationLayers.data();
-    instCreateInfo.pNext =
-      (VkDebugUtilsMessengerCreateInfoEXT*)MDebug::get().info();
+
+    if (!enableGPUAssistedValidation) {
+      instCreateInfo.pNext =
+        (VkDebugUtilsMessengerCreateInfoEXT*)MDebug::get().info();
+    }
+    else {
+      bool GPUValidationAvailable;
+      getInstanceExtensions("VK_LAYER_KHRONOS_validation", VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME, &GPUValidationAvailable);
+
+      if (GPUValidationAvailable) {
+        const uint32_t enabledCount = 2;
+
+        VkValidationFeatureEnableEXT enabledFeatures[enabledCount] = {
+          VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT,
+          VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT,
+        };
+
+        validationFeatures.pEnabledValidationFeatures = enabledFeatures;
+        validationFeatures.enabledValidationFeatureCount = enabledCount;
+        validationFeatures.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)MDebug::get().info();
+
+        instCreateInfo.pNext = &validationFeatures;
+
+        RE_LOG(Warning, "Enabling GPU assisted validation layer.");
+      }
+    }
   }
 
-  VkResult instCreateResult =
-    vkCreateInstance(&instCreateInfo, nullptr, &APIInstance);
+  VkResult instCreateResult = vkCreateInstance(&instCreateInfo, nullptr, &APIInstance);
 
   if (instCreateResult != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create Vulkan instance, result code: %d.", instCreateResult);
@@ -82,6 +108,7 @@ TResult core::MRenderer::createMemAlloc() {
   allocCreateInfo.physicalDevice = physicalDevice.device;
   allocCreateInfo.device = logicalDevice.device;
   allocCreateInfo.vulkanApiVersion = core::vulkan::APIversion;
+  allocCreateInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 
   if (vmaCreateAllocator(&allocCreateInfo, &memAlloc) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create Vulkan memory allocator.");
@@ -118,48 +145,53 @@ TResult core::MRenderer::createSceneBuffers() {
   // set dynamic uniform buffer block sizes
   config::scene::cameraBlockSize =
       static_cast<uint32_t>(util::getVulkanAlignedSize(
-          sizeof(RSceneUBO), core::vulkan::minBufferAlignment));
+          sizeof(RSceneUBO), core::vulkan::minUniformBufferAlignment));
   config::scene::nodeBlockSize =
       static_cast<uint32_t>(util::getVulkanAlignedSize(
-          sizeof(glm::mat4) + sizeof(float), core::vulkan::minBufferAlignment));
+          sizeof(glm::mat4) + sizeof(float), core::vulkan::minUniformBufferAlignment));
   config::scene::skinBlockSize =
       static_cast<uint32_t>(util::getVulkanAlignedSize(
-          sizeof(glm::mat4) * RE_MAXJOINTS, core::vulkan::minBufferAlignment));
+          sizeof(glm::mat4) * RE_MAXJOINTS, core::vulkan::minUniformBufferAlignment));
 
   RE_LOG(Log, "Allocating scene storage vertex buffer for %d vertices.",
     config::scene::vertexBudget);
-  createBuffer(EBufferMode::DGPU_VERTEX, config::scene::getVertexBufferSize(),
+  createBuffer(EBufferType::DGPU_VERTEX, config::scene::getVertexBufferSize(),
     scene.vertexBuffer, nullptr);
 
   RE_LOG(Log, "Allocating scene buffer for %d indices.",
          config::scene::indexBudget);
-  createBuffer(EBufferMode::DGPU_INDEX, config::scene::getIndexBufferSize(),
+  createBuffer(EBufferType::DGPU_INDEX, config::scene::getIndexBufferSize(),
                scene.indexBuffer, nullptr);
 
   RE_LOG(Log, "Allocating scene buffer for %d entities with transformation.",
          config::scene::entityBudget);
-  createBuffer(EBufferMode::CPU_UNIFORM,
+  createBuffer(EBufferType::CPU_UNIFORM,
                config::scene::getRootTransformBufferSize(),
                scene.rootTransformBuffer, nullptr);
 
   RE_LOG(Log, "Allocating scene buffer for %d unique nodes with transformation.",
          config::scene::nodeBudget);
-  createBuffer(EBufferMode::CPU_UNIFORM,
+  createBuffer(EBufferType::CPU_UNIFORM,
                config::scene::getNodeTransformBufferSize(),
                scene.nodeTransformBuffer, nullptr);
 
   RE_LOG(Log,
          "Allocating scene buffer for %d unique skins.",
          config::scene::entityBudget);
-  createBuffer(EBufferMode::CPU_UNIFORM,
+  createBuffer(EBufferType::CPU_UNIFORM,
                config::scene::getSkinTransformBufferSize(),
                scene.skinTransformBuffer, nullptr);
+
+  VkDeviceSize testBufferSize = sizeof(VkDescriptorImageInfo) * 100000;
+  createBuffer(EBufferType::DGPU_SAMPLER, testBufferSize, material.imageBuffer, nullptr);
 
   return RE_OK;
 }
 
 void core::MRenderer::destroySceneBuffers() {
   RE_LOG(Log, "Destroying scene buffers.");
+  vmaDestroyBuffer(memAlloc, material.imageBuffer.buffer, material.imageBuffer.allocation);
+
   vmaDestroyBuffer(memAlloc, scene.vertexBuffer.buffer,
                    scene.vertexBuffer.allocation);
   vmaDestroyBuffer(memAlloc, scene.indexBuffer.buffer,
@@ -172,40 +204,44 @@ void core::MRenderer::destroySceneBuffers() {
                    scene.skinTransformBuffer.allocation);
 }
 
+core::MRenderer::RMaterialBuffers* core::MRenderer::getMaterialBuffers() {
+  return &material;
+}
+
 core::MRenderer::RSceneBuffers* core::MRenderer::getSceneBuffers() {
   return &scene;
 }
 
 TResult core::MRenderer::createUniformBuffers() {
-  // TODO: dynamic uniform buffers with an offset tied to frame in flight
   view.modelViewProjectionBuffers.resize(MAX_FRAMES_IN_FLIGHT);
   lighting.buffers.resize(MAX_FRAMES_IN_FLIGHT);
+
+  core::vulkan::minUniformBufferAlignment = physicalDevice.deviceProperties.properties.limits.minUniformBufferOffsetAlignment;
+  core::vulkan::descriptorBufferOffsetAlignment = physicalDevice.descriptorBufferProperties.descriptorBufferOffsetAlignment;
 
   VkDeviceSize uboMVPSize =
       config::scene::cameraBlockSize * config::scene::getMaxCameraCount();
   VkDeviceSize uboLightingSize = sizeof(RLightingUBO);
 
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-    //createBuffer(EBufferMode::CPU_UNIFORM, uboMVPSize,
+    //createBuffer(EBufferType::CPU_UNIFORM, uboMVPSize,
     //             view.modelViewProjectionBuffers[i], getSceneUBO());
-    createBuffer(EBufferMode::CPU_UNIFORM, uboMVPSize,
+    createBuffer(EBufferType::CPU_UNIFORM, uboMVPSize,
                  view.modelViewProjectionBuffers[i], nullptr);
-    createBuffer(EBufferMode::CPU_UNIFORM, uboLightingSize, lighting.buffers[i],
+    createBuffer(EBufferType::CPU_UNIFORM, uboLightingSize, lighting.buffers[i],
                  &lighting.data);
   }
 
   // create environment buffer
-  core::vulkan::minBufferAlignment =
-      physicalDevice.properties.limits.minUniformBufferOffsetAlignment;
   VkDeviceSize alignedSize = util::getVulkanAlignedSize(
-      sizeof(REnvironmentUBO), core::vulkan::minBufferAlignment);
+      sizeof(REnvironmentUBO), core::vulkan::minUniformBufferAlignment);
   VkDeviceSize bufferSize = alignedSize * 6;
 
   environment.transformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
   environment.transformOffset = alignedSize;
 
   for (int j = 0; j < MAX_FRAMES_IN_FLIGHT; ++j) {
-    createBuffer(EBufferMode::CPU_UNIFORM, bufferSize,
+    createBuffer(EBufferType::CPU_UNIFORM, bufferSize,
                  environment.transformBuffers[j], nullptr);
   }
 
@@ -808,7 +844,7 @@ void core::MRenderer::deinitialize() {
   destroyDescriptorPool();
   destroyUniformBuffers();
   destroyMemAlloc();
-  if(bRequireValidationLayers) MDebug::get().destroy(APIInstance);
+  if(requireValidationLayers) MDebug::get().destroy(APIInstance);
   destroyLogicalDevice();
   destroyInstance();
 }
