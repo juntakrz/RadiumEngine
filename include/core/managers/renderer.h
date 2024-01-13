@@ -32,7 +32,7 @@ class MRenderer {
 
   struct REnvironmentData {
     REnvironmentFragmentPCB envPushBlock;
-    std::vector<VkDescriptorSet> envDescriptorSets;
+    std::vector<VkDescriptorSet> descriptorSets;
     VkDescriptorSet LUTDescriptorSet;
     std::vector<RBuffer> transformBuffers;
     VkDeviceSize transformOffset = 0u;
@@ -59,9 +59,7 @@ class MRenderer {
   } lighting;
 
   struct RMaterialBuffers {
-    RBuffer imageBuffer;    // UNUSED - but may store sampler descriptors in the future
     VkDescriptorSet descriptorSet;
-    uint32_t currentSampler2DIndex = 0u;
   } material;
 
   struct RSceneBuffers {
@@ -76,6 +74,9 @@ class MRenderer {
 
     std::vector<RTexture*> pGBufferTargets;
     VkDescriptorSet GBufferDescriptorSet;
+
+    // per frame in flight buffered camera/lighting descriptor sets
+    std::vector<VkDescriptorSet> descriptorSets;
   } scene;
 
   // swapchain data
@@ -109,7 +110,6 @@ class MRenderer {
     std::vector<RViewport> viewports;
 
     VkDescriptorPool descriptorPool;
-    std::vector<VkDescriptorSet> descriptorSets;
     std::unordered_map<EDescriptorSetLayout, VkDescriptorSetLayout> descriptorSetLayouts;
 
     std::vector<REntityBindInfo> bindings;  // entities rendered during the current frame
@@ -184,7 +184,7 @@ class MRenderer {
   TResult createImageTargets();
   TResult createGBufferRenderTargets();
   TResult createDepthTargets();
-  TResult createRendererDefaults();
+  TResult setRendererDefaults();
 
   TResult createCoreCommandPools();
   void destroyCoreCommandPools();
@@ -213,11 +213,13 @@ class MRenderer {
   void deinitialize();
 
   // returns descriptor set used by the current frame in flight by default
-  const VkDescriptorSet getDescriptorSet(uint32_t frameInFlight = -1);
+  const VkDescriptorSet getSceneDescriptorSet(uint32_t frameInFlight = -1);
 
+  VkDescriptorSet getMaterialDescriptorSet();
   RMaterialBuffers* getMaterialBuffers();
   RSceneBuffers* getSceneBuffers();
   RSceneUBO* getSceneUBO();
+  REnvironmentData* getEnvironmentData();
 
   void queueLightingUBOUpdate();
   void updateLightingUBO(const int32_t frameIndex);

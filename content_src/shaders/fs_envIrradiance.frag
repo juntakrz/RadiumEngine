@@ -1,11 +1,19 @@
 // Generates an irradiance cube from an environment map using convolution
 
 #version 460
+#extension GL_EXT_nonuniform_qualifier : require
 
 layout (location = 0) in vec3 inPos;
 layout (location = 0) out vec4 outColor;
 
-layout (set = 2, binding = 0) uniform samplerCube samplerEnv;
+layout (set = 2, binding = 0) uniform samplerCube samplers[];
+
+layout (push_constant) uniform envPCB {
+	layout(offset = 16)
+	float roughness;
+	uint numSamples;
+	uint samplerIndex;
+} pushBlock;
 
 const float M_PI = 3.141592653589793;
 const float deltaPhi = 0.034906585;
@@ -27,7 +35,7 @@ void main()
 		for (float theta = 0.0; theta < HALF_PI; theta += deltaTheta) {
 			vec3 tempVec = cos(phi) * right + sin(phi) * up;
 			vec3 sampleVector = cos(theta) * N + sin(theta) * tempVec;
-			color += texture(samplerEnv, sampleVector).rgb * cos(theta) * sin(theta);
+			color += texture(samplers[pushBlock.samplerIndex], sampleVector).rgb * cos(theta) * sin(theta);
 			sampleCount++;
 		}
 	}

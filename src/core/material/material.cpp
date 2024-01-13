@@ -69,24 +69,4 @@ void RMaterial::createDescriptorSet() {
 
   vkUpdateDescriptorSets(core::renderer.logicalDevice.device, writeSize,
                          writeDescriptorSets.data(), 0, nullptr);
-
-  // !TEST!
-  auto materialBuffer = core::renderer.getMaterialBuffers();
-
-  VkDescriptorImageInfo& descriptorImageInfo = imageDescriptors[0];
-  VkWriteDescriptorSet writeDescriptorSet{};
-
-  writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-  writeDescriptorSet.dstSet = materialBuffer->descriptorSet;
-  writeDescriptorSet.dstArrayElement = materialBuffer->currentSampler2DIndex;
-  writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-  writeDescriptorSet.descriptorCount = 1;
-  writeDescriptorSet.pImageInfo = &descriptorImageInfo;
-
-  vkUpdateDescriptorSets(core::renderer.logicalDevice.device, 1u, &writeDescriptorSet, 0, nullptr);
-
-  pushConstantBlock.materialIndex = materialBuffer->currentSampler2DIndex;
-  materialBuffer->currentSampler2DIndex++;
-
-  // !TEST!
 }

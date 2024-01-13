@@ -118,10 +118,6 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
 
   // bind material descriptor set only if material is different (binding 2)
   if (renderView.pCurrentMaterial != pPrimitive->pMaterial) {
-    vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            renderView.pCurrentRenderPass->layout, 2, 1,
-                            &pPrimitive->pMaterial->descriptorSet, 0, nullptr);
-    
     // environment render pass uses global push constant block for fragment shader
     if (!renderView.generateEnvironmentMapsImmediate && !renderView.isEnvironmentPass) {
       vkCmdPushConstants(cmdBuffer, renderView.pCurrentRenderPass->layout,
@@ -200,7 +196,7 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
       vkCmdBindDescriptorSets(
         commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
         renderView.pCurrentRenderPass->layout, 0, 1,
-        &environment.envDescriptorSets[renderView.frameInFlight], 1,
+        &environment.descriptorSets[renderView.frameInFlight], 1,
         &dynamicOffset);
 
       if (pPipeline->pipelineId == EPipeline::EnvFilter) {
@@ -319,18 +315,15 @@ void core::MRenderer::renderEnvironmentMapsSequenced(
   vkCmdBindDescriptorSets(
       commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
       renderView.pCurrentRenderPass->layout, 0, 1,
-      &environment.envDescriptorSets[renderView.frameInFlight], 1,
+      &environment.descriptorSets[renderView.frameInFlight], 1,
       &dynamicOffset);
 
-  if (pPipeline->pipelineId == EPipeline::EnvFilter) {
-    // global set of push constants is used instead of per material ones
-    // environment.envPushBlock.roughness = (float)i / (float)(mipLevels -
-    // 1);
+  //environment.envPushBlock.roughness = (float)i / (float)(mipLevels - 1);
 
-    vkCmdPushConstants(commandBuffer, renderView.pCurrentRenderPass->layout,
-                       VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(RSceneVertexPCB), sizeof(REnvironmentFragmentPCB),
-                       &environment.envPushBlock);
-  }
+  vkCmdPushConstants(commandBuffer, renderView.pCurrentRenderPass->layout,
+    VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(RSceneVertexPCB), sizeof(REnvironmentFragmentPCB),
+    &environment.envPushBlock);
+
   renderView.isEnvironmentPass = true;
   drawBoundEntities(commandBuffer, pPipeline->pipelineId);
   renderView.isEnvironmentPass = false;
@@ -376,7 +369,7 @@ void core::MRenderer::generateLUTMap() {
     writeDescriptorSet.descriptorType =
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     writeDescriptorSet.descriptorCount = 1;
-    writeDescriptorSet.dstSet = core::renderer.getDescriptorSet(i);
+    writeDescriptorSet.dstSet = core::renderer.getSceneDescriptorSet(i);
     writeDescriptorSet.dstBinding = 4;
     writeDescriptorSet.pImageInfo =
         &core::resources.getTexture(RTGT_LUTMAP)->texture.descriptor;
@@ -413,8 +406,10 @@ void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer,
       vkCmdBeginRenderPass(commandBuffer, &system.renderPassBeginInfo,
                            VK_SUBPASS_CONTENTS_INLINE);
 
-      renderFullscreenQuad(commandBuffer, EPipelineLayout::Scene, EPipeline::Present,
-          &core::resources.getMaterial(RMAT_PRESENT)->descriptorSet);
+      vkCmdPushConstants(commandBuffer, getPipelineLayout(EPipelineLayout::Scene), VK_SHADER_STAGE_FRAGMENT_BIT,
+        sizeof(RSceneVertexPCB), sizeof(RSceneFragmentPCB), &core::resources.getMaterial(RMAT_PRESENT)->pushConstantBlock);
+
+      renderFullscreenQuad(commandBuffer, EPipelineLayout::Scene, EPipeline::Present, nullptr);
 
       vkCmdEndRenderPass(commandBuffer);
 
@@ -469,6 +464,10 @@ void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer,
                               getPipelineLayout(EPipelineLayout::Scene), 0,
                               setCount, pSceneSets, 1, &dynamicOffset);
 
+      vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+        renderView.pCurrentRenderPass->layout, 2, 1,
+        &material.descriptorSet, 0, nullptr);
+
       drawBoundEntities(commandBuffer, 2u);
 
       break;
@@ -522,9 +521,11 @@ void core::MRenderer::renderFullscreenQuad(VkCommandBuffer commandBuffer,
                             1, &sceneDynamicOffset);
   }
 
-  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                          getPipelineLayout(pipelineLayout), 2, 1,
-                          pAttachmentSet, 0, nullptr);
+  if (pAttachmentSet) {
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+      getPipelineLayout(pipelineLayout), 2, 1,
+      pAttachmentSet, 0, nullptr);
+  }
 
   vkCmdDraw(commandBuffer, 6, 1, 0, 0);
 }
@@ -570,7 +571,7 @@ void core::MRenderer::renderFrame() {
   updateLightingUBO(renderView.frameInFlight);
 
   VkDescriptorSet frameSets[] = {
-      system.descriptorSets[renderView.frameInFlight]};
+      scene.descriptorSets[renderView.frameInFlight]};
 
   VkCommandBufferBeginInfo beginInfo{};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -586,12 +587,14 @@ void core::MRenderer::renderFrame() {
   VkDeviceSize vbOffset = 0u;
   vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &scene.vertexBuffer.buffer, &vbOffset);
   vkCmdBindIndexBuffer(cmdBuffer, scene.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+  vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+    getPipelineLayout(EPipelineLayout::Scene), 2, 1, &material.descriptorSet, 0, nullptr);
 
-  if (renderView.generateEnvironmentMaps) {
-  //if (renderView.generateEnvironmentMaps && renderView.framesRendered > 1) {
+  //if (renderView.generateEnvironmentMaps) {
+  if (renderView.generateEnvironmentMaps && renderView.framesRendered > 1) {
     renderEnvironmentMapsSequenced(cmdBuffer, environment.genInterval);
   }
-  vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, getPipelineLayout(EPipelineLayout::Scene), 3, 1, &material.descriptorSet, 0, nullptr);
+
   setViewport(cmdBuffer, EViewport::vpShadow);
   executeRenderPass(cmdBuffer, ERenderPass::Shadow, frameSets, 1);
 

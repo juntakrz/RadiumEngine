@@ -10,6 +10,8 @@ core::MResources::MResources() {
 void core::MResources::initialize() {
   RE_LOG(Log, "Initializing materials manager data.");
 
+  m_sampler2DIndices.resize(config::scene::sampler2DBudget, nullptr);
+
   // create the "default" material
   RSamplerInfo samplerInfo{};
 
@@ -53,6 +55,54 @@ void core::MResources::initialize() {
   }
 }
 
+uint32_t core::MResources::getFreeSampler2DIndex() {
+  for (uint32_t i = 0; i < m_sampler2DIndices.size(); ++i) {
+    if (m_sampler2DIndices[i] == nullptr) return i;
+  }
+
+  RE_LOG(Warning, "No more free sampler2D descriptor entries left.");
+  return -1;
+}
+
+void core::MResources::updateMaterialDescriptorSet(RTexture* pTexture, EResourceType resourceType) {
+  // Don't create duplicate entries if this texture was already written to descriptor set
+  if (pTexture->references > 0) return;
+
+  VkWriteDescriptorSet writeSet{};
+  writeSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+  writeSet.dstSet = core::renderer.getMaterialDescriptorSet();
+  writeSet.descriptorCount = 1;
+
+  switch (resourceType) {
+  case EResourceType::Sampler2D: {
+    uint32_t index = getFreeSampler2DIndex();
+
+    VkDescriptorImageInfo imageInfo = pTexture->texture.descriptor;
+
+    // HACK: this image is expected to be translated to a proper layout later
+    if (imageInfo.imageLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
+      imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    }
+
+    writeSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    writeSet.dstBinding = 0;
+    writeSet.dstArrayElement = index;
+    writeSet.pImageInfo = &imageInfo;
+
+    vkUpdateDescriptorSets(core::renderer.logicalDevice.device, 1u, &writeSet, 0, nullptr);
+
+    // Store index data
+    pTexture->sampler2DIndex = index;
+    m_sampler2DIndices[index] = pTexture;
+
+    return;
+  }
+  default: {
+    return;
+  }
+  }
+}
+
 RMaterial* core::MResources::createMaterial(
     RMaterialInfo* pDesc) noexcept {
 
@@ -84,18 +134,19 @@ RMaterial* core::MResources::createMaterial(
   newMat.pushConstantBlock.emissiveIntensity = pDesc->emissiveIntensity;
 
   // disable reading from texture in shader if no texture is available
-  newMat.pushConstantBlock.baseColorTextureSet =
-      newMat.pBaseColor ? pDesc->texCoordSets.baseColor : -1;
-  newMat.pushConstantBlock.normalTextureSet =
-      newMat.pNormal ? pDesc->texCoordSets.normal : -1;
-  newMat.pushConstantBlock.metallicRoughnessTextureSet =
-      newMat.pMetalRoughness ? pDesc->texCoordSets.metalRoughness : -1;
-  newMat.pushConstantBlock.occlusionTextureSet =
-      newMat.pOcclusion ? pDesc->texCoordSets.occlusion : -1;
-  newMat.pushConstantBlock.emissiveTextureSet =
-      newMat.pEmissive ? pDesc->texCoordSets.emissive : -1;
-  newMat.pushConstantBlock.extraTextureSet =
-      newMat.pExtra ? pDesc->texCoordSets.extra : -1;
+  newMat.pushConstantBlock.baseColorTextureSet = newMat.pBaseColor ? pDesc->texCoordSets.baseColor : -1;
+  newMat.pushConstantBlock.normalTextureSet = newMat.pNormal ? pDesc->texCoordSets.normal : -1;
+  newMat.pushConstantBlock.metallicRoughnessTextureSet = newMat.pMetalRoughness ? pDesc->texCoordSets.metalRoughness : -1;
+  newMat.pushConstantBlock.occlusionTextureSet = newMat.pOcclusion ? pDesc->texCoordSets.occlusion : -1;
+  newMat.pushConstantBlock.emissiveTextureSet = newMat.pEmissive ? pDesc->texCoordSets.emissive : -1;
+  newMat.pushConstantBlock.extraTextureSet = newMat.pExtra ? pDesc->texCoordSets.extra : -1;
+
+  newMat.pushConstantBlock.samplerIndex[0] = newMat.pBaseColor ? newMat.pBaseColor->sampler2DIndex : 0;
+  newMat.pushConstantBlock.samplerIndex[1] = newMat.pNormal ? newMat.pNormal->sampler2DIndex : 0;
+  newMat.pushConstantBlock.samplerIndex[2] = newMat.pMetalRoughness ? newMat.pMetalRoughness->sampler2DIndex : 0;
+  newMat.pushConstantBlock.samplerIndex[3] = newMat.pOcclusion ? newMat.pOcclusion->sampler2DIndex : 0;
+  newMat.pushConstantBlock.samplerIndex[4] = newMat.pEmissive ? newMat.pEmissive->sampler2DIndex : 0;
+  newMat.pushConstantBlock.samplerIndex[5] = newMat.pExtra ? newMat.pExtra->sampler2DIndex : 0;
 
   // store total number of textures the material has
   if (newMat.pBaseColor) {

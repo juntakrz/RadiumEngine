@@ -1,6 +1,14 @@
 #version 460
 #extension GL_EXT_nonuniform_qualifier : require
 
+#define COLORMAP	0
+#define NORMALMAP	1
+#define PHYSMAP		2
+#define AOMAP		3
+#define EMISMAP		4
+#define EXTRAMAP	5
+#define MAXTEXTURES 6
+
 layout (location = 0) in vec3 inWorldPos;
 layout (location = 1) in vec3 inNormal;
 layout (location = 2) in vec2 inUV0;
@@ -14,31 +22,23 @@ layout (set = 0, binding = 0) uniform UBOScene {
 	vec3 camPos;
 } scene;
 
-// material bindings
-layout (set = 2, binding = 0) uniform sampler2D colorMap;
-layout (set = 2, binding = 1) uniform sampler2D normalMap;
-layout (set = 2, binding = 2) uniform sampler2D physicalDescriptorMap;
-layout (set = 2, binding = 3) uniform sampler2D aoMap;
-layout (set = 2, binding = 4) uniform sampler2D emissiveMap;
-layout (set = 2, binding = 5) uniform sampler2D extraMap;		// TODO: implement extra map in shader
-
-layout (set = 3, binding = 0) uniform sampler2D samplers[];
+layout (set = 2, binding = 0) uniform sampler2D samplers[];
 
 layout (push_constant) uniform Material {
 	layout(offset = 16) 
 	int baseColorTextureSet;
 	int physicalDescriptorTextureSet;
 	int normalTextureSet;	
-	int occlusionTextureSet;	// 16
+	int occlusionTextureSet;		// 16
 	int emissiveTextureSet;
 	int extraTextureSet;
 	float metallicFactor;	
-	float roughnessFactor;		// 32
+	float roughnessFactor;			// 32
 	float alphaMask;	
 	float alphaMaskCutoff;
 	float bumpIntensity;
-	float emissiveIntensity;	// 48
-	int materialIndex;
+	float emissiveIntensity;		// 48
+	uint samplerIndex[MAXTEXTURES];
 } material;
 
 layout (location = 0) out vec4 outPosition;
@@ -50,7 +50,7 @@ layout (location = 4) out vec4 outEmissive;
 const float minRoughness = 0.04;
 
 vec3 getNormal() {
-	vec3 tangentNormal = vec3(vec2(texture(normalMap, material.normalTextureSet == 0 ? inUV0 : inUV1).rg * 2.0 - 1.0), 1.0);
+	vec3 tangentNormal = vec3(vec2(texture(samplers[material.samplerIndex[NORMALMAP]], material.normalTextureSet == 0 ? inUV0 : inUV1).rg * 2.0 - 1.0), 1.0);
 
 	vec3 q1 = dFdx(inWorldPos);
 	vec3 q2 = dFdy(inWorldPos);
@@ -82,7 +82,7 @@ void main() {
 	// 2. extract color / diffuse / albedo
 	if (material.baseColorTextureSet > -1) {
 		//outColor = texture(colorMap, material.baseColorTextureSet == 0 ? inUV0 : inUV1);
-		outColor = texture(samplers[material.materialIndex], material.baseColorTextureSet == 0 ? inUV0 : inUV1);
+		outColor = texture(samplers[material.samplerIndex[COLORMAP]], material.baseColorTextureSet == 0 ? inUV0 : inUV1);
 	}
 
 	// TODO: discard on alphaMask == 1.0 here and depth-sort everything, unless requested by the material
@@ -107,7 +107,7 @@ void main() {
 	if (material.physicalDescriptorTextureSet > -1) {
 		// In texture roughness is stored in the 'g' channel, metallic is stored in the 'b' channel.
 		// This layout intentionally reserves the 'r' channel for (optional) ambient occlusion map data
-		vec4 physicalSample = texture(physicalDescriptorMap, material.physicalDescriptorTextureSet == 0 ? inUV0 : inUV1);
+		vec4 physicalSample = texture(samplers[material.samplerIndex[PHYSMAP]], material.physicalDescriptorTextureSet == 0 ? inUV0 : inUV1);
 		physicalSample.g = pow(physicalSample.g, 1.0 / 2.2);
 		physicalSample.b = pow(physicalSample.b, 1.0 / 2.2);
 		perceptualRoughness = physicalSample.g * perceptualRoughness;
@@ -122,13 +122,13 @@ void main() {
     outPhysical.b = 1.0;
 
 	if (material.occlusionTextureSet > -1) {
-		float ao = texture(aoMap, (material.occlusionTextureSet == 0 ? inUV0 : inUV1)).r;
+		float ao = texture(samplers[material.samplerIndex[AOMAP]], (material.occlusionTextureSet == 0 ? inUV0 : inUV1)).r;
 		outPhysical.b = ao;
 	}
 
 	// 5. extract emissive color
 	if (material.emissiveTextureSet > -1) {
-		vec3 emissive = texture(emissiveMap, material.emissiveTextureSet == 0 ? inUV0 : inUV1).rgb;
+		vec3 emissive = texture(samplers[material.samplerIndex[EMISMAP]], material.emissiveTextureSet == 0 ? inUV0 : inUV1).rgb;
 		outEmissive = vec4(emissive, 1.0);
 	}
 

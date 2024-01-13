@@ -52,7 +52,8 @@ void core::run() {
   materialInfo.name = "skybox";
   materialInfo.pipelineFlags = EPipeline::Skybox | EPipeline::MixEnvironment;
   materialInfo.textures.baseColor = "skyboxCubemap.ktx2";
-  core::resources.createMaterial(&materialInfo);
+  RMaterial* pSkyboxMaterial = core::resources.createMaterial(&materialInfo);
+  core::renderer.getEnvironmentData()->envPushBlock.samplerIndex = pSkyboxMaterial->pBaseColor->sampler2DIndex;
 
   // create map models
   core::world.createModel(EPrimitiveType::Sphere, "mdlSphere", 16, false);

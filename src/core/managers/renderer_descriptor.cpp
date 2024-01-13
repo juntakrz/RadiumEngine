@@ -178,7 +178,7 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
 
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
         {0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        physicalDevice.descriptorIndexingProperties.maxDescriptorSetUpdateAfterBindSampledImages - 16,
+        config::scene::sampler2DBudget,
         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}
     };
 
@@ -368,10 +368,10 @@ TResult core::MRenderer::createDescriptorSets() {
     setAllocInfo.descriptorSetCount = MAX_FRAMES_IN_FLIGHT;
     setAllocInfo.pSetLayouts = setLayouts.data();
 
-    system.descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+    scene.descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
 
     if (vkAllocateDescriptorSets(logicalDevice.device, &setAllocInfo,
-                                 system.descriptorSets.data()) != VK_SUCCESS) {
+                                 scene.descriptorSets.data()) != VK_SUCCESS) {
       RE_LOG(Critical, "Failed to allocate descriptor sets.");
       return RE_CRITICAL;
     }
@@ -402,7 +402,7 @@ TResult core::MRenderer::createDescriptorSets() {
       writeDescriptorSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
       writeDescriptorSets[0].descriptorType =
           VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-      writeDescriptorSets[0].dstSet = system.descriptorSets[i];
+      writeDescriptorSets[0].dstSet = scene.descriptorSets[i];
       writeDescriptorSets[0].dstBinding = 0;
       writeDescriptorSets[0].dstArrayElement = 0;
       writeDescriptorSets[0].descriptorCount = 1;
@@ -415,7 +415,7 @@ TResult core::MRenderer::createDescriptorSets() {
       writeDescriptorSets[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
       writeDescriptorSets[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
       writeDescriptorSets[1].descriptorCount = 1;
-      writeDescriptorSets[1].dstSet = system.descriptorSets[i];
+      writeDescriptorSets[1].dstSet = scene.descriptorSets[i];
       writeDescriptorSets[1].dstBinding = 1;
       writeDescriptorSets[1].pBufferInfo = &descriptorBufferInfoLighting;
 
@@ -437,7 +437,7 @@ TResult core::MRenderer::createDescriptorSets() {
       writeDescriptorSets[2].descriptorType =
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
       writeDescriptorSets[2].descriptorCount = 1;
-      writeDescriptorSets[2].dstSet = system.descriptorSets[i];
+      writeDescriptorSets[2].dstSet = scene.descriptorSets[i];
       writeDescriptorSets[2].dstBinding = 2;
       writeDescriptorSets[2].pImageInfo = &imageDescriptors[0];
 
@@ -446,7 +446,7 @@ TResult core::MRenderer::createDescriptorSets() {
       writeDescriptorSets[3].descriptorType =
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
       writeDescriptorSets[3].descriptorCount = 1;
-      writeDescriptorSets[3].dstSet = system.descriptorSets[i];
+      writeDescriptorSets[3].dstSet = scene.descriptorSets[i];
       writeDescriptorSets[3].dstBinding = 3;
       writeDescriptorSets[3].pImageInfo = &imageDescriptors[1];
 
@@ -455,7 +455,7 @@ TResult core::MRenderer::createDescriptorSets() {
       writeDescriptorSets[4].descriptorType =
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
       writeDescriptorSets[4].descriptorCount = 1;
-      writeDescriptorSets[4].dstSet = system.descriptorSets[i];
+      writeDescriptorSets[4].dstSet = scene.descriptorSets[i];
       writeDescriptorSets[4].dstBinding = 4;
       writeDescriptorSets[4].pImageInfo = &imageDescriptors[2];
 
@@ -469,9 +469,13 @@ TResult core::MRenderer::createDescriptorSets() {
 #endif
 
   {
-    std::vector<VkDescriptorSetLayout> environmentSetLayout(
+    /*std::vector<VkDescriptorSetLayout> environmentSetLayout(
         MAX_FRAMES_IN_FLIGHT,
-        getDescriptorSetLayout(EDescriptorSetLayout::Environment));
+        getDescriptorSetLayout(EDescriptorSetLayout::Environment));*/
+
+    std::vector<VkDescriptorSetLayout> environmentSetLayout(
+      MAX_FRAMES_IN_FLIGHT,
+      getDescriptorSetLayout(EDescriptorSetLayout::Scene));
 
     VkDescriptorSetAllocateInfo setAllocInfo{};
     setAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -479,10 +483,10 @@ TResult core::MRenderer::createDescriptorSets() {
     setAllocInfo.descriptorSetCount = MAX_FRAMES_IN_FLIGHT;
     setAllocInfo.pSetLayouts = environmentSetLayout.data();
 
-    environment.envDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+    environment.descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
 
     if (vkAllocateDescriptorSets(logicalDevice.device, &setAllocInfo,
-                                 environment.envDescriptorSets.data()) !=
+                                 environment.descriptorSets.data()) !=
         VK_SUCCESS) {
       RE_LOG(Critical, "Failed to allocate descriptor sets.");
       return RE_CRITICAL;
@@ -507,7 +511,7 @@ TResult core::MRenderer::createDescriptorSets() {
       std::vector<VkWriteDescriptorSet> writeSets(2);
       writeSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
       writeSets[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-      writeSets[0].dstSet = environment.envDescriptorSets[j];
+      writeSets[0].dstSet = environment.descriptorSets[j];
       writeSets[0].dstBinding = 0;
       writeSets[0].dstArrayElement = 0;
       writeSets[0].descriptorCount = 1;
@@ -515,7 +519,7 @@ TResult core::MRenderer::createDescriptorSets() {
 
       writeSets[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
       writeSets[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-      writeSets[1].dstSet = environment.envDescriptorSets[j];
+      writeSets[1].dstSet = environment.descriptorSets[j];
       writeSets[1].dstBinding = 1;
       writeSets[1].descriptorCount = 1;
       writeSets[1].pBufferInfo = &infoLighting;
@@ -660,12 +664,10 @@ TResult core::MRenderer::createDescriptorSets() {
     VkDescriptorSetLayout MaterialEXTLayout =
       core::renderer.getDescriptorSetLayout(EDescriptorSetLayout::MaterialEXT);
 
-    uint32_t hardcodedCountNeedsReplacing = 64u; // TODO: make this good
-
     VkDescriptorSetVariableDescriptorCountAllocateInfoEXT variableAllocateInfo{};
     variableAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT;
     variableAllocateInfo.descriptorSetCount = 1;
-    variableAllocateInfo.pDescriptorCounts = &hardcodedCountNeedsReplacing;
+    variableAllocateInfo.pDescriptorCounts = &core::vulkan::maxSampler2DDescriptors;
 
     VkDescriptorSetAllocateInfo allocateInfo{};
     allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;

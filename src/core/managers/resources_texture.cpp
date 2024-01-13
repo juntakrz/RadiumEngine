@@ -358,7 +358,9 @@ RTexture* const core::MResources::assignTexture(
     const char* name) noexcept {
   if (m_textures.contains(name)) {
     RTexture* pTexture = &m_textures.at(name);
-    ++pTexture->references;
+    updateMaterialDescriptorSet(pTexture, EResourceType::Sampler2D);
+    pTexture->references++;
+
     return pTexture;
   }
 

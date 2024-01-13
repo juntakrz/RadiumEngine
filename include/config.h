@@ -75,17 +75,20 @@ const size_t indexBudget = 100000000u;                  // ~400 MBs for index da
 const size_t entityBudget = 10000u;                     // ~0.6 MBs for root transformation matrices
 const size_t nodeBudget = RE_MAXJOINTS * entityBudget;  // ~164 MBs for node transformation matrices
 const size_t cameraBudget = 64u;                        // ~9 KBs for camera MVP data
-const uint32_t sampler2DBudget = 131072u;
+
+extern uint32_t sampler2DBudget;
+extern uint32_t texture2DBudget;
+
+extern uint32_t cameraBlockSize;
+extern uint32_t nodeBlockSize;
+extern uint32_t skinBlockSize;
+
 size_t getVertexBufferSize();
 size_t getIndexBufferSize();
 size_t getRootTransformBufferSize();
 size_t getNodeTransformBufferSize();
 size_t getSkinTransformBufferSize();                    // ~82 MBs for joint transformation matrices
 size_t getMaxCameraCount();
-
-extern uint32_t cameraBlockSize;
-extern uint32_t nodeBlockSize;
-extern uint32_t skinBlockSize;
 };  // namespace scene
 
 float getAspectRatio();
@@ -119,7 +122,7 @@ extern VkDeviceSize descriptorBufferOffsetAlignment;
 constexpr bool applyGLTFLeftHandedFix = false;    // currently ok for static models, but has issues with skin
 constexpr uint32_t computeGroupCountX_2D = 8u;    // NVidia GPUs do 32 groups per wave
 constexpr uint32_t computeGroupCountY_2D = 4u;    // AMD's do 64, using one size fits all
-
+constexpr uint32_t maxSampler2DDescriptors = 32u; // amount of allowed variable index descriptors
 }
 }  // namespace core
 

@@ -187,7 +187,6 @@ TResult core::MRenderer::createSceneBuffers() {
 
 void core::MRenderer::destroySceneBuffers() {
   RE_LOG(Log, "Destroying scene buffers.");
-  vmaDestroyBuffer(memAlloc, material.imageBuffer.buffer, material.imageBuffer.allocation);
 
   vmaDestroyBuffer(memAlloc, scene.vertexBuffer.buffer,
                    scene.vertexBuffer.allocation);
@@ -199,6 +198,10 @@ void core::MRenderer::destroySceneBuffers() {
                    scene.nodeTransformBuffer.allocation);
   vmaDestroyBuffer(memAlloc, scene.skinTransformBuffer.buffer,
                    scene.skinTransformBuffer.allocation);
+}
+
+VkDescriptorSet core::MRenderer::getMaterialDescriptorSet() {
+  return material.descriptorSet;
 }
 
 core::MRenderer::RMaterialBuffers* core::MRenderer::getMaterialBuffers() {
@@ -534,15 +537,22 @@ TResult core::MRenderer::createDepthTargets() {
   return RE_OK;
 }
 
-TResult core::MRenderer::createRendererDefaults() {
-  // create default images
+TResult core::MRenderer::setRendererDefaults() {
+  // Setup bindless resource budgets
+  uint32_t maxAfterBindSampledImages = physicalDevice.descriptorIndexingProperties.maxDescriptorSetUpdateAfterBindSampledImages;
+  config::scene::texture2DBudget = maxAfterBindSampledImages - (maxAfterBindSampledImages / 10);
+  
+  uint32_t maxAfterBindSamplers = physicalDevice.descriptorIndexingProperties.maxDescriptorSetUpdateAfterBindSamplers;
+  config::scene::sampler2DBudget = maxAfterBindSamplers - (maxAfterBindSamplers / 10);
+
+  // Create default images
   TResult chkResult = createImageTargets();
 
   if (chkResult != RE_OK) {
     return chkResult;
   }
 
-  // create default camera
+  // Create default camera
   RCameraInfo cameraInfo{};
   cameraInfo.FOV = config::FOV;
   cameraInfo.aspectRatio = 1.0f;
@@ -801,7 +811,7 @@ TResult core::MRenderer::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandPools();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSceneBuffers();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createRendererDefaults();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = setRendererDefaults();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSetLayouts();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createPipelineLayouts();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createViewports();
@@ -846,14 +856,18 @@ void core::MRenderer::deinitialize() {
   destroyInstance();
 }
 
-const VkDescriptorSet core::MRenderer::getDescriptorSet(
+const VkDescriptorSet core::MRenderer::getSceneDescriptorSet(
     uint32_t frameInFlight) {
-  return frameInFlight == -1 ? system.descriptorSets[renderView.frameInFlight]
-                             : system.descriptorSets[frameInFlight];
+  return frameInFlight == -1 ? scene.descriptorSets[renderView.frameInFlight]
+                             : scene.descriptorSets[frameInFlight];
 }
 
 RSceneUBO* core::MRenderer::getSceneUBO() {
   return &view.worldViewProjectionData;
+}
+
+core::MRenderer::REnvironmentData* core::MRenderer::getEnvironmentData() {
+  return &environment;
 }
 
 void core::MRenderer::queueLightingUBOUpdate() {

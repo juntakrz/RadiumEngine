@@ -93,11 +93,9 @@ TResult core::MRenderer::createPipelineLayouts() {
 
   // pipeline layout for the main 'scene'
   std::vector<VkDescriptorSetLayout> descriptorSetLayouts{
-      getDescriptorSetLayout(EDescriptorSetLayout::Scene),    // 0
-      getDescriptorSetLayout(EDescriptorSetLayout::Model),    // 1
-      getDescriptorSetLayout(EDescriptorSetLayout::Material), // 2
-
-      getDescriptorSetLayout(EDescriptorSetLayout::MaterialEXT)
+      getDescriptorSetLayout(EDescriptorSetLayout::Scene),      // 0
+      getDescriptorSetLayout(EDescriptorSetLayout::Model),      // 1
+      getDescriptorSetLayout(EDescriptorSetLayout::MaterialEXT) // 2
   };
 
   VkPipelineLayoutCreateInfo layoutInfo{};
@@ -156,7 +154,7 @@ TResult core::MRenderer::createPipelineLayouts() {
   descriptorSetLayouts = {
       getDescriptorSetLayout(EDescriptorSetLayout::Environment),  // 0
       getDescriptorSetLayout(EDescriptorSetLayout::Model),        // 1
-      getDescriptorSetLayout(EDescriptorSetLayout::Material)      // 2
+      getDescriptorSetLayout(EDescriptorSetLayout::MaterialEXT)   // 2
   };
 
   VkPushConstantRange envVertexPCR{};
@@ -324,7 +322,8 @@ TResult core::MRenderer::createGraphicsPipelines() {
     // 'EnvFilter' pipeline
     RGraphicsPipelineInfo pipelineInfo{};
     pipelineInfo.pipeline = EPipeline::EnvFilter;
-    pipelineInfo.pipelineLayout = EPipelineLayout::Environment;
+    //pipelineInfo.pipelineLayout = EPipelineLayout::Environment;
+    pipelineInfo.pipelineLayout = EPipelineLayout::Scene;
     pipelineInfo.renderPass = ERenderPass::Null;
     pipelineInfo.dynamicRenderPass = EDynamicRenderingPass::Environment;
     pipelineInfo.vertexShader = "vs_environment.spv";

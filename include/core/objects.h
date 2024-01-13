@@ -126,6 +126,12 @@ enum class ERenderPass {
   Present
 };
 
+enum class EResourceType {
+  Null,
+  Sampler2D,
+  Image2D
+};
+
 enum class ETransformType { Translation, Rotation, Scale, Weight, Undefined };
 
 enum EViewport { vpEnvFilter, vpEnvIrrad, vpShadow, vpMain, vpCount };  // 'Count' is a hack
@@ -385,6 +391,7 @@ struct RComputeImagePCB {
 struct REnvironmentFragmentPCB {
   float roughness;
   uint32_t samples;
+  uint32_t samplerIndex;
 };
 
 // camera rotation UBO for environment map generation
@@ -405,21 +412,21 @@ struct RLightingUBO {
 };
 
 // Push constant block used by the scene fragment shader
-// (48 bytes, 64 bytes total of 128 Vulkan spec)
+// (72 bytes, 88 bytes total of 128 Vulkan spec)
 struct RSceneFragmentPCB {
   int32_t baseColorTextureSet;
   int32_t normalTextureSet;
   int32_t metallicRoughnessTextureSet;
-  int32_t occlusionTextureSet;
+  int32_t occlusionTextureSet;            // 16
   int32_t emissiveTextureSet;
   int32_t extraTextureSet;
   float metallicFactor;
-  float roughnessFactor;
+  float roughnessFactor;                  // 32
   float alphaMode;
   float alphaCutoff;
   float bumpIntensity;
-  float emissiveIntensity;
-  int32_t materialIndex;
+  float emissiveIntensity;                // 48
+  uint32_t samplerIndex[RE_MAXTEXTURES];  // 72
 };
 
 // Push constant block used by the scene vertex shader
