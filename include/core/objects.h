@@ -385,7 +385,8 @@ struct RVulkanTexture : public ktxVulkanTexture {
 // 
 
 struct RComputeImagePCB {
-  uint32_t uint0;
+  uint32_t imageIndex;
+  uint32_t imageCount;
 };
 
 struct REnvironmentFragmentPCB {

@@ -30,6 +30,7 @@ TResult core::MRenderer::initLogicalDevice(
   descriptorIndexingFeatures.descriptorBindingPartiallyBound = VK_TRUE;
   descriptorIndexingFeatures.descriptorBindingUpdateUnusedWhilePending = VK_TRUE;
   descriptorIndexingFeatures.descriptorBindingVariableDescriptorCount = VK_TRUE;
+  descriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind = VK_TRUE;
   descriptorIndexingFeatures.runtimeDescriptorArray = VK_TRUE;
 
   // Vulkan 1.3: Enabling buffer device address

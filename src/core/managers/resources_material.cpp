@@ -10,7 +10,7 @@ core::MResources::MResources() {
 void core::MResources::initialize() {
   RE_LOG(Log, "Initializing materials manager data.");
 
-  m_sampler2DIndices.resize(config::scene::sampler2DBudget, nullptr);
+  m_sampler2DIndices.resize(config::scene::sampledImageBudget, nullptr);
 
   // create the "default" material
   RSamplerInfo samplerInfo{};
@@ -55,7 +55,7 @@ void core::MResources::initialize() {
   }
 }
 
-uint32_t core::MResources::getFreeSampler2DIndex() {
+uint32_t core::MResources::getFreecombinedSamplerIndex() {
   for (uint32_t i = 0; i < m_sampler2DIndices.size(); ++i) {
     if (m_sampler2DIndices[i] == nullptr) return i;
   }
@@ -75,7 +75,7 @@ void core::MResources::updateMaterialDescriptorSet(RTexture* pTexture, EResource
 
   switch (resourceType) {
   case EResourceType::Sampler2D: {
-    uint32_t index = getFreeSampler2DIndex();
+    uint32_t index = getFreecombinedSamplerIndex();
 
     VkDescriptorImageInfo imageInfo = pTexture->texture.descriptor;
 
@@ -92,7 +92,7 @@ void core::MResources::updateMaterialDescriptorSet(RTexture* pTexture, EResource
     vkUpdateDescriptorSets(core::renderer.logicalDevice.device, 1u, &writeSet, 0, nullptr);
 
     // Store index data
-    pTexture->sampler2DIndex = index;
+    pTexture->combinedSamplerIndex = index;
     m_sampler2DIndices[index] = pTexture;
 
     return;
@@ -141,12 +141,12 @@ RMaterial* core::MResources::createMaterial(
   newMat.pushConstantBlock.emissiveTextureSet = newMat.pEmissive ? pDesc->texCoordSets.emissive : -1;
   newMat.pushConstantBlock.extraTextureSet = newMat.pExtra ? pDesc->texCoordSets.extra : -1;
 
-  newMat.pushConstantBlock.samplerIndex[0] = newMat.pBaseColor ? newMat.pBaseColor->sampler2DIndex : 0;
-  newMat.pushConstantBlock.samplerIndex[1] = newMat.pNormal ? newMat.pNormal->sampler2DIndex : 0;
-  newMat.pushConstantBlock.samplerIndex[2] = newMat.pMetalRoughness ? newMat.pMetalRoughness->sampler2DIndex : 0;
-  newMat.pushConstantBlock.samplerIndex[3] = newMat.pOcclusion ? newMat.pOcclusion->sampler2DIndex : 0;
-  newMat.pushConstantBlock.samplerIndex[4] = newMat.pEmissive ? newMat.pEmissive->sampler2DIndex : 0;
-  newMat.pushConstantBlock.samplerIndex[5] = newMat.pExtra ? newMat.pExtra->sampler2DIndex : 0;
+  newMat.pushConstantBlock.samplerIndex[0] = newMat.pBaseColor ? newMat.pBaseColor->combinedSamplerIndex : 0;
+  newMat.pushConstantBlock.samplerIndex[1] = newMat.pNormal ? newMat.pNormal->combinedSamplerIndex : 0;
+  newMat.pushConstantBlock.samplerIndex[2] = newMat.pMetalRoughness ? newMat.pMetalRoughness->combinedSamplerIndex : 0;
+  newMat.pushConstantBlock.samplerIndex[3] = newMat.pOcclusion ? newMat.pOcclusion->combinedSamplerIndex : 0;
+  newMat.pushConstantBlock.samplerIndex[4] = newMat.pEmissive ? newMat.pEmissive->combinedSamplerIndex : 0;
+  newMat.pushConstantBlock.samplerIndex[5] = newMat.pExtra ? newMat.pExtra->combinedSamplerIndex : 0;
 
   // store total number of textures the material has
   if (newMat.pBaseColor) {

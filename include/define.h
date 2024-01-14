@@ -47,7 +47,6 @@ constexpr bool enableGPUAssistedValidation = false;
 #define RE_MAXTEXTURES      6
 #define RE_NEARZ            0.01f
 #define RE_MAXJOINTS        128u
-#define RE_MAXCOMPUTEIMAGES 4u
 
 // error levels
 #define RE_OK					      0x00		    // success

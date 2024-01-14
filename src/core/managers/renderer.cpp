@@ -539,11 +539,14 @@ TResult core::MRenderer::createDepthTargets() {
 
 TResult core::MRenderer::setRendererDefaults() {
   // Setup bindless resource budgets
-  uint32_t maxAfterBindSampledImages = physicalDevice.descriptorIndexingProperties.maxDescriptorSetUpdateAfterBindSampledImages;
-  config::scene::texture2DBudget = maxAfterBindSampledImages - (maxAfterBindSampledImages / 10);
-  
   uint32_t maxAfterBindSamplers = physicalDevice.descriptorIndexingProperties.maxDescriptorSetUpdateAfterBindSamplers;
-  config::scene::sampler2DBudget = maxAfterBindSamplers - (maxAfterBindSamplers / 10);
+  maxAfterBindSamplers -= maxAfterBindSamplers / 10;
+  config::scene::sampledImageBudget = maxAfterBindSamplers;
+
+  uint32_t maxAfterBindStorageImages = physicalDevice.descriptorIndexingProperties.maxDescriptorSetUpdateAfterBindStorageImages;
+  maxAfterBindStorageImages -= maxAfterBindStorageImages / 10;
+  config::scene::storageImageBudget = (config::scene::requestedStorageImageBudget > maxAfterBindStorageImages)
+    ? maxAfterBindStorageImages : config::scene::requestedStorageImageBudget;
 
   // Create default images
   TResult chkResult = createImageTargets();

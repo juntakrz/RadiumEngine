@@ -193,7 +193,8 @@ TResult core::MRenderer::createPipelineLayouts() {
 
   descriptorSetLayouts.clear();
   descriptorSetLayouts = {
-      getDescriptorSetLayout(EDescriptorSetLayout::ComputeImage)};
+      getDescriptorSetLayout(EDescriptorSetLayout::ComputeImage)
+  };
 
   VkPushConstantRange computeImagePushConstRange{};
   computeImagePushConstRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;

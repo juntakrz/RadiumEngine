@@ -178,7 +178,7 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
 
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
         {0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        config::scene::sampler2DBudget,
+        config::scene::sampledImageBudget,
         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}
     };
 
@@ -306,19 +306,22 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
     system.descriptorSetLayouts.emplace(EDescriptorSetLayout::ComputeImage,
                                         VK_NULL_HANDLE);
 
-    // make compute image pipeline support RE_MAXCOMPUTEIMAGES
-    std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings(
-        RE_MAXCOMPUTEIMAGES);
+    const VkDescriptorBindingFlagsEXT bindingFlags =
+      VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT |
+      VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT |
+      VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT |
+      VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT_EXT;
 
-    for (uint8_t i = 0; i < RE_MAXCOMPUTEIMAGES; ++i) {
-      setLayoutBindings[i] = {
-        i,
-        VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-        1,
-        VK_SHADER_STAGE_COMPUTE_BIT,
-        nullptr
-      };
-    }
+    VkDescriptorSetLayoutBindingFlagsCreateInfoEXT bindingFlagsCreateInfo{};
+    bindingFlagsCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
+    bindingFlagsCreateInfo.bindingCount = 1;
+    bindingFlagsCreateInfo.pBindingFlags = &bindingFlags;
+
+    std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
+        {0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+        config::scene::storageImageBudget,
+        VK_SHADER_STAGE_COMPUTE_BIT, nullptr}
+    };
 
     VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
     setLayoutCreateInfo.sType =
@@ -710,7 +713,7 @@ TResult core::MRenderer::createDescriptorSets() {
 
 void core::MRenderer::updateComputeDescriptorSet(
     std::vector<RTexture*>* pInImages) {
-  if (!pInImages || pInImages->size() > RE_MAXCOMPUTEIMAGES ||
+  if (!pInImages || pInImages->size() > config::scene::storageImageBudget ||
       pInImages->size() < 1) {
     RE_LOG(Error,
            "Couldn't update compute image descriptor set. Invalid data was "
@@ -735,6 +738,9 @@ void core::MRenderer::updateComputeDescriptorSet(
 
   vkUpdateDescriptorSets(core::renderer.logicalDevice.device, writeSize,
                          writeDescriptorSets.data(), 0, nullptr);
+
+  compute.imagePCB.imageIndex = 0;
+  compute.imagePCB.imageCount = writeSize;
 
   // the workgroup size is always determined by the leading image
   compute.imageExtent.width = compute.pImages[0]->texture.width;

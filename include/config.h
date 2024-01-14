@@ -76,8 +76,9 @@ const size_t entityBudget = 10000u;                     // ~0.6 MBs for root tra
 const size_t nodeBudget = RE_MAXJOINTS * entityBudget;  // ~164 MBs for node transformation matrices
 const size_t cameraBudget = 64u;                        // ~9 KBs for camera MVP data
 
-extern uint32_t sampler2DBudget;
-extern uint32_t texture2DBudget;
+extern uint32_t sampledImageBudget;
+extern uint32_t storageImageBudget;
+const uint32_t requestedStorageImageBudget = 128u;      // Max number of image views available to compute
 
 extern uint32_t cameraBlockSize;
 extern uint32_t nodeBlockSize;

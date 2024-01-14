@@ -1,8 +1,14 @@
 #version 460
+#extension GL_EXT_nonuniform_qualifier : require
 
 layout(local_size_x = 8, local_size_y = 4) in;
-layout(set = 0, binding = 0, rg16f) uniform writeonly image2D colorBuffer;
+layout(set = 0, binding = 0, rg16f) uniform writeonly image2D images[];
 layout (constant_id = 0) const uint NUM_SAMPLES = 512u;
+
+layout (push_constant) uniform PushBlock {
+	uint imageIndex;
+	uint imageCount;
+} pushBlock;
 
 const float PI = 3.1415926536;
 
@@ -86,7 +92,7 @@ vec2 BRDF(float NoV, float roughness)
 
 void main() {
 	ivec2 pixelPosition = ivec2(gl_GlobalInvocationID.xy);
-	ivec2 screenSize = imageSize(colorBuffer);
+	ivec2 screenSize = imageSize(images[pushBlock.imageIndex]);
 
 	if (pixelPosition.x >= screenSize.x || pixelPosition.y >= screenSize.y) {
 		return;
@@ -96,5 +102,5 @@ void main() {
 	vec2 fScreenSize = vec2(screenSize);
 	vec2 UV = vec2(fPixelPosition.x / fScreenSize.x, fPixelPosition.y / fScreenSize.y);
 
-	imageStore(colorBuffer, pixelPosition, vec4(BRDF(UV.s, UV.t), 0.0, 1.0));
+	imageStore(images[pushBlock.imageIndex], pixelPosition, vec4(BRDF(UV.s, UV.t), 0.0, 1.0));
 }

@@ -348,6 +348,10 @@ void core::MRenderer::generateLUTMap() {
 
   VkCommandBuffer commandBuffer = createCommandBuffer(
       ECmdType::Compute, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
+
+  vkCmdPushConstants(commandBuffer, getPipelineLayout(EPipelineLayout::ComputeImage),
+    VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(RComputeImagePCB), &compute.imagePCB);
+
   executeComputeImage(commandBuffer, EComputePipeline::ImageLUT);
 
   VkImageSubresourceRange subRange{};
