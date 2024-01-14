@@ -12,6 +12,7 @@ class ACamera : public ABase {
     glm::vec4 perspectiveData;
     glm::vec4 orthographicData;
     bool anchorFocusPoint = false;
+    bool ignorePitchLimit = false;
   } m_viewData;
 
   struct {
@@ -70,6 +71,8 @@ class ACamera : public ABase {
   virtual void setRotation(const glm::quat& newRotation) noexcept override;
 
   virtual void rotate(const glm::vec3& vector, float angle) noexcept override;
+
+  virtual void setIgnorePitchLimit(const bool newValue);
 
   virtual void setFOV(float FOV) noexcept;
   virtual void setAspectRatio(float ratio) noexcept;

@@ -271,35 +271,6 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
     }
   }
 
-  // Environment map generation
-  {
-    system.descriptorSetLayouts.emplace(EDescriptorSetLayout::Environment,
-                                        VK_NULL_HANDLE);
-
-    // dynamic uniform buffer will contain 6 matrices for per-face
-    // transformation
-    std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
-        {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1,
-         VK_SHADER_STAGE_VERTEX_BIT, nullptr},
-        {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT,
-         nullptr}};
-
-    VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
-    setLayoutCreateInfo.sType =
-        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    setLayoutCreateInfo.pBindings = setLayoutBindings.data();
-    setLayoutCreateInfo.bindingCount =
-        static_cast<uint32_t>(setLayoutBindings.size());
-
-    if (vkCreateDescriptorSetLayout(
-            logicalDevice.device, &setLayoutCreateInfo, nullptr,
-            &system.descriptorSetLayouts.at(
-                EDescriptorSetLayout::Environment)) != VK_SUCCESS) {
-      RE_LOG(Critical, "Failed to create environment descriptor set layout.");
-      return RE_CRITICAL;
-    }
-  }
-
   // Compute image processing layout
 
   {
@@ -464,72 +435,6 @@ TResult core::MRenderer::createDescriptorSets() {
 
       vkUpdateDescriptorSets(logicalDevice.device, descriptorCount,
                              writeDescriptorSets.data(), 0, nullptr);
-    }
-  }
-
-#ifndef NDEBUG
-  RE_LOG(Log, "Creating environment desriptor set.");
-#endif
-
-  {
-    /*std::vector<VkDescriptorSetLayout> environmentSetLayout(
-        MAX_FRAMES_IN_FLIGHT,
-        getDescriptorSetLayout(EDescriptorSetLayout::Environment));*/
-
-    std::vector<VkDescriptorSetLayout> environmentSetLayout(
-      MAX_FRAMES_IN_FLIGHT,
-      getDescriptorSetLayout(EDescriptorSetLayout::Scene));
-
-    VkDescriptorSetAllocateInfo setAllocInfo{};
-    setAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    setAllocInfo.descriptorPool = system.descriptorPool;
-    setAllocInfo.descriptorSetCount = MAX_FRAMES_IN_FLIGHT;
-    setAllocInfo.pSetLayouts = environmentSetLayout.data();
-
-    environment.descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-
-    if (vkAllocateDescriptorSets(logicalDevice.device, &setAllocInfo,
-                                 environment.descriptorSets.data()) !=
-        VK_SUCCESS) {
-      RE_LOG(Critical, "Failed to allocate descriptor sets.");
-      return RE_CRITICAL;
-    }
-
-#ifndef NDEBUG
-    RE_LOG(Log, "Populating environment descriptor set.");
-#endif
-
-    for (uint32_t j = 0; j < MAX_FRAMES_IN_FLIGHT; ++j) {
-      VkDescriptorBufferInfo infoEnvironment{};
-      infoEnvironment.buffer = environment.transformBuffers[j].buffer;
-      infoEnvironment.offset = 0;
-      infoEnvironment.range = sizeof(REnvironmentUBO);
-
-      // lighting data for descriptor set
-      VkDescriptorBufferInfo infoLighting{};
-      infoLighting.buffer = lighting.buffers[j].buffer;
-      infoLighting.offset = 0;
-      infoLighting.range = sizeof(RLightingUBO);
-
-      std::vector<VkWriteDescriptorSet> writeSets(2);
-      writeSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-      writeSets[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-      writeSets[0].dstSet = environment.descriptorSets[j];
-      writeSets[0].dstBinding = 0;
-      writeSets[0].dstArrayElement = 0;
-      writeSets[0].descriptorCount = 1;
-      writeSets[0].pBufferInfo = &infoEnvironment;
-
-      writeSets[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-      writeSets[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-      writeSets[1].dstSet = environment.descriptorSets[j];
-      writeSets[1].dstBinding = 1;
-      writeSets[1].descriptorCount = 1;
-      writeSets[1].pBufferInfo = &infoLighting;
-
-      vkUpdateDescriptorSets(logicalDevice.device,
-                             static_cast<uint32_t>(writeSets.size()),
-                             writeSets.data(), 0, nullptr);
     }
   }
 
@@ -711,8 +616,8 @@ TResult core::MRenderer::createDescriptorSets() {
   return RE_OK;
 }
 
-void core::MRenderer::updateComputeDescriptorSet(
-    std::vector<RTexture*>* pInImages) {
+void core::MRenderer::updateComputeImageSet(
+    std::vector<RTexture*>* pInImages, const uint32_t imageOffset) {
   if (!pInImages || pInImages->size() > config::scene::storageImageBudget ||
       pInImages->size() < 1) {
     RE_LOG(Error,
@@ -739,7 +644,7 @@ void core::MRenderer::updateComputeDescriptorSet(
   vkUpdateDescriptorSets(core::renderer.logicalDevice.device, writeSize,
                          writeDescriptorSets.data(), 0, nullptr);
 
-  compute.imagePCB.imageIndex = 0;
+  compute.imagePCB.imageIndex = imageOffset;
   compute.imagePCB.imageCount = writeSize;
 
   // the workgroup size is always determined by the leading image

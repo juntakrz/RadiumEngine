@@ -1040,16 +1040,11 @@ void core::MRenderer::unbindEntity(uint32_t index) {
 void core::MRenderer::clearBoundEntities() { system.bindings.clear(); }
 
 void core::MRenderer::setCamera(const char* name) {
-  if (ACamera* pCamera = core::ref.getActor(name)->getAs<ACamera>()) {
-#ifndef NDEBUG
-    RE_LOG(Log, "Selecting camera '%s'.", name);
-#endif
+  view.pActiveCamera = core::actors.getCamera(name);
 
-    view.pActiveCamera = pCamera;
-    return;
+  if (!view.pActiveCamera) {
+    RE_LOG(Error, "Failed to set camera '%s' - not found.", name);
   }
-
-  RE_LOG(Error, "Failed to set camera '%s' - not found.", name);
 }
 
 void core::MRenderer::setCamera(ACamera* pCamera) {

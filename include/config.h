@@ -41,6 +41,7 @@
 
 // default camera
 #define RCAM_MAIN               "C_Main"
+#define RCAM_ENV                "C_Environment"     // environment generating camera
 #define RCAM_SUN                "C_Sun"
 
 // default light

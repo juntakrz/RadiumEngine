@@ -152,7 +152,7 @@ TResult core::MRenderer::createPipelineLayouts() {
 
   descriptorSetLayouts.clear();
   descriptorSetLayouts = {
-      getDescriptorSetLayout(EDescriptorSetLayout::Environment),  // 0
+      getDescriptorSetLayout(EDescriptorSetLayout::Scene),  // 0
       getDescriptorSetLayout(EDescriptorSetLayout::Model),        // 1
       getDescriptorSetLayout(EDescriptorSetLayout::MaterialEXT)   // 2
   };

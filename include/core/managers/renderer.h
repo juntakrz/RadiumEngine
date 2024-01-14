@@ -31,15 +31,13 @@ class MRenderer {
   } compute;
 
   struct REnvironmentData {
-    REnvironmentFragmentPCB envPushBlock;
-    std::vector<VkDescriptorSet> descriptorSets;
+    REnvironmentFragmentPCB pushBlock;
     VkDescriptorSet LUTDescriptorSet;
-    std::vector<RBuffer> transformBuffers;
-    VkDeviceSize transformOffset = 0u;
     std::vector<RTexture*> pCubemaps;
     VkImageSubresourceRange subresourceRange;
     VkImageCopy copyRegion;
     int32_t genInterval = 1;
+    std::array<glm::vec3, 6> cameraTransformVectors;
 
     struct {
       uint32_t pipeline = 0;  // ENVFILTER or ENVIRRAD
@@ -195,7 +193,6 @@ class MRenderer {
   TResult createSyncObjects();
   void destroySyncObjects();
 
-  void setEnvironmentUBO();
   void updateSceneUBO(uint32_t currentImage);
 
   // wait until all queues and device are idle
@@ -241,8 +238,8 @@ class MRenderer {
 
   TResult createDescriptorSets();
 
-  // Update compute descriptor set for processing/generating images
-  void updateComputeDescriptorSet(std::vector<RTexture*>* pInImages);
+  // Add images to be processed to compute descriptor set, can be added at offsets
+  void updateComputeImageSet(std::vector<RTexture*>* pInImages, const uint32_t imageOffset);
 
   //
   // ***PIPELINE

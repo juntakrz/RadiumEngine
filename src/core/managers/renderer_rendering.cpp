@@ -191,22 +191,23 @@ void core::MRenderer::renderEnvironmentMaps(VkCommandBuffer commandBuffer) {
 
       setViewport(commandBuffer, viewportIndex);
 
-      dynamicOffset = static_cast<uint32_t>(environment.transformOffset * j);
+      //dynamicOffset = static_cast<uint32_t>(environment.transformOffset * j);
+      dynamicOffset = 0;
 
       vkCmdBindDescriptorSets(
         commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
         renderView.pCurrentRenderPass->layout, 0, 1,
-        &environment.descriptorSets[renderView.frameInFlight], 1,
+        &scene.descriptorSets[renderView.frameInFlight], 1,
         &dynamicOffset);
 
       if (pPipeline->pipelineId == EPipeline::EnvFilter) {
         // global set of push constants is used instead of per material ones
-        // environment.envPushBlock.roughness = (float)i / (float)(mipLevels -
+        // environment.pushBlock.roughness = (float)i / (float)(mipLevels -
         // 1);
 
         vkCmdPushConstants(commandBuffer, renderView.pCurrentRenderPass->layout,
           VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(REnvironmentFragmentPCB),
-          &environment.envPushBlock);
+          &environment.pushBlock);
       }
       renderView.isEnvironmentPass = true;
       drawBoundEntities(commandBuffer, pPipeline->pipelineId);
@@ -310,19 +311,23 @@ void core::MRenderer::renderEnvironmentMapsSequenced(
 
   setViewport(commandBuffer, viewportIndex);
 
-  dynamicOffset = static_cast<uint32_t>(environment.transformOffset * environment.tracking.layer);
+  setCamera(RCAM_ENV);
+  getCamera()->setRotation(environment.cameraTransformVectors[environment.tracking.layer]);
+  updateSceneUBO(renderView.frameInFlight);
+
+  dynamicOffset = config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
 
   vkCmdBindDescriptorSets(
       commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
       renderView.pCurrentRenderPass->layout, 0, 1,
-      &environment.descriptorSets[renderView.frameInFlight], 1,
+      &scene.descriptorSets[renderView.frameInFlight], 1,
       &dynamicOffset);
 
-  //environment.envPushBlock.roughness = (float)i / (float)(mipLevels - 1);
+  //environment.pushBlock.roughness = (float)i / (float)(mipLevels - 1);
 
   vkCmdPushConstants(commandBuffer, renderView.pCurrentRenderPass->layout,
     VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(RSceneVertexPCB), sizeof(REnvironmentFragmentPCB),
-    &environment.envPushBlock);
+    &environment.pushBlock);
 
   renderView.isEnvironmentPass = true;
   drawBoundEntities(commandBuffer, pPipeline->pipelineId);
@@ -344,7 +349,8 @@ void core::MRenderer::generateLUTMap() {
   RTexture* pLUTTexture = core::resources.getTexture(RTGT_LUTMAP);
   std::vector<RTexture*> pTextures;
   pTextures.emplace_back(pLUTTexture);
-  updateComputeDescriptorSet(&pTextures);
+
+  updateComputeImageSet(&pTextures, 0);
 
   VkCommandBuffer commandBuffer = createCommandBuffer(
       ECmdType::Compute, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
@@ -597,6 +603,7 @@ void core::MRenderer::renderFrame() {
   //if (renderView.generateEnvironmentMaps) {
   if (renderView.generateEnvironmentMaps && renderView.framesRendered > 1) {
     renderEnvironmentMapsSequenced(cmdBuffer, environment.genInterval);
+    setCamera(RCAM_MAIN);
   }
 
   setViewport(cmdBuffer, EViewport::vpShadow);
@@ -679,18 +686,4 @@ void core::MRenderer::renderFrame() {
 void core::MRenderer::renderInitFrame() {
   generateLUTMap();
   renderFrame();
-}
-
-void core::MRenderer::updateAspectRatio() {
-  view.cameraSettings.aspectRatio =
-      (float)swapchain.imageExtent.width / swapchain.imageExtent.height;
-}
-
-void core::MRenderer::setFOV(float FOV) { view.pActiveCamera->setFOV(FOV); }
-
-void core::MRenderer::setViewDistance(float farZ) { view.cameraSettings.farZ; }
-
-void core::MRenderer::setViewDistance(float nearZ, float farZ) {
-  view.cameraSettings.nearZ = nearZ;
-  view.cameraSettings.farZ = farZ;
 }

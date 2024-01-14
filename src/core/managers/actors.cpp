@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "core/core.h"
 #include "core/managers/input.h"
+#include "core/managers/ref.h"
 #include "core/managers/world.h"
 #include "core/world/actors/camera.h"
 #include "core/managers/actors.h"
@@ -87,6 +88,8 @@ ACamera* core::MActors::createCamera(const char* name,
 
     pCamera->setViewBufferIndex(index);
     m_linearActors.pCameras.emplace_back(pCamera);
+
+    core::ref.registerActor(name, pCamera);
 
     RE_LOG(Log, "Created camera '%s'.", name);
     return pCamera;

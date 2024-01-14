@@ -155,8 +155,6 @@ void core::MScript::jsonParseCameras(const json* pCameraData) noexcept {
           newCamera->setOrthographic(vars[0], vars[1], vars[2], vars[3]);
         }
       }
-
-      core::ref.registerActor(name.c_str(), newCamera);
     }
   }
 

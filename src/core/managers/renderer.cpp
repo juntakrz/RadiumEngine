@@ -224,29 +224,11 @@ TResult core::MRenderer::createUniformBuffers() {
   VkDeviceSize uboLightingSize = sizeof(RLightingUBO);
 
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-    //createBuffer(EBufferType::CPU_UNIFORM, uboMVPSize,
-    //             view.modelViewProjectionBuffers[i], getSceneUBO());
     createBuffer(EBufferType::CPU_UNIFORM, uboMVPSize,
                  view.modelViewProjectionBuffers[i], nullptr);
     createBuffer(EBufferType::CPU_UNIFORM, uboLightingSize, lighting.buffers[i],
                  &lighting.data);
   }
-
-  // create environment buffer
-  VkDeviceSize alignedSize = util::getVulkanAlignedSize(
-      sizeof(REnvironmentUBO), core::vulkan::minUniformBufferAlignment);
-  VkDeviceSize bufferSize = alignedSize * 6;
-
-  environment.transformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-  environment.transformOffset = alignedSize;
-
-  for (int j = 0; j < MAX_FRAMES_IN_FLIGHT; ++j) {
-    createBuffer(EBufferType::CPU_UNIFORM, bufferSize,
-                 environment.transformBuffers[j], nullptr);
-  }
-
-  // environment transformations need to be set only once
-  setEnvironmentUBO();
 
   return RE_OK;
 }
@@ -257,10 +239,6 @@ void core::MRenderer::destroyUniformBuffers() {
   }
 
   for (auto& it : lighting.buffers) {
-    vmaDestroyBuffer(memAlloc, it.buffer, it.allocation);
-  }
-
-  for (auto& it : environment.transformBuffers) {
     vmaDestroyBuffer(memAlloc, it.buffer, it.allocation);
   }
 }
@@ -407,8 +385,8 @@ TResult core::MRenderer::createImageTargets() {
 #endif
 
   // set environment push block defaults
-  environment.envPushBlock.samples = 32u;
-  environment.envPushBlock.roughness = 0.0f;
+  environment.pushBlock.samples = 32u;
+  environment.pushBlock.roughness = 0.0f;
 
   // set swapchain subresource copy region
   swapchain.copyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -555,14 +533,31 @@ TResult core::MRenderer::setRendererDefaults() {
     return chkResult;
   }
 
-  // Create default camera
+  // Create default cameras
+
+  // RCAM_ENV
   RCameraInfo cameraInfo{};
-  cameraInfo.FOV = config::FOV;
+  cameraInfo.FOV = 90.0f;
   cameraInfo.aspectRatio = 1.0f;
   cameraInfo.nearZ = RE_NEARZ;
   cameraInfo.farZ = config::viewDistance;
 
-  ACamera* pCamera = core::actors.createCamera(RCAM_MAIN, &cameraInfo);
+  ACamera* pCamera = core::actors.createCamera(RCAM_ENV, &cameraInfo);
+
+  // Set transformation array for the environment camera
+  environment.cameraTransformVectors[0] = glm::vec3(0.0f, glm::radians(90.0f), 0.0f);   // X+
+  environment.cameraTransformVectors[1] = glm::vec3(0.0f, glm::radians(-90.0f), 0.0f);  // X-
+  environment.cameraTransformVectors[2] = glm::vec3(glm::radians(-90.0f), 0.0f, 0.0f);  // Y+
+  environment.cameraTransformVectors[3] = glm::vec3(glm::radians(90.0f), 0.0f, 0.0f);   // Y-
+  environment.cameraTransformVectors[4] = glm::vec3(0.0f, 0.0f, 0.0f);                  // Z+
+  environment.cameraTransformVectors[5] = glm::vec3(0.0f, glm::radians(180.0f), 0.0f);  // Z-
+
+  // Make environment camera ignore pitch limit
+  pCamera->setIgnorePitchLimit(true);
+
+  // RCAM_MAIN
+  cameraInfo.FOV = config::FOV;
+  pCamera = core::actors.createCamera(RCAM_MAIN, &cameraInfo);
 
   if (!pCamera) {
     return RE_CRITICAL;
@@ -736,38 +731,6 @@ void core::MRenderer::destroySyncObjects() {
   sync.asyncUpdateEntities.stop();
 }
 
-void core::MRenderer::setEnvironmentUBO() {
-  // prepare transformation matrices
-  std::array<glm::mat4, 6> transformArray;
-  size_t projectionOffset = sizeof(glm::mat4);
-
-  glm::mat4 perspective =
-      glm::perspective(glm::radians(90.0f), 1.0f, 0.01f, 10.0f);
-
-  transformArray[0] =
-      glm::rotate(glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));   // X+
-  transformArray[1] =
-      glm::rotate(glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));    // X-
-  transformArray[2] =
-      glm::rotate(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));    // Y+
-  transformArray[3] =
-      glm::rotate(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));   // Y-
-  transformArray[4] = glm::mat4(1.0f);                                  // Z+
-  transformArray[5] =
-      glm::rotate(glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));   // Z-
-
-  for (uint8_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-    uint8_t* memAddress = static_cast<uint8_t*>(
-        environment.transformBuffers[i].allocInfo.pMappedData);
-
-    for (uint8_t j = 0; j < transformArray.size(); ++j) {
-      memcpy(memAddress, &transformArray[j], sizeof(glm::mat4));
-      memcpy(memAddress + projectionOffset, &perspective, sizeof(glm::mat4));
-      memAddress += environment.transformOffset;
-    }
-  }
-}
-
 void core::MRenderer::updateSceneUBO(uint32_t currentImage) {
   view.worldViewProjectionData.view = view.pActiveCamera->getView();
   view.worldViewProjectionData.projection = view.pActiveCamera->getProjection();
@@ -889,4 +852,18 @@ void core::MRenderer::updateLightingUBO(const int32_t frameIndex) {
   memcpy(lighting.buffers[frameIndex].allocInfo.pMappedData, &lighting.data,
          sizeof(RLightingUBO));
   lighting.tracking.bufferUpdatesRemaining--;
+}
+
+void core::MRenderer::updateAspectRatio() {
+  view.cameraSettings.aspectRatio =
+    (float)swapchain.imageExtent.width / swapchain.imageExtent.height;
+}
+
+void core::MRenderer::setFOV(float FOV) { view.pActiveCamera->setFOV(FOV); }
+
+void core::MRenderer::setViewDistance(float farZ) { view.cameraSettings.farZ; }
+
+void core::MRenderer::setViewDistance(float nearZ, float farZ) {
+  view.cameraSettings.nearZ = nearZ;
+  view.cameraSettings.farZ = farZ;
 }

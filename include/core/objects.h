@@ -70,7 +70,6 @@ enum class EDescriptorSetLayout {
   MaterialEXT,
   PBRInput,
   Model,
-  Environment,
   ComputeImage,
   Dummy
 };

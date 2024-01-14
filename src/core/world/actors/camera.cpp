@@ -75,7 +75,8 @@ void ACamera::setRotation(float x, float y, float z) noexcept {
 }
 
 void ACamera::setRotation(const glm::vec3& newRotation) noexcept {
-  m_pitch = newRotation.x < -config::pitchLimit  ? -config::pitchLimit
+  m_pitch = m_viewData.ignorePitchLimit ? newRotation.x :
+    newRotation.x < -config::pitchLimit  ? -config::pitchLimit
             : newRotation.x > config::pitchLimit ? config::pitchLimit
                                                  : newRotation.x;
 
@@ -130,12 +131,14 @@ void ACamera::rotate(const glm::vec3& vector, float angle) noexcept {
     case 0: {
       float newPitch = m_pitch + realAngle;
 
-      if (newPitch < -config::pitchLimit) {
-        break;
-      }
+      if (!m_viewData.ignorePitchLimit) {
+        if (newPitch < -config::pitchLimit) {
+          break;
+        }
 
-      if (newPitch > config::pitchLimit) {
-        break;
+        if (newPitch > config::pitchLimit) {
+          break;
+        }
       }
 
       m_pitch = newPitch;
@@ -159,6 +162,10 @@ void ACamera::rotate(const glm::vec3& vector, float angle) noexcept {
   }
 
   updateAttachments();
+}
+
+void ACamera::setIgnorePitchLimit(const bool newValue) {
+  m_viewData.ignorePitchLimit = newValue;
 }
 
 void ACamera::setFOV(float FOV) noexcept {
