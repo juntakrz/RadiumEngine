@@ -398,15 +398,15 @@ TResult core::MRenderer::createDescriptorSets() {
       // environment maps are created with a layout for accepting data writes
       // however descriptor sets require info about their final state
       VkDescriptorImageInfo imageDescriptors[3]{
-          core::resources.getTexture(RTGT_ENVFILTER)->texture.descriptor,
-          core::resources.getTexture(RTGT_ENVIRRAD)->texture.descriptor,
-          core::resources.getTexture(RTGT_LUTMAP)->texture.descriptor};
+          core::resources.getTexture(RTGT_EnvSkybox)->texture.imageInfo,
+          core::resources.getTexture(RTGT_ENVIRRAD)->texture.imageInfo,
+          core::resources.getTexture(RTGT_LUTMAP)->texture.imageInfo};
 
       for (VkDescriptorImageInfo& imageInfo : imageDescriptors) {
         imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
       }
 
-      // RTGT_ENVFILTER
+      // RTGT_EnvSkybox
       writeDescriptorSets[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
       writeDescriptorSets[2].descriptorType =
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -535,7 +535,7 @@ TResult core::MRenderer::createDescriptorSets() {
     std::vector<VkDescriptorImageInfo> imageDescriptors;
 
     for (const auto& image : scene.pGBufferTargets) {
-      imageDescriptors.emplace_back(image->texture.descriptor);
+      imageDescriptors.emplace_back(image->texture.imageInfo);
     }
 
     // Write retrieved data to newly allocated descriptor set
@@ -614,40 +614,4 @@ TResult core::MRenderer::createDescriptorSets() {
   }
 
   return RE_OK;
-}
-
-void core::MRenderer::updateComputeImageSet(
-    std::vector<RTexture*>* pInImages, const uint32_t imageOffset) {
-  if (!pInImages || pInImages->size() > config::scene::storageImageBudget ||
-      pInImages->size() < 1) {
-    RE_LOG(Error,
-           "Couldn't update compute image descriptor set. Invalid data was "
-           "provided.");
-    return;
-  }
-
-  compute.pImages = *pInImages;
-
-  uint32_t writeSize = static_cast<uint32_t>(compute.pImages.size());
-  std::vector<VkWriteDescriptorSet> writeDescriptorSets;
-  writeDescriptorSets.resize(writeSize);
-
-  for (uint32_t i = 0; i < writeSize; ++i) {
-    writeDescriptorSets[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeDescriptorSets[i].dstSet = compute.imageDescriptorSet;
-    writeDescriptorSets[i].dstBinding = i;
-    writeDescriptorSets[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    writeDescriptorSets[i].descriptorCount = 1;
-    writeDescriptorSets[i].pImageInfo = &compute.pImages[i]->texture.descriptor;
-  }
-
-  vkUpdateDescriptorSets(core::renderer.logicalDevice.device, writeSize,
-                         writeDescriptorSets.data(), 0, nullptr);
-
-  compute.imagePCB.imageIndex = imageOffset;
-  compute.imagePCB.imageCount = writeSize;
-
-  // the workgroup size is always determined by the leading image
-  compute.imageExtent.width = compute.pImages[0]->texture.width;
-  compute.imageExtent.height = compute.pImages[0]->texture.height;
 }

@@ -77,7 +77,7 @@ void core::MResources::updateMaterialDescriptorSet(RTexture* pTexture, EResource
   case EResourceType::Sampler2D: {
     uint32_t index = getFreecombinedSamplerIndex();
 
-    VkDescriptorImageInfo imageInfo = pTexture->texture.descriptor;
+    VkDescriptorImageInfo imageInfo = pTexture->texture.imageInfo;
 
     // HACK: this image is expected to be translated to a proper layout later
     if (imageInfo.imageLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {

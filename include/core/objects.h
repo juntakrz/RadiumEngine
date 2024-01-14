@@ -58,6 +58,10 @@ enum class ECmdType {
   Present
 };
 
+enum class EComputeJob {
+  Image
+};
+
 enum class EComputePipeline {
   Null,
   ImageLUT,
@@ -86,19 +90,15 @@ enum class ELightType {
 
 enum EPipeline : uint32_t {
   Null              = 0,
-  EnvFilter         = 0b1,
-  EnvIrradiance     = 0b10,
-  Shadow            = 0b100,
-  Skybox            = 0b1000,
-  OpaqueCullBack    = 0b10000,
-  OpaqueCullNone    = 0b100000,
-  MaskCullBack      = 0b1000000,
-  BlendCullNone     = 0b10000000,
-  PBR               = 0b100000000,
-  Present           = 0b1000000000,
-
-  // combined pipeline indices for rendering only
-  MixEnvironment = EnvFilter + EnvIrradiance
+  EnvSkybox         = 0b1,
+  Shadow            = 0b10,
+  Skybox            = 0b100,
+  OpaqueCullBack    = 0b1000,
+  OpaqueCullNone    = 0b10000,
+  MaskCullBack      = 0b100000,
+  BlendCullNone     = 0b1000000,
+  PBR               = 0b10000000,
+  Present           = 0b100000000
 };
 
 enum class EPipelineLayout {
@@ -133,7 +133,7 @@ enum class EResourceType {
 
 enum class ETransformType { Translation, Rotation, Scale, Weight, Undefined };
 
-enum EViewport { vpEnvFilter, vpEnvIrrad, vpShadow, vpMain, vpCount };  // 'Count' is a hack
+enum EViewport { vpEnvSkybox, vpEnvIrrad, vpShadow, vpMain, vpCount };  // 'Count' is a hack
 
 struct RBuffer {
   EBufferType type = EBufferType::NONE;
@@ -150,8 +150,10 @@ struct RCameraInfo {
   float farZ = config::viewDistance;
 };
 
-struct RComputePipelineInfo {
-  EComputePipeline type;
+struct RComputeInfo {
+  EComputeJob jobType;
+  std::vector<struct RTexture*> pImageAttachments;
+  bool useDetailedViewsOnly = true;
 };
 
 struct RDynamicRenderingInfo {
@@ -374,9 +376,9 @@ struct RVkPhysicalDevice {
 // expanding KTX structure
 struct RVulkanTexture : public ktxVulkanTexture {
   VkImageView view;
-  std::vector<std::vector<VkImageView>> layerAndMipViews;  // [layer][mip level]
+  std::vector<std::vector<VkDescriptorImageInfo>> layerAndMipInfo;  // [layer][mip level]
   VkSampler sampler;
-  VkDescriptorImageInfo descriptor;
+  VkDescriptorImageInfo imageInfo;
 };
 
 //

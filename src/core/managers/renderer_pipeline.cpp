@@ -320,9 +320,9 @@ TResult core::MRenderer::createGraphicsPipelines() {
 
   // Environment / image based lighting pipelines
   {
-    // 'EnvFilter' pipeline
+    // 'EnvSkybox' pipeline
     RGraphicsPipelineInfo pipelineInfo{};
-    pipelineInfo.pipeline = EPipeline::EnvFilter;
+    pipelineInfo.pipeline = EPipeline::EnvSkybox;
     //pipelineInfo.pipelineLayout = EPipelineLayout::Environment;
     pipelineInfo.pipelineLayout = EPipelineLayout::Scene;
     pipelineInfo.renderPass = ERenderPass::Null;
@@ -330,15 +330,7 @@ TResult core::MRenderer::createGraphicsPipelines() {
     pipelineInfo.vertexShader = "vs_environment.spv";
     pipelineInfo.fragmentShader = "fs_envFilter.spv";
     pipelineInfo.colorBlendAttachmentCount = 1u;
-    pipelineInfo.viewportId = EViewport::vpEnvFilter;
-
-    RE_CHECK(createGraphicsPipeline(&pipelineInfo));
-
-    // 'EnvIrradiance' pipeline
-    pipelineInfo.pipeline = EPipeline::EnvIrradiance;
-    pipelineInfo.fragmentShader = "fs_envIrradiance.spv";
-    pipelineInfo.colorBlendAttachmentCount = 1u;
-    pipelineInfo.viewportId = EViewport::vpEnvIrrad;
+    pipelineInfo.viewportId = EViewport::vpEnvSkybox;
 
     RE_CHECK(createGraphicsPipeline(&pipelineInfo));
   }
@@ -623,10 +615,6 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
   }
 
   RE_LOG(Log, "Created pipeline E%d.", pipelineInfo->pipeline);
-  return RE_OK;
-}
-
-TResult core::MRenderer::createComputePipeline(RComputePipelineInfo* pipelineInfo) {
   return RE_OK;
 }
 

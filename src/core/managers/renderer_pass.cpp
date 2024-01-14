@@ -327,7 +327,7 @@ void core::MRenderer::refreshDynamicRenderPass(EDynamicRenderingPass passType, i
     if (pipelineInfo->dynamic.pStencilAttachment) {
       pipelineInfo->dynamic.depthAttachmentInfo.imageLayout = pipelineInfo->dynamic.pStencilAttachment->texture.imageLayout;
     }
-    };
+  };
 
   if (pipelineIndex == -1) {
     for (int32_t i = 0; i < pRenderingPass->pipelines.size(); ++i) {
@@ -493,19 +493,10 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
   // Cubemaps should've been created by createImageTargets() earlier
   {
     RDynamicRenderingInfo info{};
-    info.pColorAttachments = { environment.pCubemaps[0] };  // RTGT_ENVFILTER
+    info.pColorAttachments = {environment.pCubemaps[0]};
     info.clearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
 
-    setupDynamicRenderPass(EDynamicRenderingPass::Environment, EPipeline::EnvFilter, &info);
-  }
-
-  // Create environment irradiance pass
-  {
-    RDynamicRenderingInfo info{};
-    info.pColorAttachments = { environment.pCubemaps[1] };  // RTGT_ENVIRRAD
-    info.clearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
-
-    setupDynamicRenderPass(EDynamicRenderingPass::Environment, EPipeline::EnvIrradiance, &info);
+    setupDynamicRenderPass(EDynamicRenderingPass::Environment, EPipeline::EnvSkybox, &info);
   }
 
   return RE_OK;

@@ -253,7 +253,7 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo = RTextureInfo{};
   textureInfo.name = rtName;
   textureInfo.asCubemap = false;
-  textureInfo.width = core::vulkan::envFilterExtent;
+  textureInfo.width = core::vulkan::EnvSkyboxExtent;
   textureInfo.height = textureInfo.width;
   textureInfo.format = core::vulkan::formatHDR16;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -274,18 +274,15 @@ TResult core::MRenderer::createImageTargets() {
 
   // ENVIRONMENT MAPS
 
-  environment.pCubemaps.resize(2);
-
-  // subresource range used to "walk" environment maps rendering pass
+  // Subresource range used to "walk" environment maps rendering pass
   environment.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   environment.subresourceRange.baseArrayLayer = 0u;
   environment.subresourceRange.layerCount = 1u;
   environment.subresourceRange.baseMipLevel = 0u;
   environment.subresourceRange.levelCount = 1u;
 
-  rtName = RTGT_ENVFILTER;
-  uint32_t dimension = core::vulkan::envFilterExtent;
-  uint32_t mipLevels = math::getMipLevels(dimension);
+  rtName = RTGT_ENV;
+  uint32_t dimension = core::vulkan::EnvSkyboxExtent;
 
   textureInfo = RTextureInfo{};
   textureInfo.name = rtName;
@@ -293,7 +290,7 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.width = dimension;
   textureInfo.height = textureInfo.width;
   textureInfo.format = core::vulkan::formatHDR16;
-  textureInfo.mipLevels = mipLevels;
+  textureInfo.mipLevels = 1;
   textureInfo.detailedViews = true;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
@@ -306,21 +303,17 @@ TResult core::MRenderer::createImageTargets() {
     return RE_CRITICAL;
   }
 
-  environment.pCubemaps[0] = pNewTexture;
+  environment.pCubemaps.emplace_back(pNewTexture);
 
 #ifndef NDEBUG
   RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
 #endif
 
-  rtName = RTGT_ENVIRRAD;
-  dimension = core::vulkan::envIrradianceExtent;
-  mipLevels = math::getMipLevels(dimension);
+  rtName = RTGT_EnvSkybox;
+  dimension = core::vulkan::EnvSkyboxExtent;
 
   textureInfo.name = rtName;
-  textureInfo.width = dimension;
-  textureInfo.height = textureInfo.width;
-  textureInfo.format = core::vulkan::formatHDR16;
-  textureInfo.mipLevels = mipLevels;
+  textureInfo.mipLevels = math::getMipLevels(dimension);
 
   pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -329,7 +322,29 @@ TResult core::MRenderer::createImageTargets() {
     return RE_CRITICAL;
   }
 
-  environment.pCubemaps[1] = pNewTexture;
+  environment.pCubemaps.emplace_back(pNewTexture);
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
+#endif
+
+  rtName = RTGT_ENVIRRAD;
+  dimension = core::vulkan::envIrradianceExtent;
+
+  textureInfo.name = rtName;
+  textureInfo.width = dimension;
+  textureInfo.height = textureInfo.width;
+  textureInfo.format = core::vulkan::formatHDR16;
+  textureInfo.mipLevels = math::getMipLevels(dimension);
+
+  pNewTexture = core::resources.createTexture(&textureInfo);
+
+  if (!pNewTexture) {
+    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
+    return RE_CRITICAL;
+  }
+
+  environment.pCubemaps.emplace_back(pNewTexture);
 
 #ifndef NDEBUG
   RE_LOG(Log, "Created image target '%s'.", rtName.c_str());

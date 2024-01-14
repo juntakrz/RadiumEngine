@@ -33,16 +33,16 @@ void RMaterial::createDescriptorSet() {
 
   // retrieve all material's texture image descriptors
   std::vector<VkDescriptorImageInfo> imageDescriptors = {
-      pBaseColor ? pBaseColor->texture.descriptor
-                 : pNullTexture->texture.descriptor,
-      pNormal ? pNormal->texture.descriptor : pNullTexture->texture.descriptor,
-      pMetalRoughness ? pMetalRoughness->texture.descriptor
-                      : pNullTexture->texture.descriptor,
-      pOcclusion ? pOcclusion->texture.descriptor
-                 : pNullTexture->texture.descriptor,
-      pEmissive ? pEmissive->texture.descriptor
-                : pNullTexture->texture.descriptor,
-      pExtra ? pExtra->texture.descriptor : pNullTexture->texture.descriptor,
+      pBaseColor ? pBaseColor->texture.imageInfo
+                 : pNullTexture->texture.imageInfo,
+      pNormal ? pNormal->texture.imageInfo : pNullTexture->texture.imageInfo,
+      pMetalRoughness ? pMetalRoughness->texture.imageInfo
+                      : pNullTexture->texture.imageInfo,
+      pOcclusion ? pOcclusion->texture.imageInfo
+                 : pNullTexture->texture.imageInfo,
+      pEmissive ? pEmissive->texture.imageInfo
+                : pNullTexture->texture.imageInfo,
+      pExtra ? pExtra->texture.imageInfo : pNullTexture->texture.imageInfo,
   };
 
   // write retrieved data to newly allocated descriptor set

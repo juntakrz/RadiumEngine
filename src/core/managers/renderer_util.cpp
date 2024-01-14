@@ -138,13 +138,13 @@ TResult core::MRenderer::createViewports() {
   VkRect2D scissor{};
   scissor.offset = { 0, 0 };
 
-  // EnvFilter
-  viewport.y = static_cast<float>(core::vulkan::envFilterExtent);
-  viewport.width = static_cast<float>(core::vulkan::envFilterExtent);
-  viewport.height = -static_cast<float>(core::vulkan::envFilterExtent);
-  scissor.extent = { core::vulkan::envFilterExtent, core::vulkan::envFilterExtent };
-  system.viewports.at(EViewport::vpEnvFilter).viewport = viewport;
-  system.viewports.at(EViewport::vpEnvFilter).scissor = scissor;
+  // EnvSkybox
+  viewport.y = static_cast<float>(core::vulkan::EnvSkyboxExtent);
+  viewport.width = static_cast<float>(core::vulkan::EnvSkyboxExtent);
+  viewport.height = -static_cast<float>(core::vulkan::EnvSkyboxExtent);
+  scissor.extent = { core::vulkan::EnvSkyboxExtent, core::vulkan::EnvSkyboxExtent };
+  system.viewports.at(EViewport::vpEnvSkybox).viewport = viewport;
+  system.viewports.at(EViewport::vpEnvSkybox).scissor = scissor;
 
   // EnvIrrad
   viewport.y = static_cast<float>(core::vulkan::envIrradianceExtent);
@@ -384,7 +384,7 @@ void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer,
                  pTexture->texture.imageLayout, newLayout, subresourceRange);
   
   pTexture->texture.imageLayout = newLayout;
-  pTexture->texture.descriptor.imageLayout = newLayout;
+  pTexture->texture.imageInfo.imageLayout = newLayout;
 }
 
 void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
@@ -688,7 +688,7 @@ TResult core::MRenderer::generateSingleMipMap(VkCommandBuffer cmdBuffer,
 
   VkPipelineStageFlags srcStageMask = 0;
 
-  switch (pTexture->texture.descriptor.imageLayout) {
+  switch (pTexture->texture.imageInfo.imageLayout) {
     case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL: {
       srcStageMask = VK_ACCESS_SHADER_READ_BIT;
       break;

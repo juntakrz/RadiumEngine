@@ -28,21 +28,20 @@ class MRenderer {
     VkDescriptorSet imageDescriptorSet;
     VkExtent2D imageExtent;
     RComputeImagePCB imagePCB;
+
+    std::vector<RComputeInfo> jobs;
   } compute;
 
   struct REnvironmentData {
     REnvironmentFragmentPCB pushBlock;
     VkDescriptorSet LUTDescriptorSet;
-    std::vector<RTexture*> pCubemaps;
     VkImageSubresourceRange subresourceRange;
-    VkImageCopy copyRegion;
     int32_t genInterval = 1;
+    std::vector<RTexture*> pCubemaps;
     std::array<glm::vec3, 6> cameraTransformVectors;
 
     struct {
-      uint32_t pipeline = 0;  // ENVFILTER or ENVIRRAD
       uint32_t layer = 0;     // cubemap layer
-      uint32_t mipLevel = 0;  // mipmap level
     } tracking;
   } environment;
 
@@ -221,6 +220,11 @@ class MRenderer {
   void queueLightingUBOUpdate();
   void updateLightingUBO(const int32_t frameIndex);
 
+  void updateAspectRatio();
+  void setFOV(float FOV);
+  void setViewDistance(float farZ);
+  void setViewDistance(float nearZ, float farZ);
+
   //
   // ***DESCRIPTORS
   //
@@ -238,9 +242,6 @@ class MRenderer {
 
   TResult createDescriptorSets();
 
-  // Add images to be processed to compute descriptor set, can be added at offsets
-  void updateComputeImageSet(std::vector<RTexture*>* pInImages, const uint32_t imageOffset);
-
   //
   // ***PIPELINE
   //
@@ -254,7 +255,6 @@ class MRenderer {
   void destroyComputePipelines();
   VkPipelineLayout& getPipelineLayout(EPipelineLayout type);
   TResult createGraphicsPipeline(RGraphicsPipelineInfo* pipelineInfo);
-  TResult createComputePipeline(RComputePipelineInfo* pipelineInfo);
   RPipeline& getGraphicsPipeline(EPipeline type);
   VkPipeline& getComputePipeline(EComputePipeline type);
 
@@ -504,6 +504,19 @@ public:
   void debug_viewSunCamera();
 
   //
+  // ***COMPUTE
+  //
+ private:
+  // Add images to be processed to compute descriptor set, can be added at offsets
+  void updateComputeImageSet(std::vector<RTexture*>* pInImages, const uint32_t imageOffset);
+  void executeComputeImage(VkCommandBuffer commandBuffer,
+     EComputePipeline pipeline);
+
+ public:
+  void createComputeJob(RComputeInfo* pInfo);
+  void executeComputeJobs();
+
+  //
   // ***RENDERING
   //
 
@@ -519,11 +532,8 @@ public:
   void renderPrimitive(VkCommandBuffer cmdBuffer, WPrimitive* pPrimitive,
                        EPipeline pipelineFlag, REntityBindInfo* pBindInfo);
 
-  // DEPRECATED - generates all environment maps and mipmaps in a single pass
-  void renderEnvironmentMaps(VkCommandBuffer commandBuffer);
-
-  void renderEnvironmentMapsSequenced(VkCommandBuffer commandBuffer,
-                                      int32_t frameInterval = 1);
+  void renderEnvironmentMaps(VkCommandBuffer commandBuffer,
+                             const uint32_t frameInterval = 1);
 
   // Generates BRDF LUT map
   void generateLUTMap();
@@ -533,9 +543,6 @@ public:
 
   void executeDynamicRendering(VkCommandBuffer commandBuffer,
                                EDynamicRenderingPass renderPass);
-
-  void executeComputeImage(VkCommandBuffer commandBuffer,
-                           EComputePipeline pipeline);
 
   // Pipeline must use a compatible quad drawing vertex shader
   // Scene descriptor set is optional and is required only if fragment shader needs scene data
@@ -548,11 +555,6 @@ public:
  public:
   void renderFrame();
   void renderInitFrame();
-
-  void updateAspectRatio();
-  void setFOV(float FOV);
-  void setViewDistance(float farZ);
-  void setViewDistance(float nearZ, float farZ);
 };
 
 }  // namespace core

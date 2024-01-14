@@ -11,18 +11,19 @@ TResult RTexture::createImageViews(const bool createDetailedViews) {
 
   // create separate views into every layer and mipmap
   if (createDetailedViews) {
-    texture.layerAndMipViews.resize(texture.layerCount);
+    texture.layerAndMipInfo.resize(texture.layerCount);
 
-    for (auto& it : texture.layerAndMipViews) {
+    for (auto& it : texture.layerAndMipInfo) {
       it.resize(texture.levelCount);
     }
 
     for (uint8_t layerIndex = 0; layerIndex < texture.layerCount;
          ++layerIndex) {
       for (uint8_t mipIndex = 0; mipIndex < texture.levelCount; ++mipIndex) {
-        texture.layerAndMipViews[layerIndex][mipIndex] =
-            core::renderer.createImageView(texture.image, texture.imageFormat,
-                                           1u, 1u, mipIndex, layerIndex);
+        VkDescriptorImageInfo& info = texture.layerAndMipInfo[layerIndex][mipIndex];
+
+        info.imageView = core::renderer.createImageView(texture.image, texture.imageFormat, 1u, 1u, mipIndex, layerIndex);
+        info.sampler = texture.imageInfo.sampler;
       }
     }
   }
@@ -88,9 +89,9 @@ TResult RTexture::createDescriptor() {
     return RE_ERROR;
   }
 
-  texture.descriptor.imageLayout = texture.imageLayout;
-  texture.descriptor.imageView = texture.view;
-  texture.descriptor.sampler = texture.sampler;
+  texture.imageInfo.imageLayout = texture.imageLayout;
+  texture.imageInfo.imageView = texture.view;
+  texture.imageInfo.sampler = texture.sampler;
 
   return RE_OK;
 }
@@ -99,9 +100,9 @@ RTexture::~RTexture() {
   VkDevice device = core::renderer.logicalDevice.device;
   vkDestroyImageView(device, texture.view, nullptr);
 
-  for (auto& vector : texture.layerAndMipViews) {
+  for (auto& vector : texture.layerAndMipInfo) {
     for (auto& it : vector) {
-      vkDestroyImageView(device, it, nullptr);
+      vkDestroyImageView(device, it.imageView, nullptr);
     }
   }
 
