@@ -253,7 +253,7 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo = RTextureInfo{};
   textureInfo.name = rtName;
   textureInfo.asCubemap = false;
-  textureInfo.width = core::vulkan::EnvSkyboxExtent;
+  textureInfo.width = core::vulkan::EnvFilterExtent;
   textureInfo.height = textureInfo.width;
   textureInfo.format = core::vulkan::formatHDR16;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -282,7 +282,7 @@ TResult core::MRenderer::createImageTargets() {
   environment.subresourceRange.levelCount = 1u;
 
   rtName = RTGT_ENV;
-  uint32_t dimension = core::vulkan::EnvSkyboxExtent;
+  uint32_t dimension = core::vulkan::EnvFilterExtent;
 
   textureInfo = RTextureInfo{};
   textureInfo.name = rtName;
@@ -294,7 +294,7 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.detailedViews = true;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-  textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -309,11 +309,12 @@ TResult core::MRenderer::createImageTargets() {
   RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
 #endif
 
-  rtName = RTGT_EnvSkybox;
-  dimension = core::vulkan::EnvSkyboxExtent;
+  rtName = RTGT_ENVFILTER;
+  dimension = core::vulkan::EnvFilterExtent;
 
   textureInfo.name = rtName;
   textureInfo.mipLevels = math::getMipLevels(dimension);
+  textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -334,7 +335,6 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.name = rtName;
   textureInfo.width = dimension;
   textureInfo.height = textureInfo.width;
-  textureInfo.format = core::vulkan::formatHDR16;
   textureInfo.mipLevels = math::getMipLevels(dimension);
 
   pNewTexture = core::resources.createTexture(&textureInfo);

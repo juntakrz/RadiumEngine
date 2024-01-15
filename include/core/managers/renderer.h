@@ -24,12 +24,11 @@ class MRenderer {
   } command;
 
   struct {
-    std::vector<RTexture*> pImages;
     VkDescriptorSet imageDescriptorSet;
-    VkExtent2D imageExtent;
+    VkExtent3D imageExtent;
     RComputeImagePCB imagePCB;
 
-    std::vector<RComputeInfo> jobs;
+    std::vector<RComputeJobInfo> jobs;
   } compute;
 
   struct REnvironmentData {
@@ -509,11 +508,14 @@ public:
  private:
   // Add images to be processed to compute descriptor set, can be added at offsets
   void updateComputeImageSet(std::vector<RTexture*>* pInImages, const uint32_t imageOffset);
+  void updateComputeImageSet(std::vector<VkImageView>* pInViews, const uint32_t imageOffset);
   void executeComputeImage(VkCommandBuffer commandBuffer,
      EComputePipeline pipeline);
 
+  void generateLUTMap();
+
  public:
-  void createComputeJob(RComputeInfo* pInfo);
+  void createComputeJob(RComputeJobInfo* pInfo);
   void executeComputeJobs();
 
   //
@@ -534,9 +536,6 @@ public:
 
   void renderEnvironmentMaps(VkCommandBuffer commandBuffer,
                              const uint32_t frameInterval = 1);
-
-  // Generates BRDF LUT map
-  void generateLUTMap();
 
   void executeRenderPass(VkCommandBuffer commandBuffer, ERenderPass passType,
                          VkDescriptorSet* pSceneSets, const uint32_t setCount);

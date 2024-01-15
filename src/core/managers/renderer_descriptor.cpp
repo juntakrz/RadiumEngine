@@ -398,7 +398,7 @@ TResult core::MRenderer::createDescriptorSets() {
       // environment maps are created with a layout for accepting data writes
       // however descriptor sets require info about their final state
       VkDescriptorImageInfo imageDescriptors[3]{
-          core::resources.getTexture(RTGT_EnvSkybox)->texture.imageInfo,
+          core::resources.getTexture(RTGT_ENVFILTER)->texture.imageInfo,
           core::resources.getTexture(RTGT_ENVIRRAD)->texture.imageInfo,
           core::resources.getTexture(RTGT_LUTMAP)->texture.imageInfo};
 
@@ -406,7 +406,7 @@ TResult core::MRenderer::createDescriptorSets() {
         imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
       }
 
-      // RTGT_EnvSkybox
+      // RTGT_ENVFILTER
       writeDescriptorSets[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
       writeDescriptorSets[2].descriptorType =
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;

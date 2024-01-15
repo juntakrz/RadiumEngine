@@ -142,6 +142,24 @@ void core::MRenderer::renderEnvironmentMaps(
 
   if (environment.tracking.layer > 5) {
     environment.tracking.layer = 0;
+
+    std::vector<RTexture*> pTextures;
+    pTextures.emplace_back(core::resources.getTexture(RTGT_ENV));
+    pTextures.emplace_back(core::resources.getTexture(RTGT_ENVFILTER));
+    pTextures.emplace_back(core::resources.getTexture(RTGT_ENVIRRAD));
+
+    RComputeJobInfo jobInfo{};
+    jobInfo.jobType = EComputeJob::Image;
+    jobInfo.pipeline = EComputePipeline::ImageEnvIrradiance;
+    jobInfo.width = core::vulkan::EnvFilterExtent;
+    jobInfo.height = core::vulkan::EnvFilterExtent;
+    jobInfo.depth = 6;
+    jobInfo.pImageAttachments = pTextures;
+    jobInfo.useDetailedViewsOnly = false;
+    jobInfo.transtionToShaderReadOnly = true;
+
+    createComputeJob(&jobInfo);
+
     renderView.generateEnvironmentMaps = false;
   }
 
@@ -200,57 +218,6 @@ void core::MRenderer::renderEnvironmentMaps(
 
   // increase layer count to write to the next cubemap face
   environment.tracking.layer++;
-}
-
-void core::MRenderer::generateLUTMap() {
-  RE_LOG(Log, "Generating BRDF LUT map to '%s' texture.", RTGT_LUTMAP);
-
-  core::time.tickTimer();
-
-  RTexture* pLUTTexture = core::resources.getTexture(RTGT_LUTMAP);
-  std::vector<RTexture*> pTextures;
-  pTextures.emplace_back(pLUTTexture);
-
-  updateComputeImageSet(&pTextures, 0);
-
-  VkCommandBuffer commandBuffer = createCommandBuffer(
-      ECmdType::Compute, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
-
-  vkCmdPushConstants(commandBuffer, getPipelineLayout(EPipelineLayout::ComputeImage),
-    VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(RComputeImagePCB), &compute.imagePCB);
-
-  executeComputeImage(commandBuffer, EComputePipeline::ImageLUT);
-
-  VkImageSubresourceRange subRange{};
-  subRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  subRange.baseArrayLayer = 0;
-  subRange.layerCount = 1;
-  subRange.baseMipLevel = 0;
-  subRange.levelCount = 1;
-
-  setImageLayout(commandBuffer, pLUTTexture,
-                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subRange);
-
-  flushCommandBuffer(commandBuffer, ECmdType::Compute, true, false);
-
-  // update renderer descriptor sets to use texture as LUT source
-  for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-    VkWriteDescriptorSet writeDescriptorSet{};
-    writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeDescriptorSet.descriptorType =
-        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    writeDescriptorSet.descriptorCount = 1;
-    writeDescriptorSet.dstSet = core::renderer.getSceneDescriptorSet(i);
-    writeDescriptorSet.dstBinding = 4;
-    writeDescriptorSet.pImageInfo =
-        &core::resources.getTexture(RTGT_LUTMAP)->texture.imageInfo;
-
-    vkUpdateDescriptorSets(core::renderer.logicalDevice.device, 1,
-                           &writeDescriptorSet, 0, nullptr);
-  }
-
-  float timeSpent = core::time.tickTimer();
-  RE_LOG(Log, "Generating BRDF LUT map took %.3f milliseconds.", timeSpent);
 }
 
 void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer,
@@ -420,6 +387,8 @@ void core::MRenderer::renderFrame() {
 
   vkResetCommandBuffer(command.buffersGraphics[renderView.frameInFlight], NULL);
 
+  executeComputeJobs();
+
   VkCommandBuffer cmdBuffer = command.buffersGraphics[renderView.frameInFlight];
 
   // update lighting UBO if required
@@ -528,6 +497,17 @@ void core::MRenderer::renderFrame() {
 }
 
 void core::MRenderer::renderInitFrame() {
-  generateLUTMap();
+  RComputeJobInfo computeJobInfo{};
+  computeJobInfo.jobType = EComputeJob::Image;
+  computeJobInfo.pipeline = EComputePipeline::ImageLUT;
+  computeJobInfo.width = core::vulkan::LUTExtent;
+  computeJobInfo.height = core::vulkan::LUTExtent;
+  computeJobInfo.depth = 0;
+  computeJobInfo.pImageAttachments = {core::resources.getTexture(RTGT_LUTMAP)};
+  computeJobInfo.useDetailedViewsOnly = false;
+  computeJobInfo.transtionToShaderReadOnly = true;
+
+  createComputeJob(&computeJobInfo);
+
   renderFrame();
 }

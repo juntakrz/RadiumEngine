@@ -205,8 +205,7 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
   createInfo.usage = pInfo->usageFlags;
   createInfo.samples = VK_SAMPLE_COUNT_1_BIT;
   createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-  createInfo.flags =
-      pInfo->asCubemap ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : NULL;
+  createInfo.flags = pInfo->asCubemap ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : NULL;
 
   VmaAllocationCreateInfo allocCreateInfo{};
   allocCreateInfo.requiredFlags = pInfo->memoryFlags;

@@ -65,7 +65,8 @@ enum class EComputeJob {
 enum class EComputePipeline {
   Null,
   ImageLUT,
-  ImageMipMap16f
+  ImageMipMap16f,
+  ImageEnvIrradiance
 };
 
 enum class EDescriptorSetLayout {
@@ -150,10 +151,13 @@ struct RCameraInfo {
   float farZ = config::viewDistance;
 };
 
-struct RComputeInfo {
+struct RComputeJobInfo {
   EComputeJob jobType;
+  EComputePipeline pipeline;
   std::vector<struct RTexture*> pImageAttachments;
-  bool useDetailedViewsOnly = true;
+  uint32_t width, height, depth = 1;
+  bool useDetailedViewsOnly;
+  bool transtionToShaderReadOnly;
 };
 
 struct RDynamicRenderingInfo {

@@ -20,7 +20,7 @@
 #define RTGT_COMPUTE            "RT2D_Compute"      // default compute shader processing target
 
 #define RTGT_ENV                "RTCube_Env"
-#define RTGT_EnvSkybox          "RTCube_EnvSkybox"
+#define RTGT_ENVFILTER          "RTCube_EnvSkybox"
 #define RTGT_ENVIRRAD           "RTCube_EnvIrrad"
 #define RTGT_LUTMAP             "RT2D_EnvLUT"
 
@@ -115,7 +115,7 @@ const VkFormat formatLUT = VK_FORMAT_R16G16_SFLOAT;
 extern VkFormat formatDepth;
 extern VkFormat formatShadow;
 const uint32_t LUTExtent = 512u;
-const uint32_t EnvSkyboxExtent = 512u;
+const uint32_t EnvFilterExtent = 512u;
 const uint32_t envIrradianceExtent = 64u;
 const VkColorSpaceKHR colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
 const VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAILBOX_KHR;

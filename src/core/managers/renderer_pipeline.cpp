@@ -427,6 +427,43 @@ TResult core::MRenderer::createComputePipelines() {
     vkDestroyShaderModule(logicalDevice.device, shaderStage.module, nullptr);
   }
 
+  //
+  // Compute Image pipeline for processing environmental irradiance cubemap
+  //
+  {
+    system.computePipelines.emplace(EComputePipeline::ImageEnvIrradiance,
+      VK_NULL_HANDLE);
+
+    VkPipelineShaderStageCreateInfo shaderStage =
+      loadShader("cs_envIrrad.spv", VK_SHADER_STAGE_COMPUTE_BIT);
+
+    // 'Compute Image' pipeline
+    VkPipelineRenderingCreateInfo pipelineRenderingInfo{};
+    pipelineRenderingInfo.sType =
+      VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+    pipelineRenderingInfo.colorAttachmentCount = 1;
+    pipelineRenderingInfo.pColorAttachmentFormats = &core::vulkan::formatHDR16;
+    pipelineRenderingInfo.viewMask = 0;
+
+    VkComputePipelineCreateInfo computePipelineInfo{};
+    computePipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    computePipelineInfo.layout =
+      getPipelineLayout(EPipelineLayout::ComputeImage);
+    computePipelineInfo.stage = shaderStage;
+    computePipelineInfo.flags = 0;
+
+    if (vkCreateComputePipelines(
+      logicalDevice.device, VK_NULL_HANDLE, 1, &computePipelineInfo,
+      nullptr, &getComputePipeline(EComputePipeline::ImageEnvIrradiance)) !=
+      VK_SUCCESS) {
+      RE_LOG(Critical, "Failed to create Compute Image 'Environment Irradiance' pipeline.");
+
+      return RE_CRITICAL;
+    }
+
+    vkDestroyShaderModule(logicalDevice.device, shaderStage.module, nullptr);
+  }
+
   return RE_OK;
 }
 
