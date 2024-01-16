@@ -92,8 +92,7 @@ float getMicrofacetDistribution(float roughness, float NdotH) {
 // Precomputed Environment Maps are required uniform inputs
 vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, float NdotV, vec3 n, vec3 reflection)
 {
-	//float lod = (roughness * lighting.prefilteredCubeMipLevels);
-	float lod = (roughness * 16.0);
+	float lod = (roughness * lighting.prefilteredCubeMipLevels);
 
 	// retrieve a scale and bias to F0
 	vec2 brdf = (texture(BRDFLUTMap, vec2(NdotV, 1.0 - roughness))).rg;

@@ -35,7 +35,7 @@ class MRenderer {
     REnvironmentFragmentPCB pushBlock;
     VkDescriptorSet LUTDescriptorSet;
     VkImageSubresourceRange subresourceRange;
-    int32_t genInterval = 1;
+    int32_t genInterval = 2;
     std::vector<RTexture*> pCubemaps;
     std::array<glm::vec3, 6> cameraTransformVectors;
 
@@ -356,9 +356,10 @@ public:
   void flushCommandBuffer(VkCommandBuffer cmdBuffer, ECmdType type,
                           bool free = false, bool useFence = false);
 
+  // using isCubemap will override baseLayer and layerCount
   VkImageView createImageView(VkImage image, VkFormat format,
-                              uint32_t levelCount, uint32_t layerCount,
-                              uint32_t baseLevel = 0, uint32_t baseLayer = 0);
+    uint32_t layerCount, uint32_t levelCount, const bool isCubemap,
+    uint32_t baseLayer = 0, uint32_t baseLevel = 0);
 
   // binds model to graphics pipeline
   uint32_t bindEntity(AEntity* pEntity);
@@ -507,8 +508,8 @@ public:
   //
  private:
   // Add images to be processed to compute descriptor set, can be added at offsets
-  void updateComputeImageSet(std::vector<RTexture*>* pInImages, const uint32_t imageOffset);
-  void updateComputeImageSet(std::vector<VkImageView>* pInViews, const uint32_t imageOffset);
+  void updateComputeImageSet(std::vector<RTexture*>* pInImages, std::vector<RTexture*>* pInSamplers = nullptr,
+    const bool useExtraImageViews = false, const bool useExtraSamplerViews = false);
   void executeComputeImage(VkCommandBuffer commandBuffer,
      EComputePipeline pipeline);
 

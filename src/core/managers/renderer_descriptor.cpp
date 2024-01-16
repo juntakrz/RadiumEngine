@@ -277,21 +277,32 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
     system.descriptorSetLayouts.emplace(EDescriptorSetLayout::ComputeImage,
                                         VK_NULL_HANDLE);
 
-    const VkDescriptorBindingFlagsEXT bindingFlags =
+    const VkDescriptorBindingFlagsEXT bindingFlagsImage =
+      VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT |
+      VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT |
+      VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT_EXT;
+
+    const VkDescriptorBindingFlagsEXT bindingFlagsSampler =
       VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT |
       VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT |
       VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT |
       VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT_EXT;
 
+    const VkDescriptorBindingFlagsEXT bindingFlags[] = {bindingFlagsImage, bindingFlagsSampler};
+
     VkDescriptorSetLayoutBindingFlagsCreateInfoEXT bindingFlagsCreateInfo{};
     bindingFlagsCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
     bindingFlagsCreateInfo.bindingCount = 1;
-    bindingFlagsCreateInfo.pBindingFlags = &bindingFlags;
+    bindingFlagsCreateInfo.pBindingFlags = bindingFlags;
+
 
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
-        {0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-        config::scene::storageImageBudget,
-        VK_SHADER_STAGE_COMPUTE_BIT, nullptr}
+      {0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+      config::scene::storageImageBudget,
+      VK_SHADER_STAGE_COMPUTE_BIT, nullptr},
+      {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      config::scene::storageImageBudget,
+      VK_SHADER_STAGE_COMPUTE_BIT, nullptr}
     };
 
     VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};

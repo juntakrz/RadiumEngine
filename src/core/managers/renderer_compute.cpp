@@ -4,72 +4,135 @@
 #include "core/managers/time.h"
 #include "core/managers/renderer.h"
 
-void core::MRenderer::updateComputeImageSet(std::vector<RTexture*>* pInImages, const uint32_t imageOffset) {
+void core::MRenderer::updateComputeImageSet(std::vector<RTexture*>* pInImages, std::vector<RTexture*>* pInSamplers,
+  const bool useExtraImageViews, const bool useExtraSamplerViews) {
   if (!pInImages) {
     RE_LOG(Error, "Failed to update compute image descriptor set. No data was provided.");
     return;
   }
 
-  const uint32_t writeSize = static_cast<uint32_t>(pInImages->size());
+  const uint32_t imageWriteSize = static_cast<uint32_t>(pInImages->size());
+  uint32_t samplerWriteSize = 0;
+  uint32_t extraImageWriteSize = 0;
+  uint32_t extraSamplerWriteSize = 0;
 
-  if (writeSize > config::scene::storageImageBudget || writeSize == 0) {
-    RE_LOG(Error,
-      "Couldn't update compute image descriptor set. Invalid data was "
-      "provided.");
+  if (useExtraImageViews) {
+    for (auto& image : *pInImages) {
+      if (image->texture.extraViews.empty()) continue;
+
+      const uint32_t extraViewCount = static_cast<uint32_t>(image->texture.extraViews.size());
+      for (uint32_t index = 0; index < extraViewCount; ++index) {
+        extraImageWriteSize += static_cast<uint32_t>(image->texture.extraViews.at(index).size());
+      }
+    }
+  }
+  
+  if (pInSamplers) {
+    samplerWriteSize = static_cast<uint32_t>(pInSamplers->size());
+
+    if (useExtraSamplerViews) {
+      for (auto& sampler : *pInSamplers) {
+        if (sampler->texture.extraViews.empty()) continue;
+
+        const uint32_t extraViewCount = static_cast<uint32_t>(sampler->texture.extraViews.size());
+        for (uint32_t index = 0; index < extraViewCount; ++index) {
+          extraImageWriteSize += static_cast<uint32_t>(sampler->texture.extraViews.at(index).size());
+        }
+      }
+    }
+  }
+
+  const uint32_t totalWriteSize = imageWriteSize + samplerWriteSize + extraImageWriteSize + extraSamplerWriteSize;
+
+  if (totalWriteSize > config::scene::storageImageBudget || totalWriteSize == 0) {
     return;
   }
 
-  std::vector<VkWriteDescriptorSet> writeDescriptorSets;
-  writeDescriptorSets.resize(writeSize);
+  std::vector<VkWriteDescriptorSet> writeDescriptorSets(totalWriteSize, VkWriteDescriptorSet{});
+  uint32_t arrayIndex = 0u;
 
-  for (uint32_t i = 0; i < writeSize; ++i) {
-    writeDescriptorSets[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeDescriptorSets[i].dstSet = compute.imageDescriptorSet;
-    writeDescriptorSets[i].dstBinding = 0;
-    writeDescriptorSets[i].dstArrayElement = i;
-    writeDescriptorSets[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    writeDescriptorSets[i].descriptorCount = 1;
-    writeDescriptorSets[i].pImageInfo = &pInImages->at(i)->texture.imageInfo;
+  for (uint32_t i = 0; i < imageWriteSize; ++i) {
+    writeDescriptorSets[arrayIndex].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeDescriptorSets[arrayIndex].dstSet = compute.imageDescriptorSet;
+    writeDescriptorSets[arrayIndex].dstBinding = 0;
+    writeDescriptorSets[arrayIndex].dstArrayElement = arrayIndex;
+    writeDescriptorSets[arrayIndex].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    writeDescriptorSets[arrayIndex].descriptorCount = 1;
+    writeDescriptorSets[arrayIndex].pImageInfo = &pInImages->at(i)->texture.imageInfo;
+    
+    arrayIndex++;
+
+    if (useExtraImageViews && !pInImages->at(i)->texture.extraViews.empty()) {
+      RTexture* pImage = pInImages->at(i);
+      const uint32_t layerCount = static_cast<uint32_t>(pImage->texture.extraViews.size());
+
+      for (uint32_t layer = 0; layer < layerCount; ++layer) {
+        const uint32_t levelCount = static_cast<uint32_t>(pImage->texture.extraViews.at(layer).size());
+
+        for (uint32_t level = 0; level < levelCount; ++level) {
+          VkDescriptorImageInfo imageInfo{};
+          imageInfo = pInImages->at(i)->texture.extraViews[layer][level];
+          imageInfo.imageLayout = pInImages->at(i)->texture.imageLayout;
+
+          writeDescriptorSets[arrayIndex].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+          writeDescriptorSets[arrayIndex].dstSet = compute.imageDescriptorSet;
+          writeDescriptorSets[arrayIndex].dstBinding = 0;
+          writeDescriptorSets[arrayIndex].dstArrayElement = arrayIndex;
+          writeDescriptorSets[arrayIndex].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+          writeDescriptorSets[arrayIndex].descriptorCount = 1;
+          writeDescriptorSets[arrayIndex].pImageInfo = &imageInfo;
+
+          arrayIndex++;
+        }
+      }
+    }
   }
 
-  vkUpdateDescriptorSets(core::renderer.logicalDevice.device, writeSize,
+  if (pInSamplers) {
+    for (uint32_t j = 0; j < samplerWriteSize; ++j) {
+      writeDescriptorSets[arrayIndex].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writeDescriptorSets[arrayIndex].dstSet = compute.imageDescriptorSet;
+      writeDescriptorSets[arrayIndex].dstBinding = 1;
+      writeDescriptorSets[arrayIndex].dstArrayElement = j;
+      writeDescriptorSets[arrayIndex].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      writeDescriptorSets[arrayIndex].descriptorCount = 1;
+      writeDescriptorSets[arrayIndex].pImageInfo = &pInSamplers->at(j)->texture.imageInfo;
+
+      arrayIndex++;
+
+      if (useExtraSamplerViews && !pInSamplers->at(j)->texture.extraViews.empty()) {
+        RTexture* pSampler = pInSamplers->at(j);
+        const uint32_t layerCount = static_cast<uint32_t>(pSampler->texture.extraViews.size());
+
+        for (uint32_t layer = 0; layer < layerCount; ++layer) {
+          const uint32_t levelCount = static_cast<uint32_t>(pSampler->texture.extraViews.at(layer).size());
+
+          for (uint32_t level = 0; level < levelCount; ++level) {
+            VkDescriptorImageInfo imageInfo{};
+            imageInfo = pInSamplers->at(j)->texture.extraViews[layer][level];
+            imageInfo.imageLayout = pInSamplers->at(j)->texture.imageLayout;
+
+            writeDescriptorSets[arrayIndex].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writeDescriptorSets[arrayIndex].dstSet = compute.imageDescriptorSet;
+            writeDescriptorSets[arrayIndex].dstBinding = 0;
+            writeDescriptorSets[arrayIndex].dstArrayElement = arrayIndex;
+            writeDescriptorSets[arrayIndex].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+            writeDescriptorSets[arrayIndex].descriptorCount = 1;
+            writeDescriptorSets[arrayIndex].pImageInfo = &imageInfo;
+
+            arrayIndex++;
+          }
+        }
+      }
+    }
+  }
+
+  vkUpdateDescriptorSets(core::renderer.logicalDevice.device, totalWriteSize,
     writeDescriptorSets.data(), 0, nullptr);
 
-  compute.imagePCB.imageIndex = imageOffset;
-  compute.imagePCB.imageCount = writeSize;
-}
-
-void core::MRenderer::updateComputeImageSet(std::vector<VkImageView>* pInViews, const uint32_t imageOffset) {
-  const uint32_t viewSize = static_cast<uint32_t>(pInViews->size());
-
-  if (!pInViews || viewSize > config::scene::storageImageBudget || viewSize == 0) {
-    RE_LOG(Error,
-      "Couldn't update compute image descriptor set. Invalid data was "
-      "provided.");
-    return;
-  }
-
-  std::vector<VkDescriptorImageInfo> imageInfo(viewSize);
-  std::vector<VkWriteDescriptorSet> writeDescriptorSets(viewSize);
-
-  for (uint32_t i = 0; i < viewSize; ++i) {
-    imageInfo[i].imageView = pInViews->at(i);
-  }
-
-  for (uint32_t j = 0; j < viewSize; ++j) {
-    writeDescriptorSets[j].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeDescriptorSets[j].dstSet = compute.imageDescriptorSet;
-    writeDescriptorSets[j].dstBinding = j;
-    writeDescriptorSets[j].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    writeDescriptorSets[j].descriptorCount = 1;
-    writeDescriptorSets[j].pImageInfo = &imageInfo[j];
-  }
-
-  vkUpdateDescriptorSets(core::renderer.logicalDevice.device, viewSize,
-    writeDescriptorSets.data(), 0, nullptr);
-
-  compute.imagePCB.imageIndex = imageOffset;
-  compute.imagePCB.imageCount = viewSize;
+  // TODO: Update this accounting for samplers also being bound now
+  compute.imagePCB.imageIndex = 0;
+  compute.imagePCB.imageCount = totalWriteSize;
 }
 
 void core::MRenderer::executeComputeImage(VkCommandBuffer commandBuffer,
@@ -165,28 +228,49 @@ void core::MRenderer::executeComputeJobs() {
       compute.imageExtent.width = info.width;
       compute.imageExtent.height = info.height;
       compute.imageExtent.depth = info.depth;
+      compute.imagePCB.intValues = info.intValues;
+      compute.imagePCB.floatValues = info.floatValues;
 
-      for (auto& it : info.pImageAttachments) {
-        range.layerCount = it->texture.layerCount;
-        range.levelCount = it->texture.levelCount;
+      for (auto& image : info.pImageAttachments) {
+        range.layerCount = image->texture.layerCount;
+        range.levelCount = image->texture.levelCount;
 
-        setImageLayout(transitionBuffer, it, VK_IMAGE_LAYOUT_GENERAL, range);
+        setImageLayout(transitionBuffer, image, VK_IMAGE_LAYOUT_GENERAL, range);
       }
 
-      updateComputeImageSet(&info.pImageAttachments, 0);
+      for (auto& sampler : info.pSamplerAttachments) {
+        range.layerCount = sampler->texture.layerCount;
+        range.levelCount = sampler->texture.levelCount;
+
+        setImageLayout(transitionBuffer, sampler, VK_IMAGE_LAYOUT_GENERAL, range);
+      }
+
+      flushCommandBuffer(transitionBuffer, ECmdType::Graphics, false, true);
+
+      updateComputeImageSet(&info.pImageAttachments, &info.pSamplerAttachments, info.useExtraImageViews, info.useExtraSamplerViews);
 
       VkCommandBuffer cmdBuffer = createCommandBuffer(ECmdType::Compute, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
       executeComputeImage(cmdBuffer, info.pipeline);
       flushCommandBuffer(cmdBuffer, ECmdType::Compute, true);
 
-      if (info.transtionToShaderReadOnly) {
-        for (auto& it : info.pImageAttachments) {
-          range.layerCount = it->texture.layerCount;
-          range.levelCount = it->texture.levelCount;
+      beginCommandBuffer(transitionBuffer);
 
-          setImageLayout(transitionBuffer, it, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, range);
+      if (info.transtionToShaderReadOnly) {
+        for (auto& image : info.pImageAttachments) {
+          range.layerCount = image->texture.layerCount;
+          range.levelCount = image->texture.levelCount;
+
+          setImageLayout(transitionBuffer, image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, range);
+        }
+
+        for (auto& sampler : info.pSamplerAttachments) {
+          range.layerCount = sampler->texture.layerCount;
+          range.levelCount = sampler->texture.levelCount;
+
+          setImageLayout(transitionBuffer, sampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, range);
         }
       }
+
       flushCommandBuffer(transitionBuffer, ECmdType::Graphics, true);
 
       compute.jobs.erase(compute.jobs.begin());

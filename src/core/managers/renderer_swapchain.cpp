@@ -239,7 +239,7 @@ TResult core::MRenderer::createSwapChainImageViews() {
 
   for (size_t i = 0; i < swapchain.imageViews.size(); ++i) {
     swapchain.imageViews[i] =
-        createImageView(swapchain.images[i], swapchain.formatData.format, 1, 1);
+        createImageView(swapchain.images[i], swapchain.formatData.format, 1, 1, false);
   }
 
   return RE_OK;

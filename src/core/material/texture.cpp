@@ -3,36 +3,65 @@
 #include "core/managers/renderer.h"
 #include "core/material/texture.h"
 
-TResult RTexture::createImageViews(const bool createDetailedViews) {
+TResult RTexture::createImageViews(const bool createExtraViews) {
   // create complete image view
   texture.view =
       core::renderer.createImageView(texture.image, texture.imageFormat,
-                                     texture.levelCount, texture.layerCount);
+                                     texture.layerCount, texture.levelCount, isCubemap);
 
   // create separate views into every layer and mipmap
-  if (createDetailedViews) {
-    texture.layerAndMipInfo.resize(texture.layerCount);
+  if (createExtraViews) {
+    switch (isCubemap) {
+      case true: {
+        // 6 views into separate cubemap faces and one view into all cubemap mip levels
+        texture.extraViews.resize(7u);
 
-    for (auto& it : texture.layerAndMipInfo) {
-      it.resize(texture.levelCount);
-    }
+        for (uint32_t layerIndex = 0; layerIndex < 6; ++layerIndex) {
+          texture.extraViews[layerIndex].emplace_back();
 
-    for (uint8_t layerIndex = 0; layerIndex < texture.layerCount;
-         ++layerIndex) {
-      for (uint8_t mipIndex = 0; mipIndex < texture.levelCount; ++mipIndex) {
-        VkDescriptorImageInfo& info = texture.layerAndMipInfo[layerIndex][mipIndex];
+          VkDescriptorImageInfo& info = texture.extraViews[layerIndex][0];
 
-        info.imageView = core::renderer.createImageView(texture.image, texture.imageFormat, 1u, 1u, mipIndex, layerIndex);
-        info.sampler = texture.imageInfo.sampler;
+          info.imageView = core::renderer.createImageView(texture.image, texture.imageFormat, 1u, 1u, false, layerIndex, 0u);
+          info.sampler = texture.imageInfo.sampler;
+        }
+
+        texture.extraViews[6].resize(texture.levelCount);
+
+        for (uint8_t mipIndex = 0; mipIndex < texture.levelCount; ++mipIndex) {
+          VkDescriptorImageInfo& info = texture.extraViews[6][mipIndex];
+
+          info.imageView = core::renderer.createImageView(texture.image, texture.imageFormat, 6u, 1u, true, 0u, mipIndex);
+          info.sampler = texture.imageInfo.sampler;
+        }
+
+        break;
+      }
+
+      case false: {
+        texture.extraViews.resize(texture.layerCount);
+
+        for (auto& it : texture.extraViews) {
+          it.resize(texture.levelCount);
+        }
+
+        for (uint8_t layerIndex = 0; layerIndex < texture.layerCount;
+          ++layerIndex) {
+          for (uint8_t mipIndex = 0; mipIndex < texture.levelCount; ++mipIndex) {
+            VkDescriptorImageInfo& info = texture.extraViews[layerIndex][mipIndex];
+
+            info.imageView = core::renderer.createImageView(texture.image, texture.imageFormat, 1u, 1u, false, layerIndex, mipIndex);
+            info.sampler = texture.imageInfo.sampler;
+          }
+        }
+        break;
       }
     }
   }
   
   texture.viewType = VK_IMAGE_VIEW_TYPE_2D;
 
-  if (texture.layerCount == 6) {
+  if (isCubemap && texture.layerCount == 6) {
     texture.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
-    isCubemap = true;
   }
 
   if (!texture.view) {
@@ -100,7 +129,7 @@ RTexture::~RTexture() {
   VkDevice device = core::renderer.logicalDevice.device;
   vkDestroyImageView(device, texture.view, nullptr);
 
-  for (auto& vector : texture.layerAndMipInfo) {
+  for (auto& vector : texture.extraViews) {
     for (auto& it : vector) {
       vkDestroyImageView(device, it.imageView, nullptr);
     }

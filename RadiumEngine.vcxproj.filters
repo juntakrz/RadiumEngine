@@ -311,7 +311,6 @@
     <None Include="content_src\shaders\vs_skybox.vert" />
     <None Include="content_src\shaders\vs_environment.vert" />
     <None Include="content_src\shaders\fs_envFilter.frag" />
-    <None Include="content_src\shaders\fs_envIrradiance.frag" />
     <None Include="content_src\shaders\vs_brdfLUT.vert" />
     <None Include="content_src\shaders\fs_gbuffer.frag" />
     <None Include="content_src\shaders\fs_present.frag" />

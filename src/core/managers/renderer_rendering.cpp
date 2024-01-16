@@ -143,24 +143,7 @@ void core::MRenderer::renderEnvironmentMaps(
   if (environment.tracking.layer > 5) {
     environment.tracking.layer = 0;
 
-    std::vector<RTexture*> pTextures;
-    pTextures.emplace_back(core::resources.getTexture(RTGT_ENV));
-    pTextures.emplace_back(core::resources.getTexture(RTGT_ENVFILTER));
-    pTextures.emplace_back(core::resources.getTexture(RTGT_ENVIRRAD));
-
-    RComputeJobInfo jobInfo{};
-    jobInfo.jobType = EComputeJob::Image;
-    jobInfo.pipeline = EComputePipeline::ImageEnvIrradiance;
-    jobInfo.width = core::vulkan::EnvFilterExtent;
-    jobInfo.height = core::vulkan::EnvFilterExtent;
-    jobInfo.depth = 6;
-    jobInfo.pImageAttachments = pTextures;
-    jobInfo.useDetailedViewsOnly = false;
-    jobInfo.transtionToShaderReadOnly = true;
-
-    createComputeJob(&jobInfo);
-
-    renderView.generateEnvironmentMaps = false;
+    //renderView.generateEnvironmentMaps = false;
   }
 
   RTexture* pCubemap = core::resources.getTexture(RTGT_ENV);
@@ -185,7 +168,7 @@ void core::MRenderer::renderEnvironmentMaps(
 
   // modify cubemap color attachment with a required view into an appropriate layer
   VkRenderingAttachmentInfo attachmentInfo = pPipeline->dynamic.colorAttachmentInfo[0];
-  attachmentInfo.imageView = pCubemap->texture.layerAndMipInfo[environment.tracking.layer][0].imageView;
+  attachmentInfo.imageView = pCubemap->texture.extraViews[environment.tracking.layer][0].imageView;
   renderingInfo.pColorAttachments = &attachmentInfo;
 
   vkCmdBeginRendering(commandBuffer, &renderingInfo);
@@ -215,6 +198,28 @@ void core::MRenderer::renderEnvironmentMaps(
   vkCmdEndRendering(commandBuffer);
 
   setImageLayout(commandBuffer, pCubemap, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, environment.subresourceRange);
+
+  std::vector<RTexture*> pImages;
+  pImages.emplace_back(core::resources.getTexture(RTGT_ENVIRRAD));
+
+  std::vector<RTexture*> pSamplers;
+  pSamplers.emplace_back(core::resources.getTexture(RTGT_ENV));
+
+  RComputeJobInfo jobInfo{};
+  jobInfo.jobType = EComputeJob::Image;
+  jobInfo.pipeline = EComputePipeline::ImageEnvIrradiance;
+  jobInfo.width = core::vulkan::EnvFilterExtent;
+  jobInfo.height = core::vulkan::EnvFilterExtent;
+  jobInfo.depth = 1;
+  jobInfo.pImageAttachments = pImages;
+  jobInfo.pSamplerAttachments = pSamplers;
+  jobInfo.useExtraImageViews = true;
+  jobInfo.useExtraSamplerViews = false;
+  jobInfo.transtionToShaderReadOnly = true;
+  jobInfo.intValues.x = environment.tracking.layer;
+  jobInfo.intValues.y = pImages[0]->texture.levelCount;
+
+  createComputeJob(&jobInfo);
 
   // increase layer count to write to the next cubemap face
   environment.tracking.layer++;
@@ -504,7 +509,6 @@ void core::MRenderer::renderInitFrame() {
   computeJobInfo.height = core::vulkan::LUTExtent;
   computeJobInfo.depth = 0;
   computeJobInfo.pImageAttachments = {core::resources.getTexture(RTGT_LUTMAP)};
-  computeJobInfo.useDetailedViewsOnly = false;
   computeJobInfo.transtionToShaderReadOnly = true;
 
   createComputeJob(&computeJobInfo);

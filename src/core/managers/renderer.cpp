@@ -252,7 +252,9 @@ TResult core::MRenderer::createImageTargets() {
 
   textureInfo = RTextureInfo{};
   textureInfo.name = rtName;
-  textureInfo.asCubemap = false;
+  textureInfo.layerCount = 1u;
+  textureInfo.mipLevels = 1u;
+  textureInfo.isCubemap = false;
   textureInfo.width = core::vulkan::EnvFilterExtent;
   textureInfo.height = textureInfo.width;
   textureInfo.format = core::vulkan::formatHDR16;
@@ -286,12 +288,13 @@ TResult core::MRenderer::createImageTargets() {
 
   textureInfo = RTextureInfo{};
   textureInfo.name = rtName;
-  textureInfo.asCubemap = true;
+  textureInfo.layerCount = 6u;
+  textureInfo.mipLevels = 1u;
+  textureInfo.isCubemap = true;
   textureInfo.width = dimension;
   textureInfo.height = textureInfo.width;
   textureInfo.format = core::vulkan::formatHDR16;
-  textureInfo.mipLevels = 1;
-  textureInfo.detailedViews = true;
+  textureInfo.extraViews = true;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
@@ -355,10 +358,10 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.name = rtName;
   textureInfo.width = swapchain.imageExtent.width;
   textureInfo.height = swapchain.imageExtent.height;
-  textureInfo.asCubemap = false;
+  textureInfo.isCubemap = false;
   textureInfo.format = core::vulkan::formatHDR32;
-  textureInfo.layerCount = 1;
-  textureInfo.mipLevels = 1;
+  textureInfo.layerCount = 1u;
+  textureInfo.mipLevels = 1u;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
@@ -468,7 +471,8 @@ TResult core::MRenderer::createDepthTargets() {
 
   RTextureInfo textureInfo{};
   textureInfo.name = rtName;
-  textureInfo.asCubemap = false;
+  textureInfo.layerCount = 1u;
+  textureInfo.isCubemap = false;
   textureInfo.format = core::vulkan::formatDepth;
   textureInfo.width = swapchain.imageExtent.width;
   textureInfo.height = swapchain.imageExtent.height;
@@ -504,7 +508,7 @@ TResult core::MRenderer::createDepthTargets() {
 
   textureInfo = RTextureInfo{};
   textureInfo.name = rtName;
-  textureInfo.asCubemap = false;
+  textureInfo.isCubemap = false;
   textureInfo.format = core::vulkan::formatShadow;
   textureInfo.width = config::shadowResolution;
   textureInfo.height = config::shadowResolution;
@@ -579,6 +583,9 @@ TResult core::MRenderer::setRendererDefaults() {
   }
 
   setCamera(pCamera);
+
+  // Set default lighting UBO data
+  lighting.data.prefilteredCubeMipLevels = (float)math::getMipLevels(core::vulkan::EnvFilterExtent);
 
   return RE_OK;
 }

@@ -155,9 +155,13 @@ struct RComputeJobInfo {
   EComputeJob jobType;
   EComputePipeline pipeline;
   std::vector<struct RTexture*> pImageAttachments;
+  std::vector<struct RTexture*> pSamplerAttachments;
   uint32_t width, height, depth = 1;
-  bool useDetailedViewsOnly;
   bool transtionToShaderReadOnly;
+  bool useExtraImageViews = false;
+  bool useExtraSamplerViews = false;
+  glm::ivec4 intValues = glm::ivec4(0);
+  glm::vec4 floatValues = glm::vec4(0.0f);
 };
 
 struct RDynamicRenderingInfo {
@@ -305,17 +309,17 @@ struct RSamplerInfo {
 
 // used by createTexture()
 struct RTextureInfo {
-  std::string name = "";
-  uint32_t width = 0u;
-  uint32_t height = 0u;
+  std::string name;
+  uint32_t width;
+  uint32_t height;
+  uint32_t layerCount;
+  uint32_t mipLevels = 1u;
   VkImageUsageFlags usageFlags;
   VkFormat format = core::vulkan::formatLDR;
-  uint32_t layerCount = 1u;
-  uint32_t mipLevels = 1u;
   VkImageLayout targetLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
   VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
-  bool asCubemap = false;
-  bool detailedViews = false;
+  bool isCubemap = false;
+  bool extraViews = false;
   VkMemoryPropertyFlags memoryFlags = NULL;
   VmaMemoryUsage vmaMemoryUsage = VMA_MEMORY_USAGE_AUTO;
 };
@@ -380,7 +384,7 @@ struct RVkPhysicalDevice {
 // expanding KTX structure
 struct RVulkanTexture : public ktxVulkanTexture {
   VkImageView view;
-  std::vector<std::vector<VkDescriptorImageInfo>> layerAndMipInfo;  // [layer][mip level]
+  std::vector<std::vector<VkDescriptorImageInfo>> extraViews;  // [layer][mip level]
   VkSampler sampler;
   VkDescriptorImageInfo imageInfo;
 };
@@ -391,7 +395,9 @@ struct RVulkanTexture : public ktxVulkanTexture {
 
 struct RComputeImagePCB {
   uint32_t imageIndex;
-  uint32_t imageCount;
+  uint32_t imageCount = 0;
+  glm::ivec4 intValues = glm::ivec4(0);
+  glm::vec4 floatValues = glm::vec4(0.0f);
 };
 
 struct REnvironmentFragmentPCB {

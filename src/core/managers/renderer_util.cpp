@@ -106,6 +106,7 @@ RTexture* core::MRenderer::createFragmentRenderTarget(const char* name, uint32_t
 
   RTextureInfo textureInfo{};
   textureInfo.name = name;
+  textureInfo.layerCount = 1u;
   textureInfo.format = core::vulkan::formatHDR16;
   textureInfo.width = width;
   textureInfo.height = height;
@@ -909,7 +910,8 @@ void core::MRenderer::flushCommandBuffer(VkCommandBuffer cmdBuffer, ECmdType typ
   }
 }
 
-VkImageView core::MRenderer::createImageView(VkImage image, VkFormat format, uint32_t levelCount, uint32_t layerCount, uint32_t baseLevel, uint32_t baseLayer) {
+VkImageView core::MRenderer::createImageView(VkImage image, VkFormat format, uint32_t layerCount, uint32_t levelCount,
+  const bool isCubemap, uint32_t baseLayer, uint32_t baseLevel) {
   VkImageView imageView = nullptr;
 
   VkImageViewCreateInfo viewInfo{};
@@ -917,7 +919,7 @@ VkImageView core::MRenderer::createImageView(VkImage image, VkFormat format, uin
   viewInfo.image = image;
   viewInfo.format = format;
 
-  if (layerCount == 6) {
+  if (isCubemap) {
     viewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
   } else if (layerCount > 1) {
     viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
@@ -933,8 +935,8 @@ VkImageView core::MRenderer::createImageView(VkImage image, VkFormat format, uin
   viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   viewInfo.subresourceRange.baseMipLevel = baseLevel;
   viewInfo.subresourceRange.levelCount = levelCount;
-  viewInfo.subresourceRange.baseArrayLayer = baseLayer;
-  viewInfo.subresourceRange.layerCount = layerCount;
+  viewInfo.subresourceRange.baseArrayLayer = (isCubemap) ? 0u : baseLayer;
+  viewInfo.subresourceRange.layerCount = (isCubemap) ? 6u : layerCount;
 
   if (format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT || format == VK_FORMAT_D16_UNORM_S8_UINT) {
     viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;

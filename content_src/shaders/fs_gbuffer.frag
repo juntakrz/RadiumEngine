@@ -77,7 +77,7 @@ void main() {
 	outEmissive = vec4(0.0);
 
 	// 1. extract fragment position in world space
-	outPosition = vec4(inWorldPos, 1.0);
+	outPosition = vec4(normalize(inWorldPos), 1.0);
 
 	// 2. extract color / diffuse / albedo
 	if (material.baseColorTextureSet > -1) {
