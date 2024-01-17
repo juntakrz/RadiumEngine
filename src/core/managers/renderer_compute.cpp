@@ -18,12 +18,7 @@ void core::MRenderer::updateComputeImageSet(std::vector<RTexture*>* pInImages, s
 
   if (useExtraImageViews) {
     for (auto& image : *pInImages) {
-      if (image->texture.extraViews.empty()) continue;
-
-      const uint32_t extraViewCount = static_cast<uint32_t>(image->texture.extraViews.size());
-      for (uint32_t index = 0; index < extraViewCount; ++index) {
-        extraImageWriteSize += static_cast<uint32_t>(image->texture.extraViews.at(index).size());
-      }
+      extraImageWriteSize += static_cast<uint32_t>(image->texture.mipViews.size());
     }
   }
   
@@ -32,12 +27,7 @@ void core::MRenderer::updateComputeImageSet(std::vector<RTexture*>* pInImages, s
 
     if (useExtraSamplerViews) {
       for (auto& sampler : *pInSamplers) {
-        if (sampler->texture.extraViews.empty()) continue;
-
-        const uint32_t extraViewCount = static_cast<uint32_t>(sampler->texture.extraViews.size());
-        for (uint32_t index = 0; index < extraViewCount; ++index) {
-          extraImageWriteSize += static_cast<uint32_t>(sampler->texture.extraViews.at(index).size());
-        }
+        extraImageWriteSize += static_cast<uint32_t>(sampler->texture.mipViews.size());
       }
     }
   }
@@ -62,28 +52,22 @@ void core::MRenderer::updateComputeImageSet(std::vector<RTexture*>* pInImages, s
     
     arrayIndex++;
 
-    if (useExtraImageViews && !pInImages->at(i)->texture.extraViews.empty()) {
+    if (useExtraImageViews && !pInImages->at(i)->texture.mipViews.empty()) {
       RTexture* pImage = pInImages->at(i);
-      const uint32_t layerCount = static_cast<uint32_t>(pImage->texture.extraViews.size());
+      const uint32_t extraViewCount = static_cast<uint32_t>(pImage->texture.mipViews.size());
 
-      for (uint32_t layer = 0; layer < layerCount; ++layer) {
-        const uint32_t levelCount = static_cast<uint32_t>(pImage->texture.extraViews.at(layer).size());
+      for (uint32_t viewIndex = 0; viewIndex < extraViewCount; ++viewIndex) {
+        pImage->texture.mipViews[viewIndex].imageLayout = pImage->texture.imageLayout;
 
-        for (uint32_t level = 0; level < levelCount; ++level) {
-          VkDescriptorImageInfo imageInfo{};
-          imageInfo = pInImages->at(i)->texture.extraViews[layer][level];
-          imageInfo.imageLayout = pInImages->at(i)->texture.imageLayout;
+        writeDescriptorSets[arrayIndex].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSets[arrayIndex].dstSet = compute.imageDescriptorSet;
+        writeDescriptorSets[arrayIndex].dstBinding = 0;
+        writeDescriptorSets[arrayIndex].dstArrayElement = arrayIndex;
+        writeDescriptorSets[arrayIndex].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        writeDescriptorSets[arrayIndex].descriptorCount = 1;
+        writeDescriptorSets[arrayIndex].pImageInfo = &pImage->texture.mipViews[viewIndex];
 
-          writeDescriptorSets[arrayIndex].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-          writeDescriptorSets[arrayIndex].dstSet = compute.imageDescriptorSet;
-          writeDescriptorSets[arrayIndex].dstBinding = 0;
-          writeDescriptorSets[arrayIndex].dstArrayElement = arrayIndex;
-          writeDescriptorSets[arrayIndex].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-          writeDescriptorSets[arrayIndex].descriptorCount = 1;
-          writeDescriptorSets[arrayIndex].pImageInfo = &imageInfo;
-
-          arrayIndex++;
-        }
+        arrayIndex++;
       }
     }
   }
@@ -100,28 +84,22 @@ void core::MRenderer::updateComputeImageSet(std::vector<RTexture*>* pInImages, s
 
       arrayIndex++;
 
-      if (useExtraSamplerViews && !pInSamplers->at(j)->texture.extraViews.empty()) {
+      if (useExtraSamplerViews && !pInSamplers->at(j)->texture.mipViews.empty()) {
         RTexture* pSampler = pInSamplers->at(j);
-        const uint32_t layerCount = static_cast<uint32_t>(pSampler->texture.extraViews.size());
+        const uint32_t extraViewCount = static_cast<uint32_t>(pSampler->texture.mipViews.size());
 
-        for (uint32_t layer = 0; layer < layerCount; ++layer) {
-          const uint32_t levelCount = static_cast<uint32_t>(pSampler->texture.extraViews.at(layer).size());
+        for (uint32_t viewIndex = 0; viewIndex < extraViewCount; ++viewIndex) {
+          pSampler->texture.mipViews[viewIndex].imageLayout = pSampler->texture.imageLayout;
 
-          for (uint32_t level = 0; level < levelCount; ++level) {
-            VkDescriptorImageInfo imageInfo{};
-            imageInfo = pInSamplers->at(j)->texture.extraViews[layer][level];
-            imageInfo.imageLayout = pInSamplers->at(j)->texture.imageLayout;
+          writeDescriptorSets[arrayIndex].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+          writeDescriptorSets[arrayIndex].dstSet = compute.imageDescriptorSet;
+          writeDescriptorSets[arrayIndex].dstBinding = 0;
+          writeDescriptorSets[arrayIndex].dstArrayElement = arrayIndex;
+          writeDescriptorSets[arrayIndex].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+          writeDescriptorSets[arrayIndex].descriptorCount = 1;
+          writeDescriptorSets[arrayIndex].pImageInfo = &pSampler->texture.mipViews[viewIndex];
 
-            writeDescriptorSets[arrayIndex].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            writeDescriptorSets[arrayIndex].dstSet = compute.imageDescriptorSet;
-            writeDescriptorSets[arrayIndex].dstBinding = 0;
-            writeDescriptorSets[arrayIndex].dstArrayElement = arrayIndex;
-            writeDescriptorSets[arrayIndex].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-            writeDescriptorSets[arrayIndex].descriptorCount = 1;
-            writeDescriptorSets[arrayIndex].pImageInfo = &imageInfo;
-
-            arrayIndex++;
-          }
+          arrayIndex++;
         }
       }
     }

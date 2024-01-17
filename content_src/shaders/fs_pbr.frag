@@ -147,7 +147,7 @@ void main() {
 	vec3 specularEnvironmentR0 = specularColor.rgb;
 	vec3 specularEnvironmentR90 = vec3(1.0, 1.0, 1.0) * reflectance90;
 
-	vec3 V = normalize(scene.camPos - worldPos);			// Vector from surface point to camera
+	vec3 V = worldPos;										// Vector from surface point to camera, precalculated during GBuffer pass
 	vec3 L = normalize(lighting.lightLocations[0].xyz);		// Vector from surface point to light
 	vec3 H = normalize(L + V);								// Half vector between both l and v
 	vec3 reflection = -normalize(reflect(V, normal));

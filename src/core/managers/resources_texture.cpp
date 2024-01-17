@@ -8,7 +8,7 @@
 #include "stb_image.h"
 
 TResult core::MResources::loadTexture(const std::string& filePath,
-                                   RSamplerInfo* pSamplerInfo, const bool createextraViews) {
+                                   RSamplerInfo* pSamplerInfo, const bool createMipViews) {
   auto revert = [&](const char* name) { m_textures.erase(name); };
 
   if (filePath == "") {
@@ -69,12 +69,12 @@ TResult core::MResources::loadTexture(const std::string& filePath,
   ktxTexture_Destroy(pKTXTexture);
   ktxVulkanDeviceInfo_Destruct(deviceInfo);
 
-  if (pNewTexture->createImageViews(createextraViews) != RE_OK) {
+  if (pNewTexture->createSampler(pSamplerInfo) != RE_OK) {
     revert(filePath.c_str());
     return RE_ERROR;
   }
 
-  if (pNewTexture->createSampler(pSamplerInfo) != RE_OK) {
+  if (pNewTexture->createImageViews(createMipViews) != RE_OK) {
     revert(filePath.c_str());
     return RE_ERROR;
   }
@@ -264,15 +264,15 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
   newTexture->texture.levelCount = createInfo.mipLevels;
   newTexture->texture.layerCount = createInfo.arrayLayers;
 
-  if (newTexture->createImageViews(pInfo->extraViews) != RE_OK) {
-    revert(pInfo->name.c_str());
-    return nullptr;
-  }
-
   RSamplerInfo samplerInfo{};
   RSamplerInfo* pSamplerInfo = &samplerInfo;
 
   if (newTexture->createSampler(pSamplerInfo) != RE_OK) {
+    revert(pInfo->name.c_str());
+    return nullptr;
+  }
+
+  if (newTexture->createImageViews(pInfo->mipViews, pInfo->cubemapFaceViews) != RE_OK) {
     revert(pInfo->name.c_str());
     return nullptr;
   }

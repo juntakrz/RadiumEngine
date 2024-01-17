@@ -323,7 +323,6 @@ TResult core::MRenderer::createGraphicsPipelines() {
     // 'EnvSkybox' pipeline
     RGraphicsPipelineInfo pipelineInfo{};
     pipelineInfo.pipeline = EPipeline::EnvSkybox;
-    //pipelineInfo.pipelineLayout = EPipelineLayout::Environment;
     pipelineInfo.pipelineLayout = EPipelineLayout::Scene;
     pipelineInfo.renderPass = ERenderPass::Null;
     pipelineInfo.dynamicRenderPass = EDynamicRenderingPass::Environment;

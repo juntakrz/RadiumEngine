@@ -319,7 +319,8 @@ struct RTextureInfo {
   VkImageLayout targetLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
   VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
   bool isCubemap = false;
-  bool extraViews = false;
+  bool cubemapFaceViews = false;
+  bool mipViews = false;
   VkMemoryPropertyFlags memoryFlags = NULL;
   VmaMemoryUsage vmaMemoryUsage = VMA_MEMORY_USAGE_AUTO;
 };
@@ -384,7 +385,8 @@ struct RVkPhysicalDevice {
 // expanding KTX structure
 struct RVulkanTexture : public ktxVulkanTexture {
   VkImageView view;
-  std::vector<std::vector<VkDescriptorImageInfo>> extraViews;  // [layer][mip level]
+  std::vector<VkImageView> cubemapFaceViews;
+  std::vector<VkDescriptorImageInfo> mipViews;
   VkSampler sampler;
   VkDescriptorImageInfo imageInfo;
 };

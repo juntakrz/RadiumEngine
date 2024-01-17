@@ -357,9 +357,8 @@ public:
                           bool free = false, bool useFence = false);
 
   // using isCubemap will override baseLayer and layerCount
-  VkImageView createImageView(VkImage image, VkFormat format,
-    uint32_t layerCount, uint32_t levelCount, const bool isCubemap,
-    uint32_t baseLayer = 0, uint32_t baseLevel = 0);
+  VkImageView createImageView(VkImage image, VkFormat format, uint32_t baseLayer,
+    uint32_t layerCount, uint32_t baseLevel, uint32_t levelCount, const bool isCubemap);
 
   // binds model to graphics pipeline
   uint32_t bindEntity(AEntity* pEntity);

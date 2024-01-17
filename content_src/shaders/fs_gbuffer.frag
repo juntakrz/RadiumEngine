@@ -76,12 +76,12 @@ void main() {
 	outPhysical = vec4(0.0);
 	outEmissive = vec4(0.0);
 
-	// 1. extract fragment position in world space
-	outPosition = vec4(normalize(inWorldPos), 1.0);
+	// 1. extract fragment position in world space and normalize it in relation to camera for maximum fp16 precision
+	outPosition = vec4(normalize(scene.camPos - inWorldPos), 1.0);
+	//outPosition = vec4(inWorldPos, 1.0);
 
 	// 2. extract color / diffuse / albedo
 	if (material.baseColorTextureSet > -1) {
-		//outColor = texture(colorMap, material.baseColorTextureSet == 0 ? inUV0 : inUV1);
 		outColor = texture(samplers[material.samplerIndex[COLORMAP]], material.baseColorTextureSet == 0 ? inUV0 : inUV1);
 	}
 

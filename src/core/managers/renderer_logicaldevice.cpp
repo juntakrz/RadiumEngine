@@ -22,6 +22,12 @@ TResult core::MRenderer::initLogicalDevice(
     deviceQueues.emplace_back(queueCreateInfo);
   }
 
+  VkPhysicalDeviceMultiviewFeatures multiviewFeatures{};
+  multiviewFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES;
+  multiviewFeatures.multiview = VK_TRUE;
+  multiviewFeatures.multiviewGeometryShader = VK_FALSE;
+  multiviewFeatures.multiviewTessellationShader = VK_FALSE;
+
   // Vulkan 1.3: Enabling descriptor indexing
   VkPhysicalDeviceDescriptorIndexingFeaturesEXT descriptorIndexingFeatures{};
   descriptorIndexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
@@ -32,6 +38,7 @@ TResult core::MRenderer::initLogicalDevice(
   descriptorIndexingFeatures.descriptorBindingVariableDescriptorCount = VK_TRUE;
   descriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind = VK_TRUE;
   descriptorIndexingFeatures.runtimeDescriptorArray = VK_TRUE;
+  descriptorIndexingFeatures.pNext = &multiviewFeatures;
 
   // Vulkan 1.3: Enabling buffer device address
   VkPhysicalDeviceBufferDeviceAddressFeatures bdaFeatures{};

@@ -151,7 +151,7 @@ void core::MRenderer::renderEnvironmentMaps(
   auto *pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::Environment);
   renderView.pCurrentRenderPass = pRenderPass;
 
-  const RPipeline* pPipeline = pRenderPass->pipelines.at(0);
+  RPipeline* pPipeline = pRenderPass->pipelines.at(0);
   const EPipeline currentPipelineId = pPipeline->pipelineId;
 
   // start rendering an appropriate camera view / layer
@@ -164,11 +164,11 @@ void core::MRenderer::renderEnvironmentMaps(
   renderingInfo.colorAttachmentCount = static_cast<uint32_t>(pPipeline->dynamic.colorAttachmentInfo.size());
   renderingInfo.renderArea = system.viewports[viewportIndex].scissor;
   renderingInfo.layerCount = 1;
-  renderingInfo.viewMask = NULL;
+  renderingInfo.viewMask = 0;
 
   // modify cubemap color attachment with a required view into an appropriate layer
   VkRenderingAttachmentInfo attachmentInfo = pPipeline->dynamic.colorAttachmentInfo[0];
-  attachmentInfo.imageView = pCubemap->texture.extraViews[environment.tracking.layer][0].imageView;
+  attachmentInfo.imageView = pCubemap->texture.cubemapFaceViews[environment.tracking.layer];
   renderingInfo.pColorAttachments = &attachmentInfo;
 
   vkCmdBeginRendering(commandBuffer, &renderingInfo);

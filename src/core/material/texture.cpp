@@ -3,65 +3,59 @@
 #include "core/managers/renderer.h"
 #include "core/material/texture.h"
 
-TResult RTexture::createImageViews(const bool createExtraViews) {
-  // create complete image view
+TResult RTexture::createImageViews(const bool createMipViews, const bool createCubemapFaceViews) {
+  // Create complete image view
   texture.view =
-      core::renderer.createImageView(texture.image, texture.imageFormat,
-                                     texture.layerCount, texture.levelCount, isCubemap);
+      core::renderer.createImageView(texture.image, texture.imageFormat, 0u, texture.layerCount,
+                                      0u, texture.levelCount, isCubemap);
 
-  // create separate views into every layer and mipmap
-  if (createExtraViews) {
+  texture.viewType = VK_IMAGE_VIEW_TYPE_2D;
+
+  if (isCubemap && texture.layerCount == 6) {
+    texture.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+
+    if (createCubemapFaceViews) {
+      texture.cubemapFaceViews.resize(6);
+
+      for (uint8_t i = 0; i < 6; ++i) {
+        texture.cubemapFaceViews[i] =
+          core::renderer.createImageView(texture.image, texture.imageFormat, i, 1u, 0u, 1u, false);
+      }
+    }
+  }
+
+  // Create separate views into every layer and mipmap
+  if (createMipViews) {
     switch (isCubemap) {
       case true: {
-        // 6 views into separate cubemap faces and one view into all cubemap mip levels
-        texture.extraViews.resize(7u);
+        texture.mipViews.resize(texture.levelCount - 1);
 
-        for (uint32_t layerIndex = 0; layerIndex < 6; ++layerIndex) {
-          texture.extraViews[layerIndex].emplace_back();
+        for (uint8_t mipIndex = 1; mipIndex < texture.levelCount; ++mipIndex) {
+          VkDescriptorImageInfo& info = texture.mipViews[mipIndex - 1];
 
-          VkDescriptorImageInfo& info = texture.extraViews[layerIndex][0];
-
-          info.imageView = core::renderer.createImageView(texture.image, texture.imageFormat, 1u, 1u, false, layerIndex, 0u);
-          info.sampler = texture.imageInfo.sampler;
-        }
-
-        texture.extraViews[6].resize(texture.levelCount);
-
-        for (uint8_t mipIndex = 0; mipIndex < texture.levelCount; ++mipIndex) {
-          VkDescriptorImageInfo& info = texture.extraViews[6][mipIndex];
-
-          info.imageView = core::renderer.createImageView(texture.image, texture.imageFormat, 6u, 1u, true, 0u, mipIndex);
-          info.sampler = texture.imageInfo.sampler;
+          info.imageView = core::renderer.createImageView(texture.image, texture.imageFormat, 0u, 6u, mipIndex, 1u, true);
+          info.sampler = texture.sampler;
         }
 
         break;
       }
 
       case false: {
-        texture.extraViews.resize(texture.layerCount);
+        texture.mipViews.resize(texture.layerCount * texture.levelCount);
 
-        for (auto& it : texture.extraViews) {
-          it.resize(texture.levelCount);
-        }
-
-        for (uint8_t layerIndex = 0; layerIndex < texture.layerCount;
-          ++layerIndex) {
+        for (uint8_t layerIndex = 0; layerIndex < texture.layerCount;  ++layerIndex) {
           for (uint8_t mipIndex = 0; mipIndex < texture.levelCount; ++mipIndex) {
-            VkDescriptorImageInfo& info = texture.extraViews[layerIndex][mipIndex];
+            VkDescriptorImageInfo& info = texture.mipViews[layerIndex * mipIndex];
 
-            info.imageView = core::renderer.createImageView(texture.image, texture.imageFormat, 1u, 1u, false, layerIndex, mipIndex);
-            info.sampler = texture.imageInfo.sampler;
+            info.imageView =
+              core::renderer.createImageView(texture.image, texture.imageFormat, layerIndex, 1u, mipIndex, 1u, false);
+            info.sampler = texture.sampler;
           }
         }
+
         break;
       }
     }
-  }
-  
-  texture.viewType = VK_IMAGE_VIEW_TYPE_2D;
-
-  if (isCubemap && texture.layerCount == 6) {
-    texture.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
   }
 
   if (!texture.view) {
@@ -129,10 +123,12 @@ RTexture::~RTexture() {
   VkDevice device = core::renderer.logicalDevice.device;
   vkDestroyImageView(device, texture.view, nullptr);
 
-  for (auto& vector : texture.extraViews) {
-    for (auto& it : vector) {
-      vkDestroyImageView(device, it.imageView, nullptr);
-    }
+  for (auto& mipView : texture.mipViews) {
+    vkDestroyImageView(device, mipView.imageView, nullptr);
+  }
+
+  for (auto& faceView : texture.cubemapFaceViews) {
+    vkDestroyImageView(device, faceView, nullptr);
   }
 
   vkDestroySampler(device, texture.sampler, nullptr);

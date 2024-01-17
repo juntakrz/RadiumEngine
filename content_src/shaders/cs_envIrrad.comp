@@ -42,26 +42,27 @@ void calculateIrradiance(ivec3 srcCoordinates, ivec2 cubemapSize) {
             float sinTheta = sin(theta);
             float cosTheta = cos(theta);
 
-            // spherical to cartesian, in tangent space
+            // Spherical to cartesian, in tangent space
             vec3 sphereCoord = vec3(sinTheta * cosPhi,  sinTheta * sinPhi, cosTheta);
 
-            // tangent space to world
+            // Tangent space to world
             vec3 sampleVector = sphereCoord.x * right + sphereCoord.y * up + sphereCoord.z * N; 
 
-            // world to cube coord
-            //ivec3 sampleCoord = cubeWorldToPixelPosition(sampleVector, cubemapSize);
-
-            //irradianceColor += imageLoad(images[pushBlock.imageIndex], sampleCoord).rgb * cosTheta * sinTheta;
             irradianceColor += textureLod(samplers[pushBlock.imageIndex], sampleVector, 0).rgb * cosTheta * sinTheta;
         }
     }
 
     irradianceColor *= M_PI * invTotalSamples;
 	imageStore(images[pushBlock.imageIndex], targetPosition, vec4(irradianceColor, 1.0));
-}
 
-void generateMipMap(uint dimension, uint mipLevel) {
-    
+    // Generate mipmaps
+    for (uint mipLevel = 1; mipLevel < pushBlock.intValues.y; mipLevel++) {
+        const uint divisor = mipLevel * 2;
+
+        if (gl_GlobalInvocationID.x % divisor != 0) return;
+
+        imageStore(images[mipLevel], ivec3(targetPosition.xy / divisor, targetPosition.z), vec4(irradianceColor, 1.0));
+    }
 }
 
 void main() {

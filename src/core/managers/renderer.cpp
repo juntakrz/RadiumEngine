@@ -291,10 +291,11 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.layerCount = 6u;
   textureInfo.mipLevels = 1u;
   textureInfo.isCubemap = true;
+  textureInfo.cubemapFaceViews = true;
   textureInfo.width = dimension;
   textureInfo.height = textureInfo.width;
   textureInfo.format = core::vulkan::formatHDR16;
-  textureInfo.extraViews = true;
+  textureInfo.mipViews = true;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
@@ -317,6 +318,7 @@ TResult core::MRenderer::createImageTargets() {
 
   textureInfo.name = rtName;
   textureInfo.mipLevels = math::getMipLevels(dimension);
+  textureInfo.cubemapFaceViews = false;
   textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
