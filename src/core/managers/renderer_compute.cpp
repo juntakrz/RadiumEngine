@@ -38,16 +38,19 @@ void core::MRenderer::updateComputeImageSet(std::vector<RTexture*>* pInImages, s
     return;
   }
 
+  VkWriteDescriptorSet defaultWriteSet{};
+  defaultWriteSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+  defaultWriteSet.dstSet = compute.imageDescriptorSet;
+  defaultWriteSet.dstBinding = 0;
+  defaultWriteSet.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+  defaultWriteSet.descriptorCount = 1;
+
   std::vector<VkWriteDescriptorSet> writeDescriptorSets(totalWriteSize, VkWriteDescriptorSet{});
   uint32_t arrayIndex = 0u;
 
   for (uint32_t i = 0; i < imageWriteSize; ++i) {
-    writeDescriptorSets[arrayIndex].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeDescriptorSets[arrayIndex].dstSet = compute.imageDescriptorSet;
-    writeDescriptorSets[arrayIndex].dstBinding = 0;
+    writeDescriptorSets[arrayIndex] = defaultWriteSet;
     writeDescriptorSets[arrayIndex].dstArrayElement = arrayIndex;
-    writeDescriptorSets[arrayIndex].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    writeDescriptorSets[arrayIndex].descriptorCount = 1;
     writeDescriptorSets[arrayIndex].pImageInfo = &pInImages->at(i)->texture.imageInfo;
     
     arrayIndex++;
@@ -59,12 +62,8 @@ void core::MRenderer::updateComputeImageSet(std::vector<RTexture*>* pInImages, s
       for (uint32_t viewIndex = 0; viewIndex < extraViewCount; ++viewIndex) {
         pImage->texture.mipViews[viewIndex].imageLayout = pImage->texture.imageLayout;
 
-        writeDescriptorSets[arrayIndex].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSets[arrayIndex].dstSet = compute.imageDescriptorSet;
-        writeDescriptorSets[arrayIndex].dstBinding = 0;
+        writeDescriptorSets[arrayIndex] = defaultWriteSet;
         writeDescriptorSets[arrayIndex].dstArrayElement = arrayIndex;
-        writeDescriptorSets[arrayIndex].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        writeDescriptorSets[arrayIndex].descriptorCount = 1;
         writeDescriptorSets[arrayIndex].pImageInfo = &pImage->texture.mipViews[viewIndex];
 
         arrayIndex++;
@@ -73,13 +72,12 @@ void core::MRenderer::updateComputeImageSet(std::vector<RTexture*>* pInImages, s
   }
 
   if (pInSamplers) {
+    defaultWriteSet.dstBinding = 1;
+    defaultWriteSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+
     for (uint32_t j = 0; j < samplerWriteSize; ++j) {
-      writeDescriptorSets[arrayIndex].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-      writeDescriptorSets[arrayIndex].dstSet = compute.imageDescriptorSet;
-      writeDescriptorSets[arrayIndex].dstBinding = 1;
+      writeDescriptorSets[arrayIndex] = defaultWriteSet;
       writeDescriptorSets[arrayIndex].dstArrayElement = j;
-      writeDescriptorSets[arrayIndex].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-      writeDescriptorSets[arrayIndex].descriptorCount = 1;
       writeDescriptorSets[arrayIndex].pImageInfo = &pInSamplers->at(j)->texture.imageInfo;
 
       arrayIndex++;
@@ -91,12 +89,8 @@ void core::MRenderer::updateComputeImageSet(std::vector<RTexture*>* pInImages, s
         for (uint32_t viewIndex = 0; viewIndex < extraViewCount; ++viewIndex) {
           pSampler->texture.mipViews[viewIndex].imageLayout = pSampler->texture.imageLayout;
 
-          writeDescriptorSets[arrayIndex].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-          writeDescriptorSets[arrayIndex].dstSet = compute.imageDescriptorSet;
-          writeDescriptorSets[arrayIndex].dstBinding = 0;
+          writeDescriptorSets[arrayIndex] = defaultWriteSet;
           writeDescriptorSets[arrayIndex].dstArrayElement = arrayIndex;
-          writeDescriptorSets[arrayIndex].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-          writeDescriptorSets[arrayIndex].descriptorCount = 1;
           writeDescriptorSets[arrayIndex].pImageInfo = &pSampler->texture.mipViews[viewIndex];
 
           arrayIndex++;
@@ -124,11 +118,7 @@ void core::MRenderer::executeComputeImage(VkCommandBuffer commandBuffer,
   vkCmdPushConstants(commandBuffer, layout, VK_SHADER_STAGE_COMPUTE_BIT, 0,
     sizeof(RComputeImagePCB), &compute.imagePCB);
 
-  vkCmdDispatch(
-    commandBuffer,
-    compute.imageExtent.width / core::vulkan::computeGroupCountX_2D,
-    compute.imageExtent.height / core::vulkan::computeGroupCountY_2D,
-    compute.imageExtent.depth);
+  vkCmdDispatch(commandBuffer, compute.imageExtent.width, compute.imageExtent.height, compute.imageExtent.depth);
 }
 
 void core::MRenderer::generateLUTMap() {
@@ -197,7 +187,7 @@ void core::MRenderer::executeComputeJobs() {
 
   switch (info.jobType) {
     case EComputeJob::Image: {
-      VkCommandBuffer transitionBuffer = createCommandBuffer(ECmdType::Graphics, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
+      VkCommandBuffer transitionBuffer = createCommandBuffer(ECmdType::Transfer, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
       VkImageSubresourceRange range{};
       range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
       range.baseArrayLayer = 0;
@@ -223,7 +213,7 @@ void core::MRenderer::executeComputeJobs() {
         setImageLayout(transitionBuffer, sampler, VK_IMAGE_LAYOUT_GENERAL, range);
       }
 
-      flushCommandBuffer(transitionBuffer, ECmdType::Graphics, false, true);
+      flushCommandBuffer(transitionBuffer, ECmdType::Transfer, false, true);
 
       updateComputeImageSet(&info.pImageAttachments, &info.pSamplerAttachments, info.useExtraImageViews, info.useExtraSamplerViews);
 
@@ -249,7 +239,7 @@ void core::MRenderer::executeComputeJobs() {
         }
       }
 
-      flushCommandBuffer(transitionBuffer, ECmdType::Graphics, true);
+      flushCommandBuffer(transitionBuffer, ECmdType::Transfer, true);
 
       compute.jobs.erase(compute.jobs.begin());
       return;

@@ -10,7 +10,7 @@ layout(set = 0, binding = 1) uniform samplerCube samplers[];
 layout (push_constant) uniform PushBlock {
 	uint imageIndex;
 	uint imageCount;
-    ivec4 intValues;
+    ivec4 intValues;        // x - total mip levels, y - current face
 } pushBlock;
 
 const float sampleDelta = 0.025;
@@ -20,11 +20,11 @@ const uint sourceSize = 512u;
 
 void calculateIrradiance(ivec3 srcCoordinates, ivec2 cubemapSize) {
 	ivec2 targetSize = imageSize(images[pushBlock.imageIndex]);
-	uint divider = cubemapSize.x / targetSize.x;
+	uint quotient = cubemapSize.x / targetSize.x;
 
-    if (srcCoordinates.x % divider != 0) return;
+    if (srcCoordinates.x % quotient != 0) return;
 
-	ivec3 targetPosition = ivec3(ivec2(srcCoordinates.x / divider, srcCoordinates.y / divider), srcCoordinates.z);
+	ivec3 targetPosition = ivec3(ivec2(srcCoordinates.x / quotient, srcCoordinates.y / quotient), srcCoordinates.z);
 
 	vec3 N = normalize(cubePixelToWorldPosition(srcCoordinates, cubemapSize));
 	vec3 up = vec3(0.0, 1.0, 0.0);
@@ -56,17 +56,17 @@ void calculateIrradiance(ivec3 srcCoordinates, ivec2 cubemapSize) {
 	imageStore(images[pushBlock.imageIndex], targetPosition, vec4(irradianceColor, 1.0));
 
     // Generate mipmaps
-    for (uint mipLevel = 1; mipLevel < pushBlock.intValues.y; mipLevel++) {
-        const uint divisor = mipLevel * 2;
+    for (uint mipLevel = 1; mipLevel < pushBlock.intValues.x; mipLevel++) {
+        const uint divisor = 1 << mipLevel;
 
-        if (gl_GlobalInvocationID.x % divisor != 0) return;
+        if (gl_GlobalInvocationID.x % divisor != 0 || gl_GlobalInvocationID.y % divisor != 0) return;
 
         imageStore(images[mipLevel], ivec3(targetPosition.xy / divisor, targetPosition.z), vec4(irradianceColor, 1.0));
     }
 }
 
 void main() {
-	ivec3 sourcePosition = ivec3(gl_GlobalInvocationID.xy, pushBlock.intValues.x);
+	ivec3 sourcePosition = ivec3(gl_GlobalInvocationID.xy, pushBlock.intValues.y);
 
 	if (sourcePosition.x >= sourceSize || sourcePosition.y >= sourceSize) {
 		return;

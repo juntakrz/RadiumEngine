@@ -255,7 +255,7 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.layerCount = 1u;
   textureInfo.mipLevels = 1u;
   textureInfo.isCubemap = false;
-  textureInfo.width = core::vulkan::EnvFilterExtent;
+  textureInfo.width = core::vulkan::envFilterExtent;
   textureInfo.height = textureInfo.width;
   textureInfo.format = core::vulkan::formatHDR16;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -284,7 +284,7 @@ TResult core::MRenderer::createImageTargets() {
   environment.subresourceRange.levelCount = 1u;
 
   rtName = RTGT_ENV;
-  uint32_t dimension = core::vulkan::EnvFilterExtent;
+  uint32_t dimension = core::vulkan::envFilterExtent;
 
   textureInfo = RTextureInfo{};
   textureInfo.name = rtName;
@@ -314,7 +314,7 @@ TResult core::MRenderer::createImageTargets() {
 #endif
 
   rtName = RTGT_ENVFILTER;
-  dimension = core::vulkan::EnvFilterExtent;
+  dimension = core::vulkan::envFilterExtent;
 
   textureInfo.name = rtName;
   textureInfo.mipLevels = math::getMipLevels(dimension);
@@ -536,6 +536,53 @@ TResult core::MRenderer::createDepthTargets() {
   return RE_OK;
 }
 
+TResult core::MRenderer::setDefaultComputeJobs() {
+  // BRDF LUT
+  {
+    RComputeJobInfo& info = environment.computeJobs.LUT;
+    info.jobType = EComputeJob::Image;
+    info.pipeline = EComputePipeline::ImageLUT;
+    info.width = core::vulkan::LUTExtent / 8;
+    info.height = core::vulkan::LUTExtent / 4;
+    info.transtionToShaderReadOnly = true;
+    info.pImageAttachments = { core::resources.getTexture(RTGT_LUTMAP) };
+  }
+
+  // Environment irradiance map
+  {
+    RComputeJobInfo& info = environment.computeJobs.irradiance;
+    info.jobType = EComputeJob::Image;
+    info.pipeline = EComputePipeline::ImageEnvIrradiance;
+    info.width = core::vulkan::envFilterExtent / 8;
+    info.height = core::vulkan::envFilterExtent / 4;
+    info.depth = 1;
+    info.transtionToShaderReadOnly = true;
+    info.useExtraImageViews = true;
+    info.useExtraSamplerViews = false;
+    info.pImageAttachments = { core::resources.getTexture(RTGT_ENVIRRAD) };
+    info.pSamplerAttachments = { core::resources.getTexture(RTGT_ENV) };
+    info.intValues.x = info.pImageAttachments[0]->texture.levelCount;
+  }
+
+  // Environment prefiltered map
+  {
+    RComputeJobInfo& info = environment.computeJobs.prefiltered;
+    info.jobType = EComputeJob::Image;
+    info.pipeline = EComputePipeline::ImageEnvFilter;
+    info.width = core::vulkan::envFilterExtent / 8;
+    info.height = core::vulkan::envFilterExtent / 4;
+    info.depth = 1;
+    info.transtionToShaderReadOnly = true;
+    info.useExtraImageViews = true;
+    info.useExtraSamplerViews = false;
+    info.pImageAttachments = { core::resources.getTexture(RTGT_ENVFILTER) };
+    info.pSamplerAttachments = { core::resources.getTexture(RTGT_ENV) };
+    info.intValues.x = info.pImageAttachments[0]->texture.levelCount;
+  }
+
+  return RE_OK;
+}
+
 TResult core::MRenderer::setRendererDefaults() {
   // Setup bindless resource budgets
   uint32_t maxAfterBindSamplers = physicalDevice.descriptorIndexingProperties.maxDescriptorSetUpdateAfterBindSamplers;
@@ -549,6 +596,12 @@ TResult core::MRenderer::setRendererDefaults() {
 
   // Create default images
   TResult chkResult = createImageTargets();
+
+  if (chkResult != RE_OK) {
+    return chkResult;
+  }
+
+  chkResult = setDefaultComputeJobs();
 
   if (chkResult != RE_OK) {
     return chkResult;
@@ -587,7 +640,7 @@ TResult core::MRenderer::setRendererDefaults() {
   setCamera(pCamera);
 
   // Set default lighting UBO data
-  lighting.data.prefilteredCubeMipLevels = (float)math::getMipLevels(core::vulkan::EnvFilterExtent);
+  lighting.data.prefilteredCubeMipLevels = (float)math::getMipLevels(core::vulkan::envFilterExtent);
 
   return RE_OK;
 }

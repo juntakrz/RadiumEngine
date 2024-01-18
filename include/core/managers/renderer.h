@@ -40,6 +40,12 @@ class MRenderer {
     std::array<glm::vec3, 6> cameraTransformVectors;
 
     struct {
+      RComputeJobInfo LUT;
+      RComputeJobInfo irradiance;
+      RComputeJobInfo prefiltered;
+    } computeJobs;
+
+    struct {
       uint32_t layer = 0;     // cubemap layer
     } tracking;
   } environment;
@@ -180,6 +186,7 @@ class MRenderer {
   TResult createImageTargets();
   TResult createGBufferRenderTargets();
   TResult createDepthTargets();
+  TResult setDefaultComputeJobs();
   TResult setRendererDefaults();
 
   TResult createCoreCommandPools();

@@ -140,10 +140,10 @@ TResult core::MRenderer::createViewports() {
   scissor.offset = { 0, 0 };
 
   // EnvSkybox
-  viewport.y = static_cast<float>(core::vulkan::EnvFilterExtent);
-  viewport.width = static_cast<float>(core::vulkan::EnvFilterExtent);
-  viewport.height = -static_cast<float>(core::vulkan::EnvFilterExtent);
-  scissor.extent = { core::vulkan::EnvFilterExtent, core::vulkan::EnvFilterExtent };
+  viewport.y = static_cast<float>(core::vulkan::envFilterExtent);
+  viewport.width = static_cast<float>(core::vulkan::envFilterExtent);
+  viewport.height = -static_cast<float>(core::vulkan::envFilterExtent);
+  scissor.extent = { core::vulkan::envFilterExtent, core::vulkan::envFilterExtent };
   system.viewports.at(EViewport::vpEnvSkybox).viewport = viewport;
   system.viewports.at(EViewport::vpEnvSkybox).scissor = scissor;
 

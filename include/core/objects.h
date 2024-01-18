@@ -66,7 +66,8 @@ enum class EComputePipeline {
   Null,
   ImageLUT,
   ImageMipMap16f,
-  ImageEnvIrradiance
+  ImageEnvIrradiance,
+  ImageEnvFilter
 };
 
 enum class EDescriptorSetLayout {
