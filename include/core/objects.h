@@ -166,10 +166,19 @@ struct RComputeJobInfo {
 };
 
 struct RDynamicRenderingInfo {
-  std::vector<struct RTexture*> pColorAttachments;
-  struct RTexture* pDepthAttachment = nullptr;
-  struct RTexture* pStencilAttachment = nullptr;
+  // Color views and formats must correspond to each other and their number must be equal
+  std::vector<std::pair<VkImageView, VkFormat>> colorViews;
+  std::pair<VkImageView, VkFormat> depthView;
+  VkImageLayout depthLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+  std::pair<VkImageView, VkFormat> stencilView;
   VkClearValue clearValue = {0.0f, 0.0f, 0.0f, 0.0f};
+
+  // Pipeline to be created with a corresponding layout
+  EPipeline pipeline;
+  EPipelineLayout pipelineLayout;
+  std::string vertexShader;
+  std::string fragmentShader;
+  EViewport viewportId;
 };
 
 struct REntityBindInfo {
@@ -195,6 +204,7 @@ struct RGraphicsPipelineInfo {
   std::string fragmentShader;
 
   EDynamicRenderingPass dynamicRenderPass = EDynamicRenderingPass::Null;
+  VkPipelineRenderingCreateInfo* pDynamicPipelineInfo = nullptr;
   uint32_t subpass = 0;
   VkBool32 blendEnable = VK_FALSE;
   VkPrimitiveTopology primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -256,13 +266,8 @@ struct RPipeline {
 
   struct {
     std::vector<VkRenderingAttachmentInfo> colorAttachmentInfo;
-    std::vector<VkFormat> colorAttachmentFormats;
     VkRenderingAttachmentInfo depthAttachmentInfo;
     VkRenderingAttachmentInfo stencilAttachmentInfo;
-    VkPipelineRenderingCreateInfo pipelineCreateInfo;
-    std::vector<struct RTexture*> pColorAttachments;
-    struct RTexture* pDepthAttachment = nullptr;
-    struct RTexture* pStencilAttachment = nullptr;
   } dynamic;
 };
 
@@ -321,7 +326,7 @@ struct RTextureInfo {
   VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
   bool isCubemap = false;
   bool cubemapFaceViews = false;
-  bool mipViews = false;
+  bool extraViews = false;  // Create views into layers and mip levels
   VkMemoryPropertyFlags memoryFlags = NULL;
   VmaMemoryUsage vmaMemoryUsage = VMA_MEMORY_USAGE_AUTO;
 };
@@ -387,9 +392,10 @@ struct RVkPhysicalDevice {
 struct RVulkanTexture : public ktxVulkanTexture {
   VkImageView view;
   std::vector<VkImageView> cubemapFaceViews;
-  std::vector<VkDescriptorImageInfo> mipViews;
+  std::vector<VkDescriptorImageInfo> extraViews;
   VkSampler sampler;
   VkDescriptorImageInfo imageInfo;
+  VkImageAspectFlags aspectMask;
 };
 
 //

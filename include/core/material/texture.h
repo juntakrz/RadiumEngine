@@ -18,7 +18,7 @@ struct RTexture {
   // Texture index in the sampler2D variable index descriptor set
   uint32_t combinedSamplerIndex = -1;
 
-  TResult createImageViews(const bool createMipViews = false, const bool createCubemapFaceViews = false);
+  TResult createImageViews(const bool createExtraViews = false, const bool createCubemapFaceViews = false);
   TResult createSampler(RSamplerInfo *pSamplerInfo);
   TResult createDescriptor();
 

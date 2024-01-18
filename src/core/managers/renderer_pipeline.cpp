@@ -318,22 +318,6 @@ TResult core::MRenderer::createGraphicsPipelines() {
     RE_CHECK(createGraphicsPipeline(&pipelineInfo));
   }
 
-  // Environment / image based lighting pipelines
-  {
-    // 'EnvSkybox' pipeline
-    RGraphicsPipelineInfo pipelineInfo{};
-    pipelineInfo.pipeline = EPipeline::EnvSkybox;
-    pipelineInfo.pipelineLayout = EPipelineLayout::Scene;
-    pipelineInfo.renderPass = ERenderPass::Null;
-    pipelineInfo.dynamicRenderPass = EDynamicRenderingPass::Environment;
-    pipelineInfo.vertexShader = "vs_environment.spv";
-    pipelineInfo.fragmentShader = "fs_envFilter.spv";
-    pipelineInfo.colorBlendAttachmentCount = 1u;
-    pipelineInfo.viewportId = EViewport::vpEnvSkybox;
-
-    RE_CHECK(createGraphicsPipeline(&pipelineInfo));
-  }
-
   return RE_OK;
 }
 
@@ -493,7 +477,7 @@ VkPipelineLayout& core::MRenderer::getPipelineLayout(EPipelineLayout type) {
 
 TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineInfo) {
   // Create pipeline for dynamic rendering and ignore usual render pass settings if dynamic rendering pass variable was defined
-  const bool isDynamicRendering = pipelineInfo->dynamicRenderPass != EDynamicRenderingPass::Null;
+  const bool isDynamicRendering = pipelineInfo->pDynamicPipelineInfo;
 
   VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
   inputAssemblyInfo.sType =
@@ -637,7 +621,7 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
     RPipeline* pPipeline = getDynamicRenderingPass(pipelineInfo->dynamicRenderPass)->getPipeline(pipelineInfo->pipeline);
 
     if (pPipeline) {
-      graphicsPipelineInfo.pNext = &pPipeline->dynamic.pipelineCreateInfo;
+      graphicsPipelineInfo.pNext = pipelineInfo->pDynamicPipelineInfo;
       getDynamicRenderingPass(pipelineInfo->dynamicRenderPass)->layout = graphicsPipelineInfo.layout;
     } else {
       RE_LOG(Error, "Failed to configure dynamic rendering pass %d, pipeline %d. Seems like provided pipeline does not belong to this pass.",

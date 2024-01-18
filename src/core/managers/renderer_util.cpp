@@ -911,7 +911,7 @@ void core::MRenderer::flushCommandBuffer(VkCommandBuffer cmdBuffer, ECmdType typ
 }
 
 VkImageView core::MRenderer::createImageView(VkImage image, VkFormat format, uint32_t baseLayer, uint32_t layerCount,
-                                             uint32_t baseLevel, uint32_t levelCount, const bool isCubemap) {
+                                             uint32_t baseLevel, uint32_t levelCount, const bool isCubemap, VkImageAspectFlags aspectMask) {
   VkImageView imageView = nullptr;
 
   VkImageViewCreateInfo viewInfo{};
@@ -932,17 +932,11 @@ VkImageView core::MRenderer::createImageView(VkImage image, VkFormat format, uin
   viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
   viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 
-  viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  viewInfo.subresourceRange.aspectMask = aspectMask;
   viewInfo.subresourceRange.baseMipLevel = baseLevel;
   viewInfo.subresourceRange.levelCount = levelCount;
   viewInfo.subresourceRange.baseArrayLayer = (isCubemap) ? 0u : baseLayer;
   viewInfo.subresourceRange.layerCount = (isCubemap) ? 6u : layerCount;
-
-  if (format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT || format == VK_FORMAT_D16_UNORM_S8_UINT) {
-    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-  } else if (format == VK_FORMAT_D32_SFLOAT) {
-    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-  }
 
   if (vkCreateImageView(logicalDevice.device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
     RE_LOG(Error, "failed to create image view with format id %d.", format);

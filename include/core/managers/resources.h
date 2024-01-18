@@ -52,7 +52,7 @@ class MResources {
   // load texture from KTX file (versions 1 and 2 are supported)
   // won't create sampler if no sampler info is provided
   TResult loadTexture(const std::string& filePath, RSamplerInfo* pSamplerInfo,
-                      const bool createMipViews = false);
+                      const bool createExtraViews = false);
 
   // load KTX texture to staging buffer only
   TResult loadTextureToBuffer(const std::string& filePath, RBuffer& outBuffer);

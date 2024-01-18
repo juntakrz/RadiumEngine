@@ -167,7 +167,6 @@ void core::MRenderer::renderEnvironmentMaps(
     return;
   }
 
-  RTexture* pCubemap = core::resources.getTexture(RTGT_ENV);
   EViewport viewportIndex = EViewport::vpEnvSkybox;
   auto *pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::Environment);
   renderView.pCurrentRenderPass = pRenderPass;
@@ -177,8 +176,7 @@ void core::MRenderer::renderEnvironmentMaps(
 
   // start rendering an appropriate camera view / layer
   environment.subresourceRange.baseArrayLayer = environment.tracking.layer;
-  setImageLayout(commandBuffer, pCubemap, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, environment.subresourceRange);
-  refreshDynamicRenderPass(EDynamicRenderingPass::Environment, 0);
+  setImageLayout(commandBuffer, environment.pTargetCubemap, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, environment.subresourceRange);
 
   VkRenderingInfo renderingInfo{};
   renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
@@ -189,7 +187,7 @@ void core::MRenderer::renderEnvironmentMaps(
 
   // modify cubemap color attachment with a required view into an appropriate layer
   VkRenderingAttachmentInfo attachmentInfo = pPipeline->dynamic.colorAttachmentInfo[0];
-  attachmentInfo.imageView = pCubemap->texture.cubemapFaceViews[environment.tracking.layer];
+  attachmentInfo.imageView = environment.pTargetCubemap->texture.cubemapFaceViews[environment.tracking.layer];
   renderingInfo.pColorAttachments = &attachmentInfo;
 
   vkCmdBeginRendering(commandBuffer, &renderingInfo);
@@ -218,7 +216,7 @@ void core::MRenderer::renderEnvironmentMaps(
   
   vkCmdEndRendering(commandBuffer);
 
-  setImageLayout(commandBuffer, pCubemap, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, environment.subresourceRange);
+  setImageLayout(commandBuffer, environment.pTargetCubemap, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, environment.subresourceRange);
 
   // increase layer count to write to the next cubemap face
   environment.tracking.layer++;

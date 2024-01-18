@@ -3,11 +3,11 @@
 #include "core/managers/renderer.h"
 #include "core/material/texture.h"
 
-TResult RTexture::createImageViews(const bool createMipViews, const bool createCubemapFaceViews) {
+TResult RTexture::createImageViews(const bool createExtraViews, const bool createCubemapFaceViews) {
   // Create complete image view
   texture.view =
       core::renderer.createImageView(texture.image, texture.imageFormat, 0u, texture.layerCount,
-                                      0u, texture.levelCount, isCubemap);
+                                      0u, texture.levelCount, isCubemap, texture.aspectMask);
 
   texture.viewType = VK_IMAGE_VIEW_TYPE_2D;
 
@@ -19,21 +19,21 @@ TResult RTexture::createImageViews(const bool createMipViews, const bool createC
 
       for (uint8_t i = 0; i < 6; ++i) {
         texture.cubemapFaceViews[i] =
-          core::renderer.createImageView(texture.image, texture.imageFormat, i, 1u, 0u, 1u, false);
+          core::renderer.createImageView(texture.image, texture.imageFormat, i, 1u, 0u, 1u, false, texture.aspectMask);
       }
     }
   }
 
   // Create separate views into every layer and mipmap
-  if (createMipViews) {
+  if (createExtraViews) {
     switch (isCubemap) {
       case true: {
-        texture.mipViews.resize(texture.levelCount - 1);
+        texture.extraViews.resize(texture.levelCount - 1);
 
         for (uint8_t mipIndex = 1; mipIndex < texture.levelCount; ++mipIndex) {
-          VkDescriptorImageInfo& info = texture.mipViews[mipIndex - 1];
+          VkDescriptorImageInfo& info = texture.extraViews[mipIndex - 1];
 
-          info.imageView = core::renderer.createImageView(texture.image, texture.imageFormat, 0u, 6u, mipIndex, 1u, true);
+          info.imageView = core::renderer.createImageView(texture.image, texture.imageFormat, 0u, 6u, mipIndex, 1u, true, texture.aspectMask);
           info.sampler = texture.sampler;
         }
 
@@ -41,14 +41,14 @@ TResult RTexture::createImageViews(const bool createMipViews, const bool createC
       }
 
       case false: {
-        texture.mipViews.resize(texture.layerCount * texture.levelCount);
+        texture.extraViews.resize(texture.layerCount * texture.levelCount);
 
         for (uint8_t layerIndex = 0; layerIndex < texture.layerCount;  ++layerIndex) {
           for (uint8_t mipIndex = 0; mipIndex < texture.levelCount; ++mipIndex) {
-            VkDescriptorImageInfo& info = texture.mipViews[layerIndex * mipIndex];
+            VkDescriptorImageInfo& info = texture.extraViews[layerIndex + mipIndex * layerIndex];
 
             info.imageView =
-              core::renderer.createImageView(texture.image, texture.imageFormat, layerIndex, 1u, mipIndex, 1u, false);
+              core::renderer.createImageView(texture.image, texture.imageFormat, layerIndex, 1u, mipIndex, 1u, false, texture.aspectMask);
             info.sampler = texture.sampler;
           }
         }
@@ -123,7 +123,7 @@ RTexture::~RTexture() {
   VkDevice device = core::renderer.logicalDevice.device;
   vkDestroyImageView(device, texture.view, nullptr);
 
-  for (auto& mipView : texture.mipViews) {
+  for (auto& mipView : texture.extraViews) {
     vkDestroyImageView(device, mipView.imageView, nullptr);
   }
 

@@ -295,7 +295,7 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.width = dimension;
   textureInfo.height = textureInfo.width;
   textureInfo.format = core::vulkan::formatHDR16;
-  textureInfo.mipViews = true;
+  textureInfo.extraViews = true;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
@@ -307,7 +307,7 @@ TResult core::MRenderer::createImageTargets() {
     return RE_CRITICAL;
   }
 
-  environment.pCubemaps.emplace_back(pNewTexture);
+  environment.pTargetCubemap = pNewTexture;
 
 #ifndef NDEBUG
   RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
@@ -328,8 +328,6 @@ TResult core::MRenderer::createImageTargets() {
     return RE_CRITICAL;
   }
 
-  environment.pCubemaps.emplace_back(pNewTexture);
-
 #ifndef NDEBUG
   RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
 #endif
@@ -348,8 +346,6 @@ TResult core::MRenderer::createImageTargets() {
     RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
     return RE_CRITICAL;
   }
-
-  environment.pCubemaps.emplace_back(pNewTexture);
 
 #ifndef NDEBUG
   RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
@@ -515,6 +511,7 @@ TResult core::MRenderer::createDepthTargets() {
   textureInfo.width = config::shadowResolution;
   textureInfo.height = config::shadowResolution;
   textureInfo.layerCount = config::shadowCascades;
+  textureInfo.extraViews = true;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
                            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;

@@ -36,7 +36,7 @@ class MRenderer {
     VkDescriptorSet LUTDescriptorSet;
     VkImageSubresourceRange subresourceRange;
     int32_t genInterval = 2;
-    std::vector<RTexture*> pCubemaps;
+    RTexture* pTargetCubemap = nullptr;
     std::array<glm::vec3, 6> cameraTransformVectors;
 
     struct {
@@ -275,10 +275,7 @@ class MRenderer {
   TResult createRenderPass(ERenderPass renderPassId, EPipeline pipeline, RRenderPassInfo* info);
 
   // Create new dynamic rendering pass and/or add new/update existing attached pipeline
-  TResult setupDynamicRenderPass(EDynamicRenderingPass passType, EPipeline pipeline, RDynamicRenderingInfo* info);
-
-  // Actualize dynamic rendering info, e.g. if textures had layout changed. If no pipeline index is set - will refresh all
-  void refreshDynamicRenderPass(EDynamicRenderingPass passType, int32_t pipelineIndex = -1);
+  TResult createDynamicRenderPass(EDynamicRenderingPass passType, RDynamicRenderingInfo* info);
 
   TResult createRenderPasses();
   void destroyRenderPasses();
@@ -365,7 +362,7 @@ public:
 
   // using isCubemap will override baseLayer and layerCount
   VkImageView createImageView(VkImage image, VkFormat format, uint32_t baseLayer,
-    uint32_t layerCount, uint32_t baseLevel, uint32_t levelCount, const bool isCubemap);
+    uint32_t layerCount, uint32_t baseLevel, uint32_t levelCount, const bool isCubemap, VkImageAspectFlags aspectMask);
 
   // binds model to graphics pipeline
   uint32_t bindEntity(AEntity* pEntity);

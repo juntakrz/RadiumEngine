@@ -18,7 +18,7 @@ void core::MRenderer::updateComputeImageSet(std::vector<RTexture*>* pInImages, s
 
   if (useExtraImageViews) {
     for (auto& image : *pInImages) {
-      extraImageWriteSize += static_cast<uint32_t>(image->texture.mipViews.size());
+      extraImageWriteSize += static_cast<uint32_t>(image->texture.extraViews.size());
     }
   }
   
@@ -27,7 +27,7 @@ void core::MRenderer::updateComputeImageSet(std::vector<RTexture*>* pInImages, s
 
     if (useExtraSamplerViews) {
       for (auto& sampler : *pInSamplers) {
-        extraImageWriteSize += static_cast<uint32_t>(sampler->texture.mipViews.size());
+        extraImageWriteSize += static_cast<uint32_t>(sampler->texture.extraViews.size());
       }
     }
   }
@@ -55,16 +55,16 @@ void core::MRenderer::updateComputeImageSet(std::vector<RTexture*>* pInImages, s
     
     arrayIndex++;
 
-    if (useExtraImageViews && !pInImages->at(i)->texture.mipViews.empty()) {
+    if (useExtraImageViews && !pInImages->at(i)->texture.extraViews.empty()) {
       RTexture* pImage = pInImages->at(i);
-      const uint32_t extraViewCount = static_cast<uint32_t>(pImage->texture.mipViews.size());
+      const uint32_t extraViewCount = static_cast<uint32_t>(pImage->texture.extraViews.size());
 
       for (uint32_t viewIndex = 0; viewIndex < extraViewCount; ++viewIndex) {
-        pImage->texture.mipViews[viewIndex].imageLayout = pImage->texture.imageLayout;
+        pImage->texture.extraViews[viewIndex].imageLayout = pImage->texture.imageLayout;
 
         writeDescriptorSets[arrayIndex] = defaultWriteSet;
         writeDescriptorSets[arrayIndex].dstArrayElement = arrayIndex;
-        writeDescriptorSets[arrayIndex].pImageInfo = &pImage->texture.mipViews[viewIndex];
+        writeDescriptorSets[arrayIndex].pImageInfo = &pImage->texture.extraViews[viewIndex];
 
         arrayIndex++;
       }
@@ -82,16 +82,16 @@ void core::MRenderer::updateComputeImageSet(std::vector<RTexture*>* pInImages, s
 
       arrayIndex++;
 
-      if (useExtraSamplerViews && !pInSamplers->at(j)->texture.mipViews.empty()) {
+      if (useExtraSamplerViews && !pInSamplers->at(j)->texture.extraViews.empty()) {
         RTexture* pSampler = pInSamplers->at(j);
-        const uint32_t extraViewCount = static_cast<uint32_t>(pSampler->texture.mipViews.size());
+        const uint32_t extraViewCount = static_cast<uint32_t>(pSampler->texture.extraViews.size());
 
         for (uint32_t viewIndex = 0; viewIndex < extraViewCount; ++viewIndex) {
-          pSampler->texture.mipViews[viewIndex].imageLayout = pSampler->texture.imageLayout;
+          pSampler->texture.extraViews[viewIndex].imageLayout = pSampler->texture.imageLayout;
 
           writeDescriptorSets[arrayIndex] = defaultWriteSet;
           writeDescriptorSets[arrayIndex].dstArrayElement = arrayIndex;
-          writeDescriptorSets[arrayIndex].pImageInfo = &pSampler->texture.mipViews[viewIndex];
+          writeDescriptorSets[arrayIndex].pImageInfo = &pSampler->texture.extraViews[viewIndex];
 
           arrayIndex++;
         }

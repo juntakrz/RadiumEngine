@@ -8,7 +8,7 @@
 #include "stb_image.h"
 
 TResult core::MResources::loadTexture(const std::string& filePath,
-                                   RSamplerInfo* pSamplerInfo, const bool createMipViews) {
+                                   RSamplerInfo* pSamplerInfo, const bool createExtraViews) {
   auto revert = [&](const char* name) { m_textures.erase(name); };
 
   if (filePath == "") {
@@ -54,6 +54,7 @@ TResult core::MResources::loadTexture(const std::string& filePath,
   pNewTexture->name = filePath;
   pNewTexture->isKTX = true;
   pNewTexture->isCubemap = pKTXTexture->isCubemap;
+  pNewTexture->texture.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
   ktxResult = ktxTexture_VkUploadEx(
       pKTXTexture, deviceInfo, &pNewTexture->texture, VK_IMAGE_TILING_OPTIMAL,
@@ -74,7 +75,7 @@ TResult core::MResources::loadTexture(const std::string& filePath,
     return RE_ERROR;
   }
 
-  if (pNewTexture->createImageViews(createMipViews) != RE_OK) {
+  if (pNewTexture->createImageViews(createExtraViews) != RE_OK) {
     revert(filePath.c_str());
     return RE_ERROR;
   }
@@ -263,6 +264,7 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
   newTexture->texture.depth = 1;
   newTexture->texture.levelCount = createInfo.mipLevels;
   newTexture->texture.layerCount = createInfo.arrayLayers;
+  newTexture->texture.aspectMask = subRange.aspectMask;
 
   RSamplerInfo samplerInfo{};
   RSamplerInfo* pSamplerInfo = &samplerInfo;
@@ -272,7 +274,7 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
     return nullptr;
   }
 
-  if (newTexture->createImageViews(pInfo->mipViews, pInfo->cubemapFaceViews) != RE_OK) {
+  if (newTexture->createImageViews(pInfo->extraViews, pInfo->cubemapFaceViews) != RE_OK) {
     revert(pInfo->name.c_str());
     return nullptr;
   }
