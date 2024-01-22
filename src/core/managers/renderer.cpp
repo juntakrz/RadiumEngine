@@ -856,14 +856,8 @@ TResult core::MRenderer::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createPipelineLayouts();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createViewports();
 
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createRenderPasses();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDynamicRenderingPasses();
-
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createGraphicsPipelines();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createComputePipelines();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createDefaultFramebuffers();
-
-  if (chkResult <= RE_ERRORLIMIT) chkResult = configureRenderPasses();
 
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createUniformBuffers();
@@ -881,8 +875,7 @@ void core::MRenderer::deinitialize() {
   destroyCoreCommandBuffers();
   destroyCoreCommandPools();
   destroyComputePipelines();
-  destroyGraphicsPipelines();
-  destroyRenderPasses();
+  destroyDynamicRenderingPasses();
   destroySceneBuffers();
   destroySurface();
   core::actors.destroyAllPawns();

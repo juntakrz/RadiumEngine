@@ -89,7 +89,6 @@ class MRenderer {
     uint32_t imageCount = 0;
     std::vector<VkImage> images;
     std::vector<VkImageView> imageViews;
-    std::vector<RFramebuffer> framebuffers;
     VkImageCopy copyRegion;
   } swapchain;
 
@@ -104,11 +103,8 @@ class MRenderer {
   // render system data - passes, pipelines, mesh data to render
   struct {
     std::unordered_map<EDynamicRenderingPass, RDynamicRenderingPass> dynamicRenderingPasses;
-    std::unordered_map<ERenderPass, RRenderPass> renderPasses;
     std::unordered_map<EPipelineLayout, VkPipelineLayout> layouts;
-    std::unordered_map<EPipeline, RPipeline> graphicsPipelines;
     std::unordered_map<EComputePipeline, VkPipeline> computePipelines;
-    std::unordered_map<std::string, RFramebuffer> framebuffers;  // general purpose, swapchain uses its own set
     std::vector<RViewport> viewports;
 
     VkDescriptorPool descriptorPool;
@@ -145,9 +141,8 @@ class MRenderer {
     void* pCurrentMesh = nullptr;
     void* pCurrentMaterial = nullptr;
 
-    RRenderPass* pCurrentRenderPass = nullptr;
-    RPipeline* pCurrentPipeline = nullptr;
-    VkPipelineLayout currentPipelineLayout = VK_NULL_HANDLE;
+    RDynamicRenderingPass* pCurrentPass = nullptr;
+
     uint32_t currentFrameIndex = 0;
     uint32_t frameInFlight = 0;
     uint32_t framesRendered = 0;
@@ -251,17 +246,13 @@ class MRenderer {
   //
   // ***PIPELINE
   //
-
-  TResult createDefaultFramebuffers();
-
   TResult createPipelineLayouts();
+  VkPipelineLayout& getPipelineLayout(EPipelineLayout type);
+
   TResult createGraphicsPipelines();
-  void destroyGraphicsPipelines();
   TResult createComputePipelines();
   void destroyComputePipelines();
-  VkPipelineLayout& getPipelineLayout(EPipelineLayout type);
   TResult createGraphicsPipeline(RGraphicsPipelineInfo* pipelineInfo);
-  RPipeline* getGraphicsPipeline(EPipeline type);
   VkPipeline& getComputePipeline(EComputePipeline type);
 
   // check if pipeline flag is present in the flag array
@@ -271,31 +262,17 @@ class MRenderer {
   // ***PASS
   //
 
-  /* Will create a multi subpass render pass for selected types and will expect a type-dependent color attachment layout */
-  TResult createRenderPass(ERenderPass renderPassId, EPipeline pipeline, RRenderPassInfo* pInfo);
-
   // Create new dynamic rendering pass and/or add new/update existing attached pipeline
-  TResult createDynamicRenderPass(EDynamicRenderingPass passId, RDynamicRenderingInfo* pInfo);
-
-  TResult createRenderPasses();
-  void destroyRenderPasses();
-  RRenderPass* getRenderPass(ERenderPass type);
-  VkRenderPass& getVkRenderPass(ERenderPass type);
-
+  TResult createDynamicRenderingPass(EDynamicRenderingPass passId, RDynamicRenderingInfo* pInfo);
   TResult createDynamicRenderingPasses();
   RDynamicRenderingPass* getDynamicRenderingPass(EDynamicRenderingPass type);
-
-  TResult configureRenderPasses();
+  void destroyDynamicRenderingPasses();
 
   //
   // ***UTIL
   //
 
  private:
-  TResult createFramebuffer(ERenderPass renderPass,
-                            const std::vector<std::string>& attachmentNames,
-                            const char* framebufferName);
-
   // create single layer render target for fragment shader output
   // uses swapchain resolution
   RTexture* createFragmentRenderTarget(const char* name, uint32_t width = 0,
@@ -530,11 +507,8 @@ public:
  private:
   void updateBoundEntities();
 
-  // draw bound entities using render pass pipelines
-  void drawBoundEntities(VkCommandBuffer cmdBuffer, uint32_t subpassIndex = 0);
-
   // draw bound entities using specific pipeline
-  void drawBoundEntities(VkCommandBuffer, EPipeline forcedPipeline);
+  void drawBoundEntities(VkCommandBuffer commandBuffer);
 
   void renderPrimitive(VkCommandBuffer cmdBuffer, WPrimitive* pPrimitive,
                        EPipeline pipelineFlag, REntityBindInfo* pBindInfo);

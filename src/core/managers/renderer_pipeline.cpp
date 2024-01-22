@@ -4,62 +4,6 @@
 #include "core/managers/resources.h"
 #include "core/managers/renderer.h"
 
-TResult core::MRenderer::createDefaultFramebuffers() {
-  RE_LOG(Log, "Creating swapchain framebuffers.");
-
-  swapchain.framebuffers.resize(swapchain.imageViews.size());
-
-  VkFramebufferCreateInfo framebufferInfo{};
-  framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-
-  for (size_t i = 0; i < swapchain.framebuffers.size(); ++i) {
-    std::vector<VkImageView> attachments = {
-        swapchain.imageViews[i],
-        core::resources.getTexture(RTGT_DEPTH)->texture.view};
-
-    framebufferInfo.renderPass = getVkRenderPass(ERenderPass::Present);
-    framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-    framebufferInfo.pAttachments = attachments.data();
-    framebufferInfo.width = swapchain.imageExtent.width;
-    framebufferInfo.height = swapchain.imageExtent.height;
-    framebufferInfo.layers = 1;
-
-    if (vkCreateFramebuffer(logicalDevice.device, &framebufferInfo, nullptr,
-                            &swapchain.framebuffers[i].framebuffer) !=
-        VK_SUCCESS) {
-      RE_LOG(Critical, "failed to create swapchain framebuffer with index %d.",
-             i);
-
-      return RE_CRITICAL;
-    }
-  }
-
-  TResult chkResult;
-  std::vector<std::string> attachmentNames;
-  attachmentNames.emplace_back(RTGT_SHADOW);
-  if (chkResult = createFramebuffer(ERenderPass::Shadow, attachmentNames,
-                                    RFB_SHADOW) != RE_OK) {
-    return chkResult;
-  }
-
-  // Deferred subpass 0
-  attachmentNames.clear();
-  attachmentNames.emplace_back(RTGT_GPOSITION); // 0
-  attachmentNames.emplace_back(RTGT_GDIFFUSE);  // 1
-  attachmentNames.emplace_back(RTGT_GNORMAL);   // 2
-  attachmentNames.emplace_back(RTGT_GPHYSICAL); // 3
-  attachmentNames.emplace_back(RTGT_GEMISSIVE); // 4
-  attachmentNames.emplace_back(RTGT_GPBR);      // 5 - subpasses 1 and 2
-  attachmentNames.emplace_back(RTGT_DEPTH);     // depth buffer target
-
-  if (chkResult = createFramebuffer(ERenderPass::Deferred, attachmentNames,
-                                    RFB_DEFERRED) != RE_OK) {
-    return chkResult;
-  }
-
-  return RE_OK;
-}
-
 TResult core::MRenderer::createPipelineLayouts() {
   RE_LOG(Log, "Creating graphics pipelines.");
 
@@ -219,76 +163,11 @@ TResult core::MRenderer::createPipelineLayouts() {
   return RE_OK;
 }
 
+VkPipelineLayout& core::MRenderer::getPipelineLayout(EPipelineLayout type) {
+  return system.layouts.at(type);
+}
+
 TResult core::MRenderer::createGraphicsPipelines() {
-  // G-Buffer pipelines
-  {
-    // backface culled opaque pipeline
-    RGraphicsPipelineInfo pipelineInfo{};
-    pipelineInfo.pipeline = EPipeline::OpaqueCullBack;
-    pipelineInfo.pipelineLayout = EPipelineLayout::Scene;
-    pipelineInfo.renderPass = ERenderPass::Deferred;
-    pipelineInfo.subpass = 0;
-    pipelineInfo.vertexShader = "vs_scene.spv";
-    pipelineInfo.fragmentShader = "fs_gbuffer.spv";
-    pipelineInfo.colorBlendAttachmentCount =
-        static_cast<uint32_t>(scene.pGBufferTargets.size());
-    pipelineInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-    pipelineInfo.blendEnable = VK_FALSE;
-    pipelineInfo.viewportId = EViewport::vpMain;
-
-    RE_CHECK(createGraphicsPipeline(&pipelineInfo));
-
-    // non-culled opaque pipeline
-    pipelineInfo.pipeline = EPipeline::OpaqueCullNone;
-    pipelineInfo.cullMode = VK_CULL_MODE_NONE;
-    pipelineInfo.blendEnable = VK_FALSE;
-
-    RE_CHECK(createGraphicsPipeline(&pipelineInfo));
-
-    // non-culled blending pipeline
-    pipelineInfo.pipeline = EPipeline::BlendCullNone;
-    pipelineInfo.cullMode = VK_CULL_MODE_NONE;
-    pipelineInfo.blendEnable = VK_TRUE;
-
-    RE_CHECK(createGraphicsPipeline(&pipelineInfo));
-
-    // TODO: add mask pipeline
-  }
-    
-  // PBR pipeline, uses the result of G-Buffer pipelines
-  {
-    RGraphicsPipelineInfo pipelineInfo{};
-    pipelineInfo.pipeline = EPipeline::PBR;
-    pipelineInfo.pipelineLayout = EPipelineLayout::PBR;
-    pipelineInfo.renderPass = ERenderPass::Deferred;
-    pipelineInfo.subpass = 1;
-    pipelineInfo.vertexShader = "vs_quad.spv";
-    pipelineInfo.fragmentShader = "fs_pbr.spv";
-    pipelineInfo.colorBlendAttachmentCount = 1;
-    pipelineInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-    pipelineInfo.blendEnable = VK_FALSE;
-    pipelineInfo.viewportId = EViewport::vpMain;
-
-    RE_CHECK(createGraphicsPipeline(&pipelineInfo));
-  }
-
-  // Skybox pipeline, uses forward subpass of the deferred render pass
-  {
-    RGraphicsPipelineInfo pipelineInfo{};
-    pipelineInfo.pipeline = EPipeline::Skybox;
-    pipelineInfo.pipelineLayout = EPipelineLayout::Scene;
-    pipelineInfo.renderPass = ERenderPass::Deferred;
-    pipelineInfo.subpass = 2;
-    pipelineInfo.vertexShader = "vs_skybox.spv";
-    pipelineInfo.fragmentShader = "fs_skybox.spv";
-    pipelineInfo.colorBlendAttachmentCount = 1;
-    pipelineInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-    pipelineInfo.blendEnable = VK_FALSE;
-    pipelineInfo.viewportId = EViewport::vpMain;
-
-    RE_CHECK(createGraphicsPipeline(&pipelineInfo));
-  }
-
   // "Shadow" depth map pipeline
   {
     RGraphicsPipelineInfo pipelineInfo{};
@@ -319,19 +198,6 @@ TResult core::MRenderer::createGraphicsPipelines() {
   }
 
   return RE_OK;
-}
-
-void core::MRenderer::destroyGraphicsPipelines() {
-  RE_LOG(Log, "Shutting down graphics pipeline.");
-  destroyDescriptorSetLayouts();
-
-  for (auto& pipeline : system.graphicsPipelines) {
-    vkDestroyPipeline(logicalDevice.device, pipeline.second.pipeline, nullptr);
-  }
-
-  for (auto& layout : system.layouts) {
-    vkDestroyPipelineLayout(logicalDevice.device, layout.second, nullptr);
-  }
 }
 
 TResult core::MRenderer::createComputePipelines() {
@@ -471,13 +337,8 @@ void core::MRenderer::destroyComputePipelines() {
   }
 }
 
-VkPipelineLayout& core::MRenderer::getPipelineLayout(EPipelineLayout type) {
-  return system.layouts.at(type);
-}
-
 TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineInfo) {
-  // Create pipeline for dynamic rendering and ignore usual render pass settings if dynamic rendering pass variable was defined
-  const bool isDynamicRendering = pipelineInfo->pDynamicPipelineInfo;
+  RDynamicRenderingPass* pRenderPass = pipelineInfo->pRenderPass;
 
   VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
   inputAssemblyInfo.sType =
@@ -524,8 +385,8 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
   viewportInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
   viewportInfo.viewportCount = 1;
   viewportInfo.scissorCount = 1;
-  viewportInfo.pViewports = &system.viewports[pipelineInfo->viewportId].viewport;
-  viewportInfo.pScissors = &system.viewports[pipelineInfo->viewportId].scissor;
+  viewportInfo.pViewports = &system.viewports[pRenderPass->viewportId].viewport;
+  viewportInfo.pScissors = &system.viewports[pRenderPass->viewportId].scissor;
 
   VkPipelineDepthStencilStateCreateInfo depthStencilInfo{};
   depthStencilInfo.sType =
@@ -553,9 +414,9 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
   colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
   std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachments;
-  colorBlendAttachments.resize(pipelineInfo->colorBlendAttachmentCount);
+  colorBlendAttachments.resize(pRenderPass->colorAttachmentCount);
 
-  for (uint8_t i = 0; i < pipelineInfo->colorBlendAttachmentCount; ++i) {
+  for (uint8_t i = 0; i < pRenderPass->colorAttachmentCount; ++i) {
     colorBlendAttachments[i] = colorBlendAttachment;
   }
 
@@ -594,8 +455,8 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
   }
 
   if (shaderStages.empty()) {
-    RE_LOG(Critical, "Failed to create pipeline E%d. No shaders were loaded.",
-           pipelineInfo->pipeline);
+    RE_LOG(Critical, "Failed to create pipeline for dynamic render pass E%d. No shaders were loaded.",
+           pRenderPass->passId);
     return RE_CRITICAL;
   }
 
@@ -611,53 +472,27 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
   graphicsPipelineInfo.pVertexInputState = &vertexInputInfo;
   graphicsPipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
   graphicsPipelineInfo.pStages = shaderStages.data();
-  graphicsPipelineInfo.layout = getPipelineLayout(pipelineInfo->pipelineLayout);
-  graphicsPipelineInfo.renderPass = (isDynamicRendering) ? nullptr : getVkRenderPass(pipelineInfo->renderPass);
-  graphicsPipelineInfo.subpass = (isDynamicRendering) ? 0u : pipelineInfo->subpass;
+  graphicsPipelineInfo.layout = pRenderPass->layout;
+  graphicsPipelineInfo.renderPass = nullptr;
+  graphicsPipelineInfo.subpass = 0u;
   graphicsPipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
   graphicsPipelineInfo.basePipelineIndex = -1;
-
-  if (isDynamicRendering) {
-    RPipeline* pPipeline = getGraphicsPipeline(pipelineInfo->pipeline);
-
-    if (pPipeline) {
-      graphicsPipelineInfo.pNext = pipelineInfo->pDynamicPipelineInfo;
-    } else {
-      RE_LOG(Error, "Failed to configure dynamic rendering pass %d, pipeline %d. Seems like provided pipeline does not belong to this pass.",
-        pipelineInfo->dynamicRenderPass, pipelineInfo->pipeline);
-      return RE_CRITICAL;
-    }
-  }
-
-  // add new pipeline structure and fill it with data
-  system.graphicsPipelines.emplace(pipelineInfo->pipeline, RPipeline{});
+  graphicsPipelineInfo.pNext = pipelineInfo->pDynamicPipelineInfo;
 
   if (vkCreateGraphicsPipelines(
           logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
           nullptr,
-          &getGraphicsPipeline(pipelineInfo->pipeline)->pipeline) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create pipeline E%d.", pipelineInfo->pipeline);
+          &pRenderPass->pipeline) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to create pipeline for dynamic rendering pass E%d.", pRenderPass->passId);
 
     return RE_CRITICAL;
   }
-
-  system.graphicsPipelines.at(pipelineInfo->pipeline).pipelineId = pipelineInfo->pipeline;
-  system.graphicsPipelines.at(pipelineInfo->pipeline).subpassIndex = pipelineInfo->subpass;
 
   for (auto& stage : shaderStages) {
     vkDestroyShaderModule(logicalDevice.device, stage.module, nullptr);
   }
 
-  RE_LOG(Log, "Created pipeline E%d.", pipelineInfo->pipeline);
   return RE_OK;
-}
-
-RPipeline* core::MRenderer::getGraphicsPipeline(EPipeline type) {
-  if (system.graphicsPipelines.contains(type)) {
-    return &system.graphicsPipelines.at(type);
-  }
-
-  return nullptr;
 }
 
 VkPipeline& core::MRenderer::getComputePipeline(EComputePipeline type) {

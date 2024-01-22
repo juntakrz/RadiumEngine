@@ -8,11 +8,6 @@
 #define MAX_TRANSFER_BUFFERS    2u
 #define RE_MAXLIGHTS            32              // includes directional light, always at index 0
 
-// frame buffers
-#define RFB_SHADOW              "FB_Shadow"
-#define RFB_DEFERRED            "FB_Deferred"       // generate G-buffer textures and do PBR
-#define RFB_ENV                 "FB_Env"
-
 // render targets
 #define RTGT_DEPTH              "RT2D_Depth"        // active camera depth render target
 #define RTGT_SHADOW             "RT2D_Shadow"       // shadow render target (depth)

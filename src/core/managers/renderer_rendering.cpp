@@ -25,53 +25,11 @@ void core::MRenderer::updateBoundEntities() {
   }
 }
 
-void core::MRenderer::drawBoundEntities(VkCommandBuffer cmdBuffer,
-                                        uint32_t subpassIndex) {
+void core::MRenderer::drawBoundEntities(VkCommandBuffer commandBuffer) {
   // go through bound models and generate draw calls for each
   AEntity* pEntity = nullptr;
   WModel* pModel = nullptr;
   renderView.refresh();
-
-  for (auto& pPipeline : renderView.pCurrentRenderPass->pipelines) {
-    if (pPipeline->subpassIndex != subpassIndex) {
-      continue;
-    }
-
-    if (renderView.pCurrentPipeline != pPipeline) {
-      renderView.pCurrentPipeline = pPipeline;
-      vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pPipeline->pipeline);
-    }
-
-    for (auto& bindInfo : system.bindings) {
-      if ((pEntity = bindInfo.pEntity) == nullptr) {
-        continue;
-      }
-
-      if ((pModel = bindInfo.pEntity->getModel()) == nullptr) {
-        continue;
-      }
-
-      auto& primitives = pModel->getPrimitives();
-
-      for (const auto& primitive : primitives) {
-        renderPrimitive(cmdBuffer, primitive, pPipeline->pipelineId, &bindInfo);
-      }
-    }
-  }
-}
-
-void core::MRenderer::drawBoundEntities(VkCommandBuffer cmdBuffer,
-                                        EPipeline forcedPipeline) {
-  // go through bound models and generate draw calls for each
-  AEntity* pEntity = nullptr;
-  WModel* pModel = nullptr;
-  RPipeline* pPipeline = getGraphicsPipeline(forcedPipeline);
-  renderView.refresh();
-
-  if (renderView.pCurrentPipeline != pPipeline) {
-    renderView.pCurrentPipeline = pPipeline;
-    vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pPipeline->pipeline);
-  }
 
   for (auto& bindInfo : system.bindings) {
     if ((pEntity = bindInfo.pEntity) == nullptr) {
@@ -85,7 +43,7 @@ void core::MRenderer::drawBoundEntities(VkCommandBuffer cmdBuffer,
     auto& primitives = pModel->getPrimitives();
 
     for (const auto& primitive : primitives) {
-      renderPrimitive(cmdBuffer, primitive, forcedPipeline, &bindInfo);
+      renderPrimitive(commandBuffer, primitive, renderView.pCurrentPass->pipelineId, &bindInfo);
     }
   }
 }
@@ -111,7 +69,7 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
         pEntity->getRootTransformBufferOffset(),
         pEntity->getNodeTransformBufferOffset(pNode->index), skinOffset};
     vkCmdBindDescriptorSets(
-        cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentRenderPass->layout,
+        cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->layout,
         1, 1, &scene.transformDescriptorSet, 3, dynamicOffsets);
     renderView.pCurrentMesh = pMesh;
   }
@@ -120,7 +78,7 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
   if (renderView.pCurrentMaterial != pPrimitive->pMaterial) {
     // environment render pass uses global push constant block for fragment shader
     if (!renderView.generateEnvironmentMapsImmediate && !renderView.isEnvironmentPass) {
-      vkCmdPushConstants(cmdBuffer, renderView.pCurrentRenderPass->layout,
+      vkCmdPushConstants(cmdBuffer, renderView.pCurrentPass->layout,
                          VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(RSceneVertexPCB), sizeof(RSceneFragmentPCB),
                          &pPrimitive->pMaterial->pushConstantBlock);
     }
@@ -167,12 +125,9 @@ void core::MRenderer::renderEnvironmentMaps(
     return;
   }
 
-  EViewport viewportIndex = EViewport::vpEnvSkybox;
+  EViewport viewportIndex = EViewport::vpEnvironment;
   auto pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::Environment);
-  //renderView.pCurrentRenderPass = pRenderPass;
-
-  RPipeline* pPipeline = pRenderPass->pPipeline;
-  const EPipeline currentPipelineId = pPipeline->pipelineId;
+  renderView.pCurrentPass = pRenderPass;
 
   setCamera(RCAM_ENV);
   getCamera()->setRotation(environment.cameraTransformVectors[environment.tracking.layer]);
@@ -190,16 +145,16 @@ void core::MRenderer::renderEnvironmentMaps(
 
   vkCmdBindDescriptorSets(
       commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-      renderView.pCurrentRenderPass->layout, 0, 1,
+      renderView.pCurrentPass->layout, 0, 1,
       &scene.descriptorSets[renderView.frameInFlight], 1,
       &dynamicOffset);
 
-  vkCmdPushConstants(commandBuffer, renderView.pCurrentRenderPass->layout,
+  vkCmdPushConstants(commandBuffer, renderView.pCurrentPass->layout,
     VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(RSceneVertexPCB), sizeof(REnvironmentFragmentPCB),
     &environment.pushBlock);
 
   renderView.isEnvironmentPass = true;
-  drawBoundEntities(commandBuffer, pPipeline->pipelineId);
+  drawBoundEntities(commandBuffer);
   renderView.isEnvironmentPass = false;
   
   vkCmdEndRendering(commandBuffer);

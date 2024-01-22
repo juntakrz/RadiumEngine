@@ -80,29 +80,23 @@ enum class EDescriptorSetLayout {
   Dummy
 };
 
-enum class EDynamicRenderingPass {
-  Null,
-  Environment
+enum class EDynamicRenderingPass : uint32_t {
+  Null =            0,
+  Environment =     0b1,
+  Shadow =          0b10,
+  Skybox =          0b100,
+  OpaqueCullBack =  0b1000,
+  OpaqueCullNone =  0b10000,
+  MaskCullBack =    0b100000,
+  BlendCullNone =   0b1000000,
+  PBR =             0b10000000,
+  Present =         0b100000000
 };
 
 enum class ELightType {
   Directional,
   Point
 };
-
-enum EPipeline : uint32_t {
-  Null              = 0,
-  EnvSkybox         = 0b1,
-  Shadow            = 0b10,
-  Skybox            = 0b100,
-  OpaqueCullBack    = 0b1000,
-  OpaqueCullNone    = 0b10000,
-  MaskCullBack      = 0b100000,
-  BlendCullNone     = 0b1000000,
-  PBR               = 0b10000000,
-  Present           = 0b100000000
-};
-
 enum class EPipelineLayout {
   Null,
   Scene,
@@ -135,7 +129,7 @@ enum class EResourceType {
 
 enum class ETransformType { Translation, Rotation, Scale, Weight, Undefined };
 
-enum EViewport { vpEnvSkybox, vpEnvIrrad, vpShadow, vpMain, vpCount };  // 'Count' is a hack
+enum EViewport { vpEnvironment, vpEnvIrrad, vpShadow, vpMain, vpCount };  // 'Count' is a hack
 
 struct RBuffer {
   EBufferType type = EBufferType::NONE;
@@ -166,29 +160,36 @@ struct RComputeJobInfo {
 };
 
 struct RDynamicRenderingInfo {
-  // Color views and formats must correspond to each other and their number must be equal
+  EPipelineLayout pipelineLayout;
+  EViewport viewportId;
   std::vector<std::pair<VkImageView, VkFormat>> colorViews;
   std::pair<VkImageView, VkFormat> depthView;
   std::pair<VkImageView, VkFormat> stencilView;
   VkImageLayout depthLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
   VkClearValue colorAttachmentClearValue = {0.0f, 0.0f, 0.0f, 0.0f};
-
-  // Pipeline to be created with a corresponding layout
-  EPipeline pipeline;
-  EPipelineLayout pipelineLayout;
   std::string vertexShader;
   std::string fragmentShader;
-  EViewport viewportId;
+
+  struct {
+    VkBool32 blendEnable = VK_FALSE;
+    VkPrimitiveTopology primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    VkPolygonMode polygonMode = VK_POLYGON_MODE_FILL;
+    VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT;
+  } pipelineInfo;
 };
 
 struct RDynamicRenderingPass {
   EDynamicRenderingPass passId;
   EViewport viewportId;
-  struct RPipeline* pPipeline = nullptr;
+  EPipelineLayout layoutId;
+
   VkRenderingInfo renderingInfo;
   std::vector<VkRenderingAttachmentInfo> colorAttachments;
   VkRenderingAttachmentInfo depthAttachment;
   VkRenderingAttachmentInfo stencilAttachment;
+  VkPipeline pipeline = VK_NULL_HANDLE;
+  VkPipelineLayout layout = VK_NULL_HANDLE;
+  uint32_t colorAttachmentCount = 0u;
 
   // Post rendering layout transition
   bool colorAttachmentsToShaderReadOnly = true;
@@ -209,17 +210,10 @@ struct RFramebuffer {
 };
 
 struct RGraphicsPipelineInfo {
-  ERenderPass renderPass;
-  EPipelineLayout pipelineLayout;
-  EPipeline pipeline;
-  EViewport viewportId;
-  uint32_t colorBlendAttachmentCount;
+  RDynamicRenderingPass* pRenderPass;
   std::string vertexShader;
   std::string fragmentShader;
-
-  EDynamicRenderingPass dynamicRenderPass = EDynamicRenderingPass::Null;
   VkPipelineRenderingCreateInfo* pDynamicPipelineInfo = nullptr;
-  uint32_t subpass = 0;
   VkBool32 blendEnable = VK_FALSE;
   VkPrimitiveTopology primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
   VkPolygonMode polygonMode = VK_POLYGON_MODE_FILL;
