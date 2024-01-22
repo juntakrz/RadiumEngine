@@ -89,8 +89,8 @@ TResult core::MRenderer::createViewports() {
 void core::MRenderer::setViewport(VkCommandBuffer commandBuffer, EViewport index) {
   vkCmdSetViewport(commandBuffer, 0, 1, &system.viewports[index].viewport);
   vkCmdSetScissor(commandBuffer, 0, 1, &system.viewports[index].scissor);
-  system.renderPassBeginInfo.renderArea.offset = system.viewports[index].scissor.offset;
-  system.renderPassBeginInfo.renderArea.extent = system.viewports[index].scissor.extent;
+
+  renderView.currentViewportId = index;
 }
 
 RViewport* core::MRenderer::getViewportData(EViewport viewportId) {

@@ -152,6 +152,7 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     // Blend pass without culling
 
     info.pipelineInfo.blendEnable = VK_TRUE;
+    info.
 
     createDynamicRenderingPass(EDynamicRenderingPass::BlendCullNone, &info);
 
@@ -175,7 +176,7 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     createDynamicRenderingPass(EDynamicRenderingPass::PBR, &info);
   }
 
-  // Skybox pipeline, uses forward subpass of the deferred render pass
+  // Skybox pass, front rendering addition to deferred passes
   {
     RTexture* pColorAttachment = core::resources.getTexture(RTGT_GPBR);
     RTexture* pDepthAttachment = core::resources.getTexture(RTGT_DEPTH);
@@ -190,6 +191,24 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     info.depthView = { pDepthAttachment->texture.view, pDepthAttachment->texture.imageFormat };
 
     createDynamicRenderingPass(EDynamicRenderingPass::Skybox, &info);
+  }
+
+  // "Present" final output pass
+  {
+    RTexture* pDepthAttachment = core::resources.getTexture(RTGT_DEPTH);
+
+    RDynamicRenderingInfo info{};
+    info.pipelineLayout = EPipelineLayout::Scene;
+    info.viewportId = EViewport::vpMain;
+    info.vertexShader = "vs_quad.spv";
+    info.fragmentShader = "fs_present.spv";
+    info.colorAttachmentClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
+    info.depthView = { pDepthAttachment->texture.view, pDepthAttachment->texture.imageFormat };
+
+    // During rendering this color view will be modified
+    info.colorViews = { { swapchain.imageViews[0], swapchain.formatData.format } };
+
+    createDynamicRenderingPass(EDynamicRenderingPass::Present, &info);
   }
 
   return RE_OK;

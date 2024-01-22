@@ -6,7 +6,7 @@ struct RTexture;
 
 struct RMaterial {
   std::string name;
-  uint32_t pipelineFlags = EPipeline::Null;
+  uint32_t passFlags = EDynamicRenderingPass::Null;
   std::vector<RTexture*> pLinearTextures;
 
   std::string shaderVertex, shaderPixel, shaderGeometry;

@@ -112,9 +112,7 @@ class MRenderer {
 
     std::vector<REntityBindInfo> bindings;  // entities rendered during the current frame
     std::vector<VkDrawIndexedIndirectCommand> drawCommands;
-    std::unordered_map<EPipeline, std::vector<WPrimitive*>> primitivesByPipeline;  // TODO
-
-    VkRenderPassBeginInfo renderPassBeginInfo;
+    std::unordered_map<EDynamicRenderingPass, std::vector<WPrimitive*>> primitivesByPass;  // TODO
   } system;
 
   // current camera view data
@@ -142,6 +140,7 @@ class MRenderer {
     void* pCurrentMaterial = nullptr;
 
     RDynamicRenderingPass* pCurrentPass = nullptr;
+    EViewport currentViewportId = EViewport::vpCount;
 
     uint32_t currentFrameIndex = 0;
     uint32_t frameInFlight = 0;
@@ -153,7 +152,6 @@ class MRenderer {
     void refresh() {
       pCurrentMesh = nullptr;
       pCurrentMaterial = nullptr;
-      //pCurrentPipeline = nullptr;
     }
   } renderView;
 
@@ -249,14 +247,13 @@ class MRenderer {
   TResult createPipelineLayouts();
   VkPipelineLayout& getPipelineLayout(EPipelineLayout type);
 
-  TResult createGraphicsPipelines();
   TResult createComputePipelines();
   void destroyComputePipelines();
   TResult createGraphicsPipeline(RGraphicsPipelineInfo* pipelineInfo);
   VkPipeline& getComputePipeline(EComputePipeline type);
 
-  // check if pipeline flag is present in the flag array
-  bool checkPipeline(uint32_t pipelineFlags, EPipeline pipelineFlag);
+  // check if pass flag is present in the pass array
+  bool checkPass(uint32_t passFlags, EDynamicRenderingPass passFlag);
 
   //
   // ***PASS
@@ -510,8 +507,7 @@ public:
   // draw bound entities using specific pipeline
   void drawBoundEntities(VkCommandBuffer commandBuffer);
 
-  void renderPrimitive(VkCommandBuffer cmdBuffer, WPrimitive* pPrimitive,
-                       EPipeline pipelineFlag, REntityBindInfo* pBindInfo);
+  void renderPrimitive(VkCommandBuffer cmdBuffer, WPrimitive* pPrimitive, REntityBindInfo* pBindInfo);
 
   void renderEnvironmentMaps(VkCommandBuffer commandBuffer,
                              const uint32_t frameInterval = 1);
@@ -519,16 +515,13 @@ public:
   void executeRenderPass(VkCommandBuffer commandBuffer, ERenderPass passId,
                          VkDescriptorSet* pSceneSets, const uint32_t setCount);
 
-  void executeDynamicRendering(VkCommandBuffer commandBuffer,
-                               EDynamicRenderingPass renderPass);
+  void executeDynamicRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass renderPass,
+                                   VkRenderingInfo* pRenderingOverride = nullptr);
 
   // Pipeline must use a compatible quad drawing vertex shader
   // Scene descriptor set is optional and is required only if fragment shader needs scene data
-  void renderFullscreenQuad(VkCommandBuffer commandBuffer,
-                            EPipelineLayout pipelineLayout, EPipeline pipeline,
-                            VkDescriptorSet* pAttachmentSet,
-                            VkDescriptorSet* pSceneSet = nullptr,
-                            uint32_t sceneDynamicOffset = 0u);
+  void renderFullscreenQuad(VkCommandBuffer commandBuffer, VkDescriptorSet* pAttachmentSet,
+                            VkDescriptorSet* pSceneSet = nullptr, uint32_t sceneDynamicOffset = 0u);
 
  public:
   void renderFrame();

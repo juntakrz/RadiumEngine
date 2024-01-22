@@ -167,39 +167,6 @@ VkPipelineLayout& core::MRenderer::getPipelineLayout(EPipelineLayout type) {
   return system.layouts.at(type);
 }
 
-TResult core::MRenderer::createGraphicsPipelines() {
-  // "Shadow" depth map pipeline
-  {
-    RGraphicsPipelineInfo pipelineInfo{};
-    pipelineInfo.pipeline = EPipeline::Shadow;
-    pipelineInfo.pipelineLayout = EPipelineLayout::Scene;
-    pipelineInfo.renderPass = ERenderPass::Shadow;
-    pipelineInfo.vertexShader = "vs_scene.spv";
-    pipelineInfo.fragmentShader = "fs_shadowPass.spv";
-    pipelineInfo.colorBlendAttachmentCount = 0;
-    pipelineInfo.blendEnable = VK_TRUE;
-    pipelineInfo.viewportId = EViewport::vpShadow;
-
-    RE_CHECK(createGraphicsPipeline(&pipelineInfo));
-  }
-
-  // "Present" final output pipeline
-  {
-    RGraphicsPipelineInfo pipelineInfo{};
-    pipelineInfo.pipeline = EPipeline::Present;
-    pipelineInfo.pipelineLayout = EPipelineLayout::Scene;
-    pipelineInfo.renderPass = ERenderPass::Present;
-    pipelineInfo.vertexShader = "vs_quad.spv";
-    pipelineInfo.fragmentShader = "fs_present.spv";
-    pipelineInfo.colorBlendAttachmentCount = 1;
-    pipelineInfo.viewportId = EViewport::vpMain;
-
-    RE_CHECK(createGraphicsPipeline(&pipelineInfo));
-  }
-
-  return RE_OK;
-}
-
 TResult core::MRenderer::createComputePipelines() {
   RE_LOG(Log, "Creating compute pipelines.");
 
@@ -500,7 +467,6 @@ VkPipeline& core::MRenderer::getComputePipeline(EComputePipeline type) {
   return system.computePipelines.at(type);
 }
 
-bool core::MRenderer::checkPipeline(uint32_t pipelineFlags,
-                                    EPipeline pipelineFlag) {
-  return pipelineFlags & pipelineFlag;
+bool core::MRenderer::checkPass(uint32_t passFlags, EDynamicRenderingPass passFlag) {
+  return passFlags & (uint32_t)passFlag;
 }

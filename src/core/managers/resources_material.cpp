@@ -25,7 +25,7 @@ void core::MResources::initialize() {
   // create default material
   RMaterialInfo materialInfo{};
   materialInfo.name = "default";
-  materialInfo.pipelineFlags = EPipeline::OpaqueCullBack;
+  materialInfo.passFlags = EDynamicRenderingPass::OpaqueCullBack;
   materialInfo.textures.baseColor = RE_DEFAULTTEXTURE;
   materialInfo.textures.normal = "default/default_normal.ktx2";
   materialInfo.textures.metalRoughness =
@@ -46,7 +46,7 @@ void core::MResources::initialize() {
   materialInfo.alphaMode = EAlphaMode::Opaque;
   materialInfo.doubleSided = false;
   materialInfo.manageTextures = true;
-  materialInfo.pipelineFlags = EPipeline::Present;
+  materialInfo.passFlags = EDynamicRenderingPass::Present;
 
   if (!createMaterial(&materialInfo)) {
     RE_LOG(Critical, "Failed to create Vulkan present material.");
@@ -168,28 +168,28 @@ RMaterial* core::MResources::createMaterial(
     newMat.pLinearTextures.emplace_back(newMat.pExtra);
   }
 
-  newMat.pipelineFlags = pDesc->pipelineFlags;
+  newMat.passFlags = pDesc->passFlags;
 
   // determine pipeline automatically if not explicitly set
-  if (pDesc->pipelineFlags == EPipeline::Null) {
+  if (pDesc->passFlags == EDynamicRenderingPass::Null) {
     switch (pDesc->alphaMode) {
       case EAlphaMode::Blend: {
-        newMat.pipelineFlags |= EPipeline::BlendCullNone;
+        newMat.passFlags |= EDynamicRenderingPass::BlendCullNone;
         break;
       }
       case EAlphaMode::Mask: {
-        newMat.pipelineFlags |= EPipeline::MaskCullBack;
+        newMat.passFlags |= EDynamicRenderingPass::MaskCullBack;
         break;
       }
       case EAlphaMode::Opaque: {
-        newMat.pipelineFlags |= pDesc->doubleSided ? EPipeline::OpaqueCullNone
-                                                   : EPipeline::OpaqueCullBack;
+        newMat.passFlags |= pDesc->doubleSided ? EDynamicRenderingPass::OpaqueCullNone
+                                                   : EDynamicRenderingPass::OpaqueCullBack;
         break;
       }
     }
 
     // all glTF materials are featured in shadow prepass by default
-    newMat.pipelineFlags |= EPipeline::Shadow;
+    newMat.passFlags |= EDynamicRenderingPass::Shadow;
   }
 
   RE_LOG(Log, "Creating material \"%s\".", newMat.name.c_str());

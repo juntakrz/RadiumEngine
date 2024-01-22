@@ -42,20 +42,17 @@ void core::MRenderer::drawBoundEntities(VkCommandBuffer commandBuffer) {
 
     auto& primitives = pModel->getPrimitives();
 
+    // TODO: Add pass flag check here
+
     for (const auto& primitive : primitives) {
-      renderPrimitive(commandBuffer, primitive, renderView.pCurrentPass->pipelineId, &bindInfo);
+      renderPrimitive(commandBuffer, primitive, &bindInfo);
     }
   }
 }
 
 void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
                                       WPrimitive* pPrimitive,
-                                      EPipeline pipelineFlag,
                                       REntityBindInfo* pBindInfo) {
-  if (!checkPipeline(pPrimitive->pMaterial->pipelineFlags, pipelineFlag)) {
-    // does not belong to the current pipeline
-    return;
-  }
 
   WModel::Node* pNode = reinterpret_cast<WModel::Node*>(pPrimitive->pOwnerNode);
   WModel::Mesh* pMesh = pNode->pMesh.get();
@@ -192,7 +189,7 @@ void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer,
       vkCmdPushConstants(commandBuffer, getPipelineLayout(EPipelineLayout::Scene), VK_SHADER_STAGE_FRAGMENT_BIT,
         sizeof(RSceneVertexPCB), sizeof(RSceneFragmentPCB), &core::resources.getMaterial(RMAT_PRESENT)->pushConstantBlock);
 
-      renderFullscreenQuad(commandBuffer, EPipelineLayout::Scene, EPipeline::Present, nullptr);
+      renderFullscreenQuad(commandBuffer, EPipelineLayout::Scene, EDynamicRenderingPass::Present, nullptr);
 
       vkCmdEndRenderPass(commandBuffer);
 
@@ -237,7 +234,7 @@ void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer,
       vkCmdNextSubpass(commandBuffer, VK_SUBPASS_CONTENTS_INLINE);
 
       renderFullscreenQuad(commandBuffer, EPipelineLayout::PBR,
-                           EPipeline::PBR, &scene.GBufferDescriptorSet,
+                           EDynamicRenderingPassPBR, &scene.GBufferDescriptorSet,
                            pSceneSets, dynamicOffset);
 
       // Subpass 2
@@ -260,38 +257,36 @@ void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer,
   vkCmdEndRenderPass(commandBuffer);
 }
 
-void core::MRenderer::executeDynamicRendering(VkCommandBuffer commandBuffer,
-                                               EDynamicRenderingPass renderPass) {
+void core::MRenderer::executeDynamicRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId,
+                                                  VkRenderingInfo* pRenderingOverride) {
+  RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(passId);
+  renderView.pCurrentPass = pRenderPass;
+  VkRenderingInfo* pRenderingInfo = (pRenderingOverride != nullptr) ? pRenderingOverride : &renderView.pCurrentPass->renderingInfo;
 
-  //vkCmdBeginRendering(commandBuffer, &renderingInfo);
-  //drawBoundEntities(commandBuffer, pipeline);
-  //vkCmdEndRendering(commandBuffer);
+  vkCmdBeginRendering(commandBuffer, pRenderingInfo);
+
+  if (renderView.pCurrentPass->viewportId != renderView.currentViewportId) {
+    setViewport(commandBuffer, renderView.pCurrentPass->viewportId);
+  }
+
+  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->pipeline);
+  drawBoundEntities(commandBuffer);
+  vkCmdEndRendering(commandBuffer);
 }
 
 void core::MRenderer::renderFullscreenQuad(VkCommandBuffer commandBuffer,
-                                           EPipelineLayout pipelineLayout,
-                                           EPipeline pipeline,
                                            VkDescriptorSet* pAttachmentSet,
                                            VkDescriptorSet* pSceneSet,
                                            uint32_t sceneDynamicOffset) {
-  RPipeline* pPipeline = getGraphicsPipeline(pipeline);
-
-  if (renderView.pCurrentPipeline != pPipeline) {
-    renderView.pCurrentPipeline = pPipeline;
-
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-      getGraphicsPipeline(pipeline)->pipeline);
-  }
-
   if (pSceneSet) {
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            getPipelineLayout(pipelineLayout), 0, 1, pSceneSet,
+                            renderView.pCurrentPass->layout, 0, 1, pSceneSet,
                             1, &sceneDynamicOffset);
   }
 
   if (pAttachmentSet) {
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-      getPipelineLayout(pipelineLayout), 2, 1,
+      renderView.pCurrentPass->layout, 2, 1,
       pAttachmentSet, 0, nullptr);
   }
 
@@ -365,19 +360,26 @@ void core::MRenderer::renderFrame() {
     setCamera(RCAM_MAIN);
   }
 
-  setViewport(cmdBuffer, EViewport::vpShadow);
-  executeRenderPass(cmdBuffer, ERenderPass::Shadow, frameSets, 1);
+  // Generating G-Buffer
+  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::OpaqueCullBack);
+  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::OpaqueCullNone);
+  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::BlendCullNone);
 
-  setViewport(cmdBuffer, EViewport::vpMain);
-  executeRenderPass(cmdBuffer, ERenderPass::Deferred, frameSets, 1);
-  executeRenderPass(cmdBuffer, ERenderPass::Present, frameSets, 1);
+  // Deferred rendering pass
+  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::PBR);
 
-  // end writing commands and prepare to submit buffer to rendering queue
+  // Additional front rendering passes
+  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::Skybox);
+
+  // Final presentation pass
+  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::Present);
+
+  // End writing commands and prepare to submit buffer to rendering queue
   if (vkEndCommandBuffer(cmdBuffer) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to end writing to command buffer.");
   }
 
-  // wait until image to write color data to is acquired
+  // Wait until image to write color data to is acquired
   VkSemaphore waitSems[] = {sync.semImgAvailable[renderView.frameInFlight]};
   VkSemaphore signalSems[] = {sync.semRenderFinished[renderView.frameInFlight]};
   VkPipelineStageFlags waitStages[] = {

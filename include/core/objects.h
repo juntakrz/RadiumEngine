@@ -80,7 +80,7 @@ enum class EDescriptorSetLayout {
   Dummy
 };
 
-enum class EDynamicRenderingPass : uint32_t {
+enum EDynamicRenderingPass : uint32_t {
   Null =            0,
   Environment =     0b1,
   Shadow =          0b10,
@@ -170,6 +170,11 @@ struct RDynamicRenderingInfo {
   std::string vertexShader;
   std::string fragmentShader;
 
+  // Post rendering layout transition
+  bool transitionColorAttachmentLayout = true;
+  VkImageLayout colorAttachmentsFinalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  bool transitionDepthAttachmentLayout = false;
+
   struct {
     VkBool32 blendEnable = VK_FALSE;
     VkPrimitiveTopology primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -192,8 +197,9 @@ struct RDynamicRenderingPass {
   uint32_t colorAttachmentCount = 0u;
 
   // Post rendering layout transition
-  bool colorAttachmentsToShaderReadOnly = true;
-  bool depthAttachmentToShaderReadOnly = false;
+  bool transitionColorAttachmentLayout = true;
+  VkImageLayout colorAttachmentsFinalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  bool transitionDepthAttachmentLayout = false;
 };
 
 struct REntityBindInfo {
@@ -264,15 +270,7 @@ struct RMaterialInfo {
   float emissiveIntensity = 0.0f;
 
   // if 'Null' - pipeline is determined using material properties
-  uint32_t pipelineFlags = EPipeline::Null;
-};
-
-struct RPipeline {
-  VkPipeline pipeline = VK_NULL_HANDLE;
-  VkPipelineLayout layout = VK_NULL_HANDLE;
-  EPipeline pipelineId = EPipeline::Null;
-  EPipelineLayout layoutId = EPipelineLayout::Scene;
-  uint32_t subpassIndex = 0;
+  uint32_t passFlags = EDynamicRenderingPass::Null;
 };
 
 struct RPrimitiveInfo {
@@ -285,16 +283,6 @@ struct RPrimitiveInfo {
   std::vector<RVertex>* pVertexData = nullptr;
   std::vector<uint32_t>* pIndexData = nullptr;
   void* pOwnerNode = nullptr;
-};
-
-struct RRenderPass {
-  VkRenderPass renderPass = nullptr;
-  RFramebuffer* pFramebuffer = nullptr;
-  VkPipelineLayout layout = VK_NULL_HANDLE;
-  std::vector<VkClearValue> clearValues;
-  std::vector<RPipeline*> pipelines;
-
-  RPipeline* getPipeline(EPipeline pipeline);
 };
 
 struct RRenderPassInfo {
