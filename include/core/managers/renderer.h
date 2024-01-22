@@ -103,7 +103,7 @@ class MRenderer {
 
   // render system data - passes, pipelines, mesh data to render
   struct {
-    std::unordered_map<EDynamicRenderingPass, RRenderPass> dynamicRenderingPasses;
+    std::unordered_map<EDynamicRenderingPass, RDynamicRenderingPass> dynamicRenderingPasses;
     std::unordered_map<ERenderPass, RRenderPass> renderPasses;
     std::unordered_map<EPipelineLayout, VkPipelineLayout> layouts;
     std::unordered_map<EPipeline, RPipeline> graphicsPipelines;
@@ -261,7 +261,7 @@ class MRenderer {
   void destroyComputePipelines();
   VkPipelineLayout& getPipelineLayout(EPipelineLayout type);
   TResult createGraphicsPipeline(RGraphicsPipelineInfo* pipelineInfo);
-  RPipeline& getGraphicsPipeline(EPipeline type);
+  RPipeline* getGraphicsPipeline(EPipeline type);
   VkPipeline& getComputePipeline(EComputePipeline type);
 
   // check if pipeline flag is present in the flag array
@@ -272,10 +272,10 @@ class MRenderer {
   //
 
   /* Will create a multi subpass render pass for selected types and will expect a type-dependent color attachment layout */
-  TResult createRenderPass(ERenderPass renderPassId, EPipeline pipeline, RRenderPassInfo* info);
+  TResult createRenderPass(ERenderPass renderPassId, EPipeline pipeline, RRenderPassInfo* pInfo);
 
   // Create new dynamic rendering pass and/or add new/update existing attached pipeline
-  TResult createDynamicRenderPass(EDynamicRenderingPass passType, RDynamicRenderingInfo* info);
+  TResult createDynamicRenderPass(EDynamicRenderingPass passId, RDynamicRenderingInfo* pInfo);
 
   TResult createRenderPasses();
   void destroyRenderPasses();
@@ -283,7 +283,7 @@ class MRenderer {
   VkRenderPass& getVkRenderPass(ERenderPass type);
 
   TResult createDynamicRenderingPasses();
-  RRenderPass* getDynamicRenderingPass(EDynamicRenderingPass type);
+  RDynamicRenderingPass* getDynamicRenderingPass(EDynamicRenderingPass type);
 
   TResult configureRenderPasses();
 
@@ -303,6 +303,7 @@ class MRenderer {
 
   TResult createViewports();
   void setViewport(VkCommandBuffer commandBuffer, EViewport index);
+  RViewport* getViewportData(EViewport viewportId);
 
   void setResourceName(VkDevice device, VkObjectType objectType,
                        uint64_t handle, const char* name);
@@ -541,7 +542,7 @@ public:
   void renderEnvironmentMaps(VkCommandBuffer commandBuffer,
                              const uint32_t frameInterval = 1);
 
-  void executeRenderPass(VkCommandBuffer commandBuffer, ERenderPass passType,
+  void executeRenderPass(VkCommandBuffer commandBuffer, ERenderPass passId,
                          VkDescriptorSet* pSceneSets, const uint32_t setCount);
 
   void executeDynamicRendering(VkCommandBuffer commandBuffer,

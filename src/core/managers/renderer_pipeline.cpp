@@ -618,11 +618,10 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
   graphicsPipelineInfo.basePipelineIndex = -1;
 
   if (isDynamicRendering) {
-    RPipeline* pPipeline = getDynamicRenderingPass(pipelineInfo->dynamicRenderPass)->getPipeline(pipelineInfo->pipeline);
+    RPipeline* pPipeline = getGraphicsPipeline(pipelineInfo->pipeline);
 
     if (pPipeline) {
       graphicsPipelineInfo.pNext = pipelineInfo->pDynamicPipelineInfo;
-      getDynamicRenderingPass(pipelineInfo->dynamicRenderPass)->layout = graphicsPipelineInfo.layout;
     } else {
       RE_LOG(Error, "Failed to configure dynamic rendering pass %d, pipeline %d. Seems like provided pipeline does not belong to this pass.",
         pipelineInfo->dynamicRenderPass, pipelineInfo->pipeline);
@@ -636,7 +635,7 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
   if (vkCreateGraphicsPipelines(
           logicalDevice.device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo,
           nullptr,
-          &getGraphicsPipeline(pipelineInfo->pipeline).pipeline) != VK_SUCCESS) {
+          &getGraphicsPipeline(pipelineInfo->pipeline)->pipeline) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create pipeline E%d.", pipelineInfo->pipeline);
 
     return RE_CRITICAL;
@@ -653,9 +652,12 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
   return RE_OK;
 }
 
-RPipeline& core::MRenderer::getGraphicsPipeline(EPipeline type) {
-  // not error checked
-  return system.graphicsPipelines.at(type);
+RPipeline* core::MRenderer::getGraphicsPipeline(EPipeline type) {
+  if (system.graphicsPipelines.contains(type)) {
+    return &system.graphicsPipelines.at(type);
+  }
+
+  return nullptr;
 }
 
 VkPipeline& core::MRenderer::getComputePipeline(EComputePipeline type) {

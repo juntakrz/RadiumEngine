@@ -65,7 +65,7 @@ void core::MRenderer::drawBoundEntities(VkCommandBuffer cmdBuffer,
   // go through bound models and generate draw calls for each
   AEntity* pEntity = nullptr;
   WModel* pModel = nullptr;
-  RPipeline* pPipeline = &getGraphicsPipeline(forcedPipeline);
+  RPipeline* pPipeline = getGraphicsPipeline(forcedPipeline);
   renderView.refresh();
 
   if (renderView.pCurrentPipeline != pPipeline) {
@@ -168,35 +168,23 @@ void core::MRenderer::renderEnvironmentMaps(
   }
 
   EViewport viewportIndex = EViewport::vpEnvSkybox;
-  auto *pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::Environment);
-  renderView.pCurrentRenderPass = pRenderPass;
+  auto pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::Environment);
+  //renderView.pCurrentRenderPass = pRenderPass;
 
-  RPipeline* pPipeline = pRenderPass->pipelines.at(0);
+  RPipeline* pPipeline = pRenderPass->pPipeline;
   const EPipeline currentPipelineId = pPipeline->pipelineId;
+
+  setCamera(RCAM_ENV);
+  getCamera()->setRotation(environment.cameraTransformVectors[environment.tracking.layer]);
+  updateSceneUBO(renderView.frameInFlight);
 
   // start rendering an appropriate camera view / layer
   environment.subresourceRange.baseArrayLayer = environment.tracking.layer;
   setImageLayout(commandBuffer, environment.pTargetCubemap, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, environment.subresourceRange);
 
-  VkRenderingInfo renderingInfo{};
-  renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-  renderingInfo.colorAttachmentCount = static_cast<uint32_t>(pPipeline->dynamic.colorAttachmentInfo.size());
-  renderingInfo.renderArea = system.viewports[viewportIndex].scissor;
-  renderingInfo.layerCount = 1;
-  renderingInfo.viewMask = 0;
-
-  // modify cubemap color attachment with a required view into an appropriate layer
-  VkRenderingAttachmentInfo attachmentInfo = pPipeline->dynamic.colorAttachmentInfo[0];
-  attachmentInfo.imageView = environment.pTargetCubemap->texture.cubemapFaceViews[environment.tracking.layer];
-  renderingInfo.pColorAttachments = &attachmentInfo;
-
-  vkCmdBeginRendering(commandBuffer, &renderingInfo);
+  vkCmdBeginRendering(commandBuffer, &pRenderPass->renderingInfo);
 
   setViewport(commandBuffer, viewportIndex);
-
-  setCamera(RCAM_ENV);
-  getCamera()->setRotation(environment.cameraTransformVectors[environment.tracking.layer]);
-  updateSceneUBO(renderView.frameInFlight);
 
   const uint32_t dynamicOffset = config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
 
@@ -223,13 +211,13 @@ void core::MRenderer::renderEnvironmentMaps(
 }
 
 void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer,
-                                        ERenderPass passType,
+                                        ERenderPass passId,
                                         VkDescriptorSet* pSceneSets,
                                         const uint32_t setCount) {
   ACamera* pCurrentCamera = view.pActiveCamera;
 
-  renderView.pCurrentRenderPass = getRenderPass(passType);
-  system.renderPassBeginInfo.renderPass = getVkRenderPass(passType);
+  renderView.pCurrentRenderPass = getRenderPass(passId);
+  system.renderPassBeginInfo.renderPass = getVkRenderPass(passId);
 
   system.renderPassBeginInfo.renderPass =
       renderView.pCurrentRenderPass->renderPass;
@@ -238,7 +226,7 @@ void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer,
   system.renderPassBeginInfo.clearValueCount =
       static_cast<uint32_t>(renderView.pCurrentRenderPass->clearValues.size());
 
-  switch (passType) {
+  switch (passId) {
     case ERenderPass::Present: {
       system.renderPassBeginInfo.framebuffer =
           swapchain.framebuffers[renderView.currentFrameIndex].framebuffer;
@@ -283,7 +271,7 @@ void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer,
 
   drawBoundEntities(commandBuffer);
 
-  switch (passType) {
+  switch (passId) {
     case ERenderPass::Shadow: {
       setCamera(pCurrentCamera);
       updateSceneUBO(renderView.frameInFlight);
@@ -319,7 +307,8 @@ void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer,
 
 void core::MRenderer::executeDynamicRendering(VkCommandBuffer commandBuffer,
                                                EDynamicRenderingPass renderPass) {
-  //vkCmdBeginRendering(commandBuffer, pRenderingInfo);
+
+  //vkCmdBeginRendering(commandBuffer, &renderingInfo);
   //drawBoundEntities(commandBuffer, pipeline);
   //vkCmdEndRendering(commandBuffer);
 }
@@ -330,13 +319,13 @@ void core::MRenderer::renderFullscreenQuad(VkCommandBuffer commandBuffer,
                                            VkDescriptorSet* pAttachmentSet,
                                            VkDescriptorSet* pSceneSet,
                                            uint32_t sceneDynamicOffset) {
-  RPipeline* pPipeline = &getGraphicsPipeline(pipeline);
+  RPipeline* pPipeline = getGraphicsPipeline(pipeline);
 
   if (renderView.pCurrentPipeline != pPipeline) {
     renderView.pCurrentPipeline = pPipeline;
 
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-      getGraphicsPipeline(pipeline).pipeline);
+      getGraphicsPipeline(pipeline)->pipeline);
   }
 
   if (pSceneSet) {

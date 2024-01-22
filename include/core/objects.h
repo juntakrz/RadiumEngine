@@ -169,9 +169,9 @@ struct RDynamicRenderingInfo {
   // Color views and formats must correspond to each other and their number must be equal
   std::vector<std::pair<VkImageView, VkFormat>> colorViews;
   std::pair<VkImageView, VkFormat> depthView;
-  VkImageLayout depthLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
   std::pair<VkImageView, VkFormat> stencilView;
-  VkClearValue clearValue = {0.0f, 0.0f, 0.0f, 0.0f};
+  VkImageLayout depthLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+  VkClearValue colorAttachmentClearValue = {0.0f, 0.0f, 0.0f, 0.0f};
 
   // Pipeline to be created with a corresponding layout
   EPipeline pipeline;
@@ -179,6 +179,20 @@ struct RDynamicRenderingInfo {
   std::string vertexShader;
   std::string fragmentShader;
   EViewport viewportId;
+};
+
+struct RDynamicRenderingPass {
+  EDynamicRenderingPass passId;
+  EViewport viewportId;
+  struct RPipeline* pPipeline = nullptr;
+  VkRenderingInfo renderingInfo;
+  std::vector<VkRenderingAttachmentInfo> colorAttachments;
+  VkRenderingAttachmentInfo depthAttachment;
+  VkRenderingAttachmentInfo stencilAttachment;
+
+  // Post rendering layout transition
+  bool colorAttachmentsToShaderReadOnly = true;
+  bool depthAttachmentToShaderReadOnly = false;
 };
 
 struct REntityBindInfo {
@@ -261,14 +275,10 @@ struct RMaterialInfo {
 
 struct RPipeline {
   VkPipeline pipeline = VK_NULL_HANDLE;
+  VkPipelineLayout layout = VK_NULL_HANDLE;
   EPipeline pipelineId = EPipeline::Null;
+  EPipelineLayout layoutId = EPipelineLayout::Scene;
   uint32_t subpassIndex = 0;
-
-  struct {
-    std::vector<VkRenderingAttachmentInfo> colorAttachmentInfo;
-    VkRenderingAttachmentInfo depthAttachmentInfo;
-    VkRenderingAttachmentInfo stencilAttachmentInfo;
-  } dynamic;
 };
 
 struct RPrimitiveInfo {
@@ -284,7 +294,6 @@ struct RPrimitiveInfo {
 };
 
 struct RRenderPass {
-  EDynamicRenderingPass dynamicPass = EDynamicRenderingPass::Null;  // if not 'Null' - then this is should be treated as a dynamic rendering pass
   VkRenderPass renderPass = nullptr;
   RFramebuffer* pFramebuffer = nullptr;
   VkPipelineLayout layout = VK_NULL_HANDLE;

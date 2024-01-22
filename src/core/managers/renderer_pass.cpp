@@ -226,95 +226,113 @@ TResult core::MRenderer::createRenderPass(ERenderPass renderPassId, EPipeline pi
   return RE_OK;
 }
 
-TResult core::MRenderer::createDynamicRenderPass(EDynamicRenderingPass passType, RDynamicRenderingInfo* info) {
-  // Get or create the dynamic render pass
-  RRenderPass* pRenderPass = &system.dynamicRenderingPasses[passType];
-  pRenderPass->dynamicPass = passType;
-  const uint32_t colorAttachmentCount = static_cast<uint32_t>(info->colorViews.size());
-  bool pipelineRequiresCreation = false;
+TResult core::MRenderer::createDynamicRenderPass(EDynamicRenderingPass passId, RDynamicRenderingInfo* pInfo) {
+  VkRenderingAttachmentInfo defaultAttachment{};
+  defaultAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+  defaultAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  defaultAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  defaultAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  defaultAttachment.clearValue = { 1.0f, 0.0f, 0.0f, 0.0f };
 
-  // Get or create pipeline info if it doesn't already exist
-  // An actual VkPipeline will be created later by the createGraphicsPipelines method
-  RPipeline* pPipeline = pRenderPass->getPipeline(info->pipeline);
+  // Create or reconfigure the dynamic render pass
+  RDynamicRenderingPass* pRenderPass = &system.dynamicRenderingPasses[passId];
+  const uint32_t colorAttachmentCount = static_cast<uint32_t>(pInfo->colorViews.size());
 
-  if (!pPipeline) {
-    pPipeline = &system.graphicsPipelines[info->pipeline];
-    pRenderPass->pipelines.emplace_back();
-    pRenderPass->pipelines.back() = pPipeline;
-    pPipeline->pipeline = VK_NULL_HANDLE;
-    pPipeline->pipelineId = info->pipeline;
-    pPipeline->subpassIndex = 0;
+  // Set dynamic rendering pass
+  pRenderPass->passId = passId;
+  pRenderPass->viewportId = pInfo->viewportId;
 
-    pipelineRequiresCreation = true;
+  pRenderPass->renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+  pRenderPass->renderingInfo.renderArea = getViewportData(pRenderPass->viewportId)->scissor;
+  pRenderPass->renderingInfo.layerCount = 1u;
+  pRenderPass->renderingInfo.flags = NULL;
+  pRenderPass->renderingInfo.viewMask = NULL;
+
+  if (colorAttachmentCount) {
+    pRenderPass->colorAttachments.resize(colorAttachmentCount);
+    
+    for (uint8_t attachmentIndex = 0; attachmentIndex < colorAttachmentCount; ++attachmentIndex) {
+      pRenderPass->colorAttachments[attachmentIndex] = defaultAttachment;
+      pRenderPass->colorAttachments[attachmentIndex].imageView = pInfo->colorViews[attachmentIndex].first;
+      pRenderPass->colorAttachments[attachmentIndex].clearValue = pInfo->colorAttachmentClearValue;
+    }
+
+    pRenderPass->renderingInfo.pColorAttachments = pRenderPass->colorAttachments.data();
+    pRenderPass->renderingInfo.colorAttachmentCount = colorAttachmentCount;
   }
 
-  // Set the chosen pipeline info
-  pPipeline->dynamic.colorAttachmentInfo.resize(colorAttachmentCount);
+  if (pInfo->depthView.first) {
+    pRenderPass->depthAttachment = defaultAttachment;
+    pRenderPass->depthAttachment.imageView = pInfo->depthView.first;
+    pRenderPass->depthAttachment.imageLayout = pInfo->depthLayout;
 
-  for (uint32_t i = 0; i < colorAttachmentCount; ++i) {
-    pPipeline->dynamic.colorAttachmentInfo[i].sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-    pPipeline->dynamic.colorAttachmentInfo[i].imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    pPipeline->dynamic.colorAttachmentInfo[i].imageView = info->colorViews[i].first;
-    pPipeline->dynamic.colorAttachmentInfo[i].clearValue = info->clearValue;
-    pPipeline->dynamic.colorAttachmentInfo[i].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    pPipeline->dynamic.colorAttachmentInfo[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    pRenderPass->renderingInfo.pDepthAttachment = &pRenderPass->depthAttachment;
   }
 
-  if (info->depthView.first != VK_NULL_HANDLE) {
-    pPipeline->dynamic.depthAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-    pPipeline->dynamic.depthAttachmentInfo.imageLayout = info->depthLayout;
-    pPipeline->dynamic.depthAttachmentInfo.imageView = info->depthView.first;
-    pPipeline->dynamic.depthAttachmentInfo.clearValue = { 1.0f, 0.0f, 0.0f, 0.0f };
-    pPipeline->dynamic.depthAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    pPipeline->dynamic.depthAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  if (pInfo->stencilView.first) {
+    pRenderPass->stencilAttachment = defaultAttachment;
+    pRenderPass->stencilAttachment.imageView = pInfo->stencilView.first;
+    pRenderPass->stencilAttachment.imageLayout = VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
+
+    pRenderPass->renderingInfo.pStencilAttachment = &pRenderPass->stencilAttachment;
   }
 
-  if (info->stencilView.first != VK_NULL_HANDLE) {
-    pPipeline->dynamic.stencilAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-    pPipeline->dynamic.stencilAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
-    pPipeline->dynamic.stencilAttachmentInfo.imageView = info->stencilView.first;
-    pPipeline->dynamic.stencilAttachmentInfo.clearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
-    pPipeline->dynamic.stencilAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    pPipeline->dynamic.stencilAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  RPipeline* pPipeline = getGraphicsPipeline(pInfo->pipeline);
+
+  if (pPipeline) {
+    pRenderPass->pPipeline = pPipeline;
+
+    RE_LOG(Log, "Created dynamic rendering pass E%d using an already existing pipeline E%d.", passId, pInfo->pipeline);
+    return RE_OK;
   }
+
+  pPipeline = &system.graphicsPipelines[pInfo->pipeline];
+  pPipeline->pipeline = VK_NULL_HANDLE;
+  pPipeline->pipelineId = pInfo->pipeline;
+  pPipeline->subpassIndex = 0;
+  pPipeline->layoutId = pInfo->pipelineLayout;
+  pPipeline->layout = getPipelineLayout(pPipeline->layoutId);
 
   std::vector<VkFormat> colorAttachmentFormats(colorAttachmentCount);
 
   for (uint32_t j = 0; j < colorAttachmentCount; ++j) {
-    colorAttachmentFormats[j] = info->colorViews[j].second;
+    colorAttachmentFormats[j] = pInfo->colorViews[j].second;
   }
 
   // this data will be used during graphics pipeline creation
   VkPipelineRenderingCreateInfo pipelineCreateInfo{};
   pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
-  pipelineCreateInfo.colorAttachmentCount = static_cast<uint32_t>(colorAttachmentCount);
-  pipelineCreateInfo.pColorAttachmentFormats = colorAttachmentFormats.data();
   pipelineCreateInfo.viewMask = 0;
 
-  if (info->depthView.first != VK_NULL_HANDLE) {
-    pipelineCreateInfo.depthAttachmentFormat = info->depthView.second;
+  if (colorAttachmentCount) {
+    pipelineCreateInfo.colorAttachmentCount = static_cast<uint32_t>(colorAttachmentCount);
+    pipelineCreateInfo.pColorAttachmentFormats = colorAttachmentFormats.data();
   }
 
-  if (info->stencilView.first != VK_NULL_HANDLE) {
-    pipelineCreateInfo.stencilAttachmentFormat = info->stencilView.second;
+  if (pInfo->depthView.first) {
+    pipelineCreateInfo.depthAttachmentFormat = pInfo->depthView.second;
   }
 
-  if (pipelineRequiresCreation) {
-    RGraphicsPipelineInfo pipelineInfo{};
-    pipelineInfo.pipeline = info->pipeline;
-    pipelineInfo.pipelineLayout = info->pipelineLayout;
-    pipelineInfo.renderPass = ERenderPass::Null;
-    pipelineInfo.dynamicRenderPass = passType;
-    pipelineInfo.pDynamicPipelineInfo = &pipelineCreateInfo;
-    pipelineInfo.vertexShader = info->vertexShader;
-    pipelineInfo.fragmentShader = info->fragmentShader;
-    pipelineInfo.colorBlendAttachmentCount = colorAttachmentCount;
-    pipelineInfo.viewportId = info->viewportId;
-
-    RE_CHECK(createGraphicsPipeline(&pipelineInfo));
+  if (pInfo->stencilView.first) {
+    pipelineCreateInfo.stencilAttachmentFormat = pInfo->stencilView.second;
   }
 
-  RE_LOG(Log, "Dynamic rendering pass E%d using pipeline E%d was created.", passType, info->pipeline);
+  RGraphicsPipelineInfo pipelineInfo{};
+  pipelineInfo.pipeline = pInfo->pipeline;
+  pipelineInfo.pipelineLayout = pInfo->pipelineLayout;
+  pipelineInfo.renderPass = ERenderPass::Null;
+  pipelineInfo.dynamicRenderPass = passId;
+  pipelineInfo.pDynamicPipelineInfo = &pipelineCreateInfo;
+  pipelineInfo.vertexShader = pInfo->vertexShader;
+  pipelineInfo.fragmentShader = pInfo->fragmentShader;
+  pipelineInfo.colorBlendAttachmentCount = colorAttachmentCount;
+  pipelineInfo.viewportId = pInfo->viewportId;
+
+  RE_CHECK(createGraphicsPipeline(&pipelineInfo));
+
+  pRenderPass->pPipeline = pPipeline;
+
+  RE_LOG(Log, "Create dynamic rendering pass E%d and graphics pipeline E%d.", passId, pInfo->pipeline);
   return RE_OK;
 }
 
@@ -477,7 +495,7 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     info.vertexShader = "vs_environment.spv";
     info.fragmentShader = "fs_envFilter.spv";
     info.colorViews = {{environment.pTargetCubemap->texture.view, environment.pTargetCubemap->texture.imageFormat}};
-    info.clearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
+    info.colorAttachmentClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
 
     createDynamicRenderPass(EDynamicRenderingPass::Environment, &info);
   }
@@ -485,7 +503,7 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
   return RE_OK;
 }
 
-RRenderPass* core::MRenderer::getDynamicRenderingPass(EDynamicRenderingPass type) {
+RDynamicRenderingPass* core::MRenderer::getDynamicRenderingPass(EDynamicRenderingPass type) {
   if (system.dynamicRenderingPasses.contains(type)) {
     return &system.dynamicRenderingPasses.at(type);
   }

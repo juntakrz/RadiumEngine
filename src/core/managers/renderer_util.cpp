@@ -181,6 +181,10 @@ void core::MRenderer::setViewport(VkCommandBuffer commandBuffer, EViewport index
   system.renderPassBeginInfo.renderArea.extent = system.viewports[index].scissor.extent;
 }
 
+RViewport* core::MRenderer::getViewportData(EViewport viewportId) {
+  return &system.viewports.at(viewportId);
+}
+
 void core::MRenderer::setResourceName(VkDevice device, VkObjectType objectType,
                                       uint64_t handle, const char* name) {
   /*if (s_vkSetDebugUtilsObjectName && handle && name) {
