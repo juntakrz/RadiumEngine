@@ -72,13 +72,3 @@ std::vector<VkVertexInputAttributeDescription> RVertex::getAttributeDescs() {
 
   return attrDescs;
 }
-
-RPipeline* RRenderPass::getPipeline(EPipeline pipeline) {
-  for (auto& it : pipelines) {
-    if (pipeline == it->pipelineId) {
-      return it;
-    }
-  }
-
-  return nullptr;
-}

@@ -6,6 +6,7 @@
 #include "core/managers/world.h"
 #include "core/world/actors/entity.h"
 #include "core/model/model.h"
+#include "core/material/texture.h"
 #include "core/managers/renderer.h"
 
 // runs in a dedicated thread
@@ -162,106 +163,35 @@ void core::MRenderer::renderEnvironmentMaps(
   environment.tracking.layer++;
 }
 
-void core::MRenderer::executeRenderPass(VkCommandBuffer commandBuffer,
-                                        ERenderPass passId,
-                                        VkDescriptorSet* pSceneSets,
-                                        const uint32_t setCount) {
-  ACamera* pCurrentCamera = view.pActiveCamera;
-
-  renderView.pCurrentRenderPass = getRenderPass(passId);
-  system.renderPassBeginInfo.renderPass = getVkRenderPass(passId);
-
-  system.renderPassBeginInfo.renderPass =
-      renderView.pCurrentRenderPass->renderPass;
-  system.renderPassBeginInfo.pClearValues =
-      renderView.pCurrentRenderPass->clearValues.data();
-  system.renderPassBeginInfo.clearValueCount =
-      static_cast<uint32_t>(renderView.pCurrentRenderPass->clearValues.size());
-
-  switch (passId) {
-    case ERenderPass::Present: {
-      system.renderPassBeginInfo.framebuffer =
-          swapchain.framebuffers[renderView.currentFrameIndex].framebuffer;
-
-      vkCmdBeginRenderPass(commandBuffer, &system.renderPassBeginInfo,
-                           VK_SUBPASS_CONTENTS_INLINE);
-
-      vkCmdPushConstants(commandBuffer, getPipelineLayout(EPipelineLayout::Scene), VK_SHADER_STAGE_FRAGMENT_BIT,
-        sizeof(RSceneVertexPCB), sizeof(RSceneFragmentPCB), &core::resources.getMaterial(RMAT_PRESENT)->pushConstantBlock);
-
-      renderFullscreenQuad(commandBuffer, EPipelineLayout::Scene, EDynamicRenderingPass::Present, nullptr);
-
-      vkCmdEndRenderPass(commandBuffer);
-
-      return;
-    }
-
-    case ERenderPass::Shadow: {
-      setCamera(view.pSunCamera);
-      updateSceneUBO(renderView.frameInFlight);
-      system.renderPassBeginInfo.framebuffer =
-          renderView.pCurrentRenderPass->pFramebuffer->framebuffer;
-      break;
-    }
-
-    default: {
-      system.renderPassBeginInfo.framebuffer =
-          renderView.pCurrentRenderPass->pFramebuffer->framebuffer;
-      updateSceneUBO(renderView.frameInFlight);
-      break;
-    }
-  }
-
-  vkCmdBeginRenderPass(commandBuffer, &system.renderPassBeginInfo,
-                       VK_SUBPASS_CONTENTS_INLINE);
-
-  const uint32_t dynamicOffset =
-      config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
-  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                          renderView.pCurrentRenderPass->layout, 0,
-                          setCount, pSceneSets, 1, &dynamicOffset);
-
-  drawBoundEntities(commandBuffer);
-
-  switch (passId) {
-    case ERenderPass::Shadow: {
-      setCamera(pCurrentCamera);
-      updateSceneUBO(renderView.frameInFlight);
-      break;
-    }
-    case ERenderPass::Deferred: {
-      // Subpass 1
-      vkCmdNextSubpass(commandBuffer, VK_SUBPASS_CONTENTS_INLINE);
-
-      renderFullscreenQuad(commandBuffer, EPipelineLayout::PBR,
-                           EDynamicRenderingPassPBR, &scene.GBufferDescriptorSet,
-                           pSceneSets, dynamicOffset);
-
-      // Subpass 2
-      vkCmdNextSubpass(commandBuffer, VK_SUBPASS_CONTENTS_INLINE);
-
-      vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                              getPipelineLayout(EPipelineLayout::Scene), 0,
-                              setCount, pSceneSets, 1, &dynamicOffset);
-
-      vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-        renderView.pCurrentRenderPass->layout, 2, 1,
-        &material.descriptorSet, 0, nullptr);
-
-      drawBoundEntities(commandBuffer, 2u);
-
-      break;
-    }
-  }
-
-  vkCmdEndRenderPass(commandBuffer);
-}
-
 void core::MRenderer::executeDynamicRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId,
+                                                  VkDescriptorSet sceneSet, bool renderQuad, VkDescriptorSet quadSet,
                                                   VkRenderingInfo* pRenderingOverride) {
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(passId);
   renderView.pCurrentPass = pRenderPass;
   VkRenderingInfo* pRenderingInfo = (pRenderingOverride != nullptr) ? pRenderingOverride : &renderView.pCurrentPass->renderingInfo;
+
+  // Transition images to correct layouts for rendering if required
+  if (pRenderPass->validateColorAttachmentLayout) {
+    VkImageSubresourceRange subRange{};
+    subRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    subRange.baseArrayLayer = 0u;
+    subRange.baseMipLevel = 0u;
+
+    for (uint8_t i = 0; i < pRenderPass->colorAttachmentCount; ++i) {
+      RTexture* pImage = pRenderPass->pImageReferences[i];
+      subRange.layerCount = pImage->texture.layerCount;
+      subRange.levelCount = pImage->texture.levelCount;
+
+      setImageLayout(commandBuffer, pImage, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
+    }
+  }
+  // TODO:
+  if (pRenderPass->validateDepthAttachmentLayout) {
+    VkImageSubresourceRange subRange{};
+    subRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+    subRange.baseArrayLayer = 0u;
+    subRange.baseMipLevel = 0u;
+  }
 
   vkCmdBeginRendering(commandBuffer, pRenderingInfo);
 
@@ -270,27 +200,56 @@ void core::MRenderer::executeDynamicRenderingPass(VkCommandBuffer commandBuffer,
   }
 
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->pipeline);
-  drawBoundEntities(commandBuffer);
+
+  const uint32_t dynamicOffset =
+    config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
+  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->layout, 0,
+                          1, &sceneSet, 1, &dynamicOffset);
+
+  switch (renderQuad) {
+    case true: {
+      if (quadSet != VK_NULL_HANDLE) {
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                renderView.pCurrentPass->layout, 2, 1, &quadSet, 0, nullptr);
+      }
+
+      vkCmdDraw(commandBuffer, 6, 1, 0, 0);
+      break;
+    }
+    case false: {
+      vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+        renderView.pCurrentPass->layout, 2, 1,
+        &material.descriptorSet, 0, nullptr);
+
+      drawBoundEntities(commandBuffer);
+      break;
+    }
+  }
+
   vkCmdEndRendering(commandBuffer);
-}
 
-void core::MRenderer::renderFullscreenQuad(VkCommandBuffer commandBuffer,
-                                           VkDescriptorSet* pAttachmentSet,
-                                           VkDescriptorSet* pSceneSet,
-                                           uint32_t sceneDynamicOffset) {
-  if (pSceneSet) {
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            renderView.pCurrentPass->layout, 0, 1, pSceneSet,
-                            1, &sceneDynamicOffset);
+  // Transition image layouts after rendering to the requested layout if required
+  if (pRenderPass->transitionColorAttachmentLayout) {
+    VkImageSubresourceRange subRange{};
+    subRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    subRange.baseArrayLayer = 0u;
+    subRange.baseMipLevel = 0u;
+
+    for (uint8_t j = 0; j < pRenderPass->colorAttachmentCount; ++j) {
+      RTexture* pImage = pRenderPass->pImageReferences[j];
+      subRange.layerCount = pImage->texture.layerCount;
+      subRange.levelCount = pImage->texture.levelCount;
+
+      setImageLayout(commandBuffer, pImage, pRenderPass->colorAttachmentsOutLayout, subRange);
+    }
   }
-
-  if (pAttachmentSet) {
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-      renderView.pCurrentPass->layout, 2, 1,
-      pAttachmentSet, 0, nullptr);
+  // TODO:
+  if (pRenderPass->transitionDepthAttachmentLayout) {
+    VkImageSubresourceRange subRange{};
+    subRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+    subRange.baseArrayLayer = 0u;
+    subRange.baseMipLevel = 0u;
   }
-
-  vkCmdDraw(commandBuffer, 6, 1, 0, 0);
 }
 
 void core::MRenderer::renderFrame() {
@@ -335,8 +294,7 @@ void core::MRenderer::renderFrame() {
   // update lighting UBO if required
   updateLightingUBO(renderView.frameInFlight);
 
-  VkDescriptorSet frameSets[] = {
-      scene.descriptorSets[renderView.frameInFlight]};
+  VkDescriptorSet frameSet = scene.descriptorSets[renderView.frameInFlight];
 
   VkCommandBufferBeginInfo beginInfo{};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -360,19 +318,19 @@ void core::MRenderer::renderFrame() {
     setCamera(RCAM_MAIN);
   }
 
-  // Generating G-Buffer
-  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::OpaqueCullBack);
-  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::OpaqueCullNone);
-  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::BlendCullNone);
+  // G-Buffer passes
+  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::OpaqueCullBack, frameSet);
+  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::OpaqueCullNone, frameSet);
+  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::BlendCullNone, frameSet);
 
-  // Deferred rendering pass
-  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::PBR);
+  // Deferred rendering pass using G-Buffer collected data
+  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::PBR, frameSet, true, scene.GBufferDescriptorSet);
 
   // Additional front rendering passes
-  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::Skybox);
+  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::Skybox, frameSet);
 
   // Final presentation pass
-  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::Present);
+  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::Present, frameSet, true);
 
   // End writing commands and prepare to submit buffer to rendering queue
   if (vkEndCommandBuffer(cmdBuffer) != VK_SUCCESS) {

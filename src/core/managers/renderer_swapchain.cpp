@@ -187,22 +187,9 @@ TResult core::MRenderer::createSwapChain() {
 void core::MRenderer::destroySwapChain() {
   RE_LOG(Log, "Cleaning up the swap chain.");
 
-  for (RFramebuffer currentFramebuffer : swapchain.framebuffers) {
-    vkDestroyFramebuffer(logicalDevice.device, currentFramebuffer.framebuffer,
-                         nullptr);
-  }
-
   for (VkImageView imageView : swapchain.imageViews) {
     vkDestroyImageView(logicalDevice.device, imageView, nullptr);
   }
-
-  // destroy other framebuffers
-  for (auto& fb : system.framebuffers) {
-    vkDestroyFramebuffer(logicalDevice.device, fb.second.framebuffer, nullptr);
-  }
-
-  // clear unordered map so framebuffers may be recreated if needed
-  system.framebuffers.clear();
 
   vkDestroySwapchainKHR(logicalDevice.device, swapChain, nullptr);
 }
@@ -225,7 +212,6 @@ TResult core::MRenderer::recreateSwapChain() {
 
   chkResult = createSwapChain();
   if (chkResult = createDepthTargets() > finalResult) finalResult = chkResult;
-  if (chkResult = createDefaultFramebuffers() > finalResult) finalResult = chkResult;
 
   return finalResult;
 }

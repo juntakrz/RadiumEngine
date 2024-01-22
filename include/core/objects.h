@@ -159,21 +159,33 @@ struct RComputeJobInfo {
   glm::vec4 floatValues = glm::vec4(0.0f);
 };
 
+struct RDynamicAttachmentInfo {
+  RTexture* pImage = nullptr;
+  VkImageView view = VK_NULL_HANDLE;
+  VkFormat format;
+};
+
 struct RDynamicRenderingInfo {
   EPipelineLayout pipelineLayout;
   EViewport viewportId;
-  std::vector<std::pair<VkImageView, VkFormat>> colorViews;
-  std::pair<VkImageView, VkFormat> depthView;
-  std::pair<VkImageView, VkFormat> stencilView;
+  std::vector<RDynamicAttachmentInfo> colorAttachments;
+  RDynamicAttachmentInfo depthAttachment;
+  RDynamicAttachmentInfo stencilAttachment;
   VkImageLayout depthLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
   VkClearValue colorAttachmentClearValue = {0.0f, 0.0f, 0.0f, 0.0f};
   std::string vertexShader;
   std::string fragmentShader;
 
-  // Post rendering layout transition
-  bool transitionColorAttachmentLayout = true;
-  VkImageLayout colorAttachmentsFinalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-  bool transitionDepthAttachmentLayout = false;
+  struct {
+    // Transition image layouts upon rendering if expected that they are not going to be valid
+    bool validateColorAttachmentLayout = false;
+    bool validateDepthAttachmentLayout = false;
+
+    // Transition image layouts upon finishing this pass to specified layout
+    bool transitionColorAttachmentLayout = false;
+    VkImageLayout colorAttachmentsOutLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    bool transitionDepthAttachmentLayout = false;
+  } layoutInfo;
 
   struct {
     VkBool32 blendEnable = VK_FALSE;
@@ -194,11 +206,13 @@ struct RDynamicRenderingPass {
   VkRenderingAttachmentInfo stencilAttachment;
   VkPipeline pipeline = VK_NULL_HANDLE;
   VkPipelineLayout layout = VK_NULL_HANDLE;
+  std::vector<RTexture*> pImageReferences;
   uint32_t colorAttachmentCount = 0u;
 
-  // Post rendering layout transition
-  bool transitionColorAttachmentLayout = true;
-  VkImageLayout colorAttachmentsFinalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  bool validateColorAttachmentLayout = false;
+  bool validateDepthAttachmentLayout = false;
+  bool transitionColorAttachmentLayout = false;
+  VkImageLayout colorAttachmentsOutLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   bool transitionDepthAttachmentLayout = false;
 };
 

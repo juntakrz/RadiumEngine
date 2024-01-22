@@ -510,18 +510,11 @@ public:
   void renderPrimitive(VkCommandBuffer cmdBuffer, WPrimitive* pPrimitive, REntityBindInfo* pBindInfo);
 
   void renderEnvironmentMaps(VkCommandBuffer commandBuffer,
-                             const uint32_t frameInterval = 1);
+                             const uint32_t frameInterval = 1u);
 
-  void executeRenderPass(VkCommandBuffer commandBuffer, ERenderPass passId,
-                         VkDescriptorSet* pSceneSets, const uint32_t setCount);
-
-  void executeDynamicRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass renderPass,
-                                   VkRenderingInfo* pRenderingOverride = nullptr);
-
-  // Pipeline must use a compatible quad drawing vertex shader
-  // Scene descriptor set is optional and is required only if fragment shader needs scene data
-  void renderFullscreenQuad(VkCommandBuffer commandBuffer, VkDescriptorSet* pAttachmentSet,
-                            VkDescriptorSet* pSceneSet = nullptr, uint32_t sceneDynamicOffset = 0u);
+  void executeDynamicRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId,
+                                   VkDescriptorSet sceneSet, bool renderQuad = false,
+                                   VkDescriptorSet quadSet = nullptr, VkRenderingInfo* pRenderingOverride = nullptr);
 
  public:
   void renderFrame();
