@@ -64,6 +64,9 @@ class MResources {
   // create new texture with specific parameters
   RTexture* createTexture(RTextureInfo* pInfo);
 
+  // create new uninitialized texture entry
+  RTexture* createTexture(const std::string& name);
+
   // write to texture, must have proper layout
   TResult writeTexture(RTexture* pTexture, void* pData, VkDeviceSize dataSize);
 

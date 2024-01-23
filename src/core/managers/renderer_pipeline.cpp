@@ -306,6 +306,7 @@ void core::MRenderer::destroyComputePipelines() {
 
 TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineInfo) {
   RDynamicRenderingPass* pRenderPass = pipelineInfo->pRenderPass;
+  const uint32_t colorAttachmentCount = pipelineInfo->pDynamicPipelineInfo->colorAttachmentCount;
 
   VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
   inputAssemblyInfo.sType =
@@ -381,9 +382,9 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
   colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
   std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachments;
-  colorBlendAttachments.resize(pRenderPass->colorAttachmentCount);
+  colorBlendAttachments.resize(colorAttachmentCount);
 
-  for (uint8_t i = 0; i < pRenderPass->colorAttachmentCount; ++i) {
+  for (uint8_t i = 0; i < colorAttachmentCount; ++i) {
     colorBlendAttachments[i] = colorBlendAttachment;
   }
 
@@ -392,8 +393,7 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
       VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
   colorBlendInfo.logicOpEnable = VK_FALSE;
   colorBlendInfo.logicOp = VK_LOGIC_OP_COPY;
-  colorBlendInfo.attachmentCount =
-      static_cast<uint32_t>(colorBlendAttachments.size());
+  colorBlendInfo.attachmentCount = colorAttachmentCount;
   colorBlendInfo.pAttachments = colorBlendAttachments.data();
   colorBlendInfo.blendConstants[0] = 0.0f;
   colorBlendInfo.blendConstants[1] = 0.0f;

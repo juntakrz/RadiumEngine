@@ -9,6 +9,7 @@
 #define RE_MAXLIGHTS            32              // includes directional light, always at index 0
 
 // render targets
+#define RTGT_PRESENT            "RT2D_Present"      // Final swapchain target
 #define RTGT_DEPTH              "RT2D_Depth"        // active camera depth render target
 #define RTGT_SHADOW             "RT2D_Shadow"       // shadow render target (depth)
 #define RTGT_ENVSRC             "RT2D_EnvSrc"       // source texture for environment cubemaps

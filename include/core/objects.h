@@ -173,6 +173,7 @@ struct RDynamicRenderingInfo {
   RDynamicAttachmentInfo stencilAttachment;
   VkImageLayout depthLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
   VkClearValue colorAttachmentClearValue = {0.0f, 0.0f, 0.0f, 0.0f};
+  bool singleColorAttachmentAtRuntime = false;
   std::string vertexShader;
   std::string fragmentShader;
 

@@ -292,6 +292,24 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
   return newTexture;
 }
 
+RTexture* core::MResources::createTexture(const std::string& name) {
+  if (name.c_str() == "") {
+    // nothing to load
+    return nullptr;
+  }
+
+  // create a texture record in the manager
+  if (!m_textures.try_emplace(name.c_str()).second) {
+    // already loaded
+#ifndef NDEBUG
+    RE_LOG(Warning, "Texture \"%s\" already exists.", name.c_str());
+#endif
+  }
+
+  m_textures.at(name.c_str()).name = name;
+  return &m_textures.at(name.c_str());
+}
+
 TResult core::MResources::writeTexture(RTexture* pTexture, void* pData,
                                        VkDeviceSize dataSize) {
   if (!pData ||

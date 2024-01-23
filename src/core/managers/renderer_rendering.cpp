@@ -43,9 +43,9 @@ void core::MRenderer::drawBoundEntities(VkCommandBuffer commandBuffer) {
 
     auto& primitives = pModel->getPrimitives();
 
-    // TODO: Add pass flag check here
-
     for (const auto& primitive : primitives) {
+      if (!checkPass(primitive->pMaterial->passFlags, renderView.pCurrentPass->passId)) continue;
+
       renderPrimitive(commandBuffer, primitive, &bindInfo);
     }
   }
@@ -139,6 +139,8 @@ void core::MRenderer::renderEnvironmentMaps(
 
   setViewport(commandBuffer, viewportIndex);
 
+  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->pipeline);
+
   const uint32_t dynamicOffset = config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
 
   vkCmdBindDescriptorSets(
@@ -164,11 +166,10 @@ void core::MRenderer::renderEnvironmentMaps(
 }
 
 void core::MRenderer::executeDynamicRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId,
-                                                  VkDescriptorSet sceneSet, bool renderQuad, VkDescriptorSet quadSet,
-                                                  VkRenderingInfo* pRenderingOverride) {
+                                                  VkDescriptorSet sceneSet, bool renderQuad) {
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(passId);
   renderView.pCurrentPass = pRenderPass;
-  VkRenderingInfo* pRenderingInfo = (pRenderingOverride != nullptr) ? pRenderingOverride : &renderView.pCurrentPass->renderingInfo;
+  VkRenderingInfo* pRenderingInfo = &renderView.pCurrentPass->renderingInfo;
 
   // Transition images to correct layouts for rendering if required
   if (pRenderPass->validateColorAttachmentLayout) {
@@ -195,9 +196,8 @@ void core::MRenderer::executeDynamicRenderingPass(VkCommandBuffer commandBuffer,
 
   vkCmdBeginRendering(commandBuffer, pRenderingInfo);
 
-  if (renderView.pCurrentPass->viewportId != renderView.currentViewportId) {
-    setViewport(commandBuffer, renderView.pCurrentPass->viewportId);
-  }
+  setViewport(commandBuffer, renderView.pCurrentPass->viewportId);
+  renderView.currentViewportId = renderView.pCurrentPass->viewportId;
 
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->pipeline);
 
@@ -208,19 +208,10 @@ void core::MRenderer::executeDynamicRenderingPass(VkCommandBuffer commandBuffer,
 
   switch (renderQuad) {
     case true: {
-      if (quadSet != VK_NULL_HANDLE) {
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                renderView.pCurrentPass->layout, 2, 1, &quadSet, 0, nullptr);
-      }
-
       vkCmdDraw(commandBuffer, 6, 1, 0, 0);
       break;
     }
     case false: {
-      vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-        renderView.pCurrentPass->layout, 2, 1,
-        &material.descriptorSet, 0, nullptr);
-
       drawBoundEntities(commandBuffer);
       break;
     }
@@ -250,6 +241,47 @@ void core::MRenderer::executeDynamicRenderingPass(VkCommandBuffer commandBuffer,
     subRange.baseArrayLayer = 0u;
     subRange.baseMipLevel = 0u;
   }
+}
+
+void core::MRenderer::executeDynamicPresentPass(VkCommandBuffer commandBuffer, VkDescriptorSet sceneSet) {
+  RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::Present);
+  renderView.pCurrentPass = pRenderPass;
+
+  RTexture* pImage = swapchain.pImages[renderView.frameInFlight];
+
+  VkImageSubresourceRange subRange{};
+  subRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  subRange.baseArrayLayer = 0u;
+  subRange.baseMipLevel = 0u;
+  subRange.layerCount = 1u;
+  subRange.levelCount = 1u;
+
+  setImageLayout(commandBuffer, pImage, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
+
+  VkRenderingAttachmentInfo overrideAttachment = pRenderPass->renderingInfo.pColorAttachments[0];
+  overrideAttachment.imageView = pImage->texture.view;
+  overrideAttachment.imageLayout = pImage->texture.imageLayout;
+
+  VkRenderingInfo overrideRenderingInfo = pRenderPass->renderingInfo;
+  overrideRenderingInfo.pColorAttachments = &overrideAttachment;
+
+  vkCmdBeginRendering(commandBuffer, &overrideRenderingInfo);
+
+  setViewport(commandBuffer, renderView.pCurrentPass->viewportId);
+  renderView.currentViewportId = renderView.pCurrentPass->viewportId;
+
+  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->pipeline);
+
+  const uint32_t dynamicOffset =
+    config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
+  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->layout, 0,
+    1, &sceneSet, 1, &dynamicOffset);
+
+  vkCmdDraw(commandBuffer, 6, 1, 0, 0);
+
+  vkCmdEndRendering(commandBuffer);
+
+  setImageLayout(commandBuffer, pImage, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, subRange);
 }
 
 void core::MRenderer::renderFrame() {
@@ -324,13 +356,13 @@ void core::MRenderer::renderFrame() {
   executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::BlendCullNone, frameSet);
 
   // Deferred rendering pass using G-Buffer collected data
-  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::PBR, frameSet, true, scene.GBufferDescriptorSet);
+  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::PBR, frameSet, true);
 
   // Additional front rendering passes
   executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::Skybox, frameSet);
 
   // Final presentation pass
-  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::Present, frameSet, true);
+  executeDynamicPresentPass(cmdBuffer, frameSet);
 
   // End writing commands and prepare to submit buffer to rendering queue
   if (vkEndCommandBuffer(cmdBuffer) != VK_SUCCESS) {

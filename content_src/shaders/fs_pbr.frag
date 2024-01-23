@@ -29,11 +29,7 @@ layout (set = 0, binding = 3) uniform samplerCube irradianceMap;
 layout (set = 0, binding = 4) uniform sampler2D BRDFLUTMap;
 
 // PBR Input bindings
-layout (set = 2, binding = 0) uniform sampler2D positionMap;	// fragment worldspace position
-layout (set = 2, binding = 1) uniform sampler2D colorMap;
-layout (set = 2, binding = 2) uniform sampler2D normalMap;
-layout (set = 2, binding = 3) uniform sampler2D physicalMap;	// r = metalness, g = roughness, b = ambient occlusion
-layout (set = 2, binding = 4) uniform sampler2D emissiveMap;
+layout (set = 2, binding = 0) uniform sampler2D samplers[];
 
 const float M_PI = 3.141592653589793;
 const float minRoughness = 0.04;
@@ -122,13 +118,13 @@ void main() {
 	vec3 f0 = vec3(0.04);
 
 	// retrieve G-buffer data
-	vec3 worldPos = texture(positionMap, inUV0).xyz;
-	vec4 baseColor = texture(colorMap, inUV0);
-	vec3 normal = texture(normalMap, inUV0).rgb;
-	float metallic = texture(physicalMap, inUV0).r;
-	float perceptualRoughness = texture(physicalMap, inUV0).g;
-	float ao = texture(physicalMap, inUV0).b;
-	vec3 emissive = texture(emissiveMap, inUV0).rgb;
+	vec3 worldPos = texture(samplers[0], inUV0).xyz;
+	vec4 baseColor = texture(samplers[1], inUV0);
+	vec3 normal = texture(samplers[2], inUV0).rgb;
+	float metallic = texture(samplers[3], inUV0).r;
+	float perceptualRoughness = texture(samplers[4], inUV0).g;
+	float ao = texture(samplers[5], inUV0).b;
+	vec3 emissive = texture(samplers[6], inUV0).rgb;
 
 	// do PBR
 	vec3 diffuseColor = baseColor.rgb * (vec3(1.0) - f0);

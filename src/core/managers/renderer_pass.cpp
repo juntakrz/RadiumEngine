@@ -49,7 +49,7 @@ TResult core::MRenderer::createDynamicRenderingPass(EDynamicRenderingPass passId
     }
 
     pRenderPass->renderingInfo.pColorAttachments = pRenderPass->colorAttachments.data();
-    pRenderPass->renderingInfo.colorAttachmentCount = colorAttachmentCount;
+    pRenderPass->renderingInfo.colorAttachmentCount = (pInfo->singleColorAttachmentAtRuntime) ? 1u : colorAttachmentCount;
   }
 
   if (pInfo->depthAttachment.view) {
@@ -93,8 +93,8 @@ TResult core::MRenderer::createDynamicRenderingPass(EDynamicRenderingPass passId
   pipelineCreateInfo.viewMask = 0;
 
   if (colorAttachmentCount) {
-    pipelineCreateInfo.colorAttachmentCount = static_cast<uint32_t>(colorAttachmentCount);
     pipelineCreateInfo.pColorAttachmentFormats = colorAttachmentFormats.data();
+    pipelineCreateInfo.colorAttachmentCount = (pInfo->singleColorAttachmentAtRuntime) ? 1u : colorAttachmentCount;
   }
 
   if (pInfo->depthAttachment.view) {
@@ -232,11 +232,16 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     info.layoutInfo.validateColorAttachmentLayout = true;
     info.layoutInfo.transitionColorAttachmentLayout = true;
     info.layoutInfo.colorAttachmentsOutLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    info.singleColorAttachmentAtRuntime = true;
+
+    info.colorAttachments.resize(swapchain.imageCount);
+
+    for (uint8_t i = 0; i < swapchain.imageCount; ++i) {
+      info.colorAttachments[i] =
+      { swapchain.pImages[i], swapchain.pImages[i]->texture.view, swapchain.pImages[i]->texture.imageFormat };
+    }
 
     info.depthAttachment = { pDepthAttachment, pDepthAttachment->texture.view, pDepthAttachment->texture.imageFormat };
-
-    // During rendering this color view will be modified
-    info.colorAttachments = {{ nullptr, swapchain.imageViews[0], swapchain.formatData.format }};
 
     createDynamicRenderingPass(EDynamicRenderingPass::Present, &info);
   }

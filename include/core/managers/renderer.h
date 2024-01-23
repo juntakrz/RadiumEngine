@@ -86,9 +86,8 @@ class MRenderer {
     VkSurfaceFormatKHR formatData;
     VkPresentModeKHR presentMode;
     VkExtent2D imageExtent;
-    uint32_t imageCount = 0;
-    std::vector<VkImage> images;
-    std::vector<VkImageView> imageViews;
+    std::vector<RTexture*> pImages;
+    uint32_t imageCount = 0u;
     VkImageCopy copyRegion;
   } swapchain;
 
@@ -462,6 +461,8 @@ public:
 
   TResult setSwapChainImageCount(const RVkPhysicalDevice& deviceData);
 
+  TResult createSwapChainImageTargets();
+
   // requires valid variables provided by swap chain data gathering methods /
   // initSwapChain
   TResult createSwapChain();
@@ -513,8 +514,9 @@ public:
                              const uint32_t frameInterval = 1u);
 
   void executeDynamicRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId,
-                                   VkDescriptorSet sceneSet, bool renderQuad = false,
-                                   VkDescriptorSet quadSet = nullptr, VkRenderingInfo* pRenderingOverride = nullptr);
+                                   VkDescriptorSet sceneSet, bool renderQuad = false);
+
+  void executeDynamicPresentPass(VkCommandBuffer commandBuffer, VkDescriptorSet sceneSet);
 
  public:
   void renderFrame();
