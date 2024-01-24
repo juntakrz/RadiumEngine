@@ -204,7 +204,7 @@ VkDescriptorSet core::MRenderer::getMaterialDescriptorSet() {
   return material.descriptorSet;
 }
 
-core::MRenderer::RMaterialBuffers* core::MRenderer::getMaterialBuffers() {
+core::MRenderer::RMaterialBuffers* core::MRenderer::getMaterialData() {
   return &material;
 }
 

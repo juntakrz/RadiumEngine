@@ -10,6 +10,7 @@ core::MResources::MResources() {
 void core::MResources::initialize() {
   RE_LOG(Log, "Initializing materials manager data.");
 
+  RMaterial* pMaterial = nullptr;
   m_sampler2DIndices.resize(config::scene::sampledImageBudget, nullptr);
 
   // create the "default" material
@@ -38,24 +39,46 @@ void core::MResources::initialize() {
 
   createMaterial(&materialInfo);
 
+  materialInfo = RMaterialInfo{};
+  materialInfo.name = RMAT_GBUFFER;
+  materialInfo.textures.baseColor = RTGT_GDIFFUSE;
+  materialInfo.textures.normal = RTGT_GNORMAL;
+  materialInfo.textures.metalRoughness = RTGT_GPHYSICAL;
+  materialInfo.textures.occlusion = RTGT_GPOSITION;
+  materialInfo.textures.emissive = RTGT_GEMISSIVE;
+  materialInfo.alphaMode = EAlphaMode::Opaque;
+  materialInfo.doubleSided = false;
+  materialInfo.manageTextures = true;
+  materialInfo.passFlags = EDynamicRenderingPass::Present;
+
+  if (!(pMaterial = createMaterial(&materialInfo))) {
+    RE_LOG(Critical, "Failed to create Vulkan G-Buffer material.");
+
+    return;
+  }
+
+  core::renderer.getMaterialData()->pGBuffer = pMaterial;
+
   // create present material that takes combined output of all render passes as
   // a shader read only attachment
   materialInfo = RMaterialInfo{};
-  materialInfo.name = RMAT_PRESENT;
+  materialInfo.name = RMAT_GPBR;
   materialInfo.textures.baseColor = RTGT_GPBR;
   materialInfo.alphaMode = EAlphaMode::Opaque;
   materialInfo.doubleSided = false;
   materialInfo.manageTextures = true;
   materialInfo.passFlags = EDynamicRenderingPass::Present;
 
-  if (!createMaterial(&materialInfo)) {
+  if (!(pMaterial = createMaterial(&materialInfo))) {
     RE_LOG(Critical, "Failed to create Vulkan present material.");
 
     return;
   }
+
+  core::renderer.getMaterialData()->pGPBR = pMaterial;
 }
 
-uint32_t core::MResources::getFreecombinedSamplerIndex() {
+uint32_t core::MResources::getFreeCombinedSamplerIndex() {
   for (uint32_t i = 0; i < m_sampler2DIndices.size(); ++i) {
     if (m_sampler2DIndices[i] == nullptr) return i;
   }
@@ -74,32 +97,32 @@ void core::MResources::updateMaterialDescriptorSet(RTexture* pTexture, EResource
   writeSet.descriptorCount = 1;
 
   switch (resourceType) {
-  case EResourceType::Sampler2D: {
-    uint32_t index = getFreecombinedSamplerIndex();
+    case EResourceType::Sampler2D: {
+      uint32_t index = getFreeCombinedSamplerIndex();
 
-    VkDescriptorImageInfo imageInfo = pTexture->texture.imageInfo;
+      VkDescriptorImageInfo imageInfo = pTexture->texture.imageInfo;
 
-    // HACK: this image is expected to be translated to a proper layout later
-    if (imageInfo.imageLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
-      imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      // HACK: this image is expected to be translated to a proper layout later
+      if (imageInfo.imageLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      }
+
+      writeSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      writeSet.dstBinding = 0;
+      writeSet.dstArrayElement = index;
+      writeSet.pImageInfo = &imageInfo;
+
+      vkUpdateDescriptorSets(core::renderer.logicalDevice.device, 1u, &writeSet, 0, nullptr);
+
+      // Store index data
+      pTexture->combinedSamplerIndex = index;
+      m_sampler2DIndices[index] = pTexture;
+
+      return;
     }
-
-    writeSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    writeSet.dstBinding = 0;
-    writeSet.dstArrayElement = index;
-    writeSet.pImageInfo = &imageInfo;
-
-    vkUpdateDescriptorSets(core::renderer.logicalDevice.device, 1u, &writeSet, 0, nullptr);
-
-    // Store index data
-    pTexture->combinedSamplerIndex = index;
-    m_sampler2DIndices[index] = pTexture;
-
-    return;
-  }
-  default: {
-    return;
-  }
+    default: {
+      return;
+    }
   }
 }
 
@@ -183,7 +206,7 @@ RMaterial* core::MResources::createMaterial(
       }
       case EAlphaMode::Opaque: {
         newMat.passFlags |= pDesc->doubleSided ? EDynamicRenderingPass::OpaqueCullNone
-                                                   : EDynamicRenderingPass::OpaqueCullBack;
+                                               : EDynamicRenderingPass::OpaqueCullBack;
         break;
       }
     }

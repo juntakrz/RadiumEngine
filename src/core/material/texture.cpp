@@ -121,6 +121,7 @@ TResult RTexture::createDescriptor() {
 
 RTexture::~RTexture() {
   VkDevice device = core::renderer.logicalDevice.device;
+
   vkDestroyImageView(device, texture.view, nullptr);
 
   for (auto& mipView : texture.extraViews) {

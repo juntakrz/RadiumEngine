@@ -135,7 +135,14 @@ void core::MRenderer::renderEnvironmentMaps(
   environment.subresourceRange.baseArrayLayer = environment.tracking.layer;
   setImageLayout(commandBuffer, environment.pTargetCubemap, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, environment.subresourceRange);
 
-  vkCmdBeginRendering(commandBuffer, &pRenderPass->renderingInfo);
+  VkRenderingAttachmentInfo overrideAttachment = pRenderPass->renderingInfo.pColorAttachments[0];
+  overrideAttachment.imageView = environment.pTargetCubemap->texture.cubemapFaceViews[environment.tracking.layer];
+  overrideAttachment.imageLayout = environment.pTargetCubemap->texture.imageLayout;
+
+  VkRenderingInfo overrideRenderingInfo = pRenderPass->renderingInfo;
+  overrideRenderingInfo.pColorAttachments = &overrideAttachment;
+
+  vkCmdBeginRendering(commandBuffer, &overrideRenderingInfo);
 
   setViewport(commandBuffer, viewportIndex);
 
@@ -165,8 +172,8 @@ void core::MRenderer::renderEnvironmentMaps(
   environment.tracking.layer++;
 }
 
-void core::MRenderer::executeDynamicRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId,
-                                                  VkDescriptorSet sceneSet, bool renderQuad) {
+void core::MRenderer::executeDynamicRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId, VkDescriptorSet sceneSet,
+                                                  RMaterial* pPushMaterial, bool renderQuad) {
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(passId);
   renderView.pCurrentPass = pRenderPass;
   VkRenderingInfo* pRenderingInfo = &renderView.pCurrentPass->renderingInfo;
@@ -205,6 +212,11 @@ void core::MRenderer::executeDynamicRenderingPass(VkCommandBuffer commandBuffer,
     config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->layout, 0,
                           1, &sceneSet, 1, &dynamicOffset);
+
+  if (pPushMaterial) {
+    vkCmdPushConstants(commandBuffer, renderView.pCurrentPass->layout, VK_SHADER_STAGE_FRAGMENT_BIT,
+                       sizeof(RSceneVertexPCB), sizeof(RSceneFragmentPCB), &pPushMaterial->pushConstantBlock);
+  }
 
   switch (renderQuad) {
     case true: {
@@ -350,13 +362,15 @@ void core::MRenderer::renderFrame() {
     setCamera(RCAM_MAIN);
   }
 
+  updateSceneUBO(renderView.frameInFlight);
+
   // G-Buffer passes
   executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::OpaqueCullBack, frameSet);
   executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::OpaqueCullNone, frameSet);
   executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::BlendCullNone, frameSet);
 
   // Deferred rendering pass using G-Buffer collected data
-  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::PBR, frameSet, true);
+  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::PBR, frameSet, material.pGBuffer, true);
 
   // Additional front rendering passes
   executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::Skybox, frameSet);

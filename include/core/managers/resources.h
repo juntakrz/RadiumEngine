@@ -33,7 +33,7 @@ class MResources {
   }
 
   void initialize();
-  uint32_t getFreecombinedSamplerIndex();
+  uint32_t getFreeCombinedSamplerIndex();
   void updateMaterialDescriptorSet(RTexture* pTexture, EResourceType resourceType);
 
   // MATERIALS

@@ -28,7 +28,8 @@
 #define RTGT_GPBR               "RT2D_GPBR"         // render target for combined G-Buffer output
 
 // default materials
-#define RMAT_PRESENT            "RMat_Present"
+#define RMAT_GBUFFER            "RMat_GBuffer"
+#define RMAT_GPBR               "RMat_GPBR"
 
 // default models
 #define RMDL_SKYBOX             "RMdl_SkyBox"       // default cube skybox using cubemap

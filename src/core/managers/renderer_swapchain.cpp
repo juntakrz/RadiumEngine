@@ -211,9 +211,14 @@ void core::MRenderer::destroySwapChain() {
 
   for (RTexture* pImage : swapchain.pImages) {
     vkDestroyImageView(logicalDevice.device, pImage->texture.view, nullptr);
+    pImage->texture.view = VK_NULL_HANDLE;
   }
 
   vkDestroySwapchainKHR(logicalDevice.device, swapChain, nullptr);
+
+  for (RTexture* pImage : swapchain.pImages) {
+    pImage->texture.image = VK_NULL_HANDLE;
+  }
 }
 
 TResult core::MRenderer::recreateSwapChain() {

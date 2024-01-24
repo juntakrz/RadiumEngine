@@ -8,6 +8,7 @@
 
 class WPrimitive;
 struct RTexture;
+struct RMaterial;
 
 namespace core {
 
@@ -62,6 +63,8 @@ class MRenderer {
 
   struct RMaterialBuffers {
     VkDescriptorSet descriptorSet;
+    RMaterial* pGBuffer = nullptr;
+    RMaterial* pGPBR = nullptr;
   } material;
 
   struct RSceneBuffers {
@@ -210,7 +213,7 @@ class MRenderer {
   const VkDescriptorSet getSceneDescriptorSet(uint32_t frameInFlight = -1);
 
   VkDescriptorSet getMaterialDescriptorSet();
-  RMaterialBuffers* getMaterialBuffers();
+  RMaterialBuffers* getMaterialData();
   RSceneBuffers* getSceneBuffers();
   RSceneUBO* getSceneUBO();
   REnvironmentData* getEnvironmentData();
@@ -513,8 +516,8 @@ public:
   void renderEnvironmentMaps(VkCommandBuffer commandBuffer,
                              const uint32_t frameInterval = 1u);
 
-  void executeDynamicRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId,
-                                   VkDescriptorSet sceneSet, bool renderQuad = false);
+  void executeDynamicRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId, VkDescriptorSet sceneSet,
+                                   RMaterial* pPushMaterial = nullptr, bool renderQuad = false);
 
   void executeDynamicPresentPass(VkCommandBuffer commandBuffer, VkDescriptorSet sceneSet);
 

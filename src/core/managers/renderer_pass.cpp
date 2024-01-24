@@ -8,7 +8,7 @@ TResult core::MRenderer::createDynamicRenderingPass(EDynamicRenderingPass passId
   VkRenderingAttachmentInfo defaultAttachment{};
   defaultAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
   defaultAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-  defaultAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  defaultAttachment.loadOp = (pInfo->clearAttachments) ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
   defaultAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
   defaultAttachment.clearValue = { 1.0f, 0.0f, 0.0f, 0.0f };
 
@@ -128,8 +128,8 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     RDynamicRenderingInfo info{};
     info.pipelineLayout = EPipelineLayout::Scene;
     info.viewportId = EViewport::vpEnvironment;
-    info.vertexShader = "vs_environment.spv";
-    info.fragmentShader = "fs_envFilter.spv";
+    info.vertexShader = "vs_skybox.spv";
+    info.fragmentShader = "fs_skybox.spv";
     info.colorAttachments =
          {{environment.pTargetCubemap, environment.pTargetCubemap->texture.view, environment.pTargetCubemap->texture.imageFormat}};
     info.colorAttachmentClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
@@ -152,6 +152,7 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     info.vertexShader = "vs_scene.spv";
     info.fragmentShader = "fs_gbuffer.spv";
     info.colorAttachmentClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
+    info.clearAttachments = true;
     info.pipelineInfo.blendEnable = VK_FALSE;
     info.pipelineInfo.cullMode = VK_CULL_MODE_BACK_BIT;
     info.layoutInfo.validateColorAttachmentLayout = true;
@@ -169,6 +170,7 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
 
     // Opaque pass without culling
 
+    info.clearAttachments = false;
     info.pipelineInfo.cullMode = VK_CULL_MODE_NONE;
 
     createDynamicRenderingPass(EDynamicRenderingPass::OpaqueCullNone, &info);
@@ -194,9 +196,9 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     info.vertexShader = "vs_quad.spv";
     info.fragmentShader = "fs_pbr.spv";
     info.colorAttachmentClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
+    info.clearAttachments = true;
     info.layoutInfo.validateColorAttachmentLayout = true;
     info.colorAttachments = {{ pColorAttachment, pColorAttachment->texture.view, pColorAttachment->texture.imageFormat }};
-    info.depthAttachment = { pDepthAttachment, pDepthAttachment->texture.view, pDepthAttachment->texture.imageFormat };
 
     createDynamicRenderingPass(EDynamicRenderingPass::PBR, &info);
   }

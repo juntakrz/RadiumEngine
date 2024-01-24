@@ -1,6 +1,14 @@
 #version 460
+#extension GL_EXT_nonuniform_qualifier : require
 
 #define MAX_LIGHTS 32
+#define COLORMAP	0
+#define NORMALMAP	1
+#define PHYSMAP		2
+#define POSITIONMAP	3
+#define EMISMAP		4
+#define EXTRAMAP	5
+#define MAXTEXTURES 6
 
 layout (location = 0) in vec2 inUV0;
 
@@ -30,6 +38,23 @@ layout (set = 0, binding = 4) uniform sampler2D BRDFLUTMap;
 
 // PBR Input bindings
 layout (set = 2, binding = 0) uniform sampler2D samplers[];
+
+layout (push_constant) uniform Material {
+	layout(offset = 16) 
+	int baseColorTextureSet;
+	int physicalDescriptorTextureSet;
+	int normalTextureSet;	
+	int occlusionTextureSet;		// 16
+	int emissiveTextureSet;
+	int extraTextureSet;
+	float metallicFactor;	
+	float roughnessFactor;			// 32
+	float alphaMask;	
+	float alphaMaskCutoff;
+	float bumpIntensity;
+	float emissiveIntensity;		// 48
+	uint samplerIndex[MAXTEXTURES];
+} material;
 
 const float M_PI = 3.141592653589793;
 const float minRoughness = 0.04;
@@ -118,13 +143,13 @@ void main() {
 	vec3 f0 = vec3(0.04);
 
 	// retrieve G-buffer data
-	vec3 worldPos = texture(samplers[0], inUV0).xyz;
-	vec4 baseColor = texture(samplers[1], inUV0);
-	vec3 normal = texture(samplers[2], inUV0).rgb;
-	float metallic = texture(samplers[3], inUV0).r;
-	float perceptualRoughness = texture(samplers[4], inUV0).g;
-	float ao = texture(samplers[5], inUV0).b;
-	vec3 emissive = texture(samplers[6], inUV0).rgb;
+	vec3 worldPos = texture(samplers[material.samplerIndex[POSITIONMAP]], inUV0).xyz;
+	vec4 baseColor = texture(samplers[material.samplerIndex[COLORMAP]], inUV0);
+	vec3 normal = texture(samplers[material.samplerIndex[NORMALMAP]], inUV0).rgb;
+	float metallic = texture(samplers[material.samplerIndex[PHYSMAP]], inUV0).r;
+	float perceptualRoughness = texture(samplers[material.samplerIndex[PHYSMAP]], inUV0).g;
+	float ao = texture(samplers[material.samplerIndex[PHYSMAP]], inUV0).b;
+	vec3 emissive = texture(samplers[material.samplerIndex[EMISMAP]], inUV0).rgb;
 
 	// do PBR
 	vec3 diffuseColor = baseColor.rgb * (vec3(1.0) - f0);
