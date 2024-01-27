@@ -33,7 +33,6 @@ class MRenderer {
   } compute;
 
   struct REnvironmentData {
-    REnvironmentFragmentPCB pushBlock;
     VkDescriptorSet LUTDescriptorSet;
     VkImageSubresourceRange subresourceRange;
     int32_t genInterval = 2;

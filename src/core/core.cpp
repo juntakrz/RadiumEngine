@@ -52,8 +52,7 @@ void core::run() {
   materialInfo.name = "skybox";
   materialInfo.passFlags = EDynamicRenderingPass::Skybox | EDynamicRenderingPass::Environment;
   materialInfo.textures.baseColor = "skyboxCubemap.ktx2";
-  RMaterial* pSkyboxMaterial = core::resources.createMaterial(&materialInfo);
-  core::renderer.getEnvironmentData()->pushBlock.samplerIndex = pSkyboxMaterial->pBaseColor->combinedSamplerIndex;
+  core::resources.createMaterial(&materialInfo);
 
   // create map models
   core::world.createModel(EPrimitiveType::Sphere, "mdlSphere", 16, false);

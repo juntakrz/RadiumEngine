@@ -74,12 +74,9 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
 
   // bind material descriptor set only if material is different (binding 2)
   if (renderView.pCurrentMaterial != pPrimitive->pMaterial) {
-    // environment render pass uses global push constant block for fragment shader
-    if (!renderView.generateEnvironmentMapsImmediate && !renderView.isEnvironmentPass) {
-      vkCmdPushConstants(cmdBuffer, renderView.pCurrentPass->layout,
-                         VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(RSceneVertexPCB), sizeof(RSceneFragmentPCB),
-                         &pPrimitive->pMaterial->pushConstantBlock);
-    }
+    vkCmdPushConstants(cmdBuffer, renderView.pCurrentPass->layout,
+                        VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(RSceneVertexPCB), sizeof(RSceneFragmentPCB),
+                        &pPrimitive->pMaterial->pushConstantBlock);
 
     renderView.pCurrentMaterial = pPrimitive->pMaterial;
   }
@@ -124,7 +121,7 @@ void core::MRenderer::renderEnvironmentMaps(
   }
 
   EViewport viewportIndex = EViewport::vpEnvironment;
-  auto pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::Environment);
+  RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::Environment);
   renderView.pCurrentPass = pRenderPass;
 
   setCamera(RCAM_ENV);
@@ -156,14 +153,8 @@ void core::MRenderer::renderEnvironmentMaps(
       &scene.descriptorSets[renderView.frameInFlight], 1,
       &dynamicOffset);
 
-  vkCmdPushConstants(commandBuffer, renderView.pCurrentPass->layout,
-    VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(RSceneVertexPCB), sizeof(REnvironmentFragmentPCB),
-    &environment.pushBlock);
-
-  renderView.isEnvironmentPass = true;
   drawBoundEntities(commandBuffer);
-  renderView.isEnvironmentPass = false;
-  
+
   vkCmdEndRendering(commandBuffer);
 
   setImageLayout(commandBuffer, environment.pTargetCubemap, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, environment.subresourceRange);
@@ -208,8 +199,8 @@ void core::MRenderer::executeDynamicRenderingPass(VkCommandBuffer commandBuffer,
 
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->pipeline);
 
-  const uint32_t dynamicOffset =
-    config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
+  const uint32_t dynamicOffset = config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
+
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->layout, 0,
                           1, &sceneSet, 1, &dynamicOffset);
 
@@ -259,13 +250,13 @@ void core::MRenderer::executeDynamicPresentPass(VkCommandBuffer commandBuffer, V
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::Present);
   renderView.pCurrentPass = pRenderPass;
 
-  RTexture* pImage = swapchain.pImages[renderView.frameInFlight];
+  RTexture* pImage = swapchain.pImages[renderView.currentFrameIndex];
 
   VkImageSubresourceRange subRange{};
   subRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   subRange.baseArrayLayer = 0u;
-  subRange.baseMipLevel = 0u;
   subRange.layerCount = 1u;
+  subRange.baseMipLevel = 0u;
   subRange.levelCount = 1u;
 
   setImageLayout(commandBuffer, pImage, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
@@ -284,12 +275,16 @@ void core::MRenderer::executeDynamicPresentPass(VkCommandBuffer commandBuffer, V
 
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->pipeline);
 
-  const uint32_t dynamicOffset =
+  /*const uint32_t dynamicOffset =
     config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->layout, 0,
-    1, &sceneSet, 1, &dynamicOffset);
+    1, &sceneSet, 1, &dynamicOffset);*/
 
-  vkCmdDraw(commandBuffer, 6, 1, 0, 0);
+  vkCmdPushConstants(commandBuffer, renderView.pCurrentPass->layout, VK_SHADER_STAGE_FRAGMENT_BIT,
+                     sizeof(RSceneVertexPCB), sizeof(RSceneFragmentPCB), &material.pGPBR->pushConstantBlock);
+  //if (renderView.framesRendered > 3) {
+    vkCmdDraw(commandBuffer, 6, 1, 0, 0);
+  //}
 
   vkCmdEndRendering(commandBuffer);
 
@@ -393,19 +388,14 @@ void core::MRenderer::renderFrame() {
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
   submitInfo.waitSemaphoreCount = 1;
   submitInfo.pWaitSemaphores = waitSems;
-  submitInfo.pWaitDstStageMask =
-      waitStages;  // each stage index corresponds to provided semaphore index
+  submitInfo.pWaitDstStageMask = waitStages;  // Each stage index corresponds to provided semaphore index
   submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers =
-      &command
-           .buffersGraphics[renderView.frameInFlight];  // submit command buffer
-                                                        // recorded previously
+  submitInfo.pCommandBuffers = &command.buffersGraphics[renderView.frameInFlight];  // Submit command buffer recorded previously
   submitInfo.signalSemaphoreCount = 1;
-  submitInfo.pSignalSemaphores =
-      signalSems;  // signal these after rendering is finished
+  submitInfo.pSignalSemaphores = signalSems;  // Signal these after rendering is finished
 
-  // submit an array featuring command buffers to graphics queue and signal
-  // fence for CPU to wait for execution
+  // Submit an array featuring command buffers to graphics queue and signal
+  // Fence for CPU to wait for execution
   if (vkQueueSubmit(logicalDevice.queues.graphics, 1, &submitInfo,
                     sync.fenceInFlight[renderView.frameInFlight]) !=
       VK_SUCCESS) {
@@ -418,12 +408,11 @@ void core::MRenderer::renderFrame() {
   VkPresentInfoKHR presentInfo{};
   presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
   presentInfo.waitSemaphoreCount = 1;
-  presentInfo.pWaitSemaphores =
-      signalSems;  // present when render finished semaphores are signaled
+  presentInfo.pWaitSemaphores = signalSems;                   // Present when 'render finished' semaphores are signaled
   presentInfo.swapchainCount = 1;
   presentInfo.pSwapchains = swapChains;
-  presentInfo.pImageIndices = &renderView.currentFrameIndex;   // use selected images for set swapchains
-  presentInfo.pResults = nullptr;  // for future use with more swapchains
+  presentInfo.pImageIndices = &renderView.currentFrameIndex;  // Use selected images for set swapchains
+  presentInfo.pResults = nullptr;                             // For future use with more swapchains
 
   APIResult = vkQueuePresentKHR(logicalDevice.queues.present, &presentInfo);
 

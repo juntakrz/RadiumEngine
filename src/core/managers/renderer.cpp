@@ -400,10 +400,6 @@ TResult core::MRenderer::createImageTargets() {
   RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
 #endif
 
-  // set environment push block defaults
-  environment.pushBlock.samples = 32u;
-  environment.pushBlock.roughness = 0.0f;
-
   // set swapchain subresource copy region
   swapchain.copyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   swapchain.copyRegion.srcSubresource.baseArrayLayer = 0;
