@@ -24,6 +24,7 @@ layout (set = 0, binding = 0) uniform UBOScene {
 layout (set = 0, binding = 1) uniform UBOLighting {
 	vec4 lightLocations[MAX_LIGHTS];
     vec4 lightColor[MAX_LIGHTS];
+	mat4 lightViews[MAX_LIGHTS];
 	float lightCount;
 	float exposure;
 	float gamma;
@@ -58,6 +59,7 @@ layout (push_constant) uniform Material {
 
 const float M_PI = 3.141592653589793;
 const float minRoughness = 0.04;
+const float shadowBias = 0.0001;
 
 vec3 ACESTonemap(vec3 x) {
     float a = 2.51;
@@ -74,8 +76,7 @@ vec4 tonemap(vec4 color) {
 	return vec4(pow(outColor, vec3(1.0f / lighting.gamma)), color.a);
 }
 
-vec3 getDiffuse(vec3 inColor)
-{
+vec3 getDiffuse(vec3 inColor) {
 	return inColor / M_PI;
 }
 
@@ -111,8 +112,7 @@ float getMicrofacetDistribution(float roughness, float NdotH) {
 
 // Calculation of the lighting contribution from an optional Image Based Light source.
 // Precomputed Environment Maps are required uniform inputs
-vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, float NdotV, vec3 n, vec3 reflection)
-{
+vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, float NdotV, vec3 n, vec3 reflection) {
 	float lod = (roughness * lighting.prefilteredCubeMipLevels);
 
 	// retrieve a scale and bias to F0
@@ -135,6 +135,26 @@ vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, 
 	specular *= lighting.scaleIBLAmbient;
 
 	return diffuse + specular;
+}
+
+float getShadow(vec4 lightPosition) {
+	vec3 projCoord;
+	float lightDepth;
+
+	lightPosition.w = 1.0;
+
+	projCoord.x = lightPosition.x / lightPosition.w / 2.0f + 0.5f;
+    projCoord.y = -lightPosition.y / lightPosition.w / 2.0f + 0.5f;
+
+	// if clamped projection coordinate is the same - the pixel is lit
+	if (clamp(projCoord.x, 0.0, 1.0) == projCoord.x && clamp(projCoord.y, 0.0, 1.0) == projCoord.y) {
+		lightDepth = lightPosition.z / lightPosition.w - shadowBias;
+		float sampleDepth = texture(samplers[material.samplerIndex[EXTRAMAP]], projCoord.xy).r;
+
+		return sampleDepth;
+	}
+
+	return 0.0;
 }
 
 void main() {
@@ -195,6 +215,10 @@ void main() {
 	// Calculate lighting contribution from image based lighting source (IBL)
 	color += getIBLContribution(diffuseColor, specularColor, perceptualRoughness, NdotV, normal, reflection);
 	color = mix(color, color * ao, occlusionStrength);
+
+	float shadowResult = getShadow(lighting.lightLocations[0]);
+	color *= max(shadowResult, 0.01);
+
 	color += emissive;
 	
 	outColor = vec4(color, baseColor.a);

@@ -249,6 +249,7 @@ struct RLightInfo {
   float intensity = 1.0f;
   glm::vec3 direction = {0.0f, 0.0f, 0.0f};   // used by directional light only
   glm::vec3 translation = {0.0f, 0.0f, 0.0f}; // used by point light only, both may be used by spotlight
+  bool isShadowCaster = false;
 };
 
 // used for RMaterial creation in materials manager
@@ -411,6 +412,7 @@ struct RComputeImagePCB {
 struct RLightingUBO {
   glm::vec4 lightLocations[RE_MAXLIGHTS]; // w is unused
   glm::vec4 lightColors[RE_MAXLIGHTS];    // alpha is intensity
+  glm::mat4 lightViews[RE_MAXLIGHTS];
   float lightCount = 0.0f;
   float exposure = 4.5f;
   float gamma = 2.2f;

@@ -187,7 +187,7 @@ void ACamera::setAspectRatio(float ratio) noexcept {
 }
 
 void ACamera::setViewBufferIndex(const uint32_t newIndex) {
-  m_ViewBufferIndex = newIndex;
+  m_viewBufferIndex = newIndex;
 }
 
-const uint32_t ACamera::getViewBufferIndex() { return m_ViewBufferIndex; }
+const uint32_t ACamera::getViewBufferIndex() { return m_viewBufferIndex; }

@@ -32,6 +32,8 @@ void core::MActors::updateLightingUBO(RLightingUBO* pLightingBuffer) {
       pLightingBuffer->lightColors[0] =
           glm::vec4(pLight->getLightColor(), pLight->getLightIntensity());
 
+      pLightingBuffer->lightViews[0] = pLight->getLightProjectionView();
+
       continue;
     }
 
@@ -138,14 +140,35 @@ ALight* core::MActors::createLight(const char* name, RLightInfo* pInfo) {
   }
 
   m_actors.lights[name] = std::make_unique<ALight>();
-  m_actors.lights.at(name)->setName(name);
+  ALight* pNewLight = m_actors.lights.at(name).get();
+
+  pNewLight->setName(name);
 
   if (pInfo) {
-    m_actors.lights.at(name)->setLightType(pInfo->type);
-    m_actors.lights.at(name)->setLightColor(pInfo->color);
-    m_actors.lights.at(name)->setLightIntensity(pInfo->intensity);
-    m_actors.lights.at(name)->setLocation(pInfo->translation);
-    m_actors.lights.at(name)->setRotation(pInfo->direction);
+    pNewLight->setLightType(pInfo->type);
+    pNewLight->setLightColor(pInfo->color);
+    pNewLight->setLightIntensity(pInfo->intensity);
+    pNewLight->setLocation(pInfo->translation);
+    pNewLight->setRotation(pInfo->direction);
+
+    if (pInfo->isShadowCaster) {
+      pNewLight->setAsShadowCaster(true);
+      pNewLight->setOrthographic(1.0f, 1.0f, 0.001f, 100.0f);
+
+      // get free camera offset index into the dynamic buffer
+      uint32_t index = 0;
+
+      for (const auto& it : m_linearActors.pCameras) {
+        if (it->getViewBufferIndex() != index) {
+          break;
+        }
+
+        ++index;
+      }
+
+      pNewLight->setViewBufferIndex(index);
+      m_linearActors.pCameras.emplace_back(pNewLight);
+    }
   }
 
   // should probably add a reference to MRef here?

@@ -26,7 +26,7 @@ class ACamera : public ABase {
   float m_pitch = 0.0f;
   float m_yaw = 0.0f;
 
-  uint32_t m_ViewBufferIndex = -1;
+  uint32_t m_viewBufferIndex = -1;
 
  private:
    // uses pitch limit set in config.h
@@ -52,7 +52,6 @@ class ACamera : public ABase {
   // get view matrix for current camera position and rotation
   glm::mat4& getView();
 
-  // get projection matrix using currently selected camera mode
   glm::mat4& getProjection();
 
   ECameraProjection getProjectionType();
