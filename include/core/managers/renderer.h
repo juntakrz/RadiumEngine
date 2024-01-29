@@ -81,6 +81,8 @@ class MRenderer {
 
     // per frame in flight buffered camera/lighting descriptor sets
     std::vector<VkDescriptorSet> descriptorSets;
+
+    RSceneVertexPCB vertexPushBlock;
   } scene;
 
   // swapchain data
@@ -517,6 +519,8 @@ public:
 
   void executeDynamicRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId, VkDescriptorSet sceneSet,
                                    RMaterial* pPushMaterial = nullptr, bool renderQuad = false);
+
+  void executeDynamicShadowPass(VkCommandBuffer commandBuffer, const uint32_t cascadeIndex, VkDescriptorSet sceneSet);
 
   void executeDynamicPresentPass(VkCommandBuffer commandBuffer, VkDescriptorSet sceneSet);
 

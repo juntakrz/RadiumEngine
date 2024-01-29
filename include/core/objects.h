@@ -81,16 +81,16 @@ enum class EDescriptorSetLayout {
 };
 
 enum EDynamicRenderingPass : uint32_t {
-  Null =            0,
-  Environment =     0b1,
-  Shadow =          0b10,
-  Skybox =          0b100,
-  OpaqueCullBack =  0b1000,
-  OpaqueCullNone =  0b10000,
-  MaskCullBack =    0b100000,
-  BlendCullNone =   0b1000000,
-  PBR =             0b10000000,
-  Present =         0b100000000
+  Null                = 0,
+  Shadow              = 0b1,
+  EnvSkybox           = 0b10,
+  OpaqueCullBack      = 0b100,
+  OpaqueCullNone      = 0b1000,
+  MaskCullBack        = 0b10000,
+  BlendCullNone       = 0b100000,
+  Skybox              = 0b1000000,
+  PBR                 = 0b10000000,
+  Present             = 0b100000000
 };
 
 enum class ELightType {
@@ -174,7 +174,8 @@ struct RDynamicRenderingInfo {
   VkImageLayout depthLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
   VkClearValue colorAttachmentClearValue = {0.0f, 0.0f, 0.0f, 0.0f};
   bool singleColorAttachmentAtRuntime = false;
-  bool clearAttachments = false;
+  bool clearColorAttachments = false;
+  bool clearDepthAttachment = false;
   std::string vertexShader;
   std::string fragmentShader;
 
@@ -301,16 +302,6 @@ struct RPrimitiveInfo {
   void* pOwnerNode = nullptr;
 };
 
-struct RRenderPassInfo {
-  std::vector<VkAttachmentDescription> colorAttachmentInfo;
-  VkAttachmentDescription depthAttachmentInfo;
-  EPipelineLayout layout;
-  uint32_t viewportWidth;
-  uint32_t viewportHeight;
-  std::vector<VkClearValue> clearValues;
-  uint32_t subpassIndex;
-};
-
 // stored by WModel, used to create a valid sampler for a specific texture
 struct RSamplerInfo {
   VkFilter minFilter = VK_FILTER_LINEAR;
@@ -416,18 +407,6 @@ struct RComputeImagePCB {
   glm::vec4 floatValues = glm::vec4(0.0f);
 };
 
-struct REnvironmentFragmentPCB {
-  float roughness;
-  uint32_t samples;
-  uint32_t samplerIndex;
-};
-
-// camera rotation UBO for environment map generation
-struct REnvironmentUBO {
-  glm::mat4 view;
-  glm::mat4 projection;
-};
-
 // lighting data uniform buffer object
 struct RLightingUBO {
   glm::vec4 lightLocations[RE_MAXLIGHTS]; // w is unused
@@ -460,9 +439,7 @@ struct RSceneFragmentPCB {
 // Push constant block used by the scene vertex shader
 // (16 bytes, 64 bytes total of 128 Vulkan spec)
 struct RSceneVertexPCB {
-  VkDeviceAddress intoVertexBufferAddress = 0u;
-  uint32_t cascadeIndex = 0u;
-  uint32_t padding = 0u;
+  alignas(16) uint32_t cascadeIndex = 0u;
 };
 
 struct RMeshUBO {

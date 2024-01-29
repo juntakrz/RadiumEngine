@@ -397,6 +397,7 @@
     <None Include="content_src\shaders\vs_brdfLUT.vert" />
     <None Include="content_src\shaders\vs_scene.vert" />
     <None Include="content_src\shaders\vs_quad.vert" />
+    <None Include="content_src\shaders\vs_shadowPass.vert" />
     <None Include="content_src\shaders\vs_skybox.vert" />
     <None Include="development\compileShaders_Win_x64_DEBUG.bat" />
     <None Include="development\devconfig.json" />

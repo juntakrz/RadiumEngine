@@ -121,7 +121,7 @@ void core::MRenderer::renderEnvironmentMaps(
   }
 
   EViewport viewportIndex = EViewport::vpEnvironment;
-  RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::Environment);
+  RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::EnvSkybox);
   renderView.pCurrentPass = pRenderPass;
 
   setCamera(RCAM_ENV);
@@ -211,7 +211,7 @@ void core::MRenderer::executeDynamicRenderingPass(VkCommandBuffer commandBuffer,
 
   switch (renderQuad) {
     case true: {
-      vkCmdDraw(commandBuffer, 6, 1, 0, 0);
+      vkCmdDraw(commandBuffer, 3, 1, 0, 0);
       break;
     }
     case false: {
@@ -246,6 +246,42 @@ void core::MRenderer::executeDynamicRenderingPass(VkCommandBuffer commandBuffer,
   }
 }
 
+void core::MRenderer::executeDynamicShadowPass(VkCommandBuffer commandBuffer, const uint32_t cascadeIndex, VkDescriptorSet sceneSet) {
+  RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::Shadow);
+  renderView.pCurrentPass = pRenderPass;
+
+  VkRenderingAttachmentInfo overrideAttachment = *pRenderPass->renderingInfo.pDepthAttachment;
+  overrideAttachment.imageView = pRenderPass->pImageReferences[0]->texture.extraViews[cascadeIndex].imageView;
+
+  VkRenderingInfo overrideInfo{};
+  overrideInfo = pRenderPass->renderingInfo;
+  overrideInfo.pDepthAttachment = &overrideAttachment;
+
+  setCamera(view.pSunCamera);
+  updateSceneUBO(renderView.frameInFlight);
+
+  scene.vertexPushBlock.cascadeIndex = cascadeIndex;
+
+  vkCmdBeginRendering(commandBuffer, &overrideInfo);
+
+  setViewport(commandBuffer, renderView.pCurrentPass->viewportId);
+  renderView.currentViewportId = renderView.pCurrentPass->viewportId;
+
+  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->pipeline);
+
+  const uint32_t dynamicOffset = config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
+
+  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->layout, 0,
+    1, &sceneSet, 1, &dynamicOffset);
+
+  vkCmdPushConstants(commandBuffer, renderView.pCurrentPass->layout, VK_SHADER_STAGE_VERTEX_BIT, 0u,
+                     sizeof(RSceneVertexPCB), &scene.vertexPushBlock);
+
+  drawBoundEntities(commandBuffer);
+
+  vkCmdEndRendering(commandBuffer);
+}
+
 void core::MRenderer::executeDynamicPresentPass(VkCommandBuffer commandBuffer, VkDescriptorSet sceneSet) {
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::Present);
   renderView.pCurrentPass = pRenderPass;
@@ -275,16 +311,10 @@ void core::MRenderer::executeDynamicPresentPass(VkCommandBuffer commandBuffer, V
 
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->pipeline);
 
-  /*const uint32_t dynamicOffset =
-    config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
-  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->layout, 0,
-    1, &sceneSet, 1, &dynamicOffset);*/
-
   vkCmdPushConstants(commandBuffer, renderView.pCurrentPass->layout, VK_SHADER_STAGE_FRAGMENT_BIT,
                      sizeof(RSceneVertexPCB), sizeof(RSceneFragmentPCB), &material.pGPBR->pushConstantBlock);
-  //if (renderView.framesRendered > 3) {
-    vkCmdDraw(commandBuffer, 6, 1, 0, 0);
-  //}
+
+  vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 
   vkCmdEndRendering(commandBuffer);
 
@@ -295,13 +325,13 @@ void core::MRenderer::renderFrame() {
   TResult chkResult = RE_OK;
 
   vkWaitForFences(logicalDevice.device, 1,
-                  &sync.fenceInFlight[renderView.frameInFlight], VK_TRUE,
-                  UINT64_MAX);
+    &sync.fenceInFlight[renderView.frameInFlight], VK_TRUE,
+    UINT64_MAX);
 
   VkResult APIResult =
-      vkAcquireNextImageKHR(logicalDevice.device, swapChain, UINT64_MAX,
-                            sync.semImgAvailable[renderView.frameInFlight],
-                            VK_NULL_HANDLE, &renderView.currentFrameIndex);
+    vkAcquireNextImageKHR(logicalDevice.device, swapChain, UINT64_MAX,
+      sync.semImgAvailable[renderView.frameInFlight],
+      VK_NULL_HANDLE, &renderView.currentFrameIndex);
 
   if (APIResult == VK_ERROR_OUT_OF_DATE_KHR) {
     RE_LOG(Warning, "Out of date swap chain image. Recreating swap chain.");
@@ -322,7 +352,7 @@ void core::MRenderer::renderFrame() {
   // reset fences if we will do any work this frame e.g. no swap chain
   // recreation
   vkResetFences(logicalDevice.device, 1,
-                &sync.fenceInFlight[renderView.frameInFlight]);
+    &sync.fenceInFlight[renderView.frameInFlight]);
 
   vkResetCommandBuffer(command.buffersGraphics[renderView.frameInFlight], NULL);
 
@@ -354,9 +384,13 @@ void core::MRenderer::renderFrame() {
 
   if (renderView.generateEnvironmentMaps) {
     renderEnvironmentMaps(cmdBuffer, environment.genInterval);
-    setCamera(RCAM_MAIN);
   }
 
+  for (uint8_t cascadeIndex = 0; cascadeIndex < config::shadowCascades; ++cascadeIndex) {
+    executeDynamicShadowPass(cmdBuffer, cascadeIndex, frameSet);
+  }
+
+  setCamera(RCAM_MAIN);
   updateSceneUBO(renderView.frameInFlight);
 
   // G-Buffer passes

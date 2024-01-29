@@ -8,9 +8,14 @@ TResult core::MRenderer::createDynamicRenderingPass(EDynamicRenderingPass passId
   VkRenderingAttachmentInfo defaultAttachment{};
   defaultAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
   defaultAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-  defaultAttachment.loadOp = (pInfo->clearAttachments) ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+  defaultAttachment.loadOp = (pInfo->clearColorAttachments) ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
   defaultAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-  defaultAttachment.clearValue = { 1.0f, 0.0f, 0.0f, 0.0f };
+  defaultAttachment.clearValue.color = {0.0f, 0.0f, 0.0f, 0.0f};
+  defaultAttachment.clearValue.depthStencil = {1.0f, 0u};
+
+  VkRenderingAttachmentInfo defaultDepthStencilAttachment = defaultAttachment;
+  defaultDepthStencilAttachment.loadOp = (pInfo->clearDepthAttachment) ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+
 
   // Create the dynamic render pass if it doesn't already exist.
   if (system.dynamicRenderingPasses.contains(passId)) {
@@ -53,7 +58,7 @@ TResult core::MRenderer::createDynamicRenderingPass(EDynamicRenderingPass passId
   }
 
   if (pInfo->depthAttachment.view) {
-    pRenderPass->depthAttachment = defaultAttachment;
+    pRenderPass->depthAttachment = defaultDepthStencilAttachment;
     pRenderPass->depthAttachment.imageView = pInfo->depthAttachment.view;
     pRenderPass->depthAttachment.imageLayout = pInfo->depthLayout;
 
@@ -64,7 +69,7 @@ TResult core::MRenderer::createDynamicRenderingPass(EDynamicRenderingPass passId
   }
 
   if (pInfo->stencilAttachment.view) {
-    pRenderPass->stencilAttachment = defaultAttachment;
+    pRenderPass->stencilAttachment = defaultDepthStencilAttachment;
     pRenderPass->stencilAttachment.imageView = pInfo->stencilAttachment.view;
     pRenderPass->stencilAttachment.imageLayout = VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
 
@@ -125,6 +130,8 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
   // Create environment pass
   // Cubemaps should've been created by createImageTargets() earlier
   {
+    RTexture* pDepthAttachment = core::resources.getTexture(RTGT_DEPTH);
+
     RDynamicRenderingInfo info{};
     info.pipelineLayout = EPipelineLayout::Scene;
     info.viewportId = EViewport::vpEnvironment;
@@ -132,12 +139,31 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     info.fragmentShader = "fs_skybox.spv";
     info.colorAttachments =
          {{environment.pTargetCubemap, environment.pTargetCubemap->texture.view, environment.pTargetCubemap->texture.imageFormat}};
+    info.depthAttachment = { pDepthAttachment, pDepthAttachment->texture.view, pDepthAttachment->texture.imageFormat };
     info.colorAttachmentClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
 
+    info.clearDepthAttachment = true;
     info.layoutInfo.validateColorAttachmentLayout = true;
     info.layoutInfo.transitionColorAttachmentLayout = true;
 
-    createDynamicRenderingPass(EDynamicRenderingPass::Environment, &info);
+    createDynamicRenderingPass(EDynamicRenderingPass::EnvSkybox, &info);
+  }
+
+  // Shadow pass
+  {
+    RTexture* pDepthAttachment = core::resources.getTexture(RTGT_SHADOW);
+
+    RDynamicRenderingInfo info{};
+    info.pipelineLayout = EPipelineLayout::Scene;
+    info.viewportId = EViewport::vpShadow;
+    info.vertexShader = "vs_shadowPass.spv";
+    info.fragmentShader = "fs_shadowPass.spv";
+    info.pipelineInfo.blendEnable = VK_FALSE;
+    info.pipelineInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+    info.clearDepthAttachment = true;
+    info.depthAttachment = { pDepthAttachment, pDepthAttachment->texture.view, pDepthAttachment->texture.imageFormat };
+
+    createDynamicRenderingPass(EDynamicRenderingPass::Shadow, &info);
   }
 
   // G-Buffer passes
@@ -152,7 +178,8 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     info.vertexShader = "vs_scene.spv";
     info.fragmentShader = "fs_gbuffer.spv";
     info.colorAttachmentClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
-    info.clearAttachments = true;
+    info.clearColorAttachments = true;
+    info.clearDepthAttachment = true;
     info.pipelineInfo.blendEnable = VK_FALSE;
     info.pipelineInfo.cullMode = VK_CULL_MODE_BACK_BIT;
     info.layoutInfo.validateColorAttachmentLayout = true;
@@ -170,7 +197,8 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
 
     // Opaque pass without culling
 
-    info.clearAttachments = false;
+    info.clearColorAttachments = false;
+    info.clearDepthAttachment = false;
     info.pipelineInfo.cullMode = VK_CULL_MODE_NONE;
 
     createDynamicRenderingPass(EDynamicRenderingPass::OpaqueCullNone, &info);
@@ -196,7 +224,7 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     info.vertexShader = "vs_quad.spv";
     info.fragmentShader = "fs_pbr.spv";
     info.colorAttachmentClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
-    info.clearAttachments = true;
+    info.clearColorAttachments = true;
     info.layoutInfo.validateColorAttachmentLayout = true;
     info.colorAttachments = {{ pColorAttachment, pColorAttachment->texture.view, pColorAttachment->texture.imageFormat }};
 

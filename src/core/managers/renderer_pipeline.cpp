@@ -101,25 +101,13 @@ TResult core::MRenderer::createPipelineLayouts() {
       getDescriptorSetLayout(EDescriptorSetLayout::MaterialEXT)   // 2
   };
 
-  VkPushConstantRange envVertexPCR{};
-  envVertexPCR.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-  envVertexPCR.offset = 0;
-  envVertexPCR.size = sizeof(RSceneVertexPCB);
-
-  VkPushConstantRange envFragmentPCR{};
-  envFragmentPCR.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-  envFragmentPCR.offset = sizeof(RSceneVertexPCB);
-  envFragmentPCR.size = sizeof(REnvironmentFragmentPCB);
-
-  VkPushConstantRange envPCRanges[] = { envVertexPCR, envFragmentPCR };
-
   layoutInfo = VkPipelineLayoutCreateInfo{};
   layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
   layoutInfo.setLayoutCount =
       static_cast<uint32_t>(descriptorSetLayouts.size());
   layoutInfo.pSetLayouts = descriptorSetLayouts.data();
   layoutInfo.pushConstantRangeCount = 2;
-  layoutInfo.pPushConstantRanges = envPCRanges;
+  layoutInfo.pPushConstantRanges = scenePCRanges;
 
   if (vkCreatePipelineLayout(logicalDevice.device, &layoutInfo, nullptr,
                              &getPipelineLayout(layoutType)) != VK_SUCCESS) {
