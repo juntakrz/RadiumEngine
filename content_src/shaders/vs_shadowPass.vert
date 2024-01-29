@@ -56,11 +56,11 @@ void main(){
 	outUV1 = inUV1;
 	outColor0 = inColor0;
 
-	const uint divisor = 1 << pushBlock.cascadeIndex * 2;	
+	const uint multiplier = 1 << pushBlock.cascadeIndex;
 
 	mat4 newProjection = scene.projection;
-	newProjection[0][0] /= divisor;	
-	newProjection[1][1] /= divisor;
+	newProjection[0][0] *= multiplier;	
+	newProjection[1][1] *= multiplier;
 
 	gl_Position = newProjection * scene.view * vec4(outWorldPos, 1.0);
 }

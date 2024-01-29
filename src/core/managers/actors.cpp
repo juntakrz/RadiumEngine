@@ -32,7 +32,7 @@ void core::MActors::updateLightingUBO(RLightingUBO* pLightingBuffer) {
       pLightingBuffer->lightColors[0] =
           glm::vec4(pLight->getLightColor(), pLight->getLightIntensity());
 
-      pLightingBuffer->lightViews[0] = pLight->getLightProjectionView();
+      pLightingBuffer->lightViews[0] = pLight->getProjectionView();
 
       continue;
     }
@@ -153,7 +153,9 @@ ALight* core::MActors::createLight(const char* name, RLightInfo* pInfo) {
 
     if (pInfo->isShadowCaster) {
       pNewLight->setAsShadowCaster(true);
-      pNewLight->setOrthographic(1.0f, 1.0f, 0.001f, 100.0f);
+
+      float FOV = 1 << (config::shadowCascades - 1);
+      pNewLight->setOrthographic(FOV, FOV, 0.001f, 100.0f);
 
       // get free camera offset index into the dynamic buffer
       uint32_t index = 0;

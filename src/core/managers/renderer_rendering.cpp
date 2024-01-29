@@ -270,9 +270,6 @@ void core::MRenderer::executeDynamicShadowPass(VkCommandBuffer commandBuffer, co
     setImageLayout(commandBuffer, pShadowTexture, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, subRange);
   }
 
-  setCamera(view.pSunCamera);
-  updateSceneUBO(renderView.frameInFlight);
-
   scene.vertexPushBlock.cascadeIndex = cascadeIndex;
 
   vkCmdBeginRendering(commandBuffer, &overrideInfo);
@@ -408,13 +405,22 @@ void core::MRenderer::renderFrame() {
   vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
     getPipelineLayout(EPipelineLayout::Scene), 2, 1, &material.descriptorSet, 0, nullptr);
 
+  /* 1. Environment generation */
+
   if (renderView.generateEnvironmentMaps) {
     renderEnvironmentMaps(cmdBuffer, environment.genInterval);
   }
 
+  /* 2. Cascaded shadows */
+
+  setCamera(view.pSunCamera);
+  updateSceneUBO(renderView.frameInFlight);
+
   for (uint8_t cascadeIndex = 0; cascadeIndex < config::shadowCascades; ++cascadeIndex) {
     executeDynamicShadowPass(cmdBuffer, cascadeIndex, frameSet);
   }
+
+  /* 3. Main scene */
 
   setCamera(RCAM_MAIN);
   updateSceneUBO(renderView.frameInFlight);
@@ -430,7 +436,8 @@ void core::MRenderer::renderFrame() {
   // Additional front rendering passes
   executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::Skybox, frameSet);
 
-  // Final presentation pass
+  /* 4. Final presentation pass */
+
   executeDynamicPresentPass(cmdBuffer, frameSet);
 
   // End writing commands and prepare to submit buffer to rendering queue

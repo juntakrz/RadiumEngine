@@ -22,8 +22,7 @@ const glm::vec4& ACamera::getPerspective() noexcept {
 void ACamera::setOrthographic(float horizontal, float vertical, float nearZ,
                               float farZ) noexcept {
   m_viewData.orthographicData = {horizontal, vertical, nearZ, farZ};
-  m_projection =
-      glm::ortho(-horizontal, horizontal, -vertical, vertical, nearZ, farZ);
+  m_projection = glm::ortho(-horizontal, horizontal, -vertical, vertical, nearZ, farZ);
   m_projectionType = ECameraProjection::Orthogtaphic;
 }
 
@@ -35,6 +34,15 @@ glm::mat4& ACamera::getView() {
 }
 
 glm::mat4& ACamera::getProjection() { return m_projection; }
+
+const glm::mat4& ACamera::getProjectionView() {
+  if (m_transformationData.wasUpdated) {
+    m_projectionView = getProjection() * getView();
+    m_transformationData.wasUpdated = false;
+  }
+
+  return m_projectionView;
+}
 
 ECameraProjection ACamera::getProjectionType() { return m_projectionType; }
 

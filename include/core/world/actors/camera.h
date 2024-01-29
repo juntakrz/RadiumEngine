@@ -21,8 +21,9 @@ class ACamera : public ABase {
     ABase* pTarget = nullptr;
   } m_target;
 
-  glm::mat4 m_view;        // view matrix
-  glm::mat4 m_projection;  // projection matrix
+  glm::mat4 m_view;
+  glm::mat4 m_projection;
+  glm::mat4 m_projectionView;       // projection * view
   float m_pitch = 0.0f;
   float m_yaw = 0.0f;
 
@@ -51,8 +52,8 @@ class ACamera : public ABase {
 
   // get view matrix for current camera position and rotation
   glm::mat4& getView();
-
   glm::mat4& getProjection();
+  const glm::mat4& getProjectionView();
 
   ECameraProjection getProjectionType();
 

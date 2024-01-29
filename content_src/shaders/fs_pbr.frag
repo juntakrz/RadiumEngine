@@ -39,6 +39,7 @@ layout (set = 0, binding = 4) uniform sampler2D BRDFLUTMap;
 
 // PBR Input bindings
 layout (set = 2, binding = 0) uniform sampler2D samplers[];
+layout (set = 2, binding = 0) uniform sampler2DArray arraySamplers[];
 
 layout (push_constant) uniform Material {
 	layout(offset = 16) 
@@ -137,24 +138,18 @@ vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, 
 	return diffuse + specular;
 }
 
-float getShadow(vec4 lightPosition) {
-	vec3 projCoord;
-	float lightDepth;
-
-	lightPosition.w = 1.0;
-
-	projCoord.x = lightPosition.x / lightPosition.w / 2.0f + 0.5f;
-    projCoord.y = -lightPosition.y / lightPosition.w / 2.0f + 0.5f;
-
-	// if clamped projection coordinate is the same - the pixel is lit
-	if (clamp(projCoord.x, 0.0, 1.0) == projCoord.x && clamp(projCoord.y, 0.0, 1.0) == projCoord.y) {
-		lightDepth = lightPosition.z / lightPosition.w - shadowBias;
-		float sampleDepth = texture(samplers[material.samplerIndex[EXTRAMAP]], projCoord.xy).r;
-
-		return sampleDepth;
+float getShadow(vec4 fragmentPosition) {
+	float shadow = 0.0;	
+	vec4 shadowPosition = lighting.lightViews[0] * fragmentPosition;
+	vec4 shadowCoord = shadowPosition / shadowPosition.w;
+	
+	if (shadowCoord.z > -1.0 && shadowCoord.z < 1.0) {
+		float shadowDistance = texture(arraySamplers[material.samplerIndex[EXTRAMAP]], vec3(shadowCoord.st, 0)).r;
+		if (shadowCoord.w > 0.0 && shadowDistance < shadowCoord.z) {
+			shadow = 1.0;
+		}
 	}
-
-	return 0.0;
+	return shadow;
 }
 
 void main() {
@@ -216,7 +211,7 @@ void main() {
 	color += getIBLContribution(diffuseColor, specularColor, perceptualRoughness, NdotV, normal, reflection);
 	color = mix(color, color * ao, occlusionStrength);
 
-	float shadowResult = getShadow(lighting.lightLocations[0]);
+	float shadowResult = getShadow(vec4(worldPos, 1.0));
 	color *= max(shadowResult, 0.01);
 
 	color += emissive;

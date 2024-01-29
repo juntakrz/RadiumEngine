@@ -10,8 +10,6 @@ class ALight : public ACamera {
   // r, g, b = color, a = intensity
   glm::vec4 m_lightProperties;
 
-  glm::mat4 m_projectionView = glm::mat4(1.0f);
-
   bool m_isShadowCaster = false;
 
  public:
@@ -23,8 +21,6 @@ class ALight : public ACamera {
   const glm::vec4& getLightProperties();
   const glm::vec3 getLightColor();
   const float getLightIntensity();
-
-  glm::mat4 getLightProjectionView();
 
   void setAsShadowCaster(const bool isShadowCaster);
   bool isShadowCaster();

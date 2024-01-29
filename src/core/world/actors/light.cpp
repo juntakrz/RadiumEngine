@@ -27,15 +27,6 @@ const glm::vec3 ALight::getLightColor() {
 
 const float ALight::getLightIntensity() { return m_lightProperties.a; }
 
-glm::mat4 ALight::getLightProjectionView() {
-  if (m_transformationData.wasUpdated) {
-    m_projectionView = getProjection() * getView();
-    m_transformationData.wasUpdated = true;
-  }
-
-  return m_projectionView;
-}
-
 void ALight::setAsShadowCaster(const bool isShadowCaster) {
   m_isShadowCaster = isShadowCaster;
 }
