@@ -18,12 +18,9 @@ struct RMaterial {
   RTexture* pExtra = nullptr;
 
   RSceneFragmentPCB pushConstantBlock;
-  VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
 
   // will materials manager automatically try to delete textures
   // from memory if unused by any other material
   // !requires sharedPtr code, currently unused!
   bool manageTextures = false;
-
-  void createDescriptorSet();
 };

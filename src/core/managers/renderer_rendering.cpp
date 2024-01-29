@@ -257,6 +257,19 @@ void core::MRenderer::executeDynamicShadowPass(VkCommandBuffer commandBuffer, co
   overrideInfo = pRenderPass->renderingInfo;
   overrideInfo.pDepthAttachment = &overrideAttachment;
 
+  if (cascadeIndex == 0u) {
+    RTexture* pShadowTexture = pRenderPass->pImageReferences[0];
+
+    VkImageSubresourceRange subRange{};
+    subRange.aspectMask = pShadowTexture->texture.aspectMask;
+    subRange.baseArrayLayer = 0u;
+    subRange.layerCount = pShadowTexture->texture.layerCount;
+    subRange.baseMipLevel = 0u;
+    subRange.levelCount = pShadowTexture->texture.levelCount;
+
+    setImageLayout(commandBuffer, pShadowTexture, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, subRange);
+  }
+
   setCamera(view.pSunCamera);
   updateSceneUBO(renderView.frameInFlight);
 
@@ -280,6 +293,19 @@ void core::MRenderer::executeDynamicShadowPass(VkCommandBuffer commandBuffer, co
   drawBoundEntities(commandBuffer);
 
   vkCmdEndRendering(commandBuffer);
+
+  if (cascadeIndex == config::shadowCascades - 1) {
+    RTexture* pShadowTexture = pRenderPass->pImageReferences[0];
+
+    VkImageSubresourceRange subRange{};
+    subRange.aspectMask = pShadowTexture->texture.aspectMask;
+    subRange.baseArrayLayer = 0u;
+    subRange.layerCount = pShadowTexture->texture.layerCount;
+    subRange.baseMipLevel = 0u;
+    subRange.levelCount = pShadowTexture->texture.levelCount;
+
+    setImageLayout(commandBuffer, pShadowTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subRange);
+  }
 }
 
 void core::MRenderer::executeDynamicPresentPass(VkCommandBuffer commandBuffer, VkDescriptorSet sceneSet) {

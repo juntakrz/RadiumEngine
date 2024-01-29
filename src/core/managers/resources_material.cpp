@@ -46,10 +46,11 @@ void core::MResources::initialize() {
   materialInfo.textures.metalRoughness = RTGT_GPHYSICAL;
   materialInfo.textures.occlusion = RTGT_GPOSITION;
   materialInfo.textures.emissive = RTGT_GEMISSIVE;
+  materialInfo.textures.extra = RTGT_SHADOW;
   materialInfo.alphaMode = EAlphaMode::Opaque;
   materialInfo.doubleSided = false;
   materialInfo.manageTextures = true;
-  materialInfo.passFlags = EDynamicRenderingPass::Present;
+  materialInfo.passFlags = EDynamicRenderingPass::PBR;
 
   if (!(pMaterial = createMaterial(&materialInfo))) {
     RE_LOG(Critical, "Failed to create Vulkan G-Buffer material.");
@@ -103,8 +104,13 @@ void core::MResources::updateMaterialDescriptorSet(RTexture* pTexture, EResource
       VkDescriptorImageInfo imageInfo = pTexture->texture.imageInfo;
 
       // HACK: this image is expected to be translated to a proper layout later
-      if (imageInfo.imageLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
-        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      switch (imageInfo.imageLayout) {
+        case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+        case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL:
+        case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL: {
+          imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+          break;
+        }
       }
 
       writeSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -217,7 +223,6 @@ RMaterial* core::MResources::createMaterial(
 
   RE_LOG(Log, "Creating material \"%s\".", newMat.name.c_str());
   m_materials.at(pDesc->name) = std::make_unique<RMaterial>(std::move(newMat));
-  m_materials.at(pDesc->name)->createDescriptorSet();
   return m_materials.at(pDesc->name).get();
 }
 

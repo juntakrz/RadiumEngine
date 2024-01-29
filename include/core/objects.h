@@ -439,7 +439,8 @@ struct RSceneFragmentPCB {
 // Push constant block used by the scene vertex shader
 // (16 bytes, 64 bytes total of 128 Vulkan spec)
 struct RSceneVertexPCB {
-  alignas(16) uint32_t cascadeIndex = 0u;
+  uint32_t cascadeIndex = 0u;
+  float padding[3];
 };
 
 struct RMeshUBO {

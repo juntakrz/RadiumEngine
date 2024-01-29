@@ -56,7 +56,7 @@ void main(){
 	outUV1 = inUV1;
 	outColor0 = inColor0;
 
-	const uint divisor = 1 << pushBlock.cascadeIndex;	
+	const uint divisor = 1 << pushBlock.cascadeIndex * 2;	
 
 	mat4 newProjection = scene.projection;
 	newProjection[0][0] /= divisor;	

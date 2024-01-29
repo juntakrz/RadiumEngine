@@ -523,60 +523,6 @@ TResult core::MRenderer::createDescriptorSets() {
   }
 
 #ifndef NDEBUG
-  RE_LOG(Log, "Creating deferred PBR descriptor set.");
-#endif
-  {
-    // Allocate PBR input's descriptor set
-    VkDescriptorSetLayout PBRInputLayout =
-        core::renderer.getDescriptorSetLayout(EDescriptorSetLayout::PBRInput);
-
-    VkDescriptorSetAllocateInfo allocateInfo{};
-    allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocateInfo.descriptorPool = core::renderer.getDescriptorPool();
-    allocateInfo.pSetLayouts = &PBRInputLayout;
-    allocateInfo.descriptorSetCount = 1;
-
-    if (vkAllocateDescriptorSets(core::renderer.logicalDevice.device,
-                                 &allocateInfo,
-                                 &scene.GBufferDescriptorSet) != VK_SUCCESS) {
-      RE_LOG(Error, "Failed to allocate descriptor set for PBR input subpass.");
-      return RE_CRITICAL;
-    };
-
-    std::vector<VkDescriptorImageInfo> imageDescriptors;
-
-    for (const auto& image : scene.pGBufferTargets) {
-      imageDescriptors.emplace_back(image->texture.imageInfo);
-    }
-
-    // Write retrieved data to newly allocated descriptor set
-    std::vector<VkWriteDescriptorSet> writeDescriptorSets;
-    uint32_t writeSize = static_cast<uint32_t>(imageDescriptors.size());
-    writeDescriptorSets.resize(writeSize);
-
-    for (uint32_t i = 0; i < writeSize; ++i) {
-      // If an image is a color attachment - it's probably a render target that
-      // will be used as a shader data source at some point
-      if (imageDescriptors[i].imageLayout ==
-          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
-        imageDescriptors[i].imageLayout =
-            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-      }
-
-      writeDescriptorSets[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-      writeDescriptorSets[i].dstSet = scene.GBufferDescriptorSet;
-      writeDescriptorSets[i].dstBinding = i;
-      writeDescriptorSets[i].descriptorType =
-          VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-      writeDescriptorSets[i].descriptorCount = 1;
-      writeDescriptorSets[i].pImageInfo = &imageDescriptors[i];
-    }
-
-    vkUpdateDescriptorSets(core::renderer.logicalDevice.device, writeSize,
-                           writeDescriptorSets.data(), 0, nullptr);
-  }
-
-#ifndef NDEBUG
   RE_LOG(Log, "Creating extended material descriptor set.");
 #endif
   {

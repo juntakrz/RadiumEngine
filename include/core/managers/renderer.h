@@ -77,7 +77,6 @@ class MRenderer {
     VkDescriptorSet transformDescriptorSet;
 
     std::vector<RTexture*> pGBufferTargets;
-    VkDescriptorSet GBufferDescriptorSet;
 
     // per frame in flight buffered camera/lighting descriptor sets
     std::vector<VkDescriptorSet> descriptorSets;
