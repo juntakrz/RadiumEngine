@@ -198,8 +198,8 @@ struct RDynamicRenderingInfo {
 
     struct {
       VkBool32 enable = VK_FALSE;
-      float constantFactor = 0.5f;
-      float slopeFactor = 0.75f;
+      float constantFactor = 1.75f;
+      float slopeFactor = 1.25f;
       float clamp = 0.0f;
     } depthBias;
   } pipelineInfo;

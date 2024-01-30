@@ -130,34 +130,54 @@ vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, 
 	return diffuse + specular;
 }
 
+float filterPCF(vec3 shadowCoord, vec2 offset, uint distanceIndex) {
+	float shadowDepth = texture(arraySamplers[lighting.samplerIndex[SUNLIGHTINDEX]], vec3(shadowCoord.st + offset, distanceIndex)).r;
+	shadowDepth += 0.0001 * float(distanceIndex + 2);
+
+	if (shadowCoord.z > shadowDepth) {
+		return 0.1;
+	}
+			
+	return 1.0;
+}
+
 float getShadow(vec3 fragmentPosition, uint distanceIndex) {
-	float shadow = 1.0;
-	float multiplier = 1.0;
+	ivec2 texDim = textureSize(samplers[lighting.samplerIndex[SUNLIGHTINDEX]], 0);
+	float shadow = 0.0;
+	float scale = 1.5;
+	float dx = scale * 1.0 / float(texDim.x);
+	float dy = scale * 1.0 / float(texDim.y);
+	int count = 0;
+	int range = 3 - int(distanceIndex);
+
+	float FOVMultiplier = 1.0;
 
 	for (uint i = 0; i < distanceIndex; i++) {
-		multiplier *= 0.25;
+		FOVMultiplier *= 0.25;
 	}
 
 	mat4 newProjection = lighting.lightOrthoMatrix;
-	newProjection[0][0] *= multiplier;	
-	newProjection[1][1] *= multiplier;
+	newProjection[0][0] *= FOVMultiplier;	
+	newProjection[1][1] *= FOVMultiplier;
 
 	vec4 shadowPosition = newProjection * lighting.lightViews[0] * vec4(fragmentPosition, 1.0);
 	shadowPosition /= shadowPosition.w;
 
-	vec2 shadowCoord = vec2((shadowPosition.x * 0.5 + 0.5), 1.0 - (shadowPosition.y * 0.5 + 0.5));
+	vec3 shadowCoord = vec3((shadowPosition.x * 0.5 + 0.5), 1.0 - (shadowPosition.y * 0.5 + 0.5), shadowPosition.z);
 	
 	if (shadowCoord.x < 0.0 || shadowCoord.x > 1.0 || shadowCoord.y < 0.0 || shadowCoord.y > 1.0) {
 		return 1.0;
 	}
-
-	float shadowDepth = texture(arraySamplers[lighting.samplerIndex[SUNLIGHTINDEX]], vec3(shadowCoord.st, distanceIndex)).r;
-
-	if (shadowPosition.z > shadowDepth) {
-		shadow = 0.0;
+	
+	for (int x = -range; x <= range; x++) {
+		for (int y = -range; y <= range; y++) {
+			vec2 offset = vec2(dx*x, dy*y);
+			shadow += filterPCF(shadowCoord, offset, distanceIndex);
+			count++;
+		}
 	}
-
-	return shadow;
+	
+	return shadow / count;
 }
 
 void main() {
@@ -226,7 +246,7 @@ void main() {
 	if (relativeLength > cascadeDistance0) distanceIndex = 1;
 	if (relativeLength > cascadeDistance1) distanceIndex = 2;
 
-	color *= max(getShadow(worldPos, distanceIndex), 0.1);
+	color *= getShadow(worldPos, distanceIndex);
 
 	color += emissive;
 	
