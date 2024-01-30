@@ -6,7 +6,8 @@
 #define RE_ERRORLIMIT           RE_ERROR        // terminate program if some error exceeds this level
 #define MAX_FRAMES_IN_FLIGHT    2u
 #define MAX_TRANSFER_BUFFERS    2u
-#define RE_MAXLIGHTS            32              // includes directional light, always at index 0
+#define RE_MAXLIGHTS            32u             // includes directional light, always at index 0
+#define RE_MAXSHADOWCASTERS     4u
 
 // render targets
 #define RTGT_PRESENT            "RT2D_Present"      // Final swapchain target
@@ -30,6 +31,7 @@
 // default materials
 #define RMAT_GBUFFER            "RMat_GBuffer"
 #define RMAT_GPBR               "RMat_GPBR"
+#define RMAT_SHADOW             "RMat_Shadow"
 
 // default models
 #define RMDL_SKYBOX             "RMdl_SkyBox"       // default cube skybox using cubemap

@@ -10,7 +10,7 @@
 
 // PRIVATE
 
-RTexture* core::MRenderer::createFragmentRenderTarget(const char* name, uint32_t width, uint32_t height) {
+RTexture* core::MRenderer::createFragmentRenderTarget(const char* name, VkFormat format, uint32_t width, uint32_t height) {
   if (width == 0 || height == 0) {
     width = swapchain.imageExtent.width;
     height = swapchain.imageExtent.height;
@@ -19,7 +19,7 @@ RTexture* core::MRenderer::createFragmentRenderTarget(const char* name, uint32_t
   RTextureInfo textureInfo{};
   textureInfo.name = name;
   textureInfo.layerCount = 1u;
-  textureInfo.format = core::vulkan::formatHDR16;
+  textureInfo.format = format;
   textureInfo.width = width;
   textureInfo.height = height;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -1016,5 +1016,4 @@ ACamera* core::MRenderer::getCamera() { return view.pActiveCamera; }
 
 void core::MRenderer::setIBLScale(float newScale) {
   lighting.data.scaleIBLAmbient = newScale;
-  lighting.tracking.bufferUpdatesRemaining = MAX_FRAMES_IN_FLIGHT;
 }

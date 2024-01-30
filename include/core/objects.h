@@ -191,10 +191,17 @@ struct RDynamicRenderingInfo {
   } layoutInfo;
 
   struct {
-    VkBool32 blendEnable = VK_FALSE;
+    VkBool32 enableBlending = VK_FALSE;
     VkPrimitiveTopology primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     VkPolygonMode polygonMode = VK_POLYGON_MODE_FILL;
     VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT;
+
+    struct {
+      VkBool32 enable = VK_FALSE;
+      float constantFactor = 0.5f;
+      float slopeFactor = 0.75f;
+      float clamp = 0.0f;
+    } depthBias;
   } pipelineInfo;
 };
 
@@ -237,10 +244,17 @@ struct RGraphicsPipelineInfo {
   std::string vertexShader;
   std::string fragmentShader;
   VkPipelineRenderingCreateInfo* pDynamicPipelineInfo = nullptr;
-  VkBool32 blendEnable = VK_FALSE;
+  VkBool32 enableBlending = VK_FALSE;
   VkPrimitiveTopology primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
   VkPolygonMode polygonMode = VK_POLYGON_MODE_FILL;
   VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT;
+
+  struct {
+    VkBool32 enable = VK_FALSE;
+    float constantFactor = 0.0f;
+    float slopeFactor = 0.0f;
+    float clamp = 0.0f;
+  } depthBias;
 };
 
 struct RLightInfo {
@@ -410,10 +424,12 @@ struct RComputeImagePCB {
 
 // lighting data uniform buffer object
 struct RLightingUBO {
-  glm::vec4 lightLocations[RE_MAXLIGHTS]; // w is unused
-  glm::vec4 lightColors[RE_MAXLIGHTS];    // alpha is intensity
-  glm::mat4 lightViews[RE_MAXLIGHTS];
-  float lightCount = 0.0f;
+  glm::vec4 lightLocations[RE_MAXLIGHTS];     // w is unused
+  glm::vec4 lightColors[RE_MAXLIGHTS];        // alpha is intensity
+  glm::mat4 lightViews[RE_MAXSHADOWCASTERS];  // 0 - directional, 1 - 5 point light reserved
+  glm::mat4 lightOrthoMatrix;                 // default orthogonal projection matrix for light views
+  uint32_t samplerArrayIndex[RE_MAXSHADOWCASTERS];
+  uint32_t lightCount = 0;
   float exposure = 4.5f;
   float gamma = 2.2f;
   float prefilteredCubeMipLevels;

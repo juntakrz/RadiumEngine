@@ -1,7 +1,11 @@
 #version 460
 #extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_scalar_block_layout : require
 
 #define MAX_LIGHTS 32
+#define MAX_SHADOWCASTERS 4
+#define SUNLIGHTINDEX 0
+
 #define COLORMAP	0
 #define NORMALMAP	1
 #define PHYSMAP		2
@@ -21,11 +25,13 @@ layout (set = 0, binding = 0) uniform UBOScene {
 	vec3 camPos;
 } scene;
 
-layout (set = 0, binding = 1) uniform UBOLighting {
+layout (std430, set = 0, binding = 1) uniform UBOLighting {
 	vec4 lightLocations[MAX_LIGHTS];
     vec4 lightColor[MAX_LIGHTS];
-	mat4 lightViews[MAX_LIGHTS];
-	float lightCount;
+	mat4 lightViews[MAX_SHADOWCASTERS];
+	mat4 lightOrthoMatrix;
+	uint samplerIndex[MAX_SHADOWCASTERS];
+	uint lightCount;
 	float exposure;
 	float gamma;
 	float prefilteredCubeMipLevels;
@@ -138,17 +144,24 @@ vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, 
 	return diffuse + specular;
 }
 
-float getShadow(vec4 fragmentPosition) {
-	float shadow = 0.0;	
-	vec4 shadowPosition = lighting.lightViews[0] * fragmentPosition;
-	vec4 shadowCoord = shadowPosition / shadowPosition.w;
+float getShadow(vec3 fragmentPosition) {
+	float shadow = 1.0; 
+
+	vec4 shadowPosition = lighting.lightOrthoMatrix * lighting.lightViews[0] * vec4(fragmentPosition, 1.0);
+	shadowPosition /= shadowPosition.w;
+
+	vec2 shadowCoord = vec2((shadowPosition.x * 0.5 + 0.5), 1.0 - (shadowPosition.y * 0.5 + 0.5));
 	
-	if (shadowCoord.z > -1.0 && shadowCoord.z < 1.0) {
-		float shadowDistance = texture(arraySamplers[material.samplerIndex[EXTRAMAP]], vec3(shadowCoord.st, 0)).r;
-		if (shadowCoord.w > 0.0 && shadowDistance < shadowCoord.z) {
-			shadow = 1.0;
-		}
+	if (shadowCoord.x < 0.0 || shadowCoord.x > 1.0 || shadowCoord.y < 0.0 || shadowCoord.y > 1.0) {
+		return 1.0;
 	}
+		
+	float shadowDepth = texture(arraySamplers[lighting.samplerIndex[SUNLIGHTINDEX]], vec3(shadowCoord.st, 0)).r;
+
+	if (shadowPosition.z > shadowDepth) {
+		shadow = 0.0;
+	}
+
 	return shadow;
 }
 
@@ -183,7 +196,8 @@ void main() {
 	vec3 specularEnvironmentR0 = specularColor.rgb;
 	vec3 specularEnvironmentR90 = vec3(1.0, 1.0, 1.0) * reflectance90;
 
-	vec3 V = worldPos;										// Vector from surface point to camera, precalculated during GBuffer pass
+	//vec3 V = worldPos;										// Vector from surface point to camera, precalculated during GBuffer pass
+	vec3 V = normalize(scene.camPos - worldPos);			// Vector from surface point to camera
 	vec3 L = normalize(lighting.lightLocations[0].xyz);		// Vector from surface point to light
 	vec3 H = normalize(L + V);								// Half vector between both l and v
 	vec3 reflection = -normalize(reflect(V, normal));
@@ -211,8 +225,8 @@ void main() {
 	color += getIBLContribution(diffuseColor, specularColor, perceptualRoughness, NdotV, normal, reflection);
 	color = mix(color, color * ao, occlusionStrength);
 
-	float shadowResult = getShadow(vec4(worldPos, 1.0));
-	color *= max(shadowResult, 0.01);
+	// Calculate shadow
+	color *= max(getShadow(worldPos), 0.1);
 
 	color += emissive;
 	

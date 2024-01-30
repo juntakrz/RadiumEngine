@@ -115,10 +115,13 @@ TResult core::MRenderer::createDynamicRenderingPass(EDynamicRenderingPass passId
   pipelineInfo.pDynamicPipelineInfo = &pipelineCreateInfo;
   pipelineInfo.vertexShader = pInfo->vertexShader;
   pipelineInfo.fragmentShader = pInfo->fragmentShader;
-  pipelineInfo.blendEnable = pInfo->pipelineInfo.blendEnable;
+  pipelineInfo.enableBlending = pInfo->pipelineInfo.enableBlending;
   pipelineInfo.cullMode = pInfo->pipelineInfo.cullMode;
   pipelineInfo.primitiveTopology = pInfo->pipelineInfo.primitiveTopology;
   pipelineInfo.polygonMode = pInfo->pipelineInfo.polygonMode;
+
+  // Hacky way of copying depth bias settings without defining a whole new struct
+  memcpy(&pipelineInfo.depthBias, &pInfo->pipelineInfo.depthBias, sizeof(pInfo->pipelineInfo.depthBias));
 
   RE_CHECK(createGraphicsPipeline(&pipelineInfo));
 
@@ -158,8 +161,9 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     info.viewportId = EViewport::vpShadow;
     info.vertexShader = "vs_shadowPass.spv";
     info.fragmentShader = "fs_shadowPass.spv";
-    info.pipelineInfo.blendEnable = VK_FALSE;
+    info.pipelineInfo.enableBlending = VK_FALSE;
     info.pipelineInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+    info.pipelineInfo.depthBias.enable = VK_TRUE;
     info.clearDepthAttachment = true;
     info.depthAttachment = { pDepthAttachment, pDepthAttachment->texture.view, pDepthAttachment->texture.imageFormat };
 
@@ -180,7 +184,7 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     info.colorAttachmentClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
     info.clearColorAttachments = true;
     info.clearDepthAttachment = true;
-    info.pipelineInfo.blendEnable = VK_FALSE;
+    info.pipelineInfo.enableBlending = VK_FALSE;
     info.pipelineInfo.cullMode = VK_CULL_MODE_BACK_BIT;
     info.layoutInfo.validateColorAttachmentLayout = true;
 
@@ -205,7 +209,7 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
 
     // Blend pass without culling
 
-    info.pipelineInfo.blendEnable = VK_TRUE;
+    info.pipelineInfo.enableBlending = VK_TRUE;
     info.layoutInfo.transitionColorAttachmentLayout = true;
 
     createDynamicRenderingPass(EDynamicRenderingPass::BlendCullNone, &info);

@@ -321,10 +321,10 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
   rasterizationInfo.lineWidth = 1.0f;
   rasterizationInfo.cullMode = pipelineInfo->cullMode;
   rasterizationInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
-  rasterizationInfo.depthBiasEnable = VK_FALSE;
-  rasterizationInfo.depthBiasConstantFactor = 0.0f;
-  rasterizationInfo.depthBiasClamp = 0.0f;
-  rasterizationInfo.depthBiasSlopeFactor = 0.0f;
+  rasterizationInfo.depthBiasEnable = pipelineInfo->depthBias.enable;
+  rasterizationInfo.depthBiasConstantFactor = pipelineInfo->depthBias.constantFactor;
+  rasterizationInfo.depthBiasSlopeFactor = pipelineInfo->depthBias.slopeFactor;
+  rasterizationInfo.depthBiasClamp = pipelineInfo->depthBias.clamp;
 
   // dynamic states allow changing specific parts of the pipeline without
   // recreating it
@@ -361,7 +361,7 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
   colorBlendAttachment.colorWriteMask =
       VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
       VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-  colorBlendAttachment.blendEnable = pipelineInfo->blendEnable;
+  colorBlendAttachment.blendEnable = pipelineInfo->enableBlending;
   colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
   colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
   colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;

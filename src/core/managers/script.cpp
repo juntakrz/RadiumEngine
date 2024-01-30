@@ -215,10 +215,9 @@ void core::MScript::jsonParseLights(const json* pLightData) noexcept {
 
     if (pNewLight->isShadowCaster()) {
       core::renderer.setSunCamera(pNewLight);
+      core::actors.setSunLight(pNewLight);
     }
   }
-
-  core::renderer.queueLightingUBOUpdate();
 }
 
 void core::MScript::jsonParseObjects(const json* objectData) noexcept {}

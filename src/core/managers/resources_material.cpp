@@ -40,13 +40,28 @@ void core::MResources::initialize() {
   createMaterial(&materialInfo);
 
   materialInfo = RMaterialInfo{};
+  materialInfo.name = RMAT_SHADOW;
+  materialInfo.textures.baseColor = RTGT_SHADOW;
+  materialInfo.doubleSided = false;
+  materialInfo.manageTextures = true;
+  materialInfo.passFlags = EDynamicRenderingPass::Shadow;
+
+  if (!(pMaterial = createMaterial(&materialInfo))) {
+    RE_LOG(Critical, "Failed to create directional sun shadow material.");
+
+    return;
+  }
+
+  core::renderer.getMaterialData()->pSunShadow = pMaterial;
+  core::renderer.getLightingData()->data.samplerArrayIndex[0] = pMaterial->pBaseColor->combinedSamplerIndex;
+
+  materialInfo = RMaterialInfo{};
   materialInfo.name = RMAT_GBUFFER;
   materialInfo.textures.baseColor = RTGT_GDIFFUSE;
   materialInfo.textures.normal = RTGT_GNORMAL;
   materialInfo.textures.metalRoughness = RTGT_GPHYSICAL;
   materialInfo.textures.occlusion = RTGT_GPOSITION;
   materialInfo.textures.emissive = RTGT_GEMISSIVE;
-  materialInfo.textures.extra = RTGT_SHADOW;
   materialInfo.alphaMode = EAlphaMode::Opaque;
   materialInfo.doubleSided = false;
   materialInfo.manageTextures = true;

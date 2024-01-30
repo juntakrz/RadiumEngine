@@ -200,11 +200,15 @@ void core::MRenderer::destroySceneBuffers() {
                    scene.skinTransformBuffer.allocation);
 }
 
+core::MRenderer::RLightingData* core::MRenderer::getLightingData() {
+  return &lighting;
+}
+
 VkDescriptorSet core::MRenderer::getMaterialDescriptorSet() {
   return material.descriptorSet;
 }
 
-core::MRenderer::RMaterialBuffers* core::MRenderer::getMaterialData() {
+core::MRenderer::RMaterialData* core::MRenderer::getMaterialData() {
   return &material;
 }
 
@@ -433,16 +437,17 @@ TResult core::MRenderer::createGBufferRenderTargets() {
   for (const auto& targetName : targetNames) {
     core::resources.destroyTexture(targetName.c_str(), true);
 
+    VkFormat imageFormat = (targetName == RTGT_GPOSITION) ? core::vulkan::formatHDR32 : core::vulkan::formatHDR16;
+
     RTexture* pNewTarget;
-    if ((pNewTarget = createFragmentRenderTarget(targetName.c_str())) ==
-        nullptr) {
+    if ((pNewTarget = createFragmentRenderTarget(targetName.c_str(), imageFormat)) == nullptr) {
       return RE_CRITICAL;
     }
 
     scene.pGBufferTargets.emplace_back(pNewTarget);
   }
 
-  if (!createFragmentRenderTarget(RTGT_GPBR)) {
+  if (!createFragmentRenderTarget(RTGT_GPBR, core::vulkan::formatHDR16)) {
     return RE_CRITICAL;
   }
 
@@ -454,9 +459,7 @@ TResult core::MRenderer::createDepthTargets() {
   RE_LOG(Log, "Creating deferred PBR depth/stencil target.");
 #endif
 
-  if (TResult result =
-          getDepthStencilFormat(VK_FORMAT_D32_SFLOAT_S8_UINT,
-                                core::vulkan::formatDepth) != RE_OK) {
+  if (TResult result = getDepthStencilFormat(VK_FORMAT_D32_SFLOAT_S8_UINT, core::vulkan::formatDepth) != RE_OK) {
     return result;
   }
 
@@ -804,13 +807,10 @@ void core::MRenderer::destroySyncObjects() {
 void core::MRenderer::updateSceneUBO(uint32_t currentImage) {
   view.worldViewProjectionData.view = view.pActiveCamera->getView();
   view.worldViewProjectionData.projection = view.pActiveCamera->getProjection();
-  view.worldViewProjectionData.cameraPosition =
-      view.pActiveCamera->getLocation();
+  view.worldViewProjectionData.cameraPosition = view.pActiveCamera->getLocation();
 
-  uint8_t* pSceneUBO =
-      static_cast<uint8_t*>(
-          view.modelViewProjectionBuffers[currentImage].allocInfo.pMappedData) +
-      config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
+  uint8_t* pSceneUBO = static_cast<uint8_t*>(view.modelViewProjectionBuffers[currentImage].allocInfo.pMappedData) +
+                       config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
 
   memcpy(pSceneUBO, &view.worldViewProjectionData, sizeof(RSceneUBO));
 }
@@ -899,22 +899,11 @@ core::MRenderer::REnvironmentData* core::MRenderer::getEnvironmentData() {
   return &environment;
 }
 
-void core::MRenderer::queueLightingUBOUpdate() {
-  lighting.tracking.bufferUpdatesRemaining = MAX_FRAMES_IN_FLIGHT;
-  lighting.tracking.dataRequiresUpdate = true;
-}
-
 void core::MRenderer::updateLightingUBO(const int32_t frameIndex) {
-  if (lighting.tracking.bufferUpdatesRemaining < 1) return;
-
-  if (lighting.tracking.dataRequiresUpdate) {
-    core::actors.updateLightingUBO(&lighting.data);
-    lighting.tracking.dataRequiresUpdate = false;
-  }
+  core::actors.updateLightingUBO(&lighting.data);
 
   memcpy(lighting.buffers[frameIndex].allocInfo.pMappedData, &lighting.data,
          sizeof(RLightingUBO));
-  lighting.tracking.bufferUpdatesRemaining--;
 }
 
 void core::MRenderer::updateAspectRatio() {

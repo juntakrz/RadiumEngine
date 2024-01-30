@@ -50,18 +50,14 @@ class MRenderer {
     } tracking;
   } environment;
 
-  struct {
+  struct RLightingData {
     std::vector<RBuffer> buffers;
     RLightingUBO data;
-
-    struct {
-      int8_t bufferUpdatesRemaining = 0;
-      bool dataRequiresUpdate = false;
-    } tracking;
   } lighting;
 
-  struct RMaterialBuffers {
+  struct RMaterialData {
     VkDescriptorSet descriptorSet;
+    RMaterial* pSunShadow = nullptr;
     RMaterial* pGBuffer = nullptr;
     RMaterial* pGPBR = nullptr;
   } material;
@@ -212,13 +208,13 @@ class MRenderer {
   // returns descriptor set used by the current frame in flight by default
   const VkDescriptorSet getSceneDescriptorSet(uint32_t frameInFlight = -1);
 
+  RLightingData* getLightingData();
   VkDescriptorSet getMaterialDescriptorSet();
-  RMaterialBuffers* getMaterialData();
+  RMaterialData* getMaterialData();
   RSceneBuffers* getSceneBuffers();
   RSceneUBO* getSceneUBO();
   REnvironmentData* getEnvironmentData();
 
-  void queueLightingUBOUpdate();
   void updateLightingUBO(const int32_t frameIndex);
 
   void updateAspectRatio();
@@ -272,10 +268,8 @@ class MRenderer {
   //
 
  private:
-  // create single layer render target for fragment shader output
-  // uses swapchain resolution
-  RTexture* createFragmentRenderTarget(const char* name, uint32_t width = 0,
-                                       uint32_t height = 0);
+  // create single layer render target for fragment shader output, uses swapchain resolution unless defined
+  RTexture* createFragmentRenderTarget(const char* name, VkFormat format, uint32_t width = 0, uint32_t height = 0);
 
   TResult createViewports();
   void setViewport(VkCommandBuffer commandBuffer, EViewport index);
