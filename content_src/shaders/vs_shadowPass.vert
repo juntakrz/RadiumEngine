@@ -56,7 +56,11 @@ void main(){
 	outUV1 = inUV1;
 	outColor0 = inColor0;
 
-	const uint multiplier = 1 << pushBlock.cascadeIndex;
+	float multiplier = 1.0;
+
+	for (uint i = 0; i < pushBlock.cascadeIndex; i++) {
+		multiplier *= 0.25;
+	}
 
 	mat4 newProjection = scene.projection;
 	newProjection[0][0] *= multiplier;	

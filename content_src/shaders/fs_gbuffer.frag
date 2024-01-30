@@ -1,13 +1,7 @@
 #version 460
 #extension GL_EXT_nonuniform_qualifier : require
 
-#define COLORMAP	0
-#define NORMALMAP	1
-#define PHYSMAP		2
-#define AOMAP		3
-#define EMISMAP		4
-#define EXTRAMAP	5
-#define MAXTEXTURES 6
+#include "include/common.glsl"
 
 layout (location = 0) in vec3 inWorldPos;
 layout (location = 1) in vec3 inNormal;
@@ -77,7 +71,6 @@ void main() {
 	outEmissive = vec4(0.0);
 
 	// 1. extract fragment position in world space and normalize it in relation to camera for maximum fp16 precision
-	//outPosition = vec4(normalize(scene.camPos - inWorldPos), 1.0);
 	outPosition = vec4(inWorldPos, 1.0);
 
 	// 2. extract color / diffuse / albedo

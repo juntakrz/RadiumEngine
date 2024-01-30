@@ -2,17 +2,7 @@
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_scalar_block_layout : require
 
-#define MAX_LIGHTS 32
-#define MAX_SHADOWCASTERS 4
-#define SUNLIGHTINDEX 0
-
-#define COLORMAP	0
-#define NORMALMAP	1
-#define PHYSMAP		2
-#define POSITIONMAP	3
-#define EMISMAP		4
-#define EXTRAMAP	5
-#define MAXTEXTURES 6
+#include "include/common.glsl"
 
 layout (location = 0) in vec2 inUV0;
 
@@ -26,11 +16,11 @@ layout (set = 0, binding = 0) uniform UBOScene {
 } scene;
 
 layout (std430, set = 0, binding = 1) uniform UBOLighting {
-	vec4 lightLocations[MAX_LIGHTS];
-    vec4 lightColor[MAX_LIGHTS];
-	mat4 lightViews[MAX_SHADOWCASTERS];
+	vec4 lightLocations[MAXLIGHTS];
+    vec4 lightColor[MAXLIGHTS];
+	mat4 lightViews[MAXSHADOWCASTERS];
 	mat4 lightOrthoMatrix;
-	uint samplerIndex[MAX_SHADOWCASTERS];
+	uint samplerIndex[MAXSHADOWCASTERS];
 	uint lightCount;
 	float exposure;
 	float gamma;
@@ -63,10 +53,6 @@ layout (push_constant) uniform Material {
 	float emissiveIntensity;		// 48
 	uint samplerIndex[MAXTEXTURES];
 } material;
-
-const float M_PI = 3.141592653589793;
-const float minRoughness = 0.04;
-const float shadowBias = 0.0001;
 
 vec3 ACESTonemap(vec3 x) {
     float a = 2.51;
@@ -144,10 +130,19 @@ vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, 
 	return diffuse + specular;
 }
 
-float getShadow(vec3 fragmentPosition) {
-	float shadow = 1.0; 
+float getShadow(vec3 fragmentPosition, uint distanceIndex) {
+	float shadow = 1.0;
+	float multiplier = 1.0;
 
-	vec4 shadowPosition = lighting.lightOrthoMatrix * lighting.lightViews[0] * vec4(fragmentPosition, 1.0);
+	for (uint i = 0; i < distanceIndex; i++) {
+		multiplier *= 0.25;
+	}
+
+	mat4 newProjection = lighting.lightOrthoMatrix;
+	newProjection[0][0] *= multiplier;	
+	newProjection[1][1] *= multiplier;
+
+	vec4 shadowPosition = newProjection * lighting.lightViews[0] * vec4(fragmentPosition, 1.0);
 	shadowPosition /= shadowPosition.w;
 
 	vec2 shadowCoord = vec2((shadowPosition.x * 0.5 + 0.5), 1.0 - (shadowPosition.y * 0.5 + 0.5));
@@ -155,8 +150,8 @@ float getShadow(vec3 fragmentPosition) {
 	if (shadowCoord.x < 0.0 || shadowCoord.x > 1.0 || shadowCoord.y < 0.0 || shadowCoord.y > 1.0) {
 		return 1.0;
 	}
-		
-	float shadowDepth = texture(arraySamplers[lighting.samplerIndex[SUNLIGHTINDEX]], vec3(shadowCoord.st, 0)).r;
+
+	float shadowDepth = texture(arraySamplers[lighting.samplerIndex[SUNLIGHTINDEX]], vec3(shadowCoord.st, distanceIndex)).r;
 
 	if (shadowPosition.z > shadowDepth) {
 		shadow = 0.0;
@@ -196,7 +191,6 @@ void main() {
 	vec3 specularEnvironmentR0 = specularColor.rgb;
 	vec3 specularEnvironmentR90 = vec3(1.0, 1.0, 1.0) * reflectance90;
 
-	//vec3 V = worldPos;										// Vector from surface point to camera, precalculated during GBuffer pass
 	vec3 V = normalize(scene.camPos - worldPos);			// Vector from surface point to camera
 	vec3 L = normalize(lighting.lightLocations[0].xyz);		// Vector from surface point to light
 	vec3 H = normalize(L + V);								// Half vector between both l and v
@@ -226,7 +220,13 @@ void main() {
 	color = mix(color, color * ao, occlusionStrength);
 
 	// Calculate shadow
-	color *= max(getShadow(worldPos), 0.1);
+	float relativeLength = length(scene.camPos - worldPos);
+
+	uint distanceIndex = 0;
+	if (relativeLength > cascadeDistance0) distanceIndex = 1;
+	if (relativeLength > cascadeDistance1) distanceIndex = 2;
+
+	color *= max(getShadow(worldPos, distanceIndex), 0.1);
 
 	color += emissive;
 	
