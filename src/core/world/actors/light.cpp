@@ -27,6 +27,14 @@ const glm::vec3 ALight::getLightColor() {
 
 const float ALight::getLightIntensity() { return m_lightProperties.a; }
 
+void ALight::setAsShadowCaster(const bool isShadowCaster) {
+  m_isShadowCaster = isShadowCaster;
+}
+
+bool ALight::isShadowCaster() {
+  return m_isShadowCaster;
+}
+
 void ALight::setLightType(ELightType newType) { m_lightType = newType; }
 
 ELightType ALight::getLightType() { return m_lightType; }

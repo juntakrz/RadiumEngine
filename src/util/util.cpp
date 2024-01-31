@@ -105,15 +105,15 @@ void processMessage(char level, const char* message, ...) {
       break;
     }
     case RE_WARNING: {
-      std::cout << "Warning: " << buffer << "\n";
+      std::cout << "\x1b[33mWarning: \x1b[0m\x1b[1m" << buffer << "\x1b[0m\n";
       break;
     }
     case RE_ERROR: {
-      std::cout << "ERROR: " << buffer << "\n";
+      std::cout << "\x1b[31mERROR: \x1b[0m\x1b[1m" << buffer << "\x1b[0m\n";
       break;
     }
     case RE_CRITICAL: {
-      std::cout << "CRITICAL ERROR!\n";
+      std::cout << "\x1b[41m\x1b[30mCRITICAL ERROR!\x1b[0m\n";
       throw std::runtime_error(buffer);
       break;
     }

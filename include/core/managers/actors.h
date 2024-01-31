@@ -28,6 +28,8 @@ class MActors {
     std::vector<AStatic*> pStatics;
   } m_linearActors;
 
+  ALight* m_pSunLight = nullptr;
+
  private:
   MActors();
 
@@ -57,6 +59,9 @@ class MActors {
   ALight* createLight(const char* name, RLightInfo* pInfo = nullptr);
   TResult destroyLight(const char* name);
   ALight* getLight(const char* name);
+  bool setSunLight(const char* name);
+  bool setSunLight(ALight* pLight);
+  ALight* getSunLight();
 
   // PAWN
 

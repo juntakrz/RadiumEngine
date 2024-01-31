@@ -124,8 +124,23 @@ TResult core::MRenderer::setSwapChainImageCount(const RVkPhysicalDevice& deviceD
   return RE_OK;
 }
 
+TResult core::MRenderer::createSwapChainImageTargets() {
+  const std::string presentName = RTGT_PRESENT;
+
+  for (uint8_t i = 0; i < swapchain.imageCount; ++i) {
+    const std::string rtName = presentName + std::to_string(i);
+    swapchain.pImages[i] = core::resources.createTexture(rtName);
+    swapchain.pImages[i]->texture.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    swapchain.pImages[i]->texture.imageFormat = swapchain.formatData.format;
+    swapchain.pImages[i]->texture.layerCount = 1u;
+    swapchain.pImages[i]->texture.levelCount = 1u;
+  }
+
+  return RE_OK;
+}
+
 TResult core::MRenderer::createSwapChain() {
-  if (!swapchain.imageCount) {
+  if (swapchain.imageCount == 0u) {
     RE_LOG(Error,
            "swap chain creation failed. Either no capable physical devices "
            "were found or swap chain variables are not valid.");
@@ -139,7 +154,7 @@ TResult core::MRenderer::createSwapChain() {
   createInfo.imageColorSpace = swapchain.formatData.colorSpace;
   createInfo.presentMode = swapchain.presentMode;
   createInfo.imageExtent = swapchain.imageExtent;
-  createInfo.minImageCount = swapchain.imageCount;
+  createInfo.minImageCount = static_cast<uint32_t>(swapchain.imageCount);
   createInfo.imageArrayLayers = 1;
   createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
   createInfo.surface = surface;
@@ -174,11 +189,18 @@ TResult core::MRenderer::createSwapChain() {
 
   uint32_t swapChainImageCount = 0;
   vkGetSwapchainImagesKHR(logicalDevice.device, swapChain, &swapChainImageCount, nullptr);
-  swapchain.images.resize(swapChainImageCount);
+  VkImage pSwapChainImages[8];
   vkGetSwapchainImagesKHR(logicalDevice.device, swapChain, &swapChainImageCount,
-                          swapchain.images.data());
+                          pSwapChainImages);
 
-  // follow up swap chain resource creation methods
+  if (swapchain.imageCount != swapChainImageCount) swapchain.imageCount = swapChainImageCount;
+  swapchain.pImages.resize(swapchain.imageCount);
+  createSwapChainImageTargets();
+
+  for (uint8_t i = 0; i < swapchain.imageCount; ++i) {
+    swapchain.pImages[i]->texture.image = pSwapChainImages[i];
+  }
+
   createSwapChainImageViews();
 
   return RE_OK;
@@ -187,24 +209,16 @@ TResult core::MRenderer::createSwapChain() {
 void core::MRenderer::destroySwapChain() {
   RE_LOG(Log, "Cleaning up the swap chain.");
 
-  for (RFramebuffer currentFramebuffer : swapchain.framebuffers) {
-    vkDestroyFramebuffer(logicalDevice.device, currentFramebuffer.framebuffer,
-                         nullptr);
+  for (RTexture* pImage : swapchain.pImages) {
+    vkDestroyImageView(logicalDevice.device, pImage->texture.view, nullptr);
+    pImage->texture.view = VK_NULL_HANDLE;
   }
-
-  for (VkImageView imageView : swapchain.imageViews) {
-    vkDestroyImageView(logicalDevice.device, imageView, nullptr);
-  }
-
-  // destroy other framebuffers
-  for (auto& fb : system.framebuffers) {
-    vkDestroyFramebuffer(logicalDevice.device, fb.second.framebuffer, nullptr);
-  }
-
-  // clear unordered map so framebuffers may be recreated if needed
-  system.framebuffers.clear();
 
   vkDestroySwapchainKHR(logicalDevice.device, swapChain, nullptr);
+
+  for (RTexture* pImage : swapchain.pImages) {
+    pImage->texture.image = VK_NULL_HANDLE;
+  }
 }
 
 TResult core::MRenderer::recreateSwapChain() {
@@ -225,7 +239,6 @@ TResult core::MRenderer::recreateSwapChain() {
 
   chkResult = createSwapChain();
   if (chkResult = createDepthTargets() > finalResult) finalResult = chkResult;
-  if (chkResult = createDefaultFramebuffers() > finalResult) finalResult = chkResult;
 
   return finalResult;
 }
@@ -235,11 +248,10 @@ TResult core::MRenderer::recreateSwapChain() {
 TResult core::MRenderer::createSwapChainImageViews() {
   RE_LOG(Log, "Creating image views for swap chain.");
 
-  swapchain.imageViews.resize(swapchain.images.size());
-
-  for (size_t i = 0; i < swapchain.imageViews.size(); ++i) {
-    swapchain.imageViews[i] =
-        createImageView(swapchain.images[i], swapchain.formatData.format, 1, 1);
+  for (size_t i = 0; i < swapchain.imageCount; ++i) {
+    swapchain.pImages[i]->texture.view =
+        createImageView(swapchain.pImages[i]->texture.image,
+                        swapchain.formatData.format, 0u, 1u, 0u, 1u, false, VK_IMAGE_ASPECT_COLOR_BIT);
   }
 
   return RE_OK;

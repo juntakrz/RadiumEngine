@@ -26,7 +26,7 @@ core::MDebug::~MDebug() {
 
 TResult core::MDebug::create(VkInstance instance, VkAllocationCallbacks* pAllocator,
                     VkDebugUtilsMessengerCreateInfoEXT* pUserData) {
-  if (!bRequireValidationLayers) return RE_OK;
+  if (!requireValidationLayers) return RE_OK;
 
   RE_LOG(Log, "Initializing graphics debug subsystem.");
 

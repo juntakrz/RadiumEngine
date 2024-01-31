@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "core/core.h"
 #include "core/managers/input.h"
+#include "core/managers/ref.h"
+#include "core/managers/renderer.h"
 #include "core/managers/world.h"
 #include "core/world/actors/camera.h"
 #include "core/managers/actors.h"
@@ -17,29 +19,22 @@ void core::MActors::updateLightingUBO(RLightingUBO* pLightingBuffer) {
     return;
   }
 
-  int32_t lightCount = 1;
+  uint32_t lightCount = 1;
   float lightType = 1.0f;
 
-  // currently index 0 is always a single direct light
-  // and everything else is point lights, maybe needs improvement
+  // Index 0 is expected to be the directional 'sun' light
+  if (m_pSunLight) {
+    pLightingBuffer->lightLocations[0] = glm::vec4(m_pSunLight->getLocation(), 1.0f);
+    pLightingBuffer->lightColors[0] = glm::vec4(m_pSunLight->getLightColor(), m_pSunLight->getLightIntensity());
+    pLightingBuffer->lightViews[0] = m_pSunLight->getView();
+    pLightingBuffer->lightOrthoMatrix = m_pSunLight->getProjection();
+  }
 
+  // Currently all other lights are expected to be point lights
   for (const auto& pLight : m_linearActors.pLights) {
-    if (pLight->getLightType() == ELightType::Directional) {
-      pLightingBuffer->lightLocations[0] = glm::vec4(
-          pLight->getRotationAngles(), static_cast<float>(pLight->getLightType()));
-
-      pLightingBuffer->lightColors[0] =
-          glm::vec4(pLight->getLightColor(), pLight->getLightIntensity());
-
-      continue;
-    }
-
-    if (pLight->isVisible()) {
-      pLightingBuffer->lightLocations[lightCount] =
-          glm::vec4(pLight->getLocation(), 0.0f);
-
-      pLightingBuffer->lightColors[lightCount] =
-          glm::vec4(pLight->getLightColor(), pLight->getLightIntensity());
+    if (pLight->isVisible() && pLight != m_pSunLight) {
+      pLightingBuffer->lightLocations[lightCount] = glm::vec4(pLight->getLocation(), 1.0f);
+      pLightingBuffer->lightColors[lightCount] = glm::vec4(pLight->getLightColor(), pLight->getLightIntensity());
 
       ++lightCount;
     }
@@ -48,13 +43,11 @@ void core::MActors::updateLightingUBO(RLightingUBO* pLightingBuffer) {
     if (lightCount == RE_MAXLIGHTS) break;
   }
 
-  pLightingBuffer->lightCount = (float)lightCount;
+  pLightingBuffer->lightCount = lightCount;
 }
 
 void core::MActors::initialize() {
-  /*AStatic* pNewStatic = createStatic(RACT_RENDERPLANE);
-  pNewStatic->setModel(core::world.getModel(RMDL_RENDERPLANE));
-  pNewStatic->bindToRenderer();*/
+  //
 }
 
 ACamera* core::MActors::createCamera(const char* name,
@@ -87,6 +80,8 @@ ACamera* core::MActors::createCamera(const char* name,
 
     pCamera->setViewBufferIndex(index);
     m_linearActors.pCameras.emplace_back(pCamera);
+
+    core::ref.registerActor(name, pCamera);
 
     RE_LOG(Log, "Created camera '%s'.", name);
     return pCamera;
@@ -135,14 +130,35 @@ ALight* core::MActors::createLight(const char* name, RLightInfo* pInfo) {
   }
 
   m_actors.lights[name] = std::make_unique<ALight>();
-  m_actors.lights.at(name)->setName(name);
+  ALight* pNewLight = m_actors.lights.at(name).get();
+
+  pNewLight->setName(name);
 
   if (pInfo) {
-    m_actors.lights.at(name)->setLightType(pInfo->type);
-    m_actors.lights.at(name)->setLightColor(pInfo->color);
-    m_actors.lights.at(name)->setLightIntensity(pInfo->intensity);
-    m_actors.lights.at(name)->setLocation(pInfo->translation);
-    m_actors.lights.at(name)->setRotation(pInfo->direction);
+    pNewLight->setLightType(pInfo->type);
+    pNewLight->setLightColor(pInfo->color);
+    pNewLight->setLightIntensity(pInfo->intensity);
+    pNewLight->setLocation(pInfo->translation);
+    pNewLight->setRotation(pInfo->direction);
+
+    if (pInfo->isShadowCaster) {
+      pNewLight->setAsShadowCaster(true);
+      pNewLight->setOrthographic(1.0f, 1.0f, 0.001f, 100.0f);
+
+      // get free camera offset index into the dynamic buffer
+      uint32_t index = 0;
+
+      for (const auto& it : m_linearActors.pCameras) {
+        if (it->getViewBufferIndex() != index) {
+          break;
+        }
+
+        ++index;
+      }
+
+      pNewLight->setViewBufferIndex(index);
+      m_linearActors.pCameras.emplace_back(pNewLight);
+    }
   }
 
   // should probably add a reference to MRef here?
@@ -180,6 +196,34 @@ ALight* core::MActors::getLight(const char* name) {
   RE_LOG(Error, "Failed to get light '%s' from actor list. It does not exist.",
          name);
   return nullptr;
+}
+
+bool core::MActors::setSunLight(const char* name) {
+  if (m_actors.lights.contains(name)) {
+    ALight* pLight = m_actors.lights.at(name).get();
+
+    if (pLight->isShadowCaster() && pLight->getLightType() == ELightType::Directional) {
+      m_pSunLight = pLight;
+      return true;
+    }
+  }
+
+  RE_LOG(Error, "Failed to set '%s' as sun light. It either does not exist or isn't a directional caster.", name);
+  return false;
+}
+
+bool core::MActors::setSunLight(ALight* pLight) {
+  if (pLight && pLight->isShadowCaster() && pLight->getLightType() == ELightType::Directional) {
+    m_pSunLight = pLight;
+    return true;
+  }
+
+  RE_LOG(Error, "Failed to set sun light. Either received a nullptr or it isn't a directional caster.");
+  return false;
+}
+
+ALight* core::MActors::getSunLight() {
+  return m_pSunLight;
 }
 
 APawn* core::MActors::createPawn(const char* name) {

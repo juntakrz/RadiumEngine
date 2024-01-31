@@ -1,0 +1,76 @@
+#version 460
+#extension GL_EXT_nonuniform_qualifier : require
+
+#include "include/common.glsl"
+
+layout(local_size_x = 8, local_size_y = 4) in;
+layout(set = 0, binding = 0, rgba16f) uniform imageCube images[];
+layout(set = 0, binding = 1) uniform samplerCube samplers[];
+
+layout (push_constant) uniform PushBlock {
+	uint imageIndex;
+	uint imageCount;
+    ivec4 intValues;        // x - total mip levels, y - current face
+} pushBlock;
+
+const float sampleDelta = 0.025;
+const float totalSamples = (TWO_PI / sampleDelta) * (HALF_PI / sampleDelta); 
+const float invTotalSamples = 1.0 / totalSamples;
+const uint sourceSize = 512u;
+
+void calculateIrradiance(ivec3 srcCoordinates, ivec2 cubemapSize) {
+	ivec2 targetSize = imageSize(images[pushBlock.imageIndex]);
+	uint quotient = cubemapSize.x / targetSize.x;
+
+    if (srcCoordinates.x % quotient != 0) return;
+
+	ivec3 targetPosition = ivec3(ivec2(srcCoordinates.x / quotient, srcCoordinates.y / quotient), srcCoordinates.z);
+
+	vec3 N = normalize(cubePixelToWorldPosition(srcCoordinates, cubemapSize));
+	vec3 up = vec3(0.0, 1.0, 0.0);
+    vec3 right = normalize(cross(up, N));
+    up = cross(N, right);
+
+    vec3 irradianceColor = vec3(0.0);
+    for(float phi = 0.0; phi < TWO_PI; phi += sampleDelta)
+    {
+        float sinPhi = sin(phi);
+        float cosPhi = cos(phi);
+        
+        for(float theta = 0.0; theta < HALF_PI; theta += sampleDelta)
+        {
+            float sinTheta = sin(theta);
+            float cosTheta = cos(theta);
+
+            // Spherical to cartesian, in tangent space
+            vec3 sphereCoord = vec3(sinTheta * cosPhi,  sinTheta * sinPhi, cosTheta);
+
+            // Tangent space to world
+            vec3 sampleVector = sphereCoord.x * right + sphereCoord.y * up + sphereCoord.z * N; 
+
+            irradianceColor += textureLod(samplers[pushBlock.imageIndex], sampleVector, 0).rgb * cosTheta * sinTheta;
+        }
+    }
+
+    irradianceColor *= M_PI * invTotalSamples;
+	imageStore(images[pushBlock.imageIndex], targetPosition, vec4(irradianceColor, 1.0));
+
+    // Generate mipmaps
+    for (uint mipLevel = 1; mipLevel < pushBlock.intValues.x; mipLevel++) {
+        const uint divisor = 1 << mipLevel;
+
+        if (gl_GlobalInvocationID.x % divisor != 0 || gl_GlobalInvocationID.y % divisor != 0) return;
+
+        imageStore(images[mipLevel], ivec3(targetPosition.xy / divisor, targetPosition.z), vec4(irradianceColor, 1.0));
+    }
+}
+
+void main() {
+	ivec3 sourcePosition = ivec3(gl_GlobalInvocationID.xy, pushBlock.intValues.y);
+
+	if (sourcePosition.x >= sourceSize || sourcePosition.y >= sourceSize) {
+		return;
+	}
+
+    calculateIrradiance(sourcePosition, ivec2(sourceSize, sourceSize));
+}

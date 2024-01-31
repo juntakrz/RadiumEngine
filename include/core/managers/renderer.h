@@ -8,6 +8,7 @@
 
 class WPrimitive;
 struct RTexture;
+struct RMaterial;
 
 namespace core {
 
@@ -23,35 +24,43 @@ class MRenderer {
     std::vector<VkCommandBuffer> buffersTransfer;
   } command;
 
+  struct {
+    VkDescriptorSet imageDescriptorSet;
+    VkExtent3D imageExtent;
+    RComputeImagePCB imagePCB;
+
+    std::vector<RComputeJobInfo> jobs;
+  } compute;
+
   struct REnvironmentData {
-    REnvironmentPCB envPushBlock;
-    std::vector<VkDescriptorSet> envDescriptorSets;
     VkDescriptorSet LUTDescriptorSet;
-    std::vector<RBuffer> transformBuffers;
-    VkDeviceSize transformOffset = 0u;
-    RTexture* pSourceTexture;
-    VkImageSubresourceRange sourceRange;
-    std::vector<RTexture*> destinationTextures;
-    std::vector<VkImageSubresourceRange> destinationRanges;
-    VkImageCopy copyRegion;
-    int32_t genInterval = 3;
+    VkImageSubresourceRange subresourceRange;
+    int32_t genInterval = 2;
+    RTexture* pTargetCubemap = nullptr;
+    std::array<glm::vec3, 6> cameraTransformVectors;
 
     struct {
-      uint32_t pipeline = 0;  // ENVFILTER or ENVIRRAD
+      RComputeJobInfo LUT;
+      RComputeJobInfo irradiance;
+      RComputeJobInfo prefiltered;
+    } computeJobs;
+
+    struct {
       uint32_t layer = 0;     // cubemap layer
-      uint32_t mipLevel = 0;  // mipmap level
     } tracking;
   } environment;
 
-  struct {
+  struct RLightingData {
     std::vector<RBuffer> buffers;
     RLightingUBO data;
-
-    struct {
-      int8_t bufferUpdatesRemaining = 0;
-      bool dataRequiresUpdate = false;
-    } tracking;
   } lighting;
+
+  struct RMaterialData {
+    VkDescriptorSet descriptorSet;
+    RMaterial* pSunShadow = nullptr;
+    RMaterial* pGBuffer = nullptr;
+    RMaterial* pGPBR = nullptr;
+  } material;
 
   struct RSceneBuffers {
     RBuffer vertexBuffer;
@@ -64,7 +73,11 @@ class MRenderer {
     VkDescriptorSet transformDescriptorSet;
 
     std::vector<RTexture*> pGBufferTargets;
-    VkDescriptorSet GBufferDescriptorSet;
+
+    // per frame in flight buffered camera/lighting descriptor sets
+    std::vector<VkDescriptorSet> descriptorSets;
+
+    RSceneVertexPCB vertexPushBlock;
   } scene;
 
   // swapchain data
@@ -72,10 +85,8 @@ class MRenderer {
     VkSurfaceFormatKHR formatData;
     VkPresentModeKHR presentMode;
     VkExtent2D imageExtent;
-    uint32_t imageCount = 0;
-    std::vector<VkImage> images;
-    std::vector<VkImageView> imageViews;
-    std::vector<RFramebuffer> framebuffers;
+    std::vector<RTexture*> pImages;
+    uint32_t imageCount = 0u;
     VkImageCopy copyRegion;
   } swapchain;
 
@@ -89,23 +100,17 @@ class MRenderer {
 
   // render system data - passes, pipelines, mesh data to render
   struct {
+    std::unordered_map<EDynamicRenderingPass, RDynamicRenderingPass> dynamicRenderingPasses;
     std::unordered_map<EPipelineLayout, VkPipelineLayout> layouts;
-    std::unordered_map<EPipeline, VkPipeline> pipelines;
-    std::unordered_map<ERenderPass, RRenderPass> renderPasses;
-    VkRenderPassBeginInfo renderPassBeginInfo;
-    std::unordered_map<std::string, RFramebuffer>
-        framebuffers;  // general purpose, swapchain uses its own set
+    std::unordered_map<EComputePipeline, VkPipeline> computePipelines;
+    std::vector<RViewport> viewports;
 
     VkDescriptorPool descriptorPool;
-    std::vector<VkDescriptorSet> descriptorSets;
-    std::unordered_map<EDescriptorSetLayout, VkDescriptorSetLayout>
-        descriptorSetLayouts;
+    std::unordered_map<EDescriptorSetLayout, VkDescriptorSetLayout> descriptorSetLayouts;
 
-    std::vector<REntityBindInfo>
-        bindings;  // entities rendered during the current frame
+    std::vector<REntityBindInfo> bindings;  // entities rendered during the current frame
     std::vector<VkDrawIndexedIndirectCommand> drawCommands;
-    std::unordered_map<EPipeline, std::vector<WPrimitive*>>
-        primitivesByPipeline;  // TODO
+    std::unordered_map<EDynamicRenderingPass, std::vector<WPrimitive*>> primitivesByPass;  // TODO
   } system;
 
   // current camera view data
@@ -131,22 +136,20 @@ class MRenderer {
   struct {
     void* pCurrentMesh = nullptr;
     void* pCurrentMaterial = nullptr;
-    void* pCurrentPipeline = nullptr;
 
-    RRenderPass* pCurrentRenderPass = nullptr;
+    RDynamicRenderingPass* pCurrentPass = nullptr;
+    EViewport currentViewportId = EViewport::vpCount;
+
     uint32_t currentFrameIndex = 0;
     uint32_t frameInFlight = 0;
     uint32_t framesRendered = 0;
-    bool generateEnvironmentMapsImmediate =
-        false;  // queue single pass environment map gen (slow)
-    bool generateEnvironmentMaps =
-        false;  // queue sequenced environment map gen (fast)
-    bool isEnvironmentPass = false;  // is in the process of generating
+    bool generateEnvironmentMapsImmediate = false;  // queue single pass environment map gen (slow)
+    bool generateEnvironmentMaps = false;           // queue sequenced environment map gen (fast)
+    bool isEnvironmentPass = false;                 // is in the process of generating
 
     void refresh() {
       pCurrentMesh = nullptr;
       pCurrentMaterial = nullptr;
-      pCurrentPipeline = nullptr;
     }
   } renderView;
 
@@ -168,17 +171,14 @@ class MRenderer {
   TResult createSceneBuffers();
   void destroySceneBuffers();
 
-  // TODO: improve pool size calculations using loaded map data
-  TResult createDescriptorPool();
-  void destroyDescriptorPool();
-
   TResult createUniformBuffers();
   void destroyUniformBuffers();
 
   TResult createImageTargets();
   TResult createGBufferRenderTargets();
   TResult createDepthTargets();
-  TResult createRendererDefaults();
+  TResult setDefaultComputeJobs();
+  TResult setRendererDefaults();
 
   TResult createCoreCommandPools();
   void destroyCoreCommandPools();
@@ -189,7 +189,6 @@ class MRenderer {
   TResult createSyncObjects();
   void destroySyncObjects();
 
-  void setEnvironmentUBO();
   void updateSceneUBO(uint32_t currentImage);
 
   // wait until all queues and device are idle
@@ -206,65 +205,75 @@ class MRenderer {
   TResult initialize();
   void deinitialize();
 
-  const VkDescriptorSetLayout getDescriptorSetLayout(
-      EDescriptorSetLayout type) const;
-  const VkDescriptorPool getDescriptorPool();
-
   // returns descriptor set used by the current frame in flight by default
-  const VkDescriptorSet getDescriptorSet(uint32_t frameInFlight = -1);
+  const VkDescriptorSet getSceneDescriptorSet(uint32_t frameInFlight = -1);
 
+  RLightingData* getLightingData();
+  VkDescriptorSet getMaterialDescriptorSet();
+  RMaterialData* getMaterialData();
   RSceneBuffers* getSceneBuffers();
-
   RSceneUBO* getSceneUBO();
+  REnvironmentData* getEnvironmentData();
 
-  void queueLightingUBOUpdate();
   void updateLightingUBO(const int32_t frameIndex);
 
+  void updateAspectRatio();
+  void setFOV(float FOV);
+  void setViewDistance(float farZ);
+  void setViewDistance(float nearZ, float farZ);
+
   //
-  // ***PIPELINE
+  // ***DESCRIPTORS
   //
+
+  // TODO: improve pool size calculations using loaded map data
+  TResult createDescriptorPool();
+  void destroyDescriptorPool();
+  const VkDescriptorPool getDescriptorPool();
 
   TResult createDescriptorSetLayouts();
   void destroyDescriptorSetLayouts();
 
+  const VkDescriptorSetLayout getDescriptorSetLayout(
+      EDescriptorSetLayout type) const;
+
   TResult createDescriptorSets();
 
-  TResult createDefaultFramebuffers();
-
-  TResult createRenderPasses();
-  void destroyRenderPasses();
-  RRenderPass* getRenderPass(ERenderPass type);
-  VkRenderPass& getVkRenderPass(ERenderPass type);
-
-  TResult createGraphicsPipelines();
-  void destroyGraphicsPipelines();
+  //
+  // ***PIPELINE
+  //
+  TResult createPipelineLayouts();
   VkPipelineLayout& getPipelineLayout(EPipelineLayout type);
-  VkPipeline& getPipeline(EPipeline type);
 
-  // check if pipeline flag is present in the flag array
-  bool checkPipeline(uint32_t pipelineFlags, EPipeline pipelineFlag);
+  TResult createComputePipelines();
+  void destroyComputePipelines();
+  TResult createGraphicsPipeline(RGraphicsPipelineInfo* pipelineInfo);
+  VkPipeline& getComputePipeline(EComputePipeline type);
 
-  TResult configureRenderPasses();
+  // check if pass flag is present in the pass array
+  bool checkPass(uint32_t passFlags, EDynamicRenderingPass passFlag);
+
+  //
+  // ***PASS
+  //
+
+  // Create new dynamic rendering pass and/or add new/update existing attached pipeline
+  TResult createDynamicRenderingPass(EDynamicRenderingPass passId, RDynamicRenderingInfo* pInfo);
+  TResult createDynamicRenderingPasses();
+  RDynamicRenderingPass* getDynamicRenderingPass(EDynamicRenderingPass type);
+  void destroyDynamicRenderingPasses();
 
   //
   // ***UTIL
   //
 
  private:
-  /* Setting render pass type is optional. If set - will create a multi subpass render pass for selected types and will expect a type-dependent color attachment layout */
-  VkRenderPass createRenderPass(VkDevice device, uint32_t colorAttachmentCount,
-                                VkAttachmentDescription* pColorAttachments,
-                                VkAttachmentDescription* pDepthAttachment,
-                                ERenderPass passType);
+  // create single layer render target for fragment shader output, uses swapchain resolution unless defined
+  RTexture* createFragmentRenderTarget(const char* name, VkFormat format, uint32_t width = 0, uint32_t height = 0);
 
-  TResult createFramebuffer(ERenderPass renderPass,
-                            const std::vector<std::string>& attachmentNames,
-                            const char* framebufferName);
-
-  // create single layer render target for fragment shader output
-  // uses swapchain resolution
-  RTexture* createFragmentRenderTarget(const char* name, uint32_t width = 0,
-                                       uint32_t height = 0);
+  TResult createViewports();
+  void setViewport(VkCommandBuffer commandBuffer, EViewport index);
+  RViewport* getViewportData(EViewport viewportId);
 
   void setResourceName(VkDevice device, VkObjectType objectType,
                        uint64_t handle, const char* name);
@@ -277,28 +286,11 @@ class MRenderer {
 
   TResult checkInstanceValidationLayers();
   std::vector<const char*> getRequiredInstanceExtensions();
-  std::vector<VkExtensionProperties> getInstanceExtensions();
+  std::vector<VkExtensionProperties> getInstanceExtensions(const char* layerName = nullptr,
+                                                           const char* extensionToCheck = nullptr,
+                                                           bool* pCheckResult = nullptr);
 
- public:
-  /* create buffer for CPU/iGPU or dedicated GPU use:
-  defining inData makes the method copy data to an outgoing buffer internally,
-  otherwise empty but allocated VkBuffer is the result e.g. for a later data
-  copy.
-  */
-  TResult createBuffer(EBufferMode mode, VkDeviceSize size, RBuffer& outBuffer,
-                       void* inData);
-
-  // copy buffer with SRC and DST bits, uses transfer command buffer and pool
-  TResult copyBuffer(VkBuffer srcBuffer, VkBuffer& dstBuffer,
-                     VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
-  TResult copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
-                     VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
-
-  // expects 'optimal layout' image as a source
-  TResult copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
-                            uint32_t width, uint32_t height,
-                            uint32_t layerCount);
-
+public:
   TResult copyImage(VkCommandBuffer cmdBuffer, VkImage srcImage,
                     VkImage dstImage, VkImageLayout srcImageLayout,
                     VkImageLayout dstImageLayout, VkImageCopy& copyRegion);
@@ -339,8 +331,9 @@ class MRenderer {
   void flushCommandBuffer(VkCommandBuffer cmdBuffer, ECmdType type,
                           bool free = false, bool useFence = false);
 
-  VkImageView createImageView(VkImage image, VkFormat format,
-                              uint32_t levelCount, uint32_t layerCount);
+  // using isCubemap will override baseLayer and layerCount
+  VkImageView createImageView(VkImage image, VkFormat format, uint32_t baseLayer,
+    uint32_t layerCount, uint32_t baseLevel, uint32_t levelCount, const bool isCubemap, VkImageAspectFlags aspectMask);
 
   // binds model to graphics pipeline
   uint32_t bindEntity(AEntity* pEntity);
@@ -364,10 +357,36 @@ class MRenderer {
   void setIBLScale(float newScale);
 
   //
+  // ***BUFFER
+  //
+
+ public:
+   /* create buffer for CPU/iGPU or dedicated GPU use:
+   defining inData makes the method copy data to an outgoing buffer internally,
+   otherwise empty but allocated VkBuffer is the result e.g. for a later data
+   copy.
+   */
+   TResult createBuffer(EBufferType type, VkDeviceSize size, RBuffer& outBuffer,
+     void* inData);
+
+   // copy buffer with SRC and DST bits, uses transfer command buffer and pool
+   TResult copyBuffer(VkBuffer srcBuffer, VkBuffer& dstBuffer,
+     VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
+   TResult copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
+     VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
+
+   // expects 'optimal layout' image as a source
+   TResult copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
+     uint32_t width, uint32_t height,
+     uint32_t layerCount);
+
+  //
   // ***PHYSICAL DEVICE
   //
 
  public:
+  RVkPhysicalDevice& getPhysicalDevice();
+
   // find all available physical devices and store them in graphics manager
   TResult enumPhysicalDevices();
 
@@ -439,6 +458,8 @@ class MRenderer {
 
   TResult setSwapChainImageCount(const RVkPhysicalDevice& deviceData);
 
+  TResult createSwapChainImageTargets();
+
   // requires valid variables provided by swap chain data gathering methods /
   // initSwapChain
   TResult createSwapChain();
@@ -459,49 +480,46 @@ class MRenderer {
   void debug_viewSunCamera();
 
   //
+  // ***COMPUTE
+  //
+ private:
+  // Add images to be processed to compute descriptor set, can be added at offsets
+  void updateComputeImageSet(std::vector<RTexture*>* pInImages, std::vector<RTexture*>* pInSamplers = nullptr,
+    const bool useExtraImageViews = false, const bool useExtraSamplerViews = false);
+  void executeComputeImage(VkCommandBuffer commandBuffer,
+     EComputePipeline pipeline);
+
+  void generateLUTMap();
+
+ public:
+  void createComputeJob(RComputeJobInfo* pInfo);
+  void executeComputeJobs();
+
+  //
   // ***RENDERING
   //
 
  private:
   void updateBoundEntities();
 
-  // draw bound entities using render pass pipelines
-  void drawBoundEntities(VkCommandBuffer cmdBuffer, uint32_t subpassIndex = 0);
-
   // draw bound entities using specific pipeline
-  void drawBoundEntities(VkCommandBuffer, EPipeline forcedPipeline);
+  void drawBoundEntities(VkCommandBuffer commandBuffer, const uint32_t instanceCount = 1);
 
-  void renderPrimitive(VkCommandBuffer cmdBuffer, WPrimitive* pPrimitive,
-                       EPipeline pipelineFlag, REntityBindInfo* pBindInfo);
+  void renderPrimitive(VkCommandBuffer cmdBuffer, WPrimitive* pPrimitive, REntityBindInfo* pBindInfo, const uint32_t instanceCount = 1u);
 
-  // DEPRECATED - generates all environment maps and mipmaps in a single pass
-  void renderEnvironmentMaps(VkCommandBuffer commandBuffer);
+  void renderEnvironmentMaps(VkCommandBuffer commandBuffer,
+                             const uint32_t frameInterval = 1u);
 
-  void renderEnvironmentMapsSequenced(VkCommandBuffer commandBuffer,
-                                      int32_t frameInterval = 1);
+  void executeDynamicRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId, VkDescriptorSet sceneSet,
+                                   RMaterial* pPushMaterial = nullptr, bool renderQuad = false);
 
-  // Generates BRDF LUT map
-  void generateLUTMap();
+  void executeDynamicShadowPass(VkCommandBuffer commandBuffer, const uint32_t cascadeIndex, VkDescriptorSet sceneSet);
+
+  void executeDynamicPresentPass(VkCommandBuffer commandBuffer, VkDescriptorSet sceneSet);
 
  public:
-  void executeRenderPass(VkCommandBuffer commandBuffer, ERenderPass passType,
-                         VkDescriptorSet* pSceneSets, const uint32_t setCount);
-
-  // Pipeline must use a compatible quad drawing vertex shader
-  // Scene descriptor set is optional and is required only if fragment shader needs scene data
-  void renderFullscreenQuad(VkCommandBuffer commandBuffer,
-                            EPipelineLayout pipelineLayout, EPipeline pipeline,
-                            VkDescriptorSet* pAttachmentSet,
-                            VkDescriptorSet* pSceneSet = nullptr,
-                            uint32_t sceneDynamicOffset = 0u);
-
   void renderFrame();
   void renderInitFrame();
-
-  void updateAspectRatio();
-  void setFOV(float FOV);
-  void setViewDistance(float farZ);
-  void setViewDistance(float nearZ, float farZ);
 };
 
 }  // namespace core

@@ -6,3 +6,4 @@ content/textures/*
 content/animations/*
 *.exe
 !content/textures/default
+*.cap

@@ -21,6 +21,8 @@ class MResources {
   std::unordered_map<std::string, std::unique_ptr<RMaterial>> m_materials;
   std::unordered_map<std::string, RTexture> m_textures;
 
+  std::vector<RTexture*> m_sampler2DIndices;
+
  private:
   MResources();
 
@@ -31,6 +33,8 @@ class MResources {
   }
 
   void initialize();
+  uint32_t getFreeCombinedSamplerIndex();
+  void updateMaterialDescriptorSet(RTexture* pTexture, EResourceType resourceType);
 
   // MATERIALS
 
@@ -47,8 +51,8 @@ class MResources {
 
   // load texture from KTX file (versions 1 and 2 are supported)
   // won't create sampler if no sampler info is provided
-  TResult loadTexture(const std::string& filePath,
-                      RSamplerInfo* pSamplerInfo);
+  TResult loadTexture(const std::string& filePath, RSamplerInfo* pSamplerInfo,
+                      const bool createExtraViews = false);
 
   // load KTX texture to staging buffer only
   TResult loadTextureToBuffer(const std::string& filePath, RBuffer& outBuffer);
@@ -59,6 +63,9 @@ class MResources {
 
   // create new texture with specific parameters
   RTexture* createTexture(RTextureInfo* pInfo);
+
+  // create new uninitialized texture entry
+  RTexture* createTexture(const std::string& name);
 
   // write to texture, must have proper layout
   TResult writeTexture(RTexture* pTexture, void* pData, VkDeviceSize dataSize);

@@ -110,4 +110,7 @@ class ABase {
 
   virtual void attachTo(ABase* pTarget, const bool toTranslation,
                         const bool toRotation, const bool toForwardVector);
+
+  // Were any of the actor transformations updated (clear update status if required)
+  virtual bool wasUpdated(const bool clearStatus = false);
 };

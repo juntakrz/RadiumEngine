@@ -4,302 +4,13 @@
 #include "core/managers/ref.h"
 #include "core/managers/renderer.h"
 #include "core/managers/actors.h"
+#include "core/material/texture.h"
 #include "core/model/model.h"
 #include "core/world/actors/camera.h"
 
 // PRIVATE
 
-VkRenderPass core::MRenderer::createRenderPass(
-    VkDevice device, uint32_t colorAttachmentCount,
-    VkAttachmentDescription* pColorAttachments,
-    VkAttachmentDescription* pDepthAttachment, ERenderPass passType) {
-  // put all the color and the depth attachments in the same buffer
-  VkAttachmentDescription attachments[10];
-  assert(colorAttachmentCount < 10);
-
-  memcpy(attachments, pColorAttachments,
-         sizeof(VkAttachmentDescription) * colorAttachmentCount);
-  if (pDepthAttachment != NULL) {
-    memcpy(&attachments[colorAttachmentCount], pDepthAttachment,
-           sizeof(VkAttachmentDescription));
-  }
-
-  // create references for the attachments
-  VkAttachmentReference colorReference[10];
-  for (uint32_t i = 0; i < colorAttachmentCount; i++)
-    colorReference[i] = {i, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
-
-  VkAttachmentReference depthReference = {
-      colorAttachmentCount, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
-
-  VkRenderPassCreateInfo renderPassInfo{};
-  std::vector<VkSubpassDescription> subpassDescriptions;
-  std::vector<VkSubpassDependency> subpassDependencies;
-
-  switch (passType) {
-    case ERenderPass::Deferred: {
-      /* Create deferred subpass
-
-      Last two color references are used in later subpasses*/
-      VkSubpassDescription subpassDesc{};
-      subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-      subpassDesc.flags = 0;
-      subpassDesc.inputAttachmentCount = 0;
-      subpassDesc.pInputAttachments = NULL;
-      subpassDesc.colorAttachmentCount = colorAttachmentCount - 1;
-      subpassDesc.pColorAttachments = colorReference;
-      subpassDesc.pResolveAttachments = NULL;
-      subpassDesc.pDepthStencilAttachment = &depthReference;
-      subpassDesc.preserveAttachmentCount = 0;
-      subpassDesc.pPreserveAttachments = NULL;
-
-      subpassDescriptions.emplace_back(subpassDesc);
-
-      /* Create PBR subpass
-      
-      Convert G-buffer color attachments to shader read sources */
-      VkAttachmentReference colorReferencePBR[10];
-      for (uint32_t j = 0; j < colorAttachmentCount - 1; ++j) {
-        colorReferencePBR[j] = {j, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
-      }
-
-      // Use deferred color references as input attachments
-      // and use next to last color reference as PBR attachment
-      subpassDesc = VkSubpassDescription{};
-      subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-      subpassDesc.flags = 0;
-      subpassDesc.inputAttachmentCount = colorAttachmentCount - 1;
-      subpassDesc.pInputAttachments = colorReferencePBR;
-      subpassDesc.colorAttachmentCount = 1;
-      subpassDesc.pColorAttachments = &colorReference[colorAttachmentCount - 1];
-      subpassDesc.pResolveAttachments = NULL;
-      subpassDesc.pDepthStencilAttachment = NULL;
-      subpassDesc.preserveAttachmentCount = 0;
-      subpassDesc.pPreserveAttachments = NULL;
-
-      subpassDescriptions.emplace_back(subpassDesc);
-
-      /* Create Forward subpass
-      
-      Using depth target from subpass 0 render objects that do not fit deferred pipeline */
-      subpassDesc = VkSubpassDescription{};
-      subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-      subpassDesc.flags = 0;
-      subpassDesc.inputAttachmentCount = 0;
-      subpassDesc.pInputAttachments = NULL;
-      subpassDesc.colorAttachmentCount = 1;
-      subpassDesc.pColorAttachments = &colorReference[colorAttachmentCount - 1];
-      subpassDesc.pResolveAttachments = NULL;
-      subpassDesc.pDepthStencilAttachment = &depthReference;
-      subpassDesc.preserveAttachmentCount = 0;
-      subpassDesc.pPreserveAttachments = NULL;
-
-      subpassDescriptions.emplace_back(subpassDesc);
-
-      // Create deferred dependency
-      VkSubpassDependency subpassDependency{};
-      subpassDependency.dependencyFlags = 0;
-      subpassDependency.srcAccessMask =
-          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-          VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-      subpassDependency.srcStageMask =
-          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-          VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-          VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-      subpassDependency.srcSubpass = 0;
-      subpassDependency.dstAccessMask =
-          VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-          VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-      subpassDependency.dstStageMask =
-          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
-          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-          VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-          VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-      subpassDependency.dstSubpass = 1;
-
-      subpassDependencies.emplace_back(subpassDependency);
-
-      // Create PBR dependency
-      subpassDependency.srcSubpass = 1;
-      subpassDependency.dstSubpass = 2;
-      subpassDependency.dstAccessMask =
-          VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-      subpassDependencies.emplace_back(subpassDependency);
-
-      // Create Forward dependency
-      subpassDependency.srcSubpass = 2;
-      subpassDependency.dstSubpass = VK_SUBPASS_EXTERNAL;
-
-      subpassDependencies.emplace_back(subpassDependency);
-
-      break;
-    }
-
-    default: {
-      // Create subpass
-      VkSubpassDescription subpassDesc{};
-      subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-      subpassDesc.flags = 0;
-      subpassDesc.inputAttachmentCount = 0;
-      subpassDesc.pInputAttachments = NULL;
-      subpassDesc.colorAttachmentCount = colorAttachmentCount;
-      subpassDesc.pColorAttachments = colorReference;
-      subpassDesc.pResolveAttachments = NULL;
-      subpassDesc.pDepthStencilAttachment =
-          (pDepthAttachment) ? &depthReference : NULL;
-      subpassDesc.preserveAttachmentCount = 0;
-      subpassDesc.pPreserveAttachments = NULL;
-
-      VkSubpassDependency subpassDependency{};
-      subpassDependency.dependencyFlags = 0;
-      subpassDependency.srcAccessMask =
-          ((colorAttachmentCount) ? VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT : 0) |
-          ((pDepthAttachment) ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
-                              : 0);
-      subpassDependency.srcStageMask =
-          ((colorAttachmentCount)
-               ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-               : 0) |
-          ((pDepthAttachment) ? VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-                                    VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
-                              : 0);
-      subpassDependency.srcSubpass = 0;
-      subpassDependency.dstAccessMask =
-          VK_ACCESS_SHADER_READ_BIT |
-          ((colorAttachmentCount) ? VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT : 0) |
-          ((pDepthAttachment) ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
-                              : 0);
-      subpassDependency.dstStageMask =
-          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
-          ((colorAttachmentCount)
-               ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-               : 0) |
-          ((pDepthAttachment) ? VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-                                    VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
-                              : 0);
-      subpassDependency.dstSubpass = VK_SUBPASS_EXTERNAL;
-
-      subpassDescriptions.emplace_back(subpassDesc);
-      subpassDependencies.emplace_back(subpassDependency);
-
-      break;
-    }
-  }
-
-  // Create render pass
-  renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-  renderPassInfo.pNext = NULL;
-  renderPassInfo.attachmentCount = colorAttachmentCount;
-  if (pDepthAttachment != NULL) renderPassInfo.attachmentCount++;
-  renderPassInfo.pAttachments = attachments;
-  renderPassInfo.subpassCount =
-      static_cast<uint32_t>(subpassDescriptions.size());
-  renderPassInfo.pSubpasses = subpassDescriptions.data();
-  renderPassInfo.dependencyCount =
-      static_cast<uint32_t>(subpassDependencies.size());
-  renderPassInfo.pDependencies = subpassDependencies.data();
-
-  VkRenderPass renderPass;
-  VkResult result =
-      vkCreateRenderPass(device, &renderPassInfo, NULL, &renderPass);
-  assert(result == VK_SUCCESS);
-
-  /*setResourceName(device, VK_OBJECT_TYPE_RENDER_PASS, (uint64_t)renderPass,
-                  "CreateRenderPass");*/
-
-  return renderPass;
-}
-
-TResult core::MRenderer::createFramebuffer(
-    ERenderPass renderPass, const std::vector<std::string>& attachmentNames,
-    const char* framebufferName) {
-#ifndef NDEBUG
-  RE_LOG(Log, "Creating framebuffer '%s' with %d attachments.", framebufferName,
-         attachmentNames.size());
-#endif
-
-  if (attachmentNames.empty()) {
-    RE_LOG(Error,
-           "Failed to create framebuffer '%s'. No texture attachments were "
-           "provided.",
-           framebufferName);
-
-    return RE_ERROR;
-  }
-
-  std::vector<RTexture*> pFramebufferTargets;
-  std::vector<VkImageView> imageViews;
-  uint32_t width = 0, height = 0, layerCount = 0;
-
-  for (const auto& textureName : attachmentNames) {
-    RTexture* fbTarget = core::resources.getTexture(textureName.c_str());
-
-    if (!fbTarget || !fbTarget->texture.view) {
-      RE_LOG(Error,
-             "Failed to retrieve attachment texture '%s' for creating "
-             "framebuffer '%s'.",
-             textureName.c_str(), framebufferName);
-
-      return RE_ERROR;
-    }
-
-    if (!imageViews.empty()) {
-      if (fbTarget->texture.width != width ||
-          fbTarget->texture.height != height ||
-          fbTarget->texture.layerCount != layerCount) {
-        RE_LOG(Error,
-               "Failed to create framebuffer '%s'. Texture dimensions are not "
-               "equal for all attachments.",
-               framebufferName);
-
-        return RE_ERROR;
-      }
-    } else {
-      width = fbTarget->texture.width;
-      height = fbTarget->texture.height;
-      layerCount = fbTarget->texture.layerCount;
-    }
-
-    pFramebufferTargets.emplace_back(fbTarget);
-    imageViews.emplace_back(fbTarget->texture.view);
-  }
-
-  std::string fbName = framebufferName;
-
-  VkFramebufferCreateInfo framebufferInfo{};
-  framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-  framebufferInfo.renderPass = getVkRenderPass(renderPass);
-  framebufferInfo.attachmentCount = static_cast<uint32_t>(imageViews.size());
-  framebufferInfo.pAttachments = imageViews.data();
-  framebufferInfo.width = width;
-  framebufferInfo.height = height;
-  framebufferInfo.layers = layerCount;
-
-  if (!system.framebuffers.try_emplace(fbName).second) {
-#ifndef NDEBUG
-    RE_LOG(Warning,
-           "Failed to create framebuffer record for \"%s\". Already exists.",
-           fbName.c_str());
-#endif
-    return RE_WARNING;
-  }
-
-  if (vkCreateFramebuffer(logicalDevice.device, &framebufferInfo, nullptr,
-                          &system.framebuffers.at(fbName).framebuffer) !=
-      VK_SUCCESS) {
-    RE_LOG(Error, "failed to create framebuffer %s.", fbName.c_str());
-
-    return RE_ERROR;
-  }
-
-  system.framebuffers.at(fbName).pFramebufferAttachments = pFramebufferTargets;
-  getRenderPass(renderPass)->pFramebuffer = &system.framebuffers.at(fbName);
-  
-  return RE_OK;
-}
-
-RTexture* core::MRenderer::createFragmentRenderTarget(const char* name, uint32_t width, uint32_t height) {
+RTexture* core::MRenderer::createFragmentRenderTarget(const char* name, VkFormat format, uint32_t width, uint32_t height) {
   if (width == 0 || height == 0) {
     width = swapchain.imageExtent.width;
     height = swapchain.imageExtent.height;
@@ -307,14 +18,13 @@ RTexture* core::MRenderer::createFragmentRenderTarget(const char* name, uint32_t
 
   RTextureInfo textureInfo{};
   textureInfo.name = name;
-  textureInfo.format = core::vulkan::formatHDR16;
+  textureInfo.layerCount = 1u;
+  textureInfo.format = format;
   textureInfo.width = width;
   textureInfo.height = height;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-  textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-                           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-                           VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
 
   RTexture* pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -328,6 +38,63 @@ RTexture* core::MRenderer::createFragmentRenderTarget(const char* name, uint32_t
 #endif
 
   return pNewTexture;
+}
+
+TResult core::MRenderer::createViewports() {
+  system.viewports.resize(EViewport::vpCount);
+
+  VkViewport viewport{};
+  viewport.x = 0;
+  viewport.minDepth = 0.0f;
+  viewport.maxDepth = 1.0f;
+
+  VkRect2D scissor{};
+  scissor.offset = { 0, 0 };
+
+  // EnvSkybox
+  viewport.y = static_cast<float>(core::vulkan::envFilterExtent);
+  viewport.width = static_cast<float>(core::vulkan::envFilterExtent);
+  viewport.height = -static_cast<float>(core::vulkan::envFilterExtent);
+  scissor.extent = { core::vulkan::envFilterExtent, core::vulkan::envFilterExtent };
+  system.viewports.at(EViewport::vpEnvironment).viewport = viewport;
+  system.viewports.at(EViewport::vpEnvironment).scissor = scissor;
+
+  // EnvIrrad
+  viewport.y = static_cast<float>(core::vulkan::envIrradianceExtent);
+  viewport.width = static_cast<float>(core::vulkan::envIrradianceExtent);
+  viewport.height = -static_cast<float>(core::vulkan::envIrradianceExtent);
+  scissor.extent = { core::vulkan::envIrradianceExtent, core::vulkan::envIrradianceExtent };
+  system.viewports.at(EViewport::vpEnvIrrad).viewport = viewport;
+  system.viewports.at(EViewport::vpEnvIrrad).scissor = scissor;
+
+  // Shadow
+  viewport.y = static_cast<float>(config::shadowResolution);
+  viewport.width = static_cast<float>(config::shadowResolution);
+  viewport.height = -static_cast<float>(config::shadowResolution);
+  scissor.extent = { config::shadowResolution, config::shadowResolution };
+  system.viewports.at(EViewport::vpShadow).viewport = viewport;
+  system.viewports.at(EViewport::vpShadow).scissor = scissor;
+
+  // Main
+  viewport.y = static_cast<float>(config::renderHeight);
+  viewport.width = static_cast<float>(config::renderWidth);
+  viewport.height = -static_cast<float>(config::renderHeight);
+  scissor.extent = { config::renderWidth, config::renderHeight };
+  system.viewports.at(EViewport::vpMain).viewport = viewport;
+  system.viewports.at(EViewport::vpMain).scissor = scissor;
+
+  return RE_OK;
+}
+
+void core::MRenderer::setViewport(VkCommandBuffer commandBuffer, EViewport index) {
+  vkCmdSetViewport(commandBuffer, 0, 1, &system.viewports[index].viewport);
+  vkCmdSetScissor(commandBuffer, 0, 1, &system.viewports[index].scissor);
+
+  renderView.currentViewportId = index;
+}
+
+RViewport* core::MRenderer::getViewportData(EViewport viewportId) {
+  return &system.viewports.at(viewportId);
 }
 
 void core::MRenderer::setResourceName(VkDevice device, VkObjectType objectType,
@@ -344,8 +111,7 @@ void core::MRenderer::setResourceName(VkDevice device, VkObjectType objectType,
   }*/
 }
 
-TResult core::MRenderer::getDepthStencilFormat(
-    VkFormat desiredFormat, VkFormat& outFormat) {
+TResult core::MRenderer::getDepthStencilFormat(VkFormat desiredFormat, VkFormat& outFormat) {
   std::vector<VkFormat> depthFormats = {
       VK_FORMAT_D32_SFLOAT_S8_UINT,
       VK_FORMAT_D24_UNORM_S8_UINT,
@@ -353,8 +119,7 @@ TResult core::MRenderer::getDepthStencilFormat(
   };
 
   VkFormatProperties formatProps;
-  vkGetPhysicalDeviceFormatProperties(physicalDevice.device, desiredFormat,
-                                      &formatProps);
+  vkGetPhysicalDeviceFormatProperties(physicalDevice.device, desiredFormat, &formatProps);
   if (formatProps.optimalTilingFeatures &
       VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
     outFormat = desiredFormat;
@@ -368,10 +133,8 @@ TResult core::MRenderer::getDepthStencilFormat(
 
   for (auto& format : depthFormats) {
     VkFormatProperties formatProps;
-    vkGetPhysicalDeviceFormatProperties(physicalDevice.device, format,
-                                        &formatProps);
-    if (formatProps.optimalTilingFeatures &
-        VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+    vkGetPhysicalDeviceFormatProperties(physicalDevice.device, format, &formatProps);
+    if (formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
       outFormat = format;
       return RE_WARNING;
     }
@@ -382,8 +145,7 @@ TResult core::MRenderer::getDepthStencilFormat(
 }
 
 
-VkPipelineShaderStageCreateInfo core::MRenderer::loadShader(
-    const char* path, VkShaderStageFlagBits stage) {
+VkPipelineShaderStageCreateInfo core::MRenderer::loadShader(const char* path, VkShaderStageFlagBits stage) {
   std::string fullPath = RE_PATH_SHADERS + std::string(path);
   std::vector<char> shaderCode = util::readFile(fullPath.c_str());
 
@@ -396,16 +158,14 @@ VkPipelineShaderStageCreateInfo core::MRenderer::loadShader(
   return stageCreateInfo;
 }
 
-VkShaderModule core::MRenderer::createShaderModule(
-    std::vector<char>& shaderCode) {
+VkShaderModule core::MRenderer::createShaderModule(std::vector<char>& shaderCode) {
   VkShaderModuleCreateInfo smInfo{};
   smInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
   smInfo.codeSize = shaderCode.size();
   smInfo.pCode = reinterpret_cast<uint32_t*>(shaderCode.data());
 
   VkShaderModule shaderModule;
-  if ((vkCreateShaderModule(logicalDevice.device, &smInfo, nullptr,
-                            &shaderModule) != VK_SUCCESS)) {
+  if ((vkCreateShaderModule(logicalDevice.device, &smInfo, nullptr, &shaderModule) != VK_SUCCESS)) {
     RE_LOG(Warning, "failed to create requested shader module.");
     return VK_NULL_HANDLE;
   };
@@ -423,8 +183,7 @@ TResult core::MRenderer::checkInstanceValidationLayers() {
   // enumerate instance layers
   checkResult = vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
   availableValidationLayers.resize(layerCount);
-  checkResult = vkEnumerateInstanceLayerProperties(
-      &layerCount, availableValidationLayers.data());
+  checkResult = vkEnumerateInstanceLayerProperties(&layerCount, availableValidationLayers.data());
   if (checkResult != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to enumerate instance layer properties.");
     return RE_CRITICAL;
@@ -464,365 +223,40 @@ std::vector<const char*> core::MRenderer::getRequiredInstanceExtensions() {
   std::vector<const char*> requiredExtensions(ppExtensions,
                                               ppExtensions + extensionCount);
 
-  if (bRequireValidationLayers) {
+  if (requireValidationLayers) {
     requiredExtensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
   }
 
   return requiredExtensions;
 }
 
-std::vector<VkExtensionProperties> core::MRenderer::getInstanceExtensions() {
+std::vector<VkExtensionProperties> core::MRenderer::getInstanceExtensions(const char* layerName,
+                                                                          const char* extensionToCheck,
+                                                                          bool* pCheckResult) {
   uint32_t extensionCount = 0;
   std::vector<VkExtensionProperties> extensionProperties;
 
-  vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+  vkEnumerateInstanceExtensionProperties(layerName, &extensionCount, nullptr);
   extensionProperties.resize(extensionCount);
-  vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount,
+  vkEnumerateInstanceExtensionProperties(layerName, &extensionCount,
                                          extensionProperties.data());
+
+  // check if extension is available
+  if (extensionToCheck != nullptr && pCheckResult != nullptr) {
+    *pCheckResult = false;
+
+    for (auto& it : extensionProperties) {
+      if (strcmp(it.extensionName, extensionToCheck) == 0) {
+        *pCheckResult = true;
+        break;
+      }
+    }
+  }
 
   return extensionProperties;
 }
 
 // PUBLIC
-
-TResult core::MRenderer::createBuffer(EBufferMode mode, VkDeviceSize size, RBuffer& outBuffer, void* inData)
-{
-  switch ((uint8_t)mode) {
-  case (uint8_t)EBufferMode::CPU_UNIFORM: {
-
-    VkBufferCreateInfo bufferCreateInfo{};
-    bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-    bufferCreateInfo.size = size;
-    bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    VmaAllocationCreateInfo allocInfo{};
-    allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
-      VMA_ALLOCATION_CREATE_MAPPED_BIT;
-
-    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo, &outBuffer.buffer, &outBuffer.allocation,
-      &outBuffer.allocInfo) != VK_SUCCESS) {
-      RE_LOG(Error, "Failed to create CPU_UNIFORM buffer.");
-      return RE_ERROR;
-    }
-
-    if (inData) {
-      memcpy(outBuffer.allocInfo.pMappedData, inData, size);
-    }
-
-    return RE_OK;
-  }
-
-  case (uint8_t)EBufferMode::CPU_VERTEX: {
-    VkBufferCreateInfo bufferCreateInfo{};
-    bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    bufferCreateInfo.size = size;
-    bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    VmaAllocationCreateInfo allocInfo{};
-    allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
-    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo, &outBuffer.buffer, &outBuffer.allocation,
-      &outBuffer.allocInfo) != VK_SUCCESS) {
-      RE_LOG(Error, "Failed to create CPU_VERTEX buffer.");
-      return RE_ERROR;
-    }
-
-    if (inData) {
-      void* pData = nullptr;
-      if (vmaMapMemory(memAlloc, outBuffer.allocation, &pData) != VK_SUCCESS) {
-        RE_LOG(Error, "Failed to map memory for CPU_VERTEX buffer data.");
-        return RE_ERROR;
-      };
-      memcpy(pData, inData, size);
-      vmaUnmapMemory(memAlloc, outBuffer.allocation);
-    }
-
-    return RE_OK;
-  }
-
-  case (uint8_t)EBufferMode::CPU_INDEX: {
-    VkBufferCreateInfo bufferCreateInfo{};
-    bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-    bufferCreateInfo.size = size;
-    bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    VmaAllocationCreateInfo allocInfo{};
-    allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
-    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo, &outBuffer.buffer, &outBuffer.allocation,
-      &outBuffer.allocInfo) != VK_SUCCESS) {
-      RE_LOG(Error, "Failed to create CPU_INDEX buffer.");
-      return RE_ERROR;
-    }
-
-    if (inData) {
-      void* pData = nullptr;
-      if (vmaMapMemory(memAlloc, outBuffer.allocation, &pData) != VK_SUCCESS) {
-        RE_LOG(Error, "Failed to map memory for CPU_INDEX buffer data.");
-        return RE_ERROR;
-      };
-      memcpy(pData, inData, size);
-      vmaUnmapMemory(memAlloc, outBuffer.allocation);
-    }
-
-    return RE_OK;
-  }
-
-  case (uint8_t)EBufferMode::DGPU_VERTEX: {
-    // staging buffer (won't be allocated if no data for it is provided)
-    VkBuffer stagingBuffer = VK_NULL_HANDLE;
-    VmaAllocation stagingAlloc{};
-    VmaAllocationInfo stagingAllocInfo{};
-
-    VkBufferCreateInfo bufferCreateInfo{};
-    bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-    bufferCreateInfo.size = size;
-    bufferCreateInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
-
-    std::vector<uint32_t> queueFamilyIndices = {
-        (uint32_t)physicalDevice.queueFamilyIndices.graphics.at(0),
-        (uint32_t)physicalDevice.queueFamilyIndices.transfer.at(0)};
-
-    bufferCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();
-    bufferCreateInfo.queueFamilyIndexCount =
-        static_cast<uint32_t>(queueFamilyIndices.size());
-
-    VmaAllocationCreateInfo allocInfo{};
-    allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
-    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
-    if (inData) {
-      if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
-                          &stagingBuffer, &stagingAlloc,
-                          &stagingAllocInfo) != VK_SUCCESS) {
-        RE_LOG(Error, "Failed to create staging buffer for DGPU_VERTEX mode.");
-        return RE_ERROR;
-      }
-
-      void* pData = nullptr;
-      if (vmaMapMemory(memAlloc, stagingAlloc, &pData) != VK_SUCCESS) {
-        RE_LOG(Error, "Failed to map memory for DGPU_VERTEX buffer data.");
-        return RE_ERROR;
-      };
-
-      memcpy(pData, inData, size);
-      vmaUnmapMemory(memAlloc, stagingAlloc);
-    }
-
-    // destination buffer
-    bufferCreateInfo.usage =
-        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-
-    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-    allocInfo.flags = NULL;
-    allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
-                        &outBuffer.buffer, &outBuffer.allocation,
-                        &outBuffer.allocInfo) != VK_SUCCESS) {
-      RE_LOG(Error, "Failed to create DGPU_VERTEX buffer.");
-      return RE_ERROR;
-    };
-
-    if (inData) {
-      VkBufferCopy copyInfo{};
-      copyInfo.srcOffset = 0;
-      copyInfo.dstOffset = 0;
-      copyInfo.size = size;
-
-      copyBuffer(stagingBuffer, outBuffer.buffer, &copyInfo);
-
-      vmaDestroyBuffer(memAlloc, stagingBuffer, stagingAlloc);
-    }
-
-    return RE_OK;
-  }
-
-  case (uint8_t)EBufferMode::DGPU_INDEX: {
-
-    // staging buffer (won't be allocated if no data for it is provided)
-    VkBuffer stagingBuffer = VK_NULL_HANDLE;
-    VmaAllocation stagingAlloc{};
-    VmaAllocationInfo stagingAllocInfo{};
-
-    VkBufferCreateInfo bufferCreateInfo{};
-    bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-    bufferCreateInfo.size = size;
-    bufferCreateInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
-
-    std::vector<uint32_t> queueFamilyIndices = {
-        (uint32_t)physicalDevice.queueFamilyIndices.graphics.at(0),
-        (uint32_t)physicalDevice.queueFamilyIndices.transfer.at(0) };
-
-    bufferCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();
-    bufferCreateInfo.queueFamilyIndexCount =
-      static_cast<uint32_t>(queueFamilyIndices.size());
-
-    VmaAllocationCreateInfo allocInfo{};
-    allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
-    if (inData) {
-      if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
-                          &stagingBuffer, &stagingAlloc,
-                          &stagingAllocInfo) != VK_SUCCESS) {
-        RE_LOG(Error, "Failed to create staging buffer for DGPU_VERTEX mode.");
-        return RE_ERROR;
-      }
-
-      void* pData = nullptr;
-      if (vmaMapMemory(memAlloc, stagingAlloc, &pData) != VK_SUCCESS) {
-        RE_LOG(Error, "Failed to map memory for DGPU_INDEX buffer data.");
-        return RE_ERROR;
-      };
-      memcpy(pData, inData, size);
-      vmaUnmapMemory(memAlloc, stagingAlloc);
-    }
-
-    // destination vertex buffer
-    bufferCreateInfo.usage =
-      VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-
-    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-    allocInfo.flags = NULL;
-    allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo, &outBuffer.buffer, &outBuffer.allocation,
-      &outBuffer.allocInfo) != VK_SUCCESS) {
-      RE_LOG(Error, "Failed to create DGPU_VERTEX buffer.");
-      return RE_ERROR;
-    };
-
-    if (inData) {
-      VkBufferCopy copyInfo{};
-      copyInfo.srcOffset = 0;
-      copyInfo.dstOffset = 0;
-      copyInfo.size = size;
-
-      copyBuffer(stagingBuffer, outBuffer.buffer, &copyInfo);
-
-      vmaDestroyBuffer(memAlloc, stagingBuffer, stagingAlloc);
-    }
-
-    return RE_OK;
-  }
-  case (uint8_t)EBufferMode::STAGING: {
-    // staging buffer
-    VkBufferCreateInfo bufferCreateInfo{};
-    bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-    bufferCreateInfo.size = size;
-    bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    std::vector<uint32_t> queueFamilyIndices = {
-        (uint32_t)physicalDevice.queueFamilyIndices.graphics.at(0),
-        (uint32_t)physicalDevice.queueFamilyIndices.transfer.at(0)};
-
-    bufferCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();
-    bufferCreateInfo.queueFamilyIndexCount =
-        static_cast<uint32_t>(queueFamilyIndices.size());
-
-    VmaAllocationCreateInfo allocInfo{};
-    allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
-    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo, &outBuffer.buffer,
-                        &outBuffer.allocation, &outBuffer.allocInfo) != VK_SUCCESS) {
-      RE_LOG(Error, "Failed to create staging buffer for STAGING mode.");
-      return RE_ERROR;
-    }
-
-    if (inData) {
-      void* pData = nullptr;
-      if (vmaMapMemory(memAlloc, outBuffer.allocation, &pData) != VK_SUCCESS) {
-        RE_LOG(Error, "Failed to map memory for staging buffer data.");
-        return RE_ERROR;
-      };
-      memcpy(pData, inData, size);
-      vmaUnmapMemory(memAlloc, outBuffer.allocation);
-      outBuffer.allocInfo.pUserData = pData;
-    }
-
-    return RE_OK;
-  }
-  }
-
-  return RE_OK;
-}
-
-TResult core::MRenderer::copyBuffer(VkBuffer srcBuffer, VkBuffer& dstBuffer,
-                              VkBufferCopy* copyRegion, uint32_t cmdBufferId) {
-  if (cmdBufferId > MAX_TRANSFER_BUFFERS) {
-    RE_LOG(Warning, "Invalid index of transfer buffer, using default.");
-    cmdBufferId = 0;
-  }
-
-  VkCommandBufferBeginInfo cmdBufferBeginInfo{};
-  cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-  vkBeginCommandBuffer(command.buffersTransfer[cmdBufferId], &cmdBufferBeginInfo);
-
-  vkCmdCopyBuffer(command.buffersTransfer[cmdBufferId], srcBuffer,
-                  dstBuffer, 1, copyRegion);
-
-  vkEndCommandBuffer(command.buffersTransfer[cmdBufferId]);
-
-  VkSubmitInfo submitInfo{};
-  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &command.buffersTransfer[cmdBufferId];
-
-  vkQueueSubmit(logicalDevice.queues.transfer, 1, &submitInfo, VK_NULL_HANDLE);
-  vkQueueWaitIdle(logicalDevice.queues.transfer);
-
-  return RE_OK;
-}
-
-TResult core::MRenderer::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
-                                    VkBufferCopy* copyRegion,
-                                    uint32_t cmdBufferId) {
-  return copyBuffer(srcBuffer->buffer, dstBuffer->buffer, copyRegion,
-                    cmdBufferId);
-}
-
-TResult core::MRenderer::copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
-                                           uint32_t width, uint32_t height,
-                                           uint32_t layerCount) {
-  if (!srcBuffer || !dstImage) {
-    RE_LOG(Error, "copyBufferToImage received nullptr as an argument.");
-    return RE_ERROR;
-  }
-
-  VkCommandBuffer cmdBuffer = createCommandBuffer(
-      ECmdType::Transfer, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
-
-  VkBufferImageCopy imageCopy{};
-  imageCopy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  imageCopy.imageSubresource.mipLevel = 0;
-  imageCopy.imageSubresource.baseArrayLayer = 0;
-  imageCopy.imageSubresource.layerCount = layerCount;
-  imageCopy.imageExtent = {width, height, 1};
-  imageCopy.imageOffset = {0, 0, 0};
-  imageCopy.bufferOffset = 0;
-  imageCopy.bufferRowLength = 0;
-  imageCopy.bufferImageHeight = 0;
-
-  vkCmdCopyBufferToImage(cmdBuffer, srcBuffer, dstImage,
-                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
-
-  flushCommandBuffer(cmdBuffer, ECmdType::Transfer);
-
-  return RE_OK;
-}
 
 TResult core::MRenderer::copyImage(VkCommandBuffer cmdBuffer, VkImage srcImage,
                                    VkImage dstImage,
@@ -861,11 +295,13 @@ void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer,
                                      RTexture* pTexture,
                                      VkImageLayout newLayout,
                                      VkImageSubresourceRange subresourceRange) {
+  if (pTexture->texture.imageLayout == newLayout) return;
+
   setImageLayout(cmdBuffer, pTexture->texture.image,
                  pTexture->texture.imageLayout, newLayout, subresourceRange);
   
   pTexture->texture.imageLayout = newLayout;
-  pTexture->texture.descriptor.imageLayout = newLayout;
+  pTexture->texture.imageInfo.imageLayout = newLayout;
 }
 
 void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
@@ -897,6 +333,7 @@ void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
   // layout before it will be transitioned to the new layout.
   switch (oldLayout) {
     case VK_IMAGE_LAYOUT_UNDEFINED:
+    case VK_IMAGE_LAYOUT_GENERAL:
     // Image layout is undefined (or does not matter).
     // Only valid as initial layout. No flags required.
     imageMemoryBarrier.srcAccessMask = 0;
@@ -915,6 +352,7 @@ void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
     imageMemoryBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     break;
 
+    case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL:
     case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
     // Image is a depth/stencil attachment.
     // Make sure any writes to the depth/stencil buffer have finished.
@@ -938,6 +376,10 @@ void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
     // Image is read by a shader.
     // Make sure any shader reads from the image have finished
     imageMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    break;
+
+    case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+    imageMemoryBarrier.dstAccessMask = 0;
     break;
 
     default:
@@ -985,6 +427,15 @@ void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
           VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
     }
     imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    break;
+
+    case VK_IMAGE_LAYOUT_GENERAL:
+    imageMemoryBarrier.dstAccessMask =
+        VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+    break;
+
+    case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+    imageMemoryBarrier.dstAccessMask = 0;
     break;
 
     default:
@@ -1163,7 +614,7 @@ TResult core::MRenderer::generateSingleMipMap(VkCommandBuffer cmdBuffer,
 
   VkPipelineStageFlags srcStageMask = 0;
 
-  switch (pTexture->texture.descriptor.imageLayout) {
+  switch (pTexture->texture.imageInfo.imageLayout) {
     case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL: {
       srcStageMask = VK_ACCESS_SHADER_READ_BIT;
       break;
@@ -1240,9 +691,7 @@ TResult core::MRenderer::generateSingleMipMap(VkCommandBuffer cmdBuffer,
     barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
-    vkCmdPipelineBarrier(cmdBuffer, srcStageMask,
-                         VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0,
-                         nullptr, 1, &barrier);
+    vkCmdPipelineBarrier(cmdBuffer, srcStageMask, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
   }
 
   VkImageBlit blit{};
@@ -1260,9 +709,7 @@ TResult core::MRenderer::generateSingleMipMap(VkCommandBuffer cmdBuffer,
   blit.dstSubresource.baseArrayLayer = layer;
   blit.dstSubresource.mipLevel = mipLevel;
 
-  vkCmdBlitImage(cmdBuffer, pTexture->texture.image,
-                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, pTexture->texture.image,
-                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, filter);
+  vkCmdBlitImage(cmdBuffer, pTexture->texture.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, pTexture->texture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, filter);
 
   // convert source mip map to its original layout
   barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
@@ -1279,9 +726,7 @@ TResult core::MRenderer::generateSingleMipMap(VkCommandBuffer cmdBuffer,
     case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL: {
       barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-      vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                           VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr,
-                           0, nullptr, 1, &barrier);
+      vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
       barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
       barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -1291,9 +736,7 @@ TResult core::MRenderer::generateSingleMipMap(VkCommandBuffer cmdBuffer,
     }
   }
 
-  vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                       VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0,
-                       nullptr, 1, &barrier);
+  vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
   return RE_OK;
 }
@@ -1324,9 +767,7 @@ VkQueue core::MRenderer::getCommandQueue(ECmdType type) {
   }
 }
 
-VkCommandBuffer core::MRenderer::createCommandBuffer(ECmdType type,
-                                                     VkCommandBufferLevel level,
-                                                     bool begin) {
+VkCommandBuffer core::MRenderer::createCommandBuffer(ECmdType type, VkCommandBufferLevel level, bool begin) {
   VkCommandBuffer newCommandBuffer;
   VkCommandBufferAllocateInfo allocateInfo{};
 
@@ -1335,8 +776,7 @@ VkCommandBuffer core::MRenderer::createCommandBuffer(ECmdType type,
   allocateInfo.commandBufferCount = 1;
   allocateInfo.level = level;
 
-  vkAllocateCommandBuffers(logicalDevice.device, &allocateInfo,
-                           &newCommandBuffer);
+  vkAllocateCommandBuffers(logicalDevice.device, &allocateInfo, &newCommandBuffer);
 
   if (begin) {
     VkCommandBufferBeginInfo beginInfo{};
@@ -1357,9 +797,7 @@ void core::MRenderer::beginCommandBuffer(VkCommandBuffer cmdBuffer) {
   vkBeginCommandBuffer(cmdBuffer, &beginInfo);
 }
 
-void core::MRenderer::flushCommandBuffer(VkCommandBuffer cmdBuffer,
-                                         ECmdType type, bool free,
-                                         bool useFence) {
+void core::MRenderer::flushCommandBuffer(VkCommandBuffer cmdBuffer, ECmdType type, bool free, bool useFence) {
   vkEndCommandBuffer(cmdBuffer);
 
   VkSubmitInfo submitInfo{};
@@ -1393,14 +831,12 @@ void core::MRenderer::flushCommandBuffer(VkCommandBuffer cmdBuffer,
   }
 
   if (free) {
-    vkFreeCommandBuffers(logicalDevice.device, getCommandPool(type), 1,
-                         &cmdBuffer);
+    vkFreeCommandBuffers(logicalDevice.device, getCommandPool(type), 1, &cmdBuffer);
   }
 }
 
-VkImageView core::MRenderer::createImageView(VkImage image, VkFormat format,
-                                             uint32_t levelCount,
-                                             uint32_t layerCount) {
+VkImageView core::MRenderer::createImageView(VkImage image, VkFormat format, uint32_t baseLayer, uint32_t layerCount,
+                                             uint32_t baseLevel, uint32_t levelCount, const bool isCubemap, VkImageAspectFlags aspectMask) {
   VkImageView imageView = nullptr;
 
   VkImageViewCreateInfo viewInfo{};
@@ -1408,7 +844,7 @@ VkImageView core::MRenderer::createImageView(VkImage image, VkFormat format,
   viewInfo.image = image;
   viewInfo.format = format;
 
-  if (layerCount == 6) {
+  if (isCubemap) {
     viewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
   } else if (layerCount > 1) {
     viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
@@ -1421,23 +857,13 @@ VkImageView core::MRenderer::createImageView(VkImage image, VkFormat format,
   viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
   viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 
-  viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  viewInfo.subresourceRange.baseMipLevel = 0;
+  viewInfo.subresourceRange.aspectMask = aspectMask;
+  viewInfo.subresourceRange.baseMipLevel = baseLevel;
   viewInfo.subresourceRange.levelCount = levelCount;
-  viewInfo.subresourceRange.baseArrayLayer = 0;
-  viewInfo.subresourceRange.layerCount = layerCount;
+  viewInfo.subresourceRange.baseArrayLayer = (isCubemap) ? 0u : baseLayer;
+  viewInfo.subresourceRange.layerCount = (isCubemap) ? 6u : layerCount;
 
-  if (format == VK_FORMAT_D32_SFLOAT_S8_UINT ||
-      format == VK_FORMAT_D24_UNORM_S8_UINT ||
-      format == VK_FORMAT_D16_UNORM_S8_UINT) {
-    viewInfo.subresourceRange.aspectMask =
-        VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-  } else if (format == VK_FORMAT_D32_SFLOAT) {
-    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-  }
-
-  if (vkCreateImageView(logicalDevice.device, &viewInfo, nullptr, &imageView) !=
-      VK_SUCCESS) {
+  if (vkCreateImageView(logicalDevice.device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
     RE_LOG(Error, "failed to create image view with format id %d.", format);
 
     return nullptr;
@@ -1517,15 +943,13 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
 
 void core::MRenderer::unbindEntity(uint32_t index) {
   if (index > system.bindings.size() - 1) {
-    RE_LOG(Error, "Failed to unbind entity at %d. Index is out of bounds.",
-           index);
+    RE_LOG(Error, "Failed to unbind entity at %d. Index is out of bounds.", index);
     return;
   }
 
 #ifndef NDEBUG
   if (system.bindings[index].pEntity == nullptr) {
-    RE_LOG(Warning, "Failed to unbind entity at %d. It's already unbound.",
-           index);
+    RE_LOG(Warning, "Failed to unbind entity at %d. It's already unbound.", index);
     return;
   }
 #endif
@@ -1537,16 +961,11 @@ void core::MRenderer::unbindEntity(uint32_t index) {
 void core::MRenderer::clearBoundEntities() { system.bindings.clear(); }
 
 void core::MRenderer::setCamera(const char* name) {
-  if (ACamera* pCamera = core::ref.getActor(name)->getAs<ACamera>()) {
-#ifndef NDEBUG
-    RE_LOG(Log, "Selecting camera '%s'.", name);
-#endif
+  view.pActiveCamera = core::actors.getCamera(name);
 
-    view.pActiveCamera = pCamera;
-    return;
+  if (!view.pActiveCamera) {
+    RE_LOG(Error, "Failed to set camera '%s' - not found.", name);
   }
-
-  RE_LOG(Error, "Failed to set camera '%s' - not found.", name);
 }
 
 void core::MRenderer::setCamera(ACamera* pCamera) {
@@ -1561,14 +980,10 @@ void core::MRenderer::setCamera(ACamera* pCamera) {
 void core::MRenderer::setSunCamera(const char* name) {
   if (ACamera* pCamera = core::ref.getActor(name)->getAs<ACamera>()) {
 #ifndef NDEBUG
-    RE_LOG(Log, "Selecting camera '%s' as sun camera / shadow projector.",
-           name);
+    RE_LOG(Log, "Selecting camera '%s' as sun camera / shadow projector.", name);
 #endif
     if (pCamera->getProjectionType() != ECameraProjection::Orthogtaphic) {
-      RE_LOG(Error,
-             "Failed to set camera '%s' as sun camera. Camera must have an "
-             "orthographic projection.",
-             name);
+      RE_LOG(Error, "Failed to set camera '%s' as sun camera. Camera must have an orthographic projection.", name);
 
       return;
     }
@@ -1579,19 +994,13 @@ void core::MRenderer::setSunCamera(const char* name) {
     return;
   }
 
-  RE_LOG(Error,
-         "Failed to set sun / shadow projection camera '%s' - not found.",
-         name);
+  RE_LOG(Error, "Failed to set sun / shadow projection camera '%s' - not found.", name);
 }
 
 void core::MRenderer::setSunCamera(ACamera* pCamera) {
   if (pCamera != nullptr) {
     if (pCamera->getProjectionType() != ECameraProjection::Orthogtaphic) {
-      RE_LOG(Error,
-             "Failed to set camera '%s' as sun camera. Camera must have an "
-             "orthographic projection.",
-             pCamera->getName());
-
+      RE_LOG(Error, "Failed to set camera '%s' as sun camera. Camera must have an orthographic projection.", pCamera->getName());
       return;
     }
 
@@ -1600,13 +1009,11 @@ void core::MRenderer::setSunCamera(ACamera* pCamera) {
     return;
   }
 
-  RE_LOG(Error,
-         "Failed to set sun / shadow projection camera, received nullptr.");
+  RE_LOG(Error, "Failed to set sun / shadow projection camera, received nullptr.");
 }
 
 ACamera* core::MRenderer::getCamera() { return view.pActiveCamera; }
 
 void core::MRenderer::setIBLScale(float newScale) {
   lighting.data.scaleIBLAmbient = newScale;
-  lighting.tracking.bufferUpdatesRemaining = MAX_FRAMES_IN_FLIGHT;
 }

@@ -215,3 +215,11 @@ void ABase::attachTo(ABase* pTarget, const bool toTranslation,
 
   pTarget->updateAttachments();
 }
+
+bool ABase::wasUpdated(const bool clearStatus) {
+  bool wasUpdated = m_transformationData.wasUpdated;
+
+  if (clearStatus) m_transformationData.wasUpdated = false;
+
+  return wasUpdated;
+}

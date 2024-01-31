@@ -1,6 +1,8 @@
-#version 450
+#version 460
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_scalar_block_layout : require
 
-#define MAX_LIGHTS 32
+#include "include/common.glsl"
 
 layout (location = 0) in vec2 inUV0;
 
@@ -13,10 +15,13 @@ layout (set = 0, binding = 0) uniform UBOScene {
 	vec3 camPos;
 } scene;
 
-layout (set = 0, binding = 1) uniform UBOLighting {
-	vec4 lightLocations[MAX_LIGHTS];
-    vec4 lightColor[MAX_LIGHTS];
-	float lightCount;
+layout (std430, set = 0, binding = 1) uniform UBOLighting {
+	vec4 lightLocations[MAXLIGHTS];
+    vec4 lightColor[MAXLIGHTS];
+	mat4 lightViews[MAXSHADOWCASTERS];
+	mat4 lightOrthoMatrix;
+	uint samplerIndex[MAXSHADOWCASTERS];
+	uint lightCount;
 	float exposure;
 	float gamma;
 	float prefilteredCubeMipLevels;
@@ -29,14 +34,25 @@ layout (set = 0, binding = 3) uniform samplerCube irradianceMap;
 layout (set = 0, binding = 4) uniform sampler2D BRDFLUTMap;
 
 // PBR Input bindings
-layout (input_attachment_index = 0, set = 2, binding = 0) uniform subpassInput positionMap;	// fragment worldspace position
-layout (input_attachment_index = 1, set = 2, binding = 1) uniform subpassInput colorMap;
-layout (input_attachment_index = 2, set = 2, binding = 2) uniform subpassInput normalMap;
-layout (input_attachment_index = 3, set = 2, binding = 3) uniform subpassInput physicalMap;	// r = metalness, g = roughness, b = ambient occlusion
-layout (input_attachment_index = 4, set = 2, binding = 4) uniform subpassInput emissiveMap;
+layout (set = 2, binding = 0) uniform sampler2D samplers[];
+layout (set = 2, binding = 0) uniform sampler2DArray arraySamplers[];
 
-const float M_PI = 3.141592653589793;
-const float minRoughness = 0.04;
+layout (push_constant) uniform Material {
+	layout(offset = 16) 
+	int baseColorTextureSet;
+	int physicalDescriptorTextureSet;
+	int normalTextureSet;	
+	int occlusionTextureSet;		// 16
+	int emissiveTextureSet;
+	int extraTextureSet;
+	float metallicFactor;	
+	float roughnessFactor;			// 32
+	float alphaMask;	
+	float alphaMaskCutoff;
+	float bumpIntensity;
+	float emissiveIntensity;		// 48
+	uint samplerIndex[MAXTEXTURES];
+} material;
 
 vec3 ACESTonemap(vec3 x) {
     float a = 2.51;
@@ -53,8 +69,7 @@ vec4 tonemap(vec4 color) {
 	return vec4(pow(outColor, vec3(1.0f / lighting.gamma)), color.a);
 }
 
-vec3 getDiffuse(vec3 inColor)
-{
+vec3 getDiffuse(vec3 inColor) {
 	return inColor / M_PI;
 }
 
@@ -90,13 +105,11 @@ float getMicrofacetDistribution(float roughness, float NdotH) {
 
 // Calculation of the lighting contribution from an optional Image Based Light source.
 // Precomputed Environment Maps are required uniform inputs
-vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, float NdotV, vec3 n, vec3 reflection)
-{
-	//float lod = (roughness * lighting.prefilteredCubeMipLevels);
-	float lod = (roughness * 16.0);
+vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, float NdotV, vec3 n, vec3 reflection) {
+	float lod = (roughness * lighting.prefilteredCubeMipLevels);
 
 	// retrieve a scale and bias to F0
-	vec3 brdf = (texture(BRDFLUTMap, vec2(NdotV, 1.0 - roughness))).rgb;
+	vec2 brdf = (texture(BRDFLUTMap, vec2(NdotV, 1.0 - roughness))).rg;
 	vec3 diffuseLight = tonemap(texture(irradianceMap, n)).rgb;
 	vec3 specularLight = tonemap(textureLod(prefilteredMap, reflection, lod)).rgb;
 
@@ -117,19 +130,69 @@ vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, 
 	return diffuse + specular;
 }
 
+float filterPCF(vec3 shadowCoord, vec2 offset, uint distanceIndex) {
+	float shadowDepth = texture(arraySamplers[lighting.samplerIndex[SUNLIGHTINDEX]], vec3(shadowCoord.st + offset, distanceIndex)).r;
+	shadowDepth += 0.0001 * float(distanceIndex + 2);
+
+	if (shadowCoord.z > shadowDepth) {
+		return 0.1;
+	}
+			
+	return 1.0;
+}
+
+float getShadow(vec3 fragmentPosition, uint distanceIndex) {
+	ivec2 texDim = textureSize(samplers[lighting.samplerIndex[SUNLIGHTINDEX]], 0);
+	float shadow = 0.0;
+	float scale = 1.5;
+	float dx = scale * 1.0 / float(texDim.x);
+	float dy = scale * 1.0 / float(texDim.y);
+	int count = 0;
+	int range = 3 - int(distanceIndex);
+
+	float FOVMultiplier = 1.0;
+
+	for (uint i = 0; i < distanceIndex; i++) {
+		FOVMultiplier *= 0.25;
+	}
+
+	mat4 newProjection = lighting.lightOrthoMatrix;
+	newProjection[0][0] *= FOVMultiplier;	
+	newProjection[1][1] *= FOVMultiplier;
+
+	vec4 shadowPosition = newProjection * lighting.lightViews[0] * vec4(fragmentPosition, 1.0);
+	shadowPosition /= shadowPosition.w;
+
+	vec3 shadowCoord = vec3((shadowPosition.x * 0.5 + 0.5), 1.0 - (shadowPosition.y * 0.5 + 0.5), shadowPosition.z);
+	
+	if (shadowCoord.x < 0.0 || shadowCoord.x > 1.0 || shadowCoord.y < 0.0 || shadowCoord.y > 1.0) {
+		return 1.0;
+	}
+	
+	for (int x = -range; x <= range; x++) {
+		for (int y = -range; y <= range; y++) {
+			vec2 offset = vec2(dx*x, dy*y);
+			shadow += filterPCF(shadowCoord, offset, distanceIndex);
+			count++;
+		}
+	}
+	
+	return shadow / count;
+}
+
 void main() {
 	const float occlusionStrength = 1.0;
 	const float emissiveFactor = 1.0;
 	vec3 f0 = vec3(0.04);
 
 	// retrieve G-buffer data
-	vec3 worldPos = subpassLoad(positionMap).xyz;
-	vec4 baseColor = subpassLoad(colorMap);
-	vec3 normal = subpassLoad(normalMap).rgb;
-	float metallic = subpassLoad(physicalMap).r;
-	float perceptualRoughness = subpassLoad(physicalMap).g;
-	float ao = subpassLoad(physicalMap).b;
-	vec3 emissive = subpassLoad(emissiveMap).rgb;
+	vec3 worldPos = texture(samplers[material.samplerIndex[POSITIONMAP]], inUV0).xyz;
+	vec4 baseColor = texture(samplers[material.samplerIndex[COLORMAP]], inUV0);
+	vec3 normal = texture(samplers[material.samplerIndex[NORMALMAP]], inUV0).rgb;
+	float metallic = texture(samplers[material.samplerIndex[PHYSMAP]], inUV0).r;
+	float perceptualRoughness = texture(samplers[material.samplerIndex[PHYSMAP]], inUV0).g;
+	float ao = texture(samplers[material.samplerIndex[PHYSMAP]], inUV0).b;
+	vec3 emissive = texture(samplers[material.samplerIndex[EMISMAP]], inUV0).rgb;
 
 	// do PBR
 	vec3 diffuseColor = baseColor.rgb * (vec3(1.0) - f0);
@@ -175,6 +238,16 @@ void main() {
 	// Calculate lighting contribution from image based lighting source (IBL)
 	color += getIBLContribution(diffuseColor, specularColor, perceptualRoughness, NdotV, normal, reflection);
 	color = mix(color, color * ao, occlusionStrength);
+
+	// Calculate shadow
+	float relativeLength = length(scene.camPos - worldPos);
+
+	uint distanceIndex = 0;
+	if (relativeLength > cascadeDistance0) distanceIndex = 1;
+	if (relativeLength > cascadeDistance1) distanceIndex = 2;
+
+	color *= getShadow(worldPos, distanceIndex);
+
 	color += emissive;
 	
 	outColor = vec4(color, baseColor.a);

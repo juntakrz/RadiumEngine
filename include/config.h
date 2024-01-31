@@ -6,22 +6,20 @@
 #define RE_ERRORLIMIT           RE_ERROR        // terminate program if some error exceeds this level
 #define MAX_FRAMES_IN_FLIGHT    2u
 #define MAX_TRANSFER_BUFFERS    2u
-#define RE_MAXLIGHTS            32              // includes directional light, always at index 0
-
-// frame buffers
-#define RFB_SHADOW              "FB_Shadow"
-#define RFB_DEFERRED            "FB_Deferred"       // generate G-buffer textures and do PBR
-#define RFB_ENV                 "FB_Env"
-#define RFB_LUT                 "FB_Lut"
+#define RE_MAXLIGHTS            32u             // includes directional light, always at index 0
+#define RE_MAXSHADOWCASTERS     4u
 
 // render targets
+#define RTGT_PRESENT            "RT2D_Present"      // Final swapchain target
 #define RTGT_DEPTH              "RT2D_Depth"        // active camera depth render target
 #define RTGT_SHADOW             "RT2D_Shadow"       // shadow render target (depth)
 #define RTGT_ENVSRC             "RT2D_EnvSrc"       // source texture for environment cubemaps
+#define RTGT_COMPUTE            "RT2D_Compute"      // default compute shader processing target
 
-#define RTGT_ENVFILTER          "RTCube_EnvFilter"
+#define RTGT_ENV                "RTCube_Env"
+#define RTGT_ENVFILTER          "RTCube_EnvSkybox"
 #define RTGT_ENVIRRAD           "RTCube_EnvIrrad"
-#define RTGT_LUTMAP             "RTCube_EnvLUT"
+#define RTGT_LUTMAP             "RT2D_EnvLUT"
 
 #define RTGT_GPOSITION          "RT2D_GPosition"    // fragment world space position output
 #define RTGT_GDIFFUSE           "RT2D_GDiffuse"     // diffuse output
@@ -31,7 +29,9 @@
 #define RTGT_GPBR               "RT2D_GPBR"         // render target for combined G-Buffer output
 
 // default materials
-#define RMAT_PRESENT            "RMat_Present"
+#define RMAT_GBUFFER            "RMat_GBuffer"
+#define RMAT_GPBR               "RMat_GPBR"
+#define RMAT_SHADOW             "RMat_Shadow"
 
 // default models
 #define RMDL_SKYBOX             "RMdl_SkyBox"       // default cube skybox using cubemap
@@ -41,6 +41,7 @@
 
 // default camera
 #define RCAM_MAIN               "C_Main"
+#define RCAM_ENV                "C_Environment"     // environment generating camera
 #define RCAM_SUN                "C_Sun"
 
 // default light
@@ -75,16 +76,21 @@ const size_t indexBudget = 100000000u;                  // ~400 MBs for index da
 const size_t entityBudget = 10000u;                     // ~0.6 MBs for root transformation matrices
 const size_t nodeBudget = RE_MAXJOINTS * entityBudget;  // ~164 MBs for node transformation matrices
 const size_t cameraBudget = 64u;                        // ~9 KBs for camera MVP data
+
+extern uint32_t sampledImageBudget;
+extern uint32_t storageImageBudget;
+const uint32_t requestedStorageImageBudget = 128u;      // Max number of image views available to compute
+
+extern uint32_t cameraBlockSize;
+extern uint32_t nodeBlockSize;
+extern uint32_t skinBlockSize;
+
 size_t getVertexBufferSize();
 size_t getIndexBufferSize();
 size_t getRootTransformBufferSize();
 size_t getNodeTransformBufferSize();
 size_t getSkinTransformBufferSize();                    // ~82 MBs for joint transformation matrices
 size_t getMaxCameraCount();
-
-extern uint32_t cameraBlockSize;
-extern uint32_t nodeBlockSize;
-extern uint32_t skinBlockSize;
 };  // namespace scene
 
 float getAspectRatio();
@@ -98,7 +104,7 @@ const uint32_t APIversion = VK_API_VERSION_1_3;
 
 // mandatory extensions required by the renderer
 const std::vector<const char*> requiredExtensions = {
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME
 };
 
 const VkFormat formatLDR = VK_FORMAT_B8G8R8A8_SRGB;
@@ -113,9 +119,10 @@ const uint32_t envIrradianceExtent = 64u;
 const VkColorSpaceKHR colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
 const VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 constexpr uint8_t maxFramesInFlight = MAX_FRAMES_IN_FLIGHT;
-extern VkDeviceSize minBufferAlignment;
+extern VkDeviceSize minUniformBufferAlignment;
+extern VkDeviceSize descriptorBufferOffsetAlignment;
 constexpr bool applyGLTFLeftHandedFix = false;    // currently ok for static models, but has issues with skin
-
+constexpr uint32_t maxSampler2DDescriptors = 32u; // amount of allowed variable index descriptors
 }
 }  // namespace core
 

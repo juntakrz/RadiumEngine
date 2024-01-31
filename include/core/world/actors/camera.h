@@ -12,6 +12,7 @@ class ACamera : public ABase {
     glm::vec4 perspectiveData;
     glm::vec4 orthographicData;
     bool anchorFocusPoint = false;
+    bool ignorePitchLimit = false;
   } m_viewData;
 
   struct {
@@ -20,12 +21,13 @@ class ACamera : public ABase {
     ABase* pTarget = nullptr;
   } m_target;
 
-  glm::mat4 m_view;        // view matrix
-  glm::mat4 m_projection;  // projection matrix
+  glm::mat4 m_view;
+  glm::mat4 m_projection;
+  glm::mat4 m_projectionView;       // projection * view
   float m_pitch = 0.0f;
   float m_yaw = 0.0f;
 
-  uint32_t m_ViewBufferIndex = -1;
+  uint32_t m_viewBufferIndex = -1;
 
  private:
    // uses pitch limit set in config.h
@@ -50,9 +52,8 @@ class ACamera : public ABase {
 
   // get view matrix for current camera position and rotation
   glm::mat4& getView();
-
-  // get projection matrix using currently selected camera mode
   glm::mat4& getProjection();
+  const glm::mat4& getProjectionView();
 
   ECameraProjection getProjectionType();
 
@@ -70,6 +71,8 @@ class ACamera : public ABase {
   virtual void setRotation(const glm::quat& newRotation) noexcept override;
 
   virtual void rotate(const glm::vec3& vector, float angle) noexcept override;
+
+  virtual void setIgnorePitchLimit(const bool newValue);
 
   virtual void setFOV(float FOV) noexcept;
   virtual void setAspectRatio(float ratio) noexcept;

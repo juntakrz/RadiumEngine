@@ -8,7 +8,7 @@
 #include "stb_image.h"
 
 TResult core::MResources::loadTexture(const std::string& filePath,
-                                   RSamplerInfo* pSamplerInfo) {
+                                   RSamplerInfo* pSamplerInfo, const bool createExtraViews) {
   auto revert = [&](const char* name) { m_textures.erase(name); };
 
   if (filePath == "") {
@@ -53,6 +53,8 @@ TResult core::MResources::loadTexture(const std::string& filePath,
   RTexture* pNewTexture = &m_textures.at(filePath);
   pNewTexture->name = filePath;
   pNewTexture->isKTX = true;
+  pNewTexture->isCubemap = pKTXTexture->isCubemap;
+  pNewTexture->texture.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
   ktxResult = ktxTexture_VkUploadEx(
       pKTXTexture, deviceInfo, &pNewTexture->texture, VK_IMAGE_TILING_OPTIMAL,
@@ -68,12 +70,12 @@ TResult core::MResources::loadTexture(const std::string& filePath,
   ktxTexture_Destroy(pKTXTexture);
   ktxVulkanDeviceInfo_Destruct(deviceInfo);
 
-  if (pNewTexture->createImageView() != RE_OK) {
+  if (pNewTexture->createSampler(pSamplerInfo) != RE_OK) {
     revert(filePath.c_str());
     return RE_ERROR;
   }
 
-  if (pNewTexture->createSampler(pSamplerInfo) != RE_OK) {
+  if (pNewTexture->createImageViews(createExtraViews) != RE_OK) {
     revert(filePath.c_str());
     return RE_ERROR;
   }
@@ -143,7 +145,8 @@ TResult core::MResources::loadTexturePNG(const std::string& filePath,
 
   RTextureInfo textureInfo{};
   textureInfo.name = fullPath;
-  textureInfo.asCubemap = false;
+  textureInfo.layerCount = 1u;
+  textureInfo.isCubemap = false;
   textureInfo.width = width;
   textureInfo.height = height;
   textureInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
@@ -200,13 +203,12 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
   createInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   createInfo.extent = {pInfo->width, pInfo->height, 1};
   createInfo.mipLevels = pInfo->mipLevels;
-  createInfo.arrayLayers = pInfo->asCubemap ? 6u : pInfo->layerCount;
+  createInfo.arrayLayers = pInfo->layerCount;
   createInfo.tiling = pInfo->tiling;
   createInfo.usage = pInfo->usageFlags;
   createInfo.samples = VK_SAMPLE_COUNT_1_BIT;
   createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-  createInfo.flags =
-      pInfo->asCubemap ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : NULL;
+  createInfo.flags = pInfo->isCubemap ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : NULL;
 
   VmaAllocationCreateInfo allocCreateInfo{};
   allocCreateInfo.requiredFlags = pInfo->memoryFlags;
@@ -225,6 +227,7 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
 
   newTexture->texture.imageFormat = pInfo->format;
   newTexture->texture.imageLayout = pInfo->targetLayout;
+  newTexture->isCubemap = pInfo->isCubemap;
 
   VkImageSubresourceRange subRange;
   subRange.baseMipLevel = 0;
@@ -261,11 +264,7 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
   newTexture->texture.depth = 1;
   newTexture->texture.levelCount = createInfo.mipLevels;
   newTexture->texture.layerCount = createInfo.arrayLayers;
-
-  if (newTexture->createImageView() != RE_OK) {
-    revert(pInfo->name.c_str());
-    return nullptr;
-  }
+  newTexture->texture.aspectMask = subRange.aspectMask;
 
   RSamplerInfo samplerInfo{};
   RSamplerInfo* pSamplerInfo = &samplerInfo;
@@ -275,17 +274,40 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
     return nullptr;
   }
 
+  if (newTexture->createImageViews(pInfo->extraViews, pInfo->cubemapFaceViews) != RE_OK) {
+    revert(pInfo->name.c_str());
+    return nullptr;
+  }
+
   if (newTexture->createDescriptor() != RE_OK) {
     revert(pInfo->name.c_str());
     return nullptr;
   }
 
-  std::string textureType = pInfo->asCubemap ? "cubemap" : "2D";
+  std::string textureType = pInfo->isCubemap ? "cubemap" : "2D";
 
   RE_LOG(Log, "Successfully created %s texture \"%s\".", textureType.c_str(),
          pInfo->name.c_str());
 
   return newTexture;
+}
+
+RTexture* core::MResources::createTexture(const std::string& name) {
+  if (name.c_str() == "") {
+    // nothing to load
+    return nullptr;
+  }
+
+  // create a texture record in the manager
+  if (!m_textures.try_emplace(name.c_str()).second) {
+    // already loaded
+#ifndef NDEBUG
+    RE_LOG(Warning, "Texture \"%s\" already exists.", name.c_str());
+#endif
+  }
+
+  m_textures.at(name.c_str()).name = name;
+  return &m_textures.at(name.c_str());
 }
 
 TResult core::MResources::writeTexture(RTexture* pTexture, void* pData,
@@ -296,7 +318,7 @@ TResult core::MResources::writeTexture(RTexture* pTexture, void* pData,
   }
 
   RBuffer staging;
-  core::renderer.createBuffer(EBufferMode::STAGING, dataSize, staging,
+  core::renderer.createBuffer(EBufferType::STAGING, dataSize, staging,
                               pData);
   core::renderer.copyBufferToImage(
       staging.buffer, pTexture->texture.image, pTexture->texture.width,
@@ -358,7 +380,9 @@ RTexture* const core::MResources::assignTexture(
     const char* name) noexcept {
   if (m_textures.contains(name)) {
     RTexture* pTexture = &m_textures.at(name);
-    ++pTexture->references;
+    updateMaterialDescriptorSet(pTexture, EResourceType::Sampler2D);
+    pTexture->references++;
+
     return pTexture;
   }
 
