@@ -437,13 +437,7 @@ void core::MRenderer::renderFrame() {
   // Additional front rendering passes
   executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::Skybox, frameSet);
 
-  /*RComputeJobInfo computeJob{};
-  computeJob.width = config::renderWidth / 2;
-  computeJob.height = config::renderHeight / 2;
-  computeJob.pipeline = EComputePipeline::ImagePPMipMap;
-  computeJob.pImageAttachments = {core::resources.getTexture(RTGT_POSTPROCESS)};
-  computeJob.intValues.x = computeJob.pImageAttachments[0]->texture.levelCount;
-  executeComputeJobImmediate(&computeJob);*/
+  executeComputeJobImmediate(&postprocessing.computeJobs.ppMipMap);
 
   /* 4. Final presentation pass */
 

@@ -80,6 +80,12 @@ class MRenderer {
     RSceneVertexPCB vertexPushBlock;
   } scene;
 
+  struct {
+    struct {
+      RComputeJobInfo ppMipMap;
+    } computeJobs;
+  } postprocessing;
+
   // swapchain data
   struct {
     VkSurfaceFormatKHR formatData;
@@ -484,10 +490,11 @@ public:
   //
  private:
   // Add images to be processed to compute descriptor set, can be added at offsets
+  void setDefaultComputeJobInfo();
+
   void updateComputeImageSet(std::vector<RTexture*>* pInImages, std::vector<RTexture*>* pInSamplers = nullptr,
-    const bool useExtraImageViews = false, const bool useExtraSamplerViews = false);
-  void executeComputeImage(VkCommandBuffer commandBuffer,
-     EComputePipeline pipeline);
+                             const bool useExtraImageViews = false, const bool useExtraSamplerViews = false);
+  void executeComputeImage(VkCommandBuffer commandBuffer, EComputePipeline pipeline);
 
   void generateLUTMap();
 

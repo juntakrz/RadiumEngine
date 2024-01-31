@@ -389,6 +389,7 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.width = core::vulkan::LUTExtent;
   textureInfo.height = textureInfo.width;
   textureInfo.format = core::vulkan::formatLUT;
+  textureInfo.mipLevels = 1;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_STORAGE_BIT |
@@ -639,6 +640,8 @@ TResult core::MRenderer::setRendererDefaults() {
   // Set default lighting UBO data
   lighting.data.prefilteredCubeMipLevels = (float)math::getMipLevels(core::vulkan::envFilterExtent);
 
+  setDefaultComputeJobInfo();
+
   return RE_OK;
 }
 
@@ -841,9 +844,7 @@ TResult core::MRenderer::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createMemAlloc();
 
   if (chkResult <= RE_ERRORLIMIT)
-    chkResult =
-    initSwapChain(core::vulkan::formatLDR, core::vulkan::colorSpace,
-                      core::vulkan::presentMode);
+    chkResult = initSwapChain(core::vulkan::formatLDR, core::vulkan::colorSpace, core::vulkan::presentMode);
   updateAspectRatio();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandPools();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandBuffers();

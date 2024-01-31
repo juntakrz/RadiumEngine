@@ -4,6 +4,21 @@
 #include "core/managers/time.h"
 #include "core/managers/renderer.h"
 
+void core::MRenderer::setDefaultComputeJobInfo() {
+  RComputeJobInfo computeJob{};
+  computeJob.jobType = EComputeJob::Image;
+  computeJob.width = config::renderWidth / 2;
+  computeJob.height = config::renderHeight / 2;
+  computeJob.pipeline = EComputePipeline::ImagePPMipMap;
+  computeJob.pImageAttachments = { core::resources.getTexture(RTGT_POSTPROCESS) };
+  computeJob.intValues.x = computeJob.pImageAttachments[0]->texture.levelCount;
+  computeJob.intValues.y = computeJob.width;
+  computeJob.intValues.z = computeJob.height;
+  computeJob.transtionToShaderReadOnly = true;
+
+  postprocessing.computeJobs.ppMipMap = computeJob;
+}
+
 void core::MRenderer::updateComputeImageSet(std::vector<RTexture*>* pInImages, std::vector<RTexture*>* pInSamplers,
   const bool useExtraImageViews, const bool useExtraSamplerViews) {
   if (!pInImages) {
@@ -184,6 +199,7 @@ void core::MRenderer::executeComputeJobImmediate(RComputeJobInfo* pInfo) {
   switch (pInfo->jobType) {
     case EComputeJob::Image: {
       VkCommandBuffer transitionBuffer = createCommandBuffer(ECmdType::Transfer, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
+
       VkImageSubresourceRange range{};
       range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
       range.baseArrayLayer = 0;
