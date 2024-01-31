@@ -4,7 +4,6 @@
 #define COLORMAP	0
 #define MAXTEXTURES 6
 
-layout (location = 0) in vec3 inWorldPos;
 layout (location = 2) in vec2 inUV0;
 
 layout (set = 2, binding = 0) uniform sampler2D samplers[];

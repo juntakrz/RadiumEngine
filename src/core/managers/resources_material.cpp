@@ -159,9 +159,6 @@ RMaterial* core::MResources::createMaterial(
 
   RMaterial newMat;
   newMat.name = pDesc->name;
-  newMat.shaderPixel = pDesc->shaders.pixel;
-  newMat.shaderGeometry = pDesc->shaders.geometry;
-  newMat.shaderVertex = pDesc->shaders.vertex;
 
   newMat.pBaseColor = assignTexture(pDesc->textures.baseColor.c_str());
   newMat.pNormal = assignTexture(pDesc->textures.normal.c_str());

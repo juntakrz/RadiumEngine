@@ -320,6 +320,7 @@
     <None Include="content_src\shaders\cs_envFilter.comp" />
     <None Include="content_src\shaders\include\common.glsl" />
     <None Include="content_src\shaders\vs_shadowPass.vert" />
+    <None Include="content_src\shaders\gs_shadowPass.geom" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="lib\glfw3.lib" />

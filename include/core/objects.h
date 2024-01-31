@@ -176,8 +176,9 @@ struct RDynamicRenderingInfo {
   bool singleColorAttachmentAtRuntime = false;
   bool clearColorAttachments = false;
   bool clearDepthAttachment = false;
-  std::string vertexShader;
-  std::string fragmentShader;
+  std::string vertexShader = "";
+  std::string geometryShader = "";
+  std::string fragmentShader = "";
 
   struct {
     // Transition image layouts upon rendering if expected that they are not going to be valid
@@ -243,6 +244,7 @@ struct RGraphicsPipelineInfo {
   RDynamicRenderingPass* pRenderPass;
   std::string vertexShader;
   std::string fragmentShader;
+  std::string geometryShader;
   VkPipelineRenderingCreateInfo* pDynamicPipelineInfo = nullptr;
   VkBool32 enableBlending = VK_FALSE;
   VkPrimitiveTopology primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -273,10 +275,6 @@ struct RMaterialInfo {
   bool doubleSided = false;
   EAlphaMode alphaMode = EAlphaMode::Opaque;
   float alphaCutoff = 1.0f;
-
-  struct {
-    std::string vertex = "default.vert", pixel = "default.frag", geometry = "";
-  } shaders;
 
   struct {
     std::string baseColor = RE_DEFAULTTEXTURE;

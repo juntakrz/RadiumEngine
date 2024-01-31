@@ -27,10 +27,7 @@ layout(location = 4) in vec4 inJoint;
 layout(location = 5) in vec4 inWeight;
 layout(location = 6) in vec4 inColor0;
 
-layout(location = 0) out vec3 outWorldPos;
 layout(location = 2) out vec2 outUV0;
-layout(location = 3) out vec2 outUV1;
-layout(location = 4) out vec4 outColor0;
 
 layout (push_constant) uniform Scene {
 	uint cascadeIndex;
@@ -51,10 +48,8 @@ void main(){
 		worldPos = model.rootMatrix * node.nodeMatrix * vec4(inPos, 1.0);
 	}
 
-	outWorldPos = worldPos.xyz / worldPos.w;
+	worldPos = vec4(worldPos.xyz / worldPos.w, 1.0);
 	outUV0 = inUV0;
-	outUV1 = inUV1;
-	outColor0 = inColor0;
 
 	float multiplier = 1.0;
 
@@ -66,5 +61,5 @@ void main(){
 	newProjection[0][0] *= multiplier;	
 	newProjection[1][1] *= multiplier;
 
-	gl_Position = newProjection * scene.view * vec4(outWorldPos, 1.0);
+	gl_Position = newProjection * scene.view * worldPos;
 }

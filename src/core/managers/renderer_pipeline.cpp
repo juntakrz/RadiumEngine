@@ -404,6 +404,10 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
     shaderStages.emplace_back(
         loadShader(pipelineInfo->vertexShader.c_str(), VK_SHADER_STAGE_VERTEX_BIT));
   }
+  if (!pipelineInfo->geometryShader.empty()) {
+    shaderStages.emplace_back(
+      loadShader(pipelineInfo->geometryShader.c_str(), VK_SHADER_STAGE_GEOMETRY_BIT));
+  }
   if (!pipelineInfo->fragmentShader.empty()) {
     shaderStages.emplace_back(loadShader(pipelineInfo->fragmentShader.c_str(),
                                          VK_SHADER_STAGE_FRAGMENT_BIT));

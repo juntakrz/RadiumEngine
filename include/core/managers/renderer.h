@@ -503,9 +503,9 @@ public:
   void updateBoundEntities();
 
   // draw bound entities using specific pipeline
-  void drawBoundEntities(VkCommandBuffer commandBuffer);
+  void drawBoundEntities(VkCommandBuffer commandBuffer, const uint32_t instanceCount = 1);
 
-  void renderPrimitive(VkCommandBuffer cmdBuffer, WPrimitive* pPrimitive, REntityBindInfo* pBindInfo);
+  void renderPrimitive(VkCommandBuffer cmdBuffer, WPrimitive* pPrimitive, REntityBindInfo* pBindInfo, const uint32_t instanceCount = 1u);
 
   void renderEnvironmentMaps(VkCommandBuffer commandBuffer,
                              const uint32_t frameInterval = 1u);

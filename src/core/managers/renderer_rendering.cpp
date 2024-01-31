@@ -26,7 +26,7 @@ void core::MRenderer::updateBoundEntities() {
   }
 }
 
-void core::MRenderer::drawBoundEntities(VkCommandBuffer commandBuffer) {
+void core::MRenderer::drawBoundEntities(VkCommandBuffer commandBuffer, const uint32_t instanceCount) {
   // go through bound models and generate draw calls for each
   AEntity* pEntity = nullptr;
   WModel* pModel = nullptr;
@@ -46,14 +46,15 @@ void core::MRenderer::drawBoundEntities(VkCommandBuffer commandBuffer) {
     for (const auto& primitive : primitives) {
       if (!checkPass(primitive->pMaterial->passFlags, renderView.pCurrentPass->passId)) continue;
 
-      renderPrimitive(commandBuffer, primitive, &bindInfo);
+      renderPrimitive(commandBuffer, primitive, &bindInfo, instanceCount);
     }
   }
 }
 
 void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
                                       WPrimitive* pPrimitive,
-                                      REntityBindInfo* pBindInfo) {
+                                      REntityBindInfo* pBindInfo,
+                                      const uint32_t instanceCount) {
 
   WModel::Node* pNode = reinterpret_cast<WModel::Node*>(pPrimitive->pOwnerNode);
   WModel::Mesh* pMesh = pNode->pMesh.get();
@@ -86,7 +87,7 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
   uint32_t indexOffset = pBindInfo->indexOffset + pPrimitive->indexOffset;
 
   // TODO: implement draw indirect
-  vkCmdDrawIndexed(cmdBuffer, pPrimitive->indexCount, 1, indexOffset, vertexOffset, 0);
+  vkCmdDrawIndexed(cmdBuffer, pPrimitive->indexCount, instanceCount, indexOffset, vertexOffset, 0);
 }
 
 void core::MRenderer::renderEnvironmentMaps(

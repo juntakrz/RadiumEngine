@@ -114,6 +114,7 @@ TResult core::MRenderer::createDynamicRenderingPass(EDynamicRenderingPass passId
   pipelineInfo.pRenderPass = pRenderPass;
   pipelineInfo.pDynamicPipelineInfo = &pipelineCreateInfo;
   pipelineInfo.vertexShader = pInfo->vertexShader;
+  pipelineInfo.geometryShader = pInfo->geometryShader;
   pipelineInfo.fragmentShader = pInfo->fragmentShader;
   pipelineInfo.enableBlending = pInfo->pipelineInfo.enableBlending;
   pipelineInfo.cullMode = pInfo->pipelineInfo.cullMode;
@@ -160,6 +161,7 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     info.pipelineLayout = EPipelineLayout::Scene;
     info.viewportId = EViewport::vpShadow;
     info.vertexShader = "vs_shadowPass.spv";
+    //info.geometryShader = "gs_shadowPass.spv";    // Seems to be slower than using separate depth passes
     info.fragmentShader = "fs_shadowPass.spv";
     info.pipelineInfo.enableBlending = VK_FALSE;
     info.pipelineInfo.cullMode = VK_CULL_MODE_BACK_BIT;

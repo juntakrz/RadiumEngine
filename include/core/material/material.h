@@ -9,7 +9,6 @@ struct RMaterial {
   uint32_t passFlags = EDynamicRenderingPass::Null;
   std::vector<RTexture*> pLinearTextures;
 
-  std::string shaderVertex, shaderPixel, shaderGeometry;
   RTexture* pBaseColor = nullptr;
   RTexture* pNormal = nullptr;
   RTexture* pMetalRoughness = nullptr;
