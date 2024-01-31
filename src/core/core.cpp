@@ -52,7 +52,7 @@ void core::run() {
   materialInfo.name = "skybox";
   materialInfo.passFlags = EDynamicRenderingPass::Skybox | EDynamicRenderingPass::EnvSkybox;
   materialInfo.textures.baseColor = "skyboxCubemap.ktx2";
-  materialInfo.colorIntensity = glm::vec4(2.0f);
+  //materialInfo.colorIntensity = glm::vec4(2.0f);
   core::resources.createMaterial(&materialInfo);
 
   // create map models

@@ -215,7 +215,7 @@ TResult core::MRenderer::createComputePipelines() {
             logicalDevice.device, VK_NULL_HANDLE, 1, &computePipelineInfo,
             nullptr, &getComputePipeline(EComputePipeline::ImagePPMipMap)) !=
         VK_SUCCESS) {
-      RE_LOG(Critical, "Failed to create Compute Image 'MipMap16f' pipeline.");
+      RE_LOG(Critical, "Failed to create Compute Image 'Postprocessing MipMap' pipeline.");
 
       return RE_CRITICAL;
     }
