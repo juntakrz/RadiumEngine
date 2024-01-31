@@ -173,6 +173,7 @@ RMaterial* core::MResources::createMaterial(
   newMat.pushConstantBlock.alphaCutoff = pDesc->alphaCutoff;
   newMat.pushConstantBlock.bumpIntensity = pDesc->bumpIntensity;
   newMat.pushConstantBlock.emissiveIntensity = pDesc->emissiveIntensity;
+  newMat.pushConstantBlock.colorIntensity = pDesc->colorIntensity;
 
   // disable reading from texture in shader if no texture is available
   newMat.pushConstantBlock.baseColorTextureSet = newMat.pBaseColor ? pDesc->texCoordSets.baseColor : -1;

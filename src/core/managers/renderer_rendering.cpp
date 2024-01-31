@@ -107,7 +107,7 @@ void core::MRenderer::renderEnvironmentMaps(
     // Total samples
     environment.computeJobs.prefiltered.intValues.z = 128;
 
-    createComputeJob(&environment.computeJobs.prefiltered);
+    queueComputeJob(&environment.computeJobs.prefiltered);
     environment.tracking.layer++;
     return;
 
@@ -116,7 +116,7 @@ void core::MRenderer::renderEnvironmentMaps(
     // Cubemap face index
     environment.computeJobs.irradiance.intValues.y = environment.tracking.layer - 6;
 
-    createComputeJob(&environment.computeJobs.irradiance);
+    queueComputeJob(&environment.computeJobs.irradiance);
     environment.tracking.layer++;
     return;
   }
@@ -380,7 +380,7 @@ void core::MRenderer::renderFrame() {
 
   vkResetCommandBuffer(command.buffersGraphics[renderView.frameInFlight], NULL);
 
-  executeComputeJobs();
+  executeQueuedComputeJobs();
 
   VkCommandBuffer cmdBuffer = command.buffersGraphics[renderView.frameInFlight];
 
@@ -436,6 +436,14 @@ void core::MRenderer::renderFrame() {
 
   // Additional front rendering passes
   executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::Skybox, frameSet);
+
+  /*RComputeJobInfo computeJob{};
+  computeJob.width = config::renderWidth / 2;
+  computeJob.height = config::renderHeight / 2;
+  computeJob.pipeline = EComputePipeline::ImagePPMipMap;
+  computeJob.pImageAttachments = {core::resources.getTexture(RTGT_POSTPROCESS)};
+  computeJob.intValues.x = computeJob.pImageAttachments[0]->texture.levelCount;
+  executeComputeJobImmediate(&computeJob);*/
 
   /* 4. Final presentation pass */
 
@@ -507,7 +515,7 @@ void core::MRenderer::renderFrame() {
 
 void core::MRenderer::renderInitFrame() {
   // Generate BRDF LUT during the initial frame
-  createComputeJob(&environment.computeJobs.LUT);
+  queueComputeJob(&environment.computeJobs.LUT);
 
   renderFrame();
 }

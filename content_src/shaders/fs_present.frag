@@ -24,6 +24,7 @@ layout (push_constant) uniform Material {
 	float alphaMaskCutoff;
 	float bumpIntensity;
 	float emissiveIntensity;		// 48
+	vec4 colorIntensity;			// 64
 	uint samplerIndex[MAXTEXTURES];
 } material;
 

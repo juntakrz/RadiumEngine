@@ -198,7 +198,7 @@ TResult core::MRenderer::createComputePipelines() {
   //
   {
     VkPipelineShaderStageCreateInfo shaderStage =
-        loadShader("cs_mipmap16f.spv", VK_SHADER_STAGE_COMPUTE_BIT);
+        loadShader("cs_ppMipMap.spv", VK_SHADER_STAGE_COMPUTE_BIT);
     computePipelineInfo.stage = shaderStage;
 
     VkPipelineRenderingCreateInfo pipelineRenderingInfo{};
@@ -208,12 +208,12 @@ TResult core::MRenderer::createComputePipelines() {
     pipelineRenderingInfo.pColorAttachmentFormats = &core::vulkan::formatHDR16;
     pipelineRenderingInfo.viewMask = 0;
 
-    system.computePipelines.emplace(EComputePipeline::ImageMipMap16f,
+    system.computePipelines.emplace(EComputePipeline::ImagePPMipMap,
       VK_NULL_HANDLE);
 
     if (vkCreateComputePipelines(
             logicalDevice.device, VK_NULL_HANDLE, 1, &computePipelineInfo,
-            nullptr, &getComputePipeline(EComputePipeline::ImageMipMap16f)) !=
+            nullptr, &getComputePipeline(EComputePipeline::ImagePPMipMap)) !=
         VK_SUCCESS) {
       RE_LOG(Critical, "Failed to create Compute Image 'MipMap16f' pipeline.");
 

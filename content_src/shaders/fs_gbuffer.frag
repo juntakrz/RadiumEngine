@@ -32,6 +32,7 @@ layout (push_constant) uniform Material {
 	float alphaMaskCutoff;
 	float bumpIntensity;
 	float emissiveIntensity;		// 48
+	vec4 colorIntensity;			// 64
 	uint samplerIndex[MAXTEXTURES];
 } material;
 
@@ -76,6 +77,7 @@ void main() {
 	// 2. extract color / diffuse / albedo
 	if (material.baseColorTextureSet > -1) {
 		outColor = texture(samplers[material.samplerIndex[COLORMAP]], material.baseColorTextureSet == 0 ? inUV0 : inUV1);
+		outColor.rgb *= material.colorIntensity.rgb;
 	}
 
 	// TODO: discard on alphaMask == 1.0 here and depth-sort everything, unless requested by the material

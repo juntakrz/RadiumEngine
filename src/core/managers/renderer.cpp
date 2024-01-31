@@ -355,15 +355,16 @@ TResult core::MRenderer::createImageTargets() {
   RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
 #endif
 
-  rtName = RTGT_COMPUTE;
+  rtName = RTGT_POSTPROCESS;
   textureInfo = RTextureInfo{};
   textureInfo.name = rtName;
-  textureInfo.width = swapchain.imageExtent.width;
-  textureInfo.height = swapchain.imageExtent.height;
+  textureInfo.width = swapchain.imageExtent.width / 2;
+  textureInfo.height = swapchain.imageExtent.height / 2;
   textureInfo.isCubemap = false;
-  textureInfo.format = core::vulkan::formatHDR32;
+  textureInfo.format = core::vulkan::formatHDR16;
   textureInfo.layerCount = 1u;
-  textureInfo.mipLevels = 1u;
+  textureInfo.mipLevels =
+      math::getMipLevels((textureInfo.width < textureInfo.height) ? textureInfo.width : textureInfo.height);
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |

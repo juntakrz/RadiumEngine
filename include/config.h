@@ -14,7 +14,7 @@
 #define RTGT_DEPTH              "RT2D_Depth"        // active camera depth render target
 #define RTGT_SHADOW             "RT2D_Shadow"       // shadow render target (depth)
 #define RTGT_ENVSRC             "RT2D_EnvSrc"       // source texture for environment cubemaps
-#define RTGT_COMPUTE            "RT2D_Compute"      // default compute shader processing target
+#define RTGT_POSTPROCESS        "RT2D_PostProcess"  // post processing target
 
 #define RTGT_ENV                "RTCube_Env"
 #define RTGT_ENVFILTER          "RTCube_EnvSkybox"

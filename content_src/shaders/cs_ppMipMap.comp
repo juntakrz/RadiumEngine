@@ -1,0 +1,35 @@
+#version 460
+#extension GL_EXT_nonuniform_qualifier : require
+
+#include "include/common.glsl"
+
+layout(local_size_x = 8, local_size_y = 4) in;
+layout(set = 0, binding = 0, rgba16f) uniform image2D images[];
+
+layout (push_constant) uniform PushBlock {
+	uint imageIndex;
+	uint imageCount;
+    ivec4 intValues;	// x - total mip levels, y - source width, z - source height
+} pushBlock;
+
+void generateMip(int mipLevel) {
+	const uint divisor = 1 << mipLevel;
+
+	if (gl_GlobalInvocationID.x % divisor != 0 || gl_GlobalInvocationID.y % divisor != 0) return;
+}
+
+void main() {
+	ivec2 sourceSize = pushBlock.intValues.yz;
+	ivec2 sourcePosition = ivec2(gl_GlobalInvocationID.xy);
+
+	if (sourcePosition.x >= sourceSize.x || sourcePosition.y >= sourceSize.y) {
+		return;
+	}
+	
+	const int totalMipLevels = pushBlock.intValues.x;
+	const float fTotalMipLevels = float(totalMipLevels - 1);
+
+	for (int mipLevel = 0; mipLevel < totalMipLevels; mipLevel++) {
+		generateMip(mipLevel);
+	}
+}

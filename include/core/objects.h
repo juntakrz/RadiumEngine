@@ -65,7 +65,7 @@ enum class EComputeJob {
 enum class EComputePipeline {
   Null,
   ImageLUT,
-  ImageMipMap16f,
+  ImagePPMipMap,
   ImageEnvIrradiance,
   ImageEnvFilter
 };
@@ -298,6 +298,7 @@ struct RMaterialInfo {
   float roughnessFactor = 1.0f;
   float bumpIntensity = 1.0f;
   float emissiveIntensity = 0.0f;
+  glm::vec4 colorIntensity = glm::vec4(1.0f);
 
   // if 'Null' - pipeline is determined using material properties
   uint32_t passFlags = EDynamicRenderingPass::Null;
@@ -435,7 +436,7 @@ struct RLightingUBO {
 };
 
 // Push constant block used by the scene fragment shader
-// (72 bytes, 88 bytes total of 128 Vulkan spec)
+// (96 bytes, 112 bytes total of 128 Vulkan spec)
 struct RSceneFragmentPCB {
   int32_t baseColorTextureSet;
   int32_t normalTextureSet;
@@ -449,7 +450,8 @@ struct RSceneFragmentPCB {
   float alphaCutoff;
   float bumpIntensity;
   float emissiveIntensity;                // 48
-  uint32_t samplerIndex[RE_MAXTEXTURES];  // 72
+  glm::vec4 colorIntensity;               // 64
+  uint32_t samplerIndex[RE_MAXTEXTURES];
 };
 
 // Push constant block used by the scene vertex shader

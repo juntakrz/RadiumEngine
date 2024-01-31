@@ -492,8 +492,9 @@ public:
   void generateLUTMap();
 
  public:
-  void createComputeJob(RComputeJobInfo* pInfo);
-  void executeComputeJobs();
+  void queueComputeJob(RComputeJobInfo* pInfo);
+  void executeComputeJobImmediate(RComputeJobInfo* pInfo);
+  void executeQueuedComputeJobs();
 
   //
   // ***RENDERING
