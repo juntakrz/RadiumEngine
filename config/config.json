@@ -1,0 +1,27 @@
+{
+  "core" : {
+    "resolution" : [ 1280, 720 ],
+    "fullscreen" : false,
+    "vsync" : false,
+    "loadMap" : "default",
+    "devMode" : false
+  },
+  "graphics" : {
+	"viewDistance" : 1000.0,
+	"FOV" : 75.0
+  },
+  "keyboard" : {
+	"moveForward" : "W",
+	"moveBack" : "S",
+	"moveLeft" : "A",
+	"moveRight" : "D",
+	"moveUp" : "LShift",
+	"moveDown" : "LCtrl",
+	"mouseMode" : "Space",
+	"rollLeft" : "Left",
+	"rollRight" : "Right",
+	"pitchUp" : "Up",
+	"pitchDown" : "Down",
+	"devKey" : "`"
+  }
+}

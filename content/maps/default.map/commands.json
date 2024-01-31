@@ -1,0 +1,46 @@
+{
+  "commands": {
+
+    "0": {
+      "command": "translateTo",
+      "object": "camLight",
+      "target": "$directLight"
+    },
+
+    "1": {
+      "command": "faceTo",
+      "object": "camLight",
+      "target": "camMain"
+    },
+
+    "2": {
+      "command": "translateWith",
+      "object": "mdlSkySphere",
+      "state": true
+    },
+
+    "3": {
+      "command": "translateWith",
+      "object": "mdlMars",
+      "state": true
+    },
+
+    "4": {
+      "command": "translateWith",
+      "object": "mdlMarsAtmo",
+      "state": true
+    },
+
+    "5": {
+      "command": "translateTo",
+      "object": "mdlSunFlare",
+      "target": "camMain"
+    },
+
+    "6": {
+      "command": "translateWith",
+      "object": "mdlSunFlare",
+      "state": true
+    }
+  }
+}

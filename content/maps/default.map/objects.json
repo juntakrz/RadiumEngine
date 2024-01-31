@@ -1,0 +1,84 @@
+{
+  "objects": {
+
+    "mdlSunFlare": {
+      "name": "mdlSunFlare",
+      "type": "sprite",
+      "position": [ -48.0, 34.0, -0.4 ],
+      "material": "Mat_SunFlare"
+    },
+
+    "mdlSkySphere": {
+      "name": "mdlSkySphere",
+      "type": "skySphere",
+      "rotation": [ 0.25, 2.2, -0.4 ],
+      "scaling": [ 400.0, 400.0, 400.0 ],
+      "material": "Mat_SkySphere"
+    },
+
+    "mdlIronSphere": {
+      "name": "mdlIronSphere",
+      "type": "sphere",
+      "divisions": 24,
+      "createAABB": true,
+      "position": [ -1.4, 0.0, 2.0 ],
+      "rotation": [ 0.0, 2.2, -0.6 ],
+      "scaling": [ 0.2, 0.2, 0.2 ],
+      "material": "Mat_TestIron"
+    },
+
+    "mdlSteelSphere": {
+      "name": "mdlSteelSphere",
+      "type": "sphere",
+      "divisions": 24,
+      "createAABB": true,
+      "position": [ -0.7, -0.2, 2.2 ],
+      "rotation": [ 0.3, 2.6, 1.2 ],
+      "scaling": [ 0.2, 0.2, 0.2 ],
+      "material": "Mat_TestSteel"
+    },
+
+    "mdlGoldSphere": {
+      "name": "mdlGoldSphere",
+      "type": "sphere",
+      "divisions": 24,
+      "createAABB": true,
+      "position": [ 0.0, 0.0, 2.0 ],
+      "rotation": [ 0.0, 1.6, 0.5 ],
+      "scaling": [ 0.2, 0.2, 0.2 ],
+      "material": "Mat_TestGold"
+    },
+
+    "mdlCube1": {
+      "name": "mdlCube1",
+      "type": "cube",
+      "createAABB": true,
+      "position": [ 1.0, -1.0, 2.0 ],
+      "rotation": [ 0.8, 1.2, 0.0 ],
+      "scaling": [ 1.0, 1.0, 1.0 ],
+      "material": "Mat_TestBricks"
+    },
+
+    "mdlMars": {
+      "name": "mdlMars",
+      "type": "sphere",
+      "divisions": 48,
+      "position": [ 60.0, -160.0, 400.0 ],
+      "rotation": [ -0.4, 1.4, -0.4 ],
+      "scaling": [ 260.0, 260.0, 260.0 ],
+      "material": "Mat_Mars"
+    },
+
+    "mdlMarsAtmo": {
+      "name": "mdlMarsAtmo",
+      "type": "sphere",
+      "divisions": 32,
+      "createAABB": true,
+      "position": [ 60.0, -160.0, 400.0 ],
+      "rotation": [ 0.0, 0.0, 0.0 ],
+      "scaling": [ 265.0, 265.0, 265.0 ],
+      "material": "Mat_Atmo"
+    }
+  }
+
+}

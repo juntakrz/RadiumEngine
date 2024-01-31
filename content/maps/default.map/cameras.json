@@ -1,0 +1,20 @@
+{
+  "cameras": {
+
+    "C_Main": {
+      "name": "C_Main",
+      "translation": [ 0.0, 0.0, -2.0 ],
+      "rotation": [ 0.0, 0.0, 0.0 ],
+	  "upVector": [ 0.0, 1.0, 0.0 ],
+	  "mode": {
+        "view": "perspective",
+        "variables": [ 75.0, 1.0, 0.001, 1000.0 ]
+      }
+    },
+	
+	"$ACTIVECAMERA$": {
+	  "name": "$ACTIVECAMERA$",
+	  "activate": "C_Main"
+	}
+  }
+}
