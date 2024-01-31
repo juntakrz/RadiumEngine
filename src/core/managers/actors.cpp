@@ -143,7 +143,7 @@ ALight* core::MActors::createLight(const char* name, RLightInfo* pInfo) {
 
     if (pInfo->isShadowCaster) {
       pNewLight->setAsShadowCaster(true);
-      pNewLight->setOrthographic(1.0f, 1.0f, 0.001f, 100.0f);
+      pNewLight->setOrthographic(2.0f, 2.0f, 0.001f, 1000.0f);
 
       // get free camera offset index into the dynamic buffer
       uint32_t index = 0;

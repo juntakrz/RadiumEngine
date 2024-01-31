@@ -5,7 +5,6 @@
 #include "core/model/primitivegen_include.h"
 
 class WPrimitive {
-
  public:
   uint32_t vertexOffset = 0u;    // initial vertex location in owning model
   uint32_t indexOffset = 0u;     // initial index location in owning model
@@ -14,6 +13,8 @@ class WPrimitive {
 
   RMaterial* pMaterial = nullptr;
   void* pOwnerNode = nullptr;
+
+  std::vector<WPrimitiveInstanceData> instanceData;
 
   struct {
     glm::vec3 min = glm::vec3(0.0f);

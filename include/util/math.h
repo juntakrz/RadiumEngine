@@ -97,4 +97,6 @@ float random(float min, float max);
 // calculate how many mip levels a square texture may fit
 uint32_t getMipLevels(uint32_t dimension);
 
+void getHaltonJitter(std::vector<glm::vec2>& outVector, const int32_t width, const int32_t height);
+
 }  // namespace math

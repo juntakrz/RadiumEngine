@@ -190,7 +190,10 @@ TResult core::MWorld::createModel(EPrimitiveType type, std::string name,
     }
   }*/
 
-  return pModel->createStagingBuffers();
+  pModel->createStagingBuffers();
+  pModel->uploadToSceneBuffer();
+
+  return RE_OK;
 }
 
 WModel* core::MWorld::getModel(const char* name) {

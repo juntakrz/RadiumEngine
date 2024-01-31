@@ -30,8 +30,8 @@ class MAnimations {
   };
 
   struct QueueEntry {
-    WModel* pModel;
-    WAnimation* pAnimation;
+    AEntity* pEntity = nullptr;
+    WAnimation* pAnimation = nullptr;
     float startTime = 0.0f;
     float endTime = std::numeric_limits<float>::max();
     float time = 0.0f;
@@ -53,14 +53,14 @@ class MAnimations {
 
   int32_t m_availableQueueIndex = 0;
 
-  // registers index location for node in node transform buffer
+  // Index of a node in a node transform buffer (a pointer acts as a UID)
   std::vector<AEntity::AnimatedNodeBinding*> m_nodeTransformBufferIndices;
 
-  // registers index location for entity in root transform buffer
+  // Index of an entity in root transform buffer
   std::vector<AEntity*> m_rootTransformBufferIndices;
 
-  // registers index location for skin in skin transform buffer
-  std::vector<WModel::Skin*> m_skinTransformBufferIndices;
+  // Index of a skin in a skin transform buffer
+  std::vector<AEntity::AnimatedSkinBinding*> m_skinTransformBufferIndices;
 
   MAnimations();
 
@@ -90,10 +90,9 @@ class MAnimations {
   void cleanupQueue();
 
   // returns true if actor was registered, false if already present
-  bool getOrRegisterActorOffsetIndex(class AEntity* pActor, size_t& outIndex);
+  bool getOrRegisterActorOffsetIndex(class AEntity* pActor, uint32_t& outIndex);
   // returns true if node was registered, false if already present
-  bool getOrRegisterNodeOffsetIndex(AEntity::AnimatedNodeBinding* pNode,
-                                    size_t& outIndex);
-  bool getOrRegisterSkinOffsetIndex(WModel::Skin* pSkin, size_t& outIndex);
+  bool getOrRegisterNodeOffsetIndex(AEntity::AnimatedNodeBinding* pNode, uint32_t& outIndex);
+  bool getOrRegisterSkinOffsetIndex(AEntity::AnimatedSkinBinding* pSkin, uint32_t& outIndex);
 };
 }  // namespace core

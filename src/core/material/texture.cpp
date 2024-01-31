@@ -45,7 +45,7 @@ TResult RTexture::createImageViews(const bool createExtraViews, const bool creat
 
         for (uint8_t layerIndex = 0; layerIndex < texture.layerCount;  ++layerIndex) {
           for (uint8_t mipIndex = 0; mipIndex < texture.levelCount; ++mipIndex) {
-            VkDescriptorImageInfo& info = texture.extraViews[layerIndex + mipIndex * layerIndex];
+            VkDescriptorImageInfo& info = texture.extraViews[mipIndex + texture.levelCount * layerIndex];
 
             info.imageView =
               core::renderer.createImageView(texture.image, texture.imageFormat, layerIndex, 1u, mipIndex, 1u, false, texture.aspectMask);
@@ -73,8 +73,8 @@ TResult RTexture::createSampler(
     return RE_WARNING;
   }
 
-  // adapt to cubemap
-  if (texture.layerCount == 6) {
+  // adapt sampler info to cubemap
+  if (isCubemap && texture.layerCount == 6) {
     pSamplerInfo->addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     pSamplerInfo->addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     pSamplerInfo->addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;

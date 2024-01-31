@@ -46,7 +46,9 @@ class MPlayer {
 
   void rollLeft();
   void rollRight();
+  void rollMouse();
   void pitchUp();
   void pitchDown();
+  void pitchMouse();
 };
 }  // namespace core

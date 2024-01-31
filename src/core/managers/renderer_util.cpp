@@ -1,16 +1,19 @@
 #include "pch.h"
 #include "vk_mem_alloc.h"
 #include "core/core.h"
+#include "core/managers/animations.h"
 #include "core/managers/ref.h"
 #include "core/managers/renderer.h"
 #include "core/managers/actors.h"
+#include "core/managers/time.h"
 #include "core/material/texture.h"
 #include "core/model/model.h"
 #include "core/world/actors/camera.h"
 
 // PRIVATE
 
-RTexture* core::MRenderer::createFragmentRenderTarget(const char* name, VkFormat format, uint32_t width, uint32_t height) {
+RTexture* core::MRenderer::createFragmentRenderTarget(const char* name, VkFormat format, uint32_t width, uint32_t height,
+                                                      VkSamplerAddressMode addressMode) {
   if (width == 0 || height == 0) {
     width = swapchain.imageExtent.width;
     height = swapchain.imageExtent.height;
@@ -25,6 +28,10 @@ RTexture* core::MRenderer::createFragmentRenderTarget(const char* name, VkFormat
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+
+  textureInfo.samplerInfo.addressModeU = addressMode;
+  textureInfo.samplerInfo.addressModeV = addressMode;
+  textureInfo.samplerInfo.addressModeW = addressMode;
 
   RTexture* pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -256,6 +263,67 @@ std::vector<VkExtensionProperties> core::MRenderer::getInstanceExtensions(const 
   return extensionProperties;
 }
 
+TResult core::MRenderer::createQueryPool() {
+  VkQueryPoolCreateInfo poolCreate{};
+  poolCreate.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+  poolCreate.queryType = VK_QUERY_TYPE_OCCLUSION;
+  poolCreate.queryCount = config::scene::nodeBudget;    // TODO: Node budget is quite large, but find a more valid number
+  
+  if (vkCreateQueryPool(logicalDevice.device, &poolCreate, nullptr, &system.queryPool) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to create query pool.");
+    return RE_CRITICAL;
+  }
+
+  return RE_OK;
+}
+
+void core::MRenderer::destroyQueryPool() {
+  vkDestroyQueryPool(logicalDevice.device, system.queryPool, nullptr);
+}
+
+// Runs in a dedicated thread
+void core::MRenderer::updateBoundEntities() {
+  AEntity* pEntity = nullptr;
+
+  // Update animation matrices
+  core::animations.runAnimationQueue();
+
+  for (auto& bindInfo : system.bindings) {
+    if ((pEntity = bindInfo.pEntity) == nullptr) {
+      continue;
+    }
+
+    // Update model matrices
+    pEntity->updateModel();
+  }
+
+  // Use this thread to also quickly process camera exposure level
+  updateExposureLevel();
+}
+
+void core::MRenderer::updateExposureLevel() {
+  const float deltaTime = core::time.getDeltaTime();
+  float brightnessData[256];
+  memcpy(brightnessData, postprocess.exposureStorageBuffer.allocInfo.pMappedData, 1024);
+
+  float averageLuminance = 0.0f;
+  for (int i = 0; i < 256; ++i) {
+    brightnessData[i] = (brightnessData[i] - 0.25f) * 2.0f + 0.25f;
+    brightnessData[i] = std::min(1.5f, std::max(brightnessData[i], 0.0f));
+    averageLuminance += brightnessData[i];
+  }
+
+  averageLuminance /= 256.0f;
+
+  if (lighting.data.averageLuminance < averageLuminance - 0.01f ||
+    lighting.data.averageLuminance > averageLuminance + 0.01f) {
+    lighting.data.averageLuminance +=
+      (lighting.data.averageLuminance < averageLuminance)
+      ? deltaTime * 0.25f
+      : -deltaTime * 0.25f;
+  }
+}
+
 // PUBLIC
 
 TResult core::MRenderer::copyImage(VkCommandBuffer cmdBuffer, VkImage srcImage,
@@ -280,7 +348,7 @@ TResult core::MRenderer::copyImage(VkCommandBuffer cmdBuffer, VkImage srcImage,
 
   vkCmdCopyImage(cmdBuffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                  dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
-                 &swapchain.copyRegion);
+                 &copyRegion);
 
   setImageLayout(cmdBuffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                  srcImageLayout, srcRange);
@@ -474,8 +542,7 @@ void core::MRenderer::convertRenderTargets(VkCommandBuffer cmdBuffer,
   }
 }
 
-TResult core::MRenderer::generateMipMaps(RTexture* pTexture, int32_t mipLevels,
-                                         VkFilter filter) {
+TResult core::MRenderer::generateMipMaps(VkCommandBuffer cmdBuffer, RTexture* pTexture, int32_t mipLevels, VkFilter filter) {
   if (!pTexture) {
     RE_LOG(Error, "Can't generate mip maps, no texture was provided.");
     return RE_ERROR;
@@ -502,9 +569,6 @@ TResult core::MRenderer::generateMipMaps(RTexture* pTexture, int32_t mipLevels,
   } else {
     range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
   }
-
-  VkCommandBuffer cmdBuffer = createCommandBuffer(
-      ECmdType::Graphics, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
 
   // transition texture to DST layout if needed
   if (pTexture->texture.imageLayout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
@@ -535,10 +599,8 @@ TResult core::MRenderer::generateMipMaps(RTexture* pTexture, int32_t mipLevels,
 
     imageMemoryBarrier.subresourceRange.baseArrayLayer = j;
 
-
     blit.srcSubresource.aspectMask = range.aspectMask;
     blit.srcSubresource.baseArrayLayer = j;
-
     blit.dstSubresource.aspectMask = range.aspectMask;
     blit.dstSubresource.baseArrayLayer = j;
 
@@ -587,9 +649,8 @@ TResult core::MRenderer::generateMipMaps(RTexture* pTexture, int32_t mipLevels,
                          0, nullptr, 1, &imageMemoryBarrier);
   }
 
-  flushCommandBuffer(cmdBuffer, ECmdType::Graphics, true);
-
   pTexture->texture.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  pTexture->texture.imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
   return RE_OK;
 }
@@ -675,8 +736,7 @@ TResult core::MRenderer::generateSingleMipMap(VkCommandBuffer cmdBuffer,
       pTexture->texture.imageFormat != VK_FORMAT_D24_UNORM_S8_UINT) {
     barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   } else {
-    barrier.subresourceRange.aspectMask =
-        VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
   }
 
   // convert source mip level to TRANSFER SRC layout
@@ -884,55 +944,46 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
     return -1;
   }
 
-  WModel* pModel = pEntity->getModel();
-
-  // copy vertex buffer
-  VkBufferCopy copyInfo{};
-  copyInfo.srcOffset = 0u;
-  copyInfo.dstOffset = scene.currentVertexOffset * sizeof(RVertex);
-  copyInfo.size = sizeof(RVertex) * pModel->m_vertexCount;
-
-  copyBuffer(&pModel->staging.vertexBuffer, &scene.vertexBuffer, &copyInfo);
-
-  // copy index buffer
-  copyInfo.dstOffset = scene.currentIndexOffset * sizeof(uint32_t);
-  copyInfo.size = sizeof(uint32_t) * pModel->m_indexCount;
-
-  copyBuffer(&pModel->staging.indexBuffer, &scene.indexBuffer, &copyInfo);
-
-  // store reference data to model in the scene buffers
-  pModel->setSceneBindingData(scene.currentVertexOffset,
-                              scene.currentIndexOffset);
-
   // add model to rendering queue, store its offsets
   REntityBindInfo bindInfo{};
   bindInfo.pEntity = pEntity;
-  bindInfo.vertexOffset = scene.currentVertexOffset;
-  bindInfo.vertexCount = pModel->m_vertexCount;
-  bindInfo.indexOffset = scene.currentIndexOffset;
-  bindInfo.indexCount = pModel->m_indexCount;
 
   system.bindings.emplace_back(bindInfo);
 
+  WModel* pModel = pEntity->getModel();
+
+  // Add a reference to all WModel entries of AEntity if they don't already exist
+  if (scene.pModelReferences.find(pModel) == scene.pModelReferences.end()) {
+    scene.pModelReferences.emplace(pModel);
+  }
+
+  // Add a number of model primitives to total primitive instances rendered
+  scene.totalInstances += pModel->m_pLinearPrimitives.size();
+
+  for (auto& primitive : pModel->m_pLinearPrimitives) {
+    WModel::Node* pNode = reinterpret_cast<WModel::Node*>(primitive->pOwnerNode);
+
+    auto& instanceData = primitive->instanceData.emplace_back();
+    instanceData.instanceIndex = scene.currentInstanceUID++;
+    instanceData.isVisible = true;
+    instanceData.instanceBufferBlock.modelMatrixId = pEntity->getRootTransformBufferIndex();
+    instanceData.instanceBufferBlock.nodeMatrixId = pEntity->getNodeTransformBufferIndex(pNode->index);
+    instanceData.instanceBufferBlock.skinMatrixId = pEntity->getSkinTransformBufferIndex(pNode->skinIndex);
+  }
+
   // TODO: implement indirect draw command properly
-  VkDrawIndexedIndirectCommand drawCommand{};
+  /*VkDrawIndexedIndirectCommand drawCommand{};
   drawCommand.firstInstance = 0;
   drawCommand.instanceCount = 1;
   drawCommand.vertexOffset = scene.currentVertexOffset;
   drawCommand.firstIndex = scene.currentIndexOffset;
   drawCommand.indexCount = pModel->m_indexCount;
 
-  system.drawCommands.emplace_back(drawCommand);
+  system.drawCommands.emplace_back(drawCommand);*/
   // TODO
 
   pEntity->setRendererBindingIndex(
       static_cast<int32_t>(system.bindings.size() - 1));
-
-  // store new offsets into scene buffer data
-  scene.currentVertexOffset += pModel->m_vertexCount;
-  scene.currentIndexOffset += pModel->m_indexCount;
-
-  pModel->clearStagingData();
 
 #ifndef NDEBUG
   RE_LOG(Log, "Bound model \"%s\" to graphics pipeline.", pModel->getName());
@@ -959,6 +1010,33 @@ void core::MRenderer::unbindEntity(uint32_t index) {
 }
 
 void core::MRenderer::clearBoundEntities() { system.bindings.clear(); }
+
+void core::MRenderer::uploadModelToSceneBuffer(WModel* pModel) {
+  // Copy vertex buffer
+  VkBufferCopy copyInfo{};
+  copyInfo.srcOffset = 0u;
+  copyInfo.dstOffset = scene.currentVertexOffset * sizeof(RVertex);
+  copyInfo.size = sizeof(RVertex) * pModel->m_vertexCount;
+
+  copyBuffer(&pModel->staging.vertexBuffer, &scene.vertexBuffer, &copyInfo);
+
+  // Copy index buffer
+  copyInfo.dstOffset = scene.currentIndexOffset * sizeof(uint32_t);
+  copyInfo.size = sizeof(uint32_t) * pModel->m_indexCount;
+
+  copyBuffer(&pModel->staging.indexBuffer, &scene.indexBuffer, &copyInfo);
+
+  // Set offsets in the model for future reference
+  pModel->m_sceneVertexOffset = scene.currentVertexOffset;
+  pModel->m_sceneIndexOffset = scene.currentIndexOffset;
+
+  // Remove model staging data from memory
+  pModel->clearStagingData();
+
+  // Move scene offsets
+  scene.currentVertexOffset += pModel->m_vertexCount;
+  scene.currentIndexOffset += pModel->m_indexCount;
+}
 
 void core::MRenderer::setCamera(const char* name) {
   view.pActiveCamera = core::actors.getCamera(name);
@@ -1016,4 +1094,14 @@ ACamera* core::MRenderer::getCamera() { return view.pActiveCamera; }
 
 void core::MRenderer::setIBLScale(float newScale) {
   lighting.data.scaleIBLAmbient = newScale;
+}
+
+void core::MRenderer::setShadowColor(const glm::vec3& color) {
+  lighting.data.shadowColor.x = color.x;
+  lighting.data.shadowColor.y = color.y;
+  lighting.data.shadowColor.z = color.z;
+}
+
+void core::MRenderer::setBloomIntensity(const float intensity) {
+  lighting.data.bloomIntensity = intensity;
 }

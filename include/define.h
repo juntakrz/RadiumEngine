@@ -44,7 +44,7 @@ constexpr bool enableGPUAssistedValidation = false;
 #define RE_DEFAULTTEXTURE   "default/default_baseColor.ktx2"
 #define RE_WHITETEXTURE     "default/white.ktx2"
 #define RE_BLACKTEXTURE     "default/black.ktx2"
-#define RE_MAXTEXTURES      6
+#define RE_MAXTEXTURES      8
 #define RE_NEARZ            0.01f
 #define RE_MAXJOINTS        128u
 

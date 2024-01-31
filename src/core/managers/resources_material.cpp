@@ -23,19 +23,11 @@ void core::MResources::initialize() {
   loadTexture(RE_BLACKTEXTURE, &samplerInfo);
   loadTexture(RE_WHITETEXTURE, &samplerInfo);
 
-  // create default material
+  // Create default material
   RMaterialInfo materialInfo{};
   materialInfo.name = "default";
   materialInfo.passFlags = EDynamicRenderingPass::OpaqueCullBack;
   materialInfo.textures.baseColor = RE_DEFAULTTEXTURE;
-  materialInfo.textures.normal = "default/default_normal.ktx2";
-  materialInfo.textures.metalRoughness =
-      "default/default_metallicRoughness.ktx2";
-  materialInfo.textures.occlusion = "default/default_occlusion.ktx2";
-  materialInfo.texCoordSets.baseColor = 0;
-  materialInfo.texCoordSets.normal = 0;
-  materialInfo.texCoordSets.metalRoughness = 0;
-  materialInfo.texCoordSets.occlusion = 0;
 
   createMaterial(&materialInfo);
 
@@ -75,11 +67,15 @@ void core::MResources::initialize() {
 
   core::renderer.getMaterialData()->pGBuffer = pMaterial;
 
-  // create present material that takes combined output of all render passes as
+  // Create present material that takes combined output of all render passes as
   // a shader read only attachment
   materialInfo = RMaterialInfo{};
   materialInfo.name = RMAT_GPBR;
   materialInfo.textures.baseColor = RTGT_GPBR;
+  materialInfo.textures.normal = RTGT_PPBLOOM;
+  materialInfo.textures.metalRoughness = RTGT_VELOCITYMAP;
+  materialInfo.textures.occlusion = RTGT_PREVFRAME;
+  materialInfo.textures.emissive = RTGT_PPTAA;
   materialInfo.alphaMode = EAlphaMode::Opaque;
   materialInfo.doubleSided = false;
   materialInfo.manageTextures = true;
@@ -157,6 +153,12 @@ RMaterial* core::MResources::createMaterial(
     return m_materials.at(pDesc->name).get();
   }
 
+  // Storing index 0 as 0b10 and 1 as 0b11 to save precious push block space
+  // and for a reliable bitwise retrieval in the shader
+  auto fGetTextureIndex = [](const int8_t textureSet, const int8_t textureIndex) {
+    return (textureSet + 2) << (textureIndex * 2);
+  };
+
   RMaterial newMat;
   newMat.name = pDesc->name;
 
@@ -165,29 +167,35 @@ RMaterial* core::MResources::createMaterial(
   newMat.pMetalRoughness = assignTexture(pDesc->textures.metalRoughness.c_str());
   newMat.pOcclusion = assignTexture(pDesc->textures.occlusion.c_str());
   newMat.pEmissive = assignTexture(pDesc->textures.emissive.c_str());
-  newMat.pExtra = assignTexture(pDesc->textures.extra.c_str());
+  newMat.pExtra0 = assignTexture(pDesc->textures.extra0.c_str());
+  newMat.pExtra1 = assignTexture(pDesc->textures.extra1.c_str());
+  newMat.pExtra2 = assignTexture(pDesc->textures.extra2.c_str());
 
   newMat.pushConstantBlock.metallicFactor = pDesc->metallicFactor;
   newMat.pushConstantBlock.roughnessFactor = pDesc->roughnessFactor;
   newMat.pushConstantBlock.alphaMode = static_cast<float>(pDesc->alphaMode);
   newMat.pushConstantBlock.alphaCutoff = pDesc->alphaCutoff;
   newMat.pushConstantBlock.bumpIntensity = pDesc->bumpIntensity;
-  newMat.pushConstantBlock.emissiveIntensity = pDesc->emissiveIntensity;
+  newMat.pushConstantBlock.glowColor = pDesc->glowColor;
 
   // disable reading from texture in shader if no texture is available
-  newMat.pushConstantBlock.baseColorTextureSet = newMat.pBaseColor ? pDesc->texCoordSets.baseColor : -1;
-  newMat.pushConstantBlock.normalTextureSet = newMat.pNormal ? pDesc->texCoordSets.normal : -1;
-  newMat.pushConstantBlock.metallicRoughnessTextureSet = newMat.pMetalRoughness ? pDesc->texCoordSets.metalRoughness : -1;
-  newMat.pushConstantBlock.occlusionTextureSet = newMat.pOcclusion ? pDesc->texCoordSets.occlusion : -1;
-  newMat.pushConstantBlock.emissiveTextureSet = newMat.pEmissive ? pDesc->texCoordSets.emissive : -1;
-  newMat.pushConstantBlock.extraTextureSet = newMat.pExtra ? pDesc->texCoordSets.extra : -1;
+  newMat.pushConstantBlock.textureSets |= newMat.pBaseColor ? fGetTextureIndex(pDesc->texCoordSets.baseColor, 0) : 0;
+  newMat.pushConstantBlock.textureSets |= newMat.pNormal ? fGetTextureIndex(pDesc->texCoordSets.normal, 1) : 0;
+  newMat.pushConstantBlock.textureSets |= newMat.pMetalRoughness ? fGetTextureIndex(pDesc->texCoordSets.metalRoughness, 2) : 0;
+  newMat.pushConstantBlock.textureSets |= newMat.pOcclusion ? fGetTextureIndex(pDesc->texCoordSets.occlusion, 3) : 0;
+  newMat.pushConstantBlock.textureSets |= newMat.pEmissive ? fGetTextureIndex(pDesc->texCoordSets.emissive, 4) : 0;
+  newMat.pushConstantBlock.textureSets |= newMat.pExtra0 ? fGetTextureIndex(pDesc->texCoordSets.extra0, 5) : 0;
+  newMat.pushConstantBlock.textureSets |= newMat.pExtra1 ? fGetTextureIndex(pDesc->texCoordSets.extra1, 6) : 0;
+  newMat.pushConstantBlock.textureSets |= newMat.pExtra2 ? fGetTextureIndex(pDesc->texCoordSets.extra2, 7) : 0;
 
   newMat.pushConstantBlock.samplerIndex[0] = newMat.pBaseColor ? newMat.pBaseColor->combinedSamplerIndex : 0;
   newMat.pushConstantBlock.samplerIndex[1] = newMat.pNormal ? newMat.pNormal->combinedSamplerIndex : 0;
   newMat.pushConstantBlock.samplerIndex[2] = newMat.pMetalRoughness ? newMat.pMetalRoughness->combinedSamplerIndex : 0;
   newMat.pushConstantBlock.samplerIndex[3] = newMat.pOcclusion ? newMat.pOcclusion->combinedSamplerIndex : 0;
   newMat.pushConstantBlock.samplerIndex[4] = newMat.pEmissive ? newMat.pEmissive->combinedSamplerIndex : 0;
-  newMat.pushConstantBlock.samplerIndex[5] = newMat.pExtra ? newMat.pExtra->combinedSamplerIndex : 0;
+  newMat.pushConstantBlock.samplerIndex[5] = newMat.pExtra0 ? newMat.pExtra0->combinedSamplerIndex : 0;
+  newMat.pushConstantBlock.samplerIndex[6] = newMat.pExtra1 ? newMat.pExtra1->combinedSamplerIndex : 0;
+  newMat.pushConstantBlock.samplerIndex[7] = newMat.pExtra2 ? newMat.pExtra2->combinedSamplerIndex : 0;
 
   // store total number of textures the material has
   if (newMat.pBaseColor) {
@@ -205,8 +213,14 @@ RMaterial* core::MResources::createMaterial(
   if (newMat.pEmissive) {
     newMat.pLinearTextures.emplace_back(newMat.pEmissive);
   }
-  if (newMat.pExtra) {
-    newMat.pLinearTextures.emplace_back(newMat.pExtra);
+  if (newMat.pExtra0) {
+    newMat.pLinearTextures.emplace_back(newMat.pExtra0);
+  }
+  if (newMat.pExtra1) {
+    newMat.pLinearTextures.emplace_back(newMat.pExtra1);
+  }
+  if (newMat.pExtra2) {
+    newMat.pLinearTextures.emplace_back(newMat.pExtra2);
   }
 
   newMat.passFlags = pDesc->passFlags;

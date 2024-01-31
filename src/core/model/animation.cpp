@@ -88,12 +88,12 @@ void WAnimation::addKeyFrame(WModel* pModel, const float timeStamp) {
   for (const auto& pNode : pModel->getAllNodes()) {
     if (pNode->pMesh) {
       keyFrame.nodeMatrices[pNode->index] =
-          pNode->pMesh->uniformBlock.nodeMatrix;
+          pNode->pMesh->stagingTransformBlock.nodeMatrix;
 
       if (pNode->pSkin) {
         if (keyFrame.skinMatrices[pNode->pSkin->index].empty()) {
           keyFrame.skinMatrices[pNode->pSkin->index] =
-              pNode->pMesh->uniformBlock.jointMatrices;
+              pNode->pSkin->stagingTransformBlock.jointMatrices;
         }
       }
     }
