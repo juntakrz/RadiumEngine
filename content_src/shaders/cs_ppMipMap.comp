@@ -9,7 +9,7 @@ layout(set = 0, binding = 0, rgba16f) uniform image2D images[];
 layout (push_constant) uniform PushBlock {
 	uint imageIndex;
 	uint imageCount;
-    ivec4 intValues;	// x - total mip levels, y - source width, z - source height
+    ivec4 intValues;	// x - total mip levels
 } pushBlock;
 
 void generateMip(int mipLevel) {
@@ -19,7 +19,9 @@ void generateMip(int mipLevel) {
 }
 
 void main() {
-	ivec2 sourceSize = pushBlock.intValues.yz;
+	ivec2 wgSize = ivec2(gl_WorkGroupSize.xy);
+	ivec2 wgCount = ivec2(gl_NumWorkGroups.xy);
+	ivec2 sourceSize = ivec2(wgSize * wgCount);
 	ivec2 sourcePosition = ivec2(gl_GlobalInvocationID.xy);
 
 	if (sourcePosition.x >= sourceSize.x || sourcePosition.y >= sourceSize.y) {

@@ -437,7 +437,8 @@ void core::MRenderer::renderFrame() {
   // Additional front rendering passes
   executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::Skybox, frameSet);
 
-  executeComputeJobImmediate(&postprocessing.computeJobs.ppMipMap);
+  // TODO: descriptor set / vertex buffer bindings lost here?
+  //executeComputeJobImmediate2(&postprocessing.computeJobs.ppMipMap, false, true);
 
   /* 4. Final presentation pass */
 
@@ -463,6 +464,32 @@ void core::MRenderer::renderFrame() {
   submitInfo.pCommandBuffers = &command.buffersGraphics[renderView.frameInFlight];  // Submit command buffer recorded previously
   submitInfo.signalSemaphoreCount = 1;
   submitInfo.pSignalSemaphores = signalSems;  // Signal these after rendering is finished
+
+  //VkSemaphoreSubmitInfo waitSemaphoreInfo{};
+  //waitSemaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+  //waitSemaphoreInfo.semaphore = sync.semImgAvailable[renderView.frameInFlight];
+  //waitSemaphoreInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+  //waitSemaphoreInfo.deviceIndex = 0;
+
+  //VkSemaphoreSubmitInfo signalSemaphoreInfo{};
+  //signalSemaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+  //signalSemaphoreInfo.semaphore = sync.semRenderFinished[renderView.frameInFlight];
+  //signalSemaphoreInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+  //signalSemaphoreInfo.deviceIndex = 0;
+
+  //VkCommandBufferSubmitInfo cmdBufferInfo{};
+  //cmdBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+  //cmdBufferInfo.commandBuffer = command.buffersGraphics[renderView.frameInFlight];
+  //cmdBufferInfo.deviceMask = 0;
+
+  //VkSubmitInfo2 submitInfo2{};
+  //submitInfo2.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+  //submitInfo2.waitSemaphoreInfoCount = 1;
+  //submitInfo2.pWaitSemaphoreInfos = &waitSemaphoreInfo;
+  //submitInfo2.signalSemaphoreInfoCount = 1;
+  //submitInfo2.pSignalSemaphoreInfos = &signalSemaphoreInfo;
+  //submitInfo2.commandBufferInfoCount = 1;
+  //submitInfo2.pCommandBufferInfos = &cmdBufferInfo;
 
   // Submit an array featuring command buffers to graphics queue and signal
   // Fence for CPU to wait for execution

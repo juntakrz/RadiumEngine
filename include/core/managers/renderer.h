@@ -501,6 +501,7 @@ public:
  public:
   void queueComputeJob(RComputeJobInfo* pInfo);
   void executeComputeJobImmediate(RComputeJobInfo* pInfo);
+  void executeComputeJobImmediate2(RComputeJobInfo* pInfo, const bool beginBuffer, const bool restartBuffer);
   void executeQueuedComputeJobs();
 
   //
