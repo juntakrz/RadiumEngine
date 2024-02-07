@@ -23,7 +23,7 @@ void core::MResources::initialize() {
   loadTexture(RE_BLACKTEXTURE, &samplerInfo);
   loadTexture(RE_WHITETEXTURE, &samplerInfo);
 
-  // create default material
+  // Create default material
   RMaterialInfo materialInfo{};
   materialInfo.name = "default";
   materialInfo.passFlags = EDynamicRenderingPass::OpaqueCullBack;
@@ -75,7 +75,7 @@ void core::MResources::initialize() {
 
   core::renderer.getMaterialData()->pGBuffer = pMaterial;
 
-  // create present material that takes combined output of all render passes as
+  // Create present material that takes combined output of all render passes as
   // a shader read only attachment
   materialInfo = RMaterialInfo{};
   materialInfo.name = RMAT_GPBR;
@@ -92,6 +92,24 @@ void core::MResources::initialize() {
   }
 
   core::renderer.getMaterialData()->pGPBR = pMaterial;
+
+  // Create post process downsampling material
+  materialInfo = RMaterialInfo{};
+  materialInfo.name = RMAT_PPDOWNSMPL;
+  materialInfo.textures.baseColor = RTGT_GPBR;
+  materialInfo.textures.normal = RTGT_PPDOWNSMPL;
+  materialInfo.alphaMode = EAlphaMode::Opaque;
+  materialInfo.doubleSided = false;
+  materialInfo.manageTextures = true;
+  materialInfo.passFlags = EDynamicRenderingPass::PPDownsample;
+
+  if (!(pMaterial = createMaterial(&materialInfo))) {
+    RE_LOG(Critical, "Failed to create post processing downsampling material.");
+
+    return;
+  }
+
+  core::renderer.getPostProcessingData()->pDownsampleMaterial = pMaterial;
 }
 
 uint32_t core::MResources::getFreeCombinedSamplerIndex() {

@@ -45,7 +45,7 @@ TResult RTexture::createImageViews(const bool createExtraViews, const bool creat
 
         for (uint8_t layerIndex = 0; layerIndex < texture.layerCount;  ++layerIndex) {
           for (uint8_t mipIndex = 0; mipIndex < texture.levelCount; ++mipIndex) {
-            VkDescriptorImageInfo& info = texture.extraViews[layerIndex + mipIndex * layerIndex];
+            VkDescriptorImageInfo& info = texture.extraViews[mipIndex + texture.levelCount * layerIndex];
 
             info.imageView =
               core::renderer.createImageView(texture.image, texture.imageFormat, layerIndex, 1u, mipIndex, 1u, false, texture.aspectMask);

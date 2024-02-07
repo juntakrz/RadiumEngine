@@ -734,47 +734,6 @@ TResult core::MRenderer::generateSingleMipMap(VkCommandBuffer cmdBuffer,
   return RE_OK;
 }
 
-void core::MRenderer::updatePostProcessTarget(VkCommandBuffer cmdBuffer, RTexture* pSrcTexture, RTexture* pDstTexture) {
-  postprocess.blitRegion.srcOffsets[1] = { static_cast<int32_t>(pSrcTexture->texture.width), static_cast<int32_t>(pSrcTexture->texture.height), 1 };
-  postprocess.blitRegion.dstOffsets[1] = { static_cast<int32_t>(pDstTexture->texture.width), static_cast<int32_t>(pDstTexture->texture.height), 1 };
-
-  VkBlitImageInfo2 blitInfo{};
-  blitInfo.sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2;
-  blitInfo.srcImage = pSrcTexture->texture.image;
-  blitInfo.srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-  blitInfo.dstImage = pDstTexture->texture.image;
-  blitInfo.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-  blitInfo.pRegions = &postprocess.blitRegion;
-  blitInfo.regionCount = 1;
-  blitInfo.filter = VK_FILTER_LINEAR;
-
-  VkImageLayout srcLayout = pSrcTexture->texture.imageLayout;
-  VkImageLayout dstLayout = pDstTexture->texture.imageLayout;
-  const uint32_t dstLevelCount = pDstTexture->texture.levelCount;
-
-  VkImageSubresourceRange subRange{};
-  subRange.aspectMask = pSrcTexture->texture.aspectMask;
-  subRange.baseArrayLayer = 0;
-  subRange.layerCount = 1;
-  subRange.baseMipLevel = 0;
-
-  subRange.levelCount = 1;
-  setImageLayout(cmdBuffer, pSrcTexture, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, subRange);
-
-  subRange.levelCount = dstLevelCount;
-  setImageLayout(cmdBuffer, pDstTexture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, subRange);
-
-  vkCmdBlitImage2(cmdBuffer, &blitInfo);
-
-  subRange.levelCount = 1;
-  setImageLayout(cmdBuffer, pSrcTexture, srcLayout, subRange);
-
-  generateMipMaps(cmdBuffer, pDstTexture, pDstTexture->texture.levelCount);
-
-  //subRange.levelCount = dstLevelCount;
-  //setImageLayout(cmdBuffer, pDstTexture, dstLayout, subRange);
-}
-
 VkCommandPool core::MRenderer::getCommandPool(ECmdType type) {
   switch (type) {
     case ECmdType::Graphics:

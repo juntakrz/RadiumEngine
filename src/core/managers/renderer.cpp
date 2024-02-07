@@ -355,18 +355,20 @@ TResult core::MRenderer::createImageTargets() {
   RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
 #endif
 
-  rtName = RTGT_POSTPROCESS;
-  textureInfo = RTextureInfo{};
+  // target for BRDF LUT generation
+  rtName = RTGT_LUTMAP;
+
   textureInfo.name = rtName;
-  textureInfo.width = config::renderWidth / 2;
-  textureInfo.height = config::renderHeight / 2;
+  textureInfo.width = core::vulkan::LUTExtent;
+  textureInfo.height = textureInfo.width;
+  textureInfo.format = core::vulkan::formatLUT;
   textureInfo.isCubemap = false;
-  textureInfo.format = core::vulkan::formatHDR16;
   textureInfo.layerCount = 1u;
-  textureInfo.mipLevels = 5u;     // A small number of mip maps should be enough for post processing
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  textureInfo.mipLevels = 1;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-  textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_STORAGE_BIT |
+                           VK_IMAGE_USAGE_SAMPLED_BIT;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -379,18 +381,20 @@ TResult core::MRenderer::createImageTargets() {
   RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
 #endif
 
-  // target for BRDF LUT generation
-  rtName = RTGT_LUTMAP;
-
+  // target for post process downsampling
+  rtName = RTGT_PPDOWNSMPL;
+  textureInfo = RTextureInfo{};
   textureInfo.name = rtName;
-  textureInfo.width = core::vulkan::LUTExtent;
-  textureInfo.height = textureInfo.width;
-  textureInfo.format = core::vulkan::formatLUT;
-  textureInfo.mipLevels = 1;
+  textureInfo.width = config::renderWidth / 2;
+  textureInfo.height = config::renderHeight / 2;
+  textureInfo.format = core::vulkan::formatHDR16;
+  textureInfo.isCubemap = false;
+  textureInfo.layerCount = 1u;
+  textureInfo.mipLevels = 5u;     // A small number of mip maps should be enough for post processing
+  textureInfo.extraViews = true;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
-  textureInfo.usageFlags = VK_IMAGE_USAGE_STORAGE_BIT |
-                           VK_IMAGE_USAGE_SAMPLED_BIT;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -638,15 +642,7 @@ TResult core::MRenderer::setRendererDefaults() {
   lighting.data.prefilteredCubeMipLevels = (float)math::getMipLevels(core::vulkan::envFilterExtent);
 
   // Set default post processing info
-  postprocess.pTexture = core::resources.getTexture(RTGT_POSTPROCESS);
-  postprocess.blitRegion.sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2;
-  postprocess.blitRegion.srcOffsets[0] = {0, 0, 0};
-  postprocess.blitRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  postprocess.blitRegion.srcSubresource.baseArrayLayer = 0;
-  postprocess.blitRegion.srcSubresource.layerCount = 1;
-  postprocess.blitRegion.srcSubresource.mipLevel = 0;
-  postprocess.blitRegion.dstOffsets[0] = {0, 0, 0};
-  postprocess.blitRegion.dstSubresource = postprocess.blitRegion.srcSubresource;
+  postprocess.pDownsampleTexture = core::resources.getTexture(RTGT_PPDOWNSMPL);
 
   return RE_OK;
 }
@@ -912,6 +908,10 @@ void core::MRenderer::updateLightingUBO(const int32_t frameIndex) {
 
   memcpy(lighting.buffers[frameIndex].allocInfo.pMappedData, &lighting.data,
          sizeof(RLightingUBO));
+}
+
+core::MRenderer::RPostProcessData* core::MRenderer::getPostProcessingData() {
+  return &postprocess;
 }
 
 void core::MRenderer::updateAspectRatio() {

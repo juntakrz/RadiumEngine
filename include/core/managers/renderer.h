@@ -80,9 +80,9 @@ class MRenderer {
     RSceneVertexPCB vertexPushBlock;
   } scene;
 
-  struct {
-    RTexture* pTexture = nullptr;
-    VkImageBlit2 blitRegion;
+  struct RPostProcessData {
+    RTexture* pDownsampleTexture = nullptr;
+    RMaterial* pDownsampleMaterial = nullptr;
   } postprocess;
 
   // swapchain data
@@ -216,6 +216,7 @@ class MRenderer {
   RLightingData* getLightingData();
   VkDescriptorSet getMaterialDescriptorSet();
   RMaterialData* getMaterialData();
+  RPostProcessData* getPostProcessingData();
   RSceneBuffers* getSceneBuffers();
   RSceneUBO* getSceneUBO();
   REnvironmentData* getEnvironmentData();
@@ -319,8 +320,6 @@ public:
   TResult generateSingleMipMap(VkCommandBuffer cmdBuffer, RTexture* pTexture,
                                uint32_t mipLevel, uint32_t layer = 0,
                                VkFilter filter = VK_FILTER_LINEAR);
-
-  void updatePostProcessTarget(VkCommandBuffer cmdBuffer, RTexture* pSrcTexture, RTexture* pDstTexture);
 
   VkCommandPool getCommandPool(ECmdType type);
   VkQueue getCommandQueue(ECmdType type);
@@ -516,12 +515,14 @@ public:
   void renderEnvironmentMaps(VkCommandBuffer commandBuffer,
                              const uint32_t frameInterval = 1u);
 
-  void executeDynamicRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId, VkDescriptorSet sceneSet,
+  void executeRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId, VkDescriptorSet sceneSet,
                                    RMaterial* pPushMaterial = nullptr, bool renderQuad = false);
 
-  void executeDynamicShadowPass(VkCommandBuffer commandBuffer, const uint32_t cascadeIndex, VkDescriptorSet sceneSet);
+  void executeShadowPass(VkCommandBuffer commandBuffer, const uint32_t cascadeIndex, VkDescriptorSet sceneSet);
 
-  void executeDynamicPresentPass(VkCommandBuffer commandBuffer, VkDescriptorSet sceneSet);
+  void executeDownsamplingPass(VkCommandBuffer commandBuffer, const uint32_t imageViewIndex, VkDescriptorSet sceneSet);
+
+  void executePresentPass(VkCommandBuffer commandBuffer, VkDescriptorSet sceneSet);
 
  public:
   void renderFrame();

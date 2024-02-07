@@ -255,6 +255,24 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     createDynamicRenderingPass(EDynamicRenderingPass::Skybox, &info);
   }
 
+  // "Post processing downsample" pass
+  {
+    RTexture* pColorAttachment = core::resources.getTexture(RTGT_PPDOWNSMPL);
+
+    RDynamicRenderingInfo info{};
+    info.pipelineLayout = EPipelineLayout::Scene;
+    info.viewportId = EViewport::vpMain;
+    info.vertexShader = "vs_quad.spv";
+    info.fragmentShader = "fs_ppDownsample.spv";
+    info.colorAttachmentClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
+    info.layoutInfo.validateColorAttachmentLayout = true;
+    info.layoutInfo.transitionColorAttachmentLayout = true;
+    info.layoutInfo.colorAttachmentsOutLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    info.colorAttachments = {{ pColorAttachment, pColorAttachment->texture.view, pColorAttachment->texture.imageFormat }};
+
+    createDynamicRenderingPass(EDynamicRenderingPass::PPDownsample, &info);
+  }
+
   // "Present" final output pass
   {
     RTexture* pDepthAttachment = core::resources.getTexture(RTGT_DEPTH);

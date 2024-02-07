@@ -89,7 +89,9 @@ enum EDynamicRenderingPass : uint32_t {
   BlendCullNone       = 0b100000,
   Skybox              = 0b1000000,
   PBR                 = 0b10000000,
-  Present             = 0b100000000
+  PPDownsample        = 0b100000000,
+  PPUpsample          = 0b1000000000,
+  Present             = 0b10000000000
 };
 
 enum class ELightType {

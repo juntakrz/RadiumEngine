@@ -164,7 +164,7 @@ void core::MRenderer::renderEnvironmentMaps(
   environment.tracking.layer++;
 }
 
-void core::MRenderer::executeDynamicRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId, VkDescriptorSet sceneSet,
+void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId, VkDescriptorSet sceneSet,
                                                   RMaterial* pPushMaterial, bool renderQuad) {
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(passId);
   renderView.pCurrentPass = pRenderPass;
@@ -247,7 +247,7 @@ void core::MRenderer::executeDynamicRenderingPass(VkCommandBuffer commandBuffer,
   }
 }
 
-void core::MRenderer::executeDynamicShadowPass(VkCommandBuffer commandBuffer, const uint32_t cascadeIndex, VkDescriptorSet sceneSet) {
+void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uint32_t cascadeIndex, VkDescriptorSet sceneSet) {
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::Shadow);
   renderView.pCurrentPass = pRenderPass;
 
@@ -306,7 +306,22 @@ void core::MRenderer::executeDynamicShadowPass(VkCommandBuffer commandBuffer, co
   }
 }
 
-void core::MRenderer::executeDynamicPresentPass(VkCommandBuffer commandBuffer, VkDescriptorSet sceneSet) {
+void core::MRenderer::executeDownsamplingPass(VkCommandBuffer commandBuffer, const uint32_t imageViewIndex, VkDescriptorSet sceneSet) {
+  // Used as a shader coordinate into either PBR texture or downsampling texture and its mip level
+  postprocess.pDownsampleMaterial->pushConstantBlock.baseColorTextureSet = imageViewIndex;
+
+  RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::PPDownsample);
+  renderView.pCurrentPass = pRenderPass;
+
+  VkRenderingAttachmentInfo overrideAttachment = pRenderPass->renderingInfo.pColorAttachments[0];
+  overrideAttachment.imageView = pRenderPass->pImageReferences[0]->texture.extraViews[imageViewIndex].imageView;
+
+  VkRenderingInfo overrideInfo{};
+  overrideInfo = pRenderPass->renderingInfo;
+  overrideInfo.pDepthAttachment = &overrideAttachment;
+}
+
+void core::MRenderer::executePresentPass(VkCommandBuffer commandBuffer, VkDescriptorSet sceneSet) {
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::Present);
   renderView.pCurrentPass = pRenderPass;
 
@@ -418,7 +433,7 @@ void core::MRenderer::renderFrame() {
   updateSceneUBO(renderView.frameInFlight);
 
   for (uint8_t cascadeIndex = 0; cascadeIndex < config::shadowCascades; ++cascadeIndex) {
-    executeDynamicShadowPass(cmdBuffer, cascadeIndex, frameSet);
+    executeShadowPass(cmdBuffer, cascadeIndex, frameSet);
   }
 
   /* 3. Main scene */
@@ -427,22 +442,25 @@ void core::MRenderer::renderFrame() {
   updateSceneUBO(renderView.frameInFlight);
 
   // G-Buffer passes
-  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::OpaqueCullBack, frameSet);
-  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::OpaqueCullNone, frameSet);
-  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::BlendCullNone, frameSet);
+  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::OpaqueCullBack, frameSet);
+  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::OpaqueCullNone, frameSet);
+  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::BlendCullNone, frameSet);
 
   // Deferred rendering pass using G-Buffer collected data
-  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::PBR, frameSet, material.pGBuffer, true);
+  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::PBR, frameSet, material.pGBuffer, true);
 
   // Additional front rendering passes
-  executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::Skybox, frameSet);
+  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::Skybox, frameSet);
 
-  // Generate HDR mip maps for post processing
-  updatePostProcessTarget(cmdBuffer, material.pGPBR->pBaseColor, postprocess.pTexture);
+  /* 4. Postprocessing pass */
 
-  /* 4. Final presentation pass */
+  for (uint8_t imageViewIndex = 0; imageViewIndex < postprocess.pDownsampleTexture->texture.levelCount; ++imageViewIndex) {
+    executeDownsamplingPass(cmdBuffer, imageViewIndex, frameSet);
+  }
 
-  executeDynamicPresentPass(cmdBuffer, frameSet);
+  /* 5. Final presentation pass */
+
+  executePresentPass(cmdBuffer, frameSet);
 
   // End writing commands and prepare to submit buffer to rendering queue
   if (vkEndCommandBuffer(cmdBuffer) != VK_SUCCESS) {
@@ -464,32 +482,6 @@ void core::MRenderer::renderFrame() {
   submitInfo.pCommandBuffers = &command.buffersGraphics[renderView.frameInFlight];  // Submit command buffer recorded previously
   submitInfo.signalSemaphoreCount = 1;
   submitInfo.pSignalSemaphores = signalSems;  // Signal these after rendering is finished
-
-  //VkSemaphoreSubmitInfo waitSemaphoreInfo{};
-  //waitSemaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-  //waitSemaphoreInfo.semaphore = sync.semImgAvailable[renderView.frameInFlight];
-  //waitSemaphoreInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-  //waitSemaphoreInfo.deviceIndex = 0;
-
-  //VkSemaphoreSubmitInfo signalSemaphoreInfo{};
-  //signalSemaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-  //signalSemaphoreInfo.semaphore = sync.semRenderFinished[renderView.frameInFlight];
-  //signalSemaphoreInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-  //signalSemaphoreInfo.deviceIndex = 0;
-
-  //VkCommandBufferSubmitInfo cmdBufferInfo{};
-  //cmdBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-  //cmdBufferInfo.commandBuffer = command.buffersGraphics[renderView.frameInFlight];
-  //cmdBufferInfo.deviceMask = 0;
-
-  //VkSubmitInfo2 submitInfo2{};
-  //submitInfo2.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
-  //submitInfo2.waitSemaphoreInfoCount = 1;
-  //submitInfo2.pWaitSemaphoreInfos = &waitSemaphoreInfo;
-  //submitInfo2.signalSemaphoreInfoCount = 1;
-  //submitInfo2.pSignalSemaphoreInfos = &signalSemaphoreInfo;
-  //submitInfo2.commandBufferInfoCount = 1;
-  //submitInfo2.pCommandBufferInfos = &cmdBufferInfo;
 
   // Submit an array featuring command buffers to graphics queue and signal
   // Fence for CPU to wait for execution
