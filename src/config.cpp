@@ -11,7 +11,7 @@ float config::viewDistance = 1000.0f;
 float config::FOV = 90.0f;
 bool config::bDevMode = false;
 float config::pitchLimit = glm::radians(88.0f);
-uint32_t config::shadowResolution = 4096u;
+uint32_t config::shadowResolution = 2048u;
 uint32_t config::shadowCascades = 3u;
 
 float config::getAspectRatio() { return renderWidth / (float)renderHeight; }

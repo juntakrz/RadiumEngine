@@ -65,7 +65,6 @@ enum class EComputeJob {
 enum class EComputePipeline {
   Null,
   ImageLUT,
-  ImagePPMipMap,
   ImageEnvIrradiance,
   ImageEnvFilter
 };

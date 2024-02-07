@@ -81,10 +81,9 @@ class MRenderer {
   } scene;
 
   struct {
-    struct {
-      RComputeJobInfo ppMipMap;
-    } computeJobs;
-  } postprocessing;
+    RTexture* pTexture = nullptr;
+    VkImageBlit2 blitRegion;
+  } postprocess;
 
   // swapchain data
   struct {
@@ -313,13 +312,15 @@ public:
                             std::vector<RTexture*>* pInTextures,
                             bool convertBackToRenderTargets);
 
-  TResult generateMipMaps(RTexture* pTexture, int32_t mipLevels,
-                          VkFilter filter = VK_FILTER_LINEAR);
+  TResult generateMipMaps(VkCommandBuffer cmdBuffer, RTexture* pTexture,
+                          int32_t mipLevels, VkFilter filter = VK_FILTER_LINEAR);
 
   // generates a single mip map from a previous level at a set layer
   TResult generateSingleMipMap(VkCommandBuffer cmdBuffer, RTexture* pTexture,
                                uint32_t mipLevel, uint32_t layer = 0,
                                VkFilter filter = VK_FILTER_LINEAR);
+
+  void updatePostProcessTarget(VkCommandBuffer cmdBuffer, RTexture* pSrcTexture, RTexture* pDstTexture);
 
   VkCommandPool getCommandPool(ECmdType type);
   VkQueue getCommandQueue(ECmdType type);
@@ -489,9 +490,6 @@ public:
   // ***COMPUTE
   //
  private:
-  // Add images to be processed to compute descriptor set, can be added at offsets
-  void setDefaultComputeJobInfo();
-
   void updateComputeImageSet(std::vector<RTexture*>* pInImages, std::vector<RTexture*>* pInSamplers = nullptr,
                              const bool useExtraImageViews = false, const bool useExtraSamplerViews = false);
   void executeComputeImage(VkCommandBuffer commandBuffer, EComputePipeline pipeline);
@@ -500,8 +498,7 @@ public:
 
  public:
   void queueComputeJob(RComputeJobInfo* pInfo);
-  void executeComputeJobImmediate(RComputeJobInfo* pInfo);
-  void executeComputeJobImmediate2(RComputeJobInfo* pInfo, const bool beginBuffer, const bool restartBuffer);
+  void executeComputeJobImmediate(RComputeJobInfo* pInfo, const bool beginBuffer);
   void executeQueuedComputeJobs();
 
   //

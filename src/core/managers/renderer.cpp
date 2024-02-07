@@ -358,18 +358,15 @@ TResult core::MRenderer::createImageTargets() {
   rtName = RTGT_POSTPROCESS;
   textureInfo = RTextureInfo{};
   textureInfo.name = rtName;
-  textureInfo.width = swapchain.imageExtent.width / 2;
-  textureInfo.height = swapchain.imageExtent.height / 2;
+  textureInfo.width = config::renderWidth / 2;
+  textureInfo.height = config::renderHeight / 2;
   textureInfo.isCubemap = false;
   textureInfo.format = core::vulkan::formatHDR16;
   textureInfo.layerCount = 1u;
-  textureInfo.mipLevels =
-      math::getMipLevels((textureInfo.width < textureInfo.height) ? textureInfo.width : textureInfo.height);
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
+  textureInfo.mipLevels = 5u;     // A small number of mip maps should be enough for post processing
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-  textureInfo.usageFlags = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-                           VK_IMAGE_USAGE_STORAGE_BIT |
-                           VK_IMAGE_USAGE_SAMPLED_BIT;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -640,7 +637,16 @@ TResult core::MRenderer::setRendererDefaults() {
   // Set default lighting UBO data
   lighting.data.prefilteredCubeMipLevels = (float)math::getMipLevels(core::vulkan::envFilterExtent);
 
-  setDefaultComputeJobInfo();
+  // Set default post processing info
+  postprocess.pTexture = core::resources.getTexture(RTGT_POSTPROCESS);
+  postprocess.blitRegion.sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2;
+  postprocess.blitRegion.srcOffsets[0] = {0, 0, 0};
+  postprocess.blitRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  postprocess.blitRegion.srcSubresource.baseArrayLayer = 0;
+  postprocess.blitRegion.srcSubresource.layerCount = 1;
+  postprocess.blitRegion.srcSubresource.mipLevel = 0;
+  postprocess.blitRegion.dstOffsets[0] = {0, 0, 0};
+  postprocess.blitRegion.dstSubresource = postprocess.blitRegion.srcSubresource;
 
   return RE_OK;
 }

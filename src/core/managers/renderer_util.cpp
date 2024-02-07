@@ -280,7 +280,7 @@ TResult core::MRenderer::copyImage(VkCommandBuffer cmdBuffer, VkImage srcImage,
 
   vkCmdCopyImage(cmdBuffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                  dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
-                 &swapchain.copyRegion);
+                 &copyRegion);
 
   setImageLayout(cmdBuffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                  srcImageLayout, srcRange);
@@ -474,8 +474,7 @@ void core::MRenderer::convertRenderTargets(VkCommandBuffer cmdBuffer,
   }
 }
 
-TResult core::MRenderer::generateMipMaps(RTexture* pTexture, int32_t mipLevels,
-                                         VkFilter filter) {
+TResult core::MRenderer::generateMipMaps(VkCommandBuffer cmdBuffer, RTexture* pTexture, int32_t mipLevels, VkFilter filter) {
   if (!pTexture) {
     RE_LOG(Error, "Can't generate mip maps, no texture was provided.");
     return RE_ERROR;
@@ -502,9 +501,6 @@ TResult core::MRenderer::generateMipMaps(RTexture* pTexture, int32_t mipLevels,
   } else {
     range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
   }
-
-  VkCommandBuffer cmdBuffer = createCommandBuffer(
-      ECmdType::Graphics, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
 
   // transition texture to DST layout if needed
   if (pTexture->texture.imageLayout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
@@ -535,10 +531,8 @@ TResult core::MRenderer::generateMipMaps(RTexture* pTexture, int32_t mipLevels,
 
     imageMemoryBarrier.subresourceRange.baseArrayLayer = j;
 
-
     blit.srcSubresource.aspectMask = range.aspectMask;
     blit.srcSubresource.baseArrayLayer = j;
-
     blit.dstSubresource.aspectMask = range.aspectMask;
     blit.dstSubresource.baseArrayLayer = j;
 
@@ -587,9 +581,8 @@ TResult core::MRenderer::generateMipMaps(RTexture* pTexture, int32_t mipLevels,
                          0, nullptr, 1, &imageMemoryBarrier);
   }
 
-  flushCommandBuffer(cmdBuffer, ECmdType::Graphics, true);
-
   pTexture->texture.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  pTexture->texture.imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
   return RE_OK;
 }
@@ -739,6 +732,47 @@ TResult core::MRenderer::generateSingleMipMap(VkCommandBuffer cmdBuffer,
   vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
   return RE_OK;
+}
+
+void core::MRenderer::updatePostProcessTarget(VkCommandBuffer cmdBuffer, RTexture* pSrcTexture, RTexture* pDstTexture) {
+  postprocess.blitRegion.srcOffsets[1] = { static_cast<int32_t>(pSrcTexture->texture.width), static_cast<int32_t>(pSrcTexture->texture.height), 1 };
+  postprocess.blitRegion.dstOffsets[1] = { static_cast<int32_t>(pDstTexture->texture.width), static_cast<int32_t>(pDstTexture->texture.height), 1 };
+
+  VkBlitImageInfo2 blitInfo{};
+  blitInfo.sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2;
+  blitInfo.srcImage = pSrcTexture->texture.image;
+  blitInfo.srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+  blitInfo.dstImage = pDstTexture->texture.image;
+  blitInfo.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  blitInfo.pRegions = &postprocess.blitRegion;
+  blitInfo.regionCount = 1;
+  blitInfo.filter = VK_FILTER_LINEAR;
+
+  VkImageLayout srcLayout = pSrcTexture->texture.imageLayout;
+  VkImageLayout dstLayout = pDstTexture->texture.imageLayout;
+  const uint32_t dstLevelCount = pDstTexture->texture.levelCount;
+
+  VkImageSubresourceRange subRange{};
+  subRange.aspectMask = pSrcTexture->texture.aspectMask;
+  subRange.baseArrayLayer = 0;
+  subRange.layerCount = 1;
+  subRange.baseMipLevel = 0;
+
+  subRange.levelCount = 1;
+  setImageLayout(cmdBuffer, pSrcTexture, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, subRange);
+
+  subRange.levelCount = dstLevelCount;
+  setImageLayout(cmdBuffer, pDstTexture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, subRange);
+
+  vkCmdBlitImage2(cmdBuffer, &blitInfo);
+
+  subRange.levelCount = 1;
+  setImageLayout(cmdBuffer, pSrcTexture, srcLayout, subRange);
+
+  generateMipMaps(cmdBuffer, pDstTexture, pDstTexture->texture.levelCount);
+
+  //subRange.levelCount = dstLevelCount;
+  //setImageLayout(cmdBuffer, pDstTexture, dstLayout, subRange);
 }
 
 VkCommandPool core::MRenderer::getCommandPool(ECmdType type) {

@@ -437,8 +437,8 @@ void core::MRenderer::renderFrame() {
   // Additional front rendering passes
   executeDynamicRenderingPass(cmdBuffer, EDynamicRenderingPass::Skybox, frameSet);
 
-  // TODO: descriptor set / vertex buffer bindings lost here?
-  //executeComputeJobImmediate2(&postprocessing.computeJobs.ppMipMap, false, true);
+  // Generate HDR mip maps for post processing
+  updatePostProcessTarget(cmdBuffer, material.pGPBR->pBaseColor, postprocess.pTexture);
 
   /* 4. Final presentation pass */
 

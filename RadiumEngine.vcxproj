@@ -387,7 +387,6 @@
     <None Include="content_src\shaders\cs_brdfLUT.comp" />
     <None Include="content_src\shaders\cs_envFilter.comp" />
     <None Include="content_src\shaders\cs_envIrrad.comp" />
-    <None Include="content_src\shaders\cs_ppMipMap.comp" />
     <None Include="content_src\shaders\fs_gbuffer.frag" />
     <None Include="content_src\shaders\fs_pbr.frag" />
     <None Include="content_src\shaders\fs_present.frag" />

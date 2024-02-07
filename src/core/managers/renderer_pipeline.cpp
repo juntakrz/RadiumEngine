@@ -194,36 +194,6 @@ TResult core::MRenderer::createComputePipelines() {
   }
 
   //
-  // Compute Image pipeline for mipmapping R16G16B16A16_SFLOAT image
-  //
-  {
-    VkPipelineShaderStageCreateInfo shaderStage =
-        loadShader("cs_ppMipMap.spv", VK_SHADER_STAGE_COMPUTE_BIT);
-    computePipelineInfo.stage = shaderStage;
-
-    VkPipelineRenderingCreateInfo pipelineRenderingInfo{};
-    pipelineRenderingInfo.sType =
-        VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
-    pipelineRenderingInfo.colorAttachmentCount = 1;
-    pipelineRenderingInfo.pColorAttachmentFormats = &core::vulkan::formatHDR16;
-    pipelineRenderingInfo.viewMask = 0;
-
-    system.computePipelines.emplace(EComputePipeline::ImagePPMipMap,
-      VK_NULL_HANDLE);
-
-    if (vkCreateComputePipelines(
-            logicalDevice.device, VK_NULL_HANDLE, 1, &computePipelineInfo,
-            nullptr, &getComputePipeline(EComputePipeline::ImagePPMipMap)) !=
-        VK_SUCCESS) {
-      RE_LOG(Critical, "Failed to create Compute Image 'Postprocessing MipMap' pipeline.");
-
-      return RE_CRITICAL;
-    }
-
-    vkDestroyShaderModule(logicalDevice.device, shaderStage.module, nullptr);
-  }
-
-  //
   // Compute Image pipeline for processing environmental irradiance cubemap
   //
   {
