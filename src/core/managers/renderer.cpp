@@ -643,6 +643,29 @@ TResult core::MRenderer::setRendererDefaults() {
 
   // Set default post processing info
   postprocess.pDownsampleTexture = core::resources.getTexture(RTGT_PPDOWNSMPL);
+  postprocess.subRange.aspectMask = postprocess.pDownsampleTexture->texture.aspectMask;
+  postprocess.subRange.baseArrayLayer = 0u;
+  postprocess.subRange.layerCount = 1u;
+  postprocess.subRange.baseMipLevel = 0u;
+  postprocess.subRange.levelCount = 1u;
+
+  postprocess.viewports.resize(postprocess.pDownsampleTexture->texture.levelCount);
+  postprocess.scissors.resize(postprocess.pDownsampleTexture->texture.levelCount);
+  
+  for (uint8_t PPIndex = 0; PPIndex < postprocess.pDownsampleTexture->texture.levelCount; ++PPIndex) {
+    const uint32_t currentWidth = postprocess.pDownsampleTexture->texture.height / (1 << PPIndex);
+    const uint32_t currentHeight = postprocess.pDownsampleTexture->texture.width / (1 << PPIndex);
+
+    postprocess.viewports[PPIndex].x = 0.0f;
+    postprocess.viewports[PPIndex].y = static_cast<float>(currentHeight);
+    postprocess.viewports[PPIndex].width = static_cast<float>(currentWidth);
+    postprocess.viewports[PPIndex].height = -postprocess.viewports[PPIndex].y;
+    postprocess.viewports[PPIndex].minDepth = 0.0f;
+    postprocess.viewports[PPIndex].maxDepth = 1.0f;
+
+    postprocess.scissors[PPIndex].offset = {0, 0};
+    postprocess.scissors[PPIndex].extent = {currentHeight, currentWidth};
+  }
 
   return RE_OK;
 }

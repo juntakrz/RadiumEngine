@@ -83,6 +83,10 @@ class MRenderer {
   struct RPostProcessData {
     RTexture* pDownsampleTexture = nullptr;
     RMaterial* pDownsampleMaterial = nullptr;
+
+    VkImageSubresourceRange subRange;
+    std::vector<VkViewport> viewports;
+    std::vector<VkRect2D> scissors;
   } postprocess;
 
   // swapchain data

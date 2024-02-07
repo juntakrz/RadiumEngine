@@ -309,6 +309,9 @@ void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uin
 void core::MRenderer::executeDownsamplingPass(VkCommandBuffer commandBuffer, const uint32_t imageViewIndex, VkDescriptorSet sceneSet) {
   // Used as a shader coordinate into either PBR texture or downsampling texture and its mip level
   postprocess.pDownsampleMaterial->pushConstantBlock.baseColorTextureSet = imageViewIndex;
+  postprocess.subRange.baseMipLevel = imageViewIndex;
+
+  setImageLayout(commandBuffer, postprocess.pDownsampleTexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, postprocess.subRange);
 
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::PPDownsample);
   renderView.pCurrentPass = pRenderPass;
@@ -318,7 +321,19 @@ void core::MRenderer::executeDownsamplingPass(VkCommandBuffer commandBuffer, con
 
   VkRenderingInfo overrideInfo{};
   overrideInfo = pRenderPass->renderingInfo;
-  overrideInfo.pDepthAttachment = &overrideAttachment;
+  overrideInfo.pColorAttachments = &overrideAttachment;
+  overrideInfo.renderArea = postprocess.scissors[imageViewIndex];
+
+  vkCmdBeginRendering(commandBuffer, &overrideInfo);
+
+  vkCmdSetViewport(commandBuffer, imageViewIndex, static_cast<uint32_t>(postprocess.viewports.size()), postprocess.viewports.data());
+  vkCmdSetScissor(commandBuffer, imageViewIndex, static_cast<uint32_t>(postprocess.scissors.size()), postprocess.scissors.data());
+
+  //
+
+  vkCmdEndRendering(commandBuffer);
+
+  setImageLayout(commandBuffer, postprocess.pDownsampleTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, postprocess.subRange);
 }
 
 void core::MRenderer::executePresentPass(VkCommandBuffer commandBuffer, VkDescriptorSet sceneSet) {
