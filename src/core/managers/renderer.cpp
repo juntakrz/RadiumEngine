@@ -525,6 +525,10 @@ TResult core::MRenderer::createDepthTargets() {
   textureInfo.memoryFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
   textureInfo.vmaMemoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 
+  textureInfo.samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  textureInfo.samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  textureInfo.samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+
   pNewTexture = core::resources.createTexture(&textureInfo);
 
   if (!pNewTexture) {

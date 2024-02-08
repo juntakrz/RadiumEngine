@@ -1,6 +1,8 @@
+#define MAXJOINTS 128
 #define MAXLIGHTS 32
 #define MAXSHADOWCASTERS 4
 #define MAXCASCADES 3
+#define SHADOWFOVMULT 0.5
 #define SUNLIGHTINDEX 0
 
 #define COLORMAP	0
@@ -17,9 +19,9 @@ const float TWO_PI = M_PI * 2.0;
 const float HALF_PI = M_PI * 0.5;
 
 // shadow cascade data
-const float cascadeDistance0 = 1.15;
-const float cascadeDistance1 = cascadeDistance0 * 3;
-const float cascadeDistance2 = cascadeDistance1 * 3;
+const float cascadeDistance0 = 2.0;
+const float cascadeDistance1 = cascadeDistance0 * 2.0;
+const float cascadeDistance2 = cascadeDistance1 * 2.0;
 
 float max3(vec3 v) {
   return max(max(v.x, v.y), v.z);

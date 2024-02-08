@@ -133,7 +133,7 @@ vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, 
 
 float filterPCF(vec3 shadowCoord, vec2 offset, uint distanceIndex) {
 	float shadowDepth = texture(arraySamplers[lighting.samplerIndex[SUNLIGHTINDEX]], vec3(shadowCoord.st + offset, distanceIndex)).r;
-	shadowDepth += 0.0001 * float(distanceIndex + 2);
+	shadowDepth += 0.00001 * float(distanceIndex + 1);
 
 	if (shadowCoord.z > shadowDepth) {
 		return 0.1;
@@ -154,7 +154,7 @@ float getShadow(vec3 fragmentPosition, uint distanceIndex) {
 	float FOVMultiplier = 1.0;
 
 	for (uint i = 0; i < distanceIndex; i++) {
-		FOVMultiplier *= 0.25;
+		FOVMultiplier *= SHADOWFOVMULT;
 	}
 
 	mat4 newProjection = lighting.lightOrthoMatrix;

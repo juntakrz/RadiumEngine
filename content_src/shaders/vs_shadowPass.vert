@@ -1,5 +1,6 @@
 #version 460
-#define RE_MAXJOINTS 128
+
+#include "include/common.glsl"
 
 layout(binding = 0) uniform UBOView {
 	mat4 view;
@@ -17,7 +18,7 @@ layout (set = 1, binding = 1) uniform UBOMesh1 {
 } node;
 
 layout (set = 1, binding = 2) uniform UBOMesh2 {
-	mat4 jointMatrix[RE_MAXJOINTS];
+	mat4 jointMatrix[MAXJOINTS];
 } skin;
 
 layout(location = 0) in vec3 inPos;
@@ -51,15 +52,15 @@ void main(){
 	worldPos = vec4(worldPos.xyz / worldPos.w, 1.0);
 	outUV0 = inUV0;
 
-	float multiplier = 1.0;
+	float FOVMultiplier = 1.0;
 
 	for (uint i = 0; i < pushBlock.cascadeIndex; i++) {
-		multiplier *= 0.25;
+		FOVMultiplier *= SHADOWFOVMULT;
 	}
 
 	mat4 newProjection = scene.projection;
-	newProjection[0][0] *= multiplier;	
-	newProjection[1][1] *= multiplier;
+	newProjection[0][0] *= FOVMultiplier;	
+	newProjection[1][1] *= FOVMultiplier;
 
 	gl_Position = newProjection * scene.view * worldPos;
 }

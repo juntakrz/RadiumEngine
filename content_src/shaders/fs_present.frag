@@ -34,6 +34,6 @@ layout (location = 0) out vec4 outColor;
 void main() {
 	vec3 baseColor = texture(samplers[material.samplerIndex[COLORMAP]], inUV).rgb;
 	vec3 bloomColor = texture(samplers[material.samplerIndex[BLOOMMAP]], inUV).rgb;
-	baseColor = mix(baseColor, bloomColor, 0.1);
+	baseColor = mix(baseColor, bloomColor, 0.15);
 	outColor = vec4(baseColor, 1.0);
 }

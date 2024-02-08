@@ -32,7 +32,6 @@
 #define RMAT_GBUFFER            "RMat_GBuffer"
 #define RMAT_GPBR               "RMat_GPBR"
 #define RMAT_SHADOW             "RMat_Shadow"
-#define RMAT_PPBLOOM         "RMat_PPBloom"
 
 // default models
 #define RMDL_SKYBOX             "RMdl_SkyBox"       // default cube skybox using cubemap
