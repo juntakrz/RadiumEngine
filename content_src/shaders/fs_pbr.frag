@@ -116,7 +116,7 @@ vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, 
 
 float filterPCF(vec3 shadowCoord, vec2 offset, uint distanceIndex) {
 	float shadowDepth = texture(arraySamplers[lighting.samplerIndex[SUNLIGHTINDEX]], vec3(shadowCoord.st + offset, distanceIndex)).r;
-	shadowDepth += 0.00001 * float(distanceIndex + 1);
+	shadowDepth += 0.00001 * float(distanceIndex + 2);
 
 	if (shadowCoord.z > shadowDepth) {
 		return 0.1;
@@ -155,7 +155,7 @@ float getShadow(vec3 fragmentPosition, uint distanceIndex) {
 	
 	for (int x = -range; x <= range; x++) {
 		for (int y = -range; y <= range; y++) {
-			vec2 offset = vec2(dx*x, dy*y);
+			vec2 offset = vec2(dx * x, dy * y);
 			shadow += filterPCF(shadowCoord, offset, distanceIndex);
 			count++;
 		}
@@ -169,7 +169,7 @@ void main() {
 	const float emissiveFactor = 1.0;
 	vec3 f0 = vec3(0.04);
 
-	// retrieve G-buffer data
+	// Retrieve G-buffer data
 	vec3 worldPos = texture(samplers[material.samplerIndex[POSITIONMAP]], inUV0).xyz;
 	vec4 baseColor = texture(samplers[material.samplerIndex[COLORMAP]], inUV0);
 	vec3 normal = texture(samplers[material.samplerIndex[NORMALMAP]], inUV0).rgb;
@@ -178,7 +178,6 @@ void main() {
 	float ao = texture(samplers[material.samplerIndex[PHYSMAP]], inUV0).b;
 	vec3 emissive = texture(samplers[material.samplerIndex[EMISMAP]], inUV0).rgb;
 
-	// do PBR
 	vec3 diffuseColor = baseColor.rgb * (vec3(1.0) - f0);
 	diffuseColor *= 1.0 - metallic;
 		
@@ -186,7 +185,7 @@ void main() {
 
 	vec3 specularColor = mix(f0, baseColor.rgb, metallic);
 
-	// Compute reflectance.
+	// Compute reflectance
 	float reflectance = max(max(specularColor.r, specularColor.g), specularColor.b);
 
 	// For typical incident reflectance range (between 4% to 100%) set the grazing reflectance to 100% for typical fresnel effect.
@@ -232,7 +231,6 @@ void main() {
 	if (relativeLength > cascadeDistance2) distanceIndex = 3;
 
 	color *= getShadow(worldPos, distanceIndex);
-
 	color += emissive;
 	
 	outColor = vec4(color, baseColor.a);

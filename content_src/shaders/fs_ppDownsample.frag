@@ -56,6 +56,7 @@ void main() {
     The weights are the distributed, so that the sum of j,k,l,m (e.g.)
     contribute 0.5 to the final color output. The code below is written
     to effectively yield this sum. We get: 0.125 * 5 + 0.03125 * 4 + 0.0625 * 4 = 1 */
+
     vec3 color = e * 0.125;
     color += (a + c + g + i) * 0.03125;
     color += (b + d + f + h) * 0.0625;

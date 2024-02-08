@@ -36,6 +36,9 @@ void main() {
     vec3 h = textureLod(samplers[textureIndex], vec2(inUV.x, inUV.y + texelSize.y), LOD).rgb;
     vec3 i = textureLod(samplers[textureIndex], vec2(inUV.x + texelSize.x, inUV.y + texelSize.y), LOD).rgb;
 
+    // Additional sample from yet not processed downsampled mip level for glow effect
+    e += textureLod(samplers[textureIndex], vec2(inUV.x, inUV.y), LOD - 1).rgb;
+
 	/* Apply weighted distribution, by using a 3x3 tent filter:
     1		| 1 2 1 |
     --		| 2 4 2 |
