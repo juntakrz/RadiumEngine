@@ -4,8 +4,8 @@
     "L_Sun": {
       "name": "L_Sun",
       "type": 0,
-      "translation": [ -45.0, 150.0, -80.0 ],
-      "direction": [ -45.0, 150.0, -80.0 ],
+      "translation": [ -99.0, 190.0, 60.0 ],
+      "direction": [ -99.0, 190.0, 60.0 ],
       "color": [ 1.0, 1.0, 1.0 ],
       "intensity": 1.6,
 	  "shadows": true

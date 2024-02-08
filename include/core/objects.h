@@ -291,8 +291,7 @@ struct RMaterialInfo {
   float metallicFactor = 0.0f;
   float roughnessFactor = 1.0f;
   float bumpIntensity = 1.0f;
-  float emissiveIntensity = 0.0f;
-  glm::vec4 colorIntensity = glm::vec4(1.0f);
+  glm::vec4 emissiveIntensity = glm::vec4(0.0f);
 
   // if 'Null' - pipeline is determined using material properties
   uint32_t passFlags = EDynamicRenderingPass::Null;
@@ -444,8 +443,7 @@ struct RSceneFragmentPCB {
   float alphaMode;
   float alphaCutoff;
   float bumpIntensity;
-  float emissiveIntensity;                // 48
-  glm::vec4 colorIntensity;               // 64
+  glm::vec4 emissiveIntensity;            // 48
   uint32_t samplerIndex[RE_MAXTEXTURES];
 };
 

@@ -3,6 +3,7 @@
 #extension GL_EXT_scalar_block_layout : require
 
 #include "include/common.glsl"
+#include "include/fragment.glsl"
 
 layout (location = 0) in vec2 inUV0;
 
@@ -36,24 +37,6 @@ layout (set = 0, binding = 4) uniform sampler2D BRDFLUTMap;
 // PBR Input bindings
 layout (set = 2, binding = 0) uniform sampler2D samplers[];
 layout (set = 2, binding = 0) uniform sampler2DArray arraySamplers[];
-
-layout (push_constant) uniform Material {
-	layout(offset = 16) 
-	int baseColorTextureSet;
-	int physicalDescriptorTextureSet;
-	int normalTextureSet;	
-	int occlusionTextureSet;		// 16
-	int emissiveTextureSet;
-	int extraTextureSet;
-	float metallicFactor;	
-	float roughnessFactor;			// 32
-	float alphaMask;	
-	float alphaMaskCutoff;
-	float bumpIntensity;
-	float emissiveIntensity;		// 48
-	vec4 colorIntensity;			// 64
-	uint samplerIndex[MAXTEXTURES];
-} material;
 
 vec3 ACESTonemap(vec3 x) {
     float a = 2.51;
@@ -246,6 +229,7 @@ void main() {
 	uint distanceIndex = 0;
 	if (relativeLength > cascadeDistance0) distanceIndex = 1;
 	if (relativeLength > cascadeDistance1) distanceIndex = 2;
+	if (relativeLength > cascadeDistance2) distanceIndex = 3;
 
 	color *= getShadow(worldPos, distanceIndex);
 

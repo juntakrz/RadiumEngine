@@ -2,6 +2,7 @@
 #extension GL_EXT_nonuniform_qualifier : require
 
 #include "include/common.glsl"
+#include "include/fragment.glsl"
 
 layout (location = 0) in vec3 inWorldPos;
 layout (location = 1) in vec3 inNormal;
@@ -17,24 +18,6 @@ layout (set = 0, binding = 0) uniform UBOScene {
 } scene;
 
 layout (set = 2, binding = 0) uniform sampler2D samplers[];
-
-layout (push_constant) uniform Material {
-	layout(offset = 16) 
-	int baseColorTextureSet;
-	int physicalDescriptorTextureSet;
-	int normalTextureSet;	
-	int occlusionTextureSet;		// 16
-	int emissiveTextureSet;
-	int extraTextureSet;
-	float metallicFactor;	
-	float roughnessFactor;			// 32
-	float alphaMask;	
-	float alphaMaskCutoff;
-	float bumpIntensity;
-	float emissiveIntensity;		// 48
-	vec4 colorIntensity;			// 64
-	uint samplerIndex[MAXTEXTURES];
-} material;
 
 layout (location = 0) out vec4 outPosition;
 layout (location = 1) out vec4 outColor;
@@ -77,7 +60,6 @@ void main() {
 	// 2. extract color / diffuse / albedo
 	if (material.baseColorTextureSet > -1) {
 		outColor = texture(samplers[material.samplerIndex[COLORMAP]], material.baseColorTextureSet == 0 ? inUV0 : inUV1);
-		outColor.rgb *= material.colorIntensity.rgb;
 	}
 
 	// TODO: discard on alphaMask == 1.0 here and depth-sort everything, unless requested by the material

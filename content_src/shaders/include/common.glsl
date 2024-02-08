@@ -1,12 +1,13 @@
 #define MAXJOINTS 128
 #define MAXLIGHTS 32
 #define MAXSHADOWCASTERS 4
-#define MAXCASCADES 3
+#define MAXCASCADES 4
 #define SHADOWFOVMULT 0.5
 #define SUNLIGHTINDEX 0
 
 #define COLORMAP	0
 #define NORMALMAP	1
+#define BLOOMMAP	1
 #define PHYSMAP		2
 #define AOMAP       3
 #define POSITIONMAP	3

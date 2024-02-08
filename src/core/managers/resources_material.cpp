@@ -27,15 +27,10 @@ void core::MResources::initialize() {
   RMaterialInfo materialInfo{};
   materialInfo.name = "default";
   materialInfo.passFlags = EDynamicRenderingPass::OpaqueCullBack;
-  materialInfo.textures.baseColor = RE_DEFAULTTEXTURE;
-  materialInfo.textures.normal = "default/default_normal.ktx2";
-  materialInfo.textures.metalRoughness =
-      "default/default_metallicRoughness.ktx2";
-  materialInfo.textures.occlusion = "default/default_occlusion.ktx2";
-  materialInfo.texCoordSets.baseColor = 0;
-  materialInfo.texCoordSets.normal = 0;
-  materialInfo.texCoordSets.metalRoughness = 0;
-  materialInfo.texCoordSets.occlusion = 0;
+  materialInfo.textures.baseColor = RE_WHITETEXTURE;
+  materialInfo.emissiveIntensity = glm::vec4(0.0f, 4.0f, 0.0f, 1.0f);
+  materialInfo.metallicFactor = 0.1f;
+  materialInfo.roughnessFactor = 0.6f;
 
   createMaterial(&materialInfo);
 
@@ -174,7 +169,6 @@ RMaterial* core::MResources::createMaterial(
   newMat.pushConstantBlock.alphaCutoff = pDesc->alphaCutoff;
   newMat.pushConstantBlock.bumpIntensity = pDesc->bumpIntensity;
   newMat.pushConstantBlock.emissiveIntensity = pDesc->emissiveIntensity;
-  newMat.pushConstantBlock.colorIntensity = pDesc->colorIntensity;
 
   // disable reading from texture in shader if no texture is available
   newMat.pushConstantBlock.baseColorTextureSet = newMat.pBaseColor ? pDesc->texCoordSets.baseColor : -1;

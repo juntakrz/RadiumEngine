@@ -908,14 +908,14 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
   system.bindings.emplace_back(bindInfo);
 
   // TODO: implement indirect draw command properly
-  VkDrawIndexedIndirectCommand drawCommand{};
+  /*VkDrawIndexedIndirectCommand drawCommand{};
   drawCommand.firstInstance = 0;
   drawCommand.instanceCount = 1;
   drawCommand.vertexOffset = scene.currentVertexOffset;
   drawCommand.firstIndex = scene.currentIndexOffset;
   drawCommand.indexCount = pModel->m_indexCount;
 
-  system.drawCommands.emplace_back(drawCommand);
+  system.drawCommands.emplace_back(drawCommand);*/
   // TODO
 
   pEntity->setRendererBindingIndex(

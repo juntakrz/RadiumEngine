@@ -396,6 +396,7 @@
     <None Include="content_src\shaders\fs_skybox.frag" />
     <None Include="content_src\shaders\gs_shadowPass.geom" />
     <None Include="content_src\shaders\include\common.glsl" />
+    <None Include="content_src\shaders\include\fragment.glsl" />
     <None Include="content_src\shaders\vs_brdfLUT.vert" />
     <None Include="content_src\shaders\vs_scene.vert" />
     <None Include="content_src\shaders\vs_quad.vert" />

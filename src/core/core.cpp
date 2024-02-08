@@ -71,8 +71,9 @@ void core::run() {
   core::actors.createPawn("sphere0");
   APawn* pPawn = core::actors.getPawn("sphere0");
   pPawn->setModel(core::world.getModel("mdlSphere"));
-  //core::renderer.bindEntity(pPawn);
-  pPawn->setLocation(-3.0f, 0.0f, 2.0f);
+  pPawn->setLocation(1.0f, -0.8f, 2.0f);
+  pPawn->setScale(0.2f);
+  pPawn->bindToRenderer();
 
   AStatic* pStatic = core::actors.createStatic("Skybox");
   pStatic->setModel(core::world.getModel(RMDL_SKYBOX));
