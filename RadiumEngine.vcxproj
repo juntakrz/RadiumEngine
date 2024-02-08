@@ -390,6 +390,7 @@
     <None Include="content_src\shaders\fs_gbuffer.frag" />
     <None Include="content_src\shaders\fs_pbr.frag" />
     <None Include="content_src\shaders\fs_ppDownsample.frag" />
+    <None Include="content_src\shaders\fs_ppUpsample.frag" />
     <None Include="content_src\shaders\fs_present.frag" />
     <None Include="content_src\shaders\fs_shadowPass.frag" />
     <None Include="content_src\shaders\fs_skybox.frag" />

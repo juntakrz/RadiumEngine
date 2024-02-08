@@ -266,10 +266,7 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
   newTexture->texture.layerCount = createInfo.arrayLayers;
   newTexture->texture.aspectMask = subRange.aspectMask;
 
-  RSamplerInfo samplerInfo{};
-  RSamplerInfo* pSamplerInfo = &samplerInfo;
-
-  if (newTexture->createSampler(pSamplerInfo) != RE_OK) {
+  if (newTexture->createSampler(&pInfo->samplerInfo) != RE_OK) {
     revert(pInfo->name.c_str());
     return nullptr;
   }

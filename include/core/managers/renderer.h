@@ -60,6 +60,7 @@ class MRenderer {
     RMaterial* pSunShadow = nullptr;
     RMaterial* pGBuffer = nullptr;
     RMaterial* pGPBR = nullptr;
+    RMaterial* pBloom = nullptr;
   } material;
 
   struct RSceneBuffers {
@@ -81,8 +82,7 @@ class MRenderer {
   } scene;
 
   struct RPostProcessData {
-    RTexture* pDownsampleTexture = nullptr;
-    RMaterial* pDownsampleMaterial = nullptr;
+    RTexture* pBloomTexture = nullptr;
 
     VkImageSubresourceRange subRange;
     std::vector<VkViewport> viewports;
@@ -524,7 +524,8 @@ public:
 
   void executeShadowPass(VkCommandBuffer commandBuffer, const uint32_t cascadeIndex, VkDescriptorSet sceneSet);
 
-  void executeDownsamplingPass(VkCommandBuffer commandBuffer, const uint32_t imageViewIndex, VkDescriptorSet sceneSet);
+  void executePostProcessSamplingPass(VkCommandBuffer commandBuffer, const uint32_t imageViewIndex, const bool upsample, VkDescriptorSet sceneSet);
+  void executePostProcessPass(VkCommandBuffer commandBuffer, VkDescriptorSet sceneSet);
 
   void executePresentPass(VkCommandBuffer commandBuffer, VkDescriptorSet sceneSet);
 

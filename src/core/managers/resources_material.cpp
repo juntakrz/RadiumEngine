@@ -95,9 +95,9 @@ void core::MResources::initialize() {
 
   // Create post process downsampling material
   materialInfo = RMaterialInfo{};
-  materialInfo.name = RMAT_PPDOWNSMPL;
+  materialInfo.name = RMAT_PPBLOOM;
   materialInfo.textures.baseColor = RTGT_GPBR;
-  materialInfo.textures.normal = RTGT_PPDOWNSMPL;
+  materialInfo.textures.normal = RTGT_PPBLOOM;
   materialInfo.alphaMode = EAlphaMode::Opaque;
   materialInfo.doubleSided = false;
   materialInfo.manageTextures = true;
@@ -109,7 +109,7 @@ void core::MResources::initialize() {
     return;
   }
 
-  core::renderer.getPostProcessingData()->pDownsampleMaterial = pMaterial;
+  core::renderer.getMaterialData()->pBloom = pMaterial;
 }
 
 uint32_t core::MResources::getFreeCombinedSamplerIndex() {

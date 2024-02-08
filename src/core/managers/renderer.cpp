@@ -382,7 +382,7 @@ TResult core::MRenderer::createImageTargets() {
 #endif
 
   // target for post process downsampling
-  rtName = RTGT_PPDOWNSMPL;
+  rtName = RTGT_PPBLOOM;
   textureInfo = RTextureInfo{};
   textureInfo.name = rtName;
   textureInfo.width = config::renderWidth / 2;
@@ -395,6 +395,10 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+  textureInfo.samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  textureInfo.samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  textureInfo.samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -642,19 +646,19 @@ TResult core::MRenderer::setRendererDefaults() {
   lighting.data.prefilteredCubeMipLevels = (float)math::getMipLevels(core::vulkan::envFilterExtent);
 
   // Set default post processing info
-  postprocess.pDownsampleTexture = core::resources.getTexture(RTGT_PPDOWNSMPL);
-  postprocess.subRange.aspectMask = postprocess.pDownsampleTexture->texture.aspectMask;
+  postprocess.pBloomTexture = core::resources.getTexture(RTGT_PPBLOOM);
+  postprocess.subRange.aspectMask = postprocess.pBloomTexture->texture.aspectMask;
   postprocess.subRange.baseArrayLayer = 0u;
   postprocess.subRange.layerCount = 1u;
   postprocess.subRange.baseMipLevel = 0u;
   postprocess.subRange.levelCount = 1u;
 
-  postprocess.viewports.resize(postprocess.pDownsampleTexture->texture.levelCount);
-  postprocess.scissors.resize(postprocess.pDownsampleTexture->texture.levelCount);
+  postprocess.viewports.resize(postprocess.pBloomTexture->texture.levelCount);
+  postprocess.scissors.resize(postprocess.pBloomTexture->texture.levelCount);
   
-  for (uint8_t PPIndex = 0; PPIndex < postprocess.pDownsampleTexture->texture.levelCount; ++PPIndex) {
-    const uint32_t currentWidth = postprocess.pDownsampleTexture->texture.height / (1 << PPIndex);
-    const uint32_t currentHeight = postprocess.pDownsampleTexture->texture.width / (1 << PPIndex);
+  for (uint8_t PPIndex = 0; PPIndex < postprocess.pBloomTexture->texture.levelCount; ++PPIndex) {
+    const uint32_t currentWidth = postprocess.pBloomTexture->texture.width / (1 << PPIndex);
+    const uint32_t currentHeight = postprocess.pBloomTexture->texture.height / (1 << PPIndex);
 
     postprocess.viewports[PPIndex].x = 0.0f;
     postprocess.viewports[PPIndex].y = static_cast<float>(currentHeight);
@@ -664,7 +668,7 @@ TResult core::MRenderer::setRendererDefaults() {
     postprocess.viewports[PPIndex].maxDepth = 1.0f;
 
     postprocess.scissors[PPIndex].offset = {0, 0};
-    postprocess.scissors[PPIndex].extent = {currentHeight, currentWidth};
+    postprocess.scissors[PPIndex].extent = {currentWidth, currentHeight};
   }
 
   return RE_OK;

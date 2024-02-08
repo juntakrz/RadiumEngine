@@ -73,8 +73,8 @@ TResult RTexture::createSampler(
     return RE_WARNING;
   }
 
-  // adapt to cubemap
-  if (texture.layerCount == 6) {
+  // adapt sampler info to cubemap
+  if (isCubemap && texture.layerCount == 6) {
     pSamplerInfo->addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     pSamplerInfo->addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     pSamplerInfo->addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;

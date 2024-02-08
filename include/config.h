@@ -14,7 +14,7 @@
 #define RTGT_DEPTH              "RT2D_Depth"        // active camera depth render target
 #define RTGT_SHADOW             "RT2D_Shadow"       // shadow render target (depth)
 #define RTGT_ENVSRC             "RT2D_EnvSrc"       // source texture for environment cubemaps
-#define RTGT_PPDOWNSMPL         "RT2D_PPDownsample" // post processing target
+#define RTGT_PPBLOOM            "RT2D_PPBloom"      // post processing target
 
 #define RTGT_ENV                "RTCube_Env"
 #define RTGT_ENVFILTER          "RTCube_EnvSkybox"
@@ -32,7 +32,7 @@
 #define RMAT_GBUFFER            "RMat_GBuffer"
 #define RMAT_GPBR               "RMat_GPBR"
 #define RMAT_SHADOW             "RMat_Shadow"
-#define RMAT_PPDOWNSMPL         "RMat_PPDownsampling"
+#define RMAT_PPBLOOM         "RMat_PPBloom"
 
 // default models
 #define RMDL_SKYBOX             "RMdl_SkyBox"       // default cube skybox using cubemap

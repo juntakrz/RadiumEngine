@@ -115,13 +115,6 @@ enum class EPrimitiveType {
   Custom
 };
 
-enum class ERenderPass {
-  Null,
-  Shadow,
-  Deferred,
-  Present
-};
-
 enum class EResourceType {
   Null,
   Sampler2D,
@@ -342,6 +335,7 @@ struct RTextureInfo {
   bool extraViews = false;  // Create views into layers and mip levels
   VkMemoryPropertyFlags memoryFlags = NULL;
   VmaMemoryUsage vmaMemoryUsage = VMA_MEMORY_USAGE_AUTO;
+  RSamplerInfo samplerInfo = RSamplerInfo{};
 };
 
 struct RViewport {

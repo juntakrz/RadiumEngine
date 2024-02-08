@@ -306,14 +306,15 @@ void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uin
   }
 }
 
-void core::MRenderer::executeDownsamplingPass(VkCommandBuffer commandBuffer, const uint32_t imageViewIndex, VkDescriptorSet sceneSet) {
+void core::MRenderer::executePostProcessSamplingPass(VkCommandBuffer commandBuffer, const uint32_t imageViewIndex,
+                                                     const bool upsample, VkDescriptorSet sceneSet) {
   // Used as a shader coordinate into either PBR texture or downsampling texture and its mip level
-  postprocess.pDownsampleMaterial->pushConstantBlock.baseColorTextureSet = imageViewIndex;
+  material.pBloom->pushConstantBlock.baseColorTextureSet = imageViewIndex;
   postprocess.subRange.baseMipLevel = imageViewIndex;
 
-  setImageLayout(commandBuffer, postprocess.pDownsampleTexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, postprocess.subRange);
+  setImageLayout(commandBuffer, postprocess.pBloomTexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, postprocess.subRange);
 
-  RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::PPDownsample);
+  RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass((upsample) ? EDynamicRenderingPass::PPUpsample : EDynamicRenderingPass::PPDownsample);
   renderView.pCurrentPass = pRenderPass;
 
   VkRenderingAttachmentInfo overrideAttachment = pRenderPass->renderingInfo.pColorAttachments[0];
@@ -326,14 +327,34 @@ void core::MRenderer::executeDownsamplingPass(VkCommandBuffer commandBuffer, con
 
   vkCmdBeginRendering(commandBuffer, &overrideInfo);
 
-  vkCmdSetViewport(commandBuffer, imageViewIndex, static_cast<uint32_t>(postprocess.viewports.size()), postprocess.viewports.data());
-  vkCmdSetScissor(commandBuffer, imageViewIndex, static_cast<uint32_t>(postprocess.scissors.size()), postprocess.scissors.data());
+  vkCmdSetViewport(commandBuffer, 0, 1, &postprocess.viewports[imageViewIndex]);
+  vkCmdSetScissor(commandBuffer, 0, 1, &postprocess.scissors[imageViewIndex]);
 
-  //
+  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pRenderPass->pipeline);
+
+  vkCmdPushConstants(commandBuffer, pRenderPass->layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(RSceneVertexPCB),
+                     sizeof(RSceneFragmentPCB), &material.pBloom->pushConstantBlock);
+
+  vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 
   vkCmdEndRendering(commandBuffer);
 
-  setImageLayout(commandBuffer, postprocess.pDownsampleTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, postprocess.subRange);
+  setImageLayout(commandBuffer, postprocess.pBloomTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, postprocess.subRange);
+}
+
+void core::MRenderer::executePostProcessPass(VkCommandBuffer commandBuffer, VkDescriptorSet sceneSet) {
+  const uint8_t levelCount = postprocess.pBloomTexture->texture.levelCount;
+
+  for (uint8_t downsampleIndex = 0; downsampleIndex < levelCount; ++downsampleIndex) {
+    executePostProcessSamplingPass(commandBuffer, downsampleIndex, false, sceneSet);
+
+  }
+
+  // Upsample from the lower mip level and write to the one above it
+  // Thus the initial index is the next to last one
+  for (uint8_t upsampleIndex = levelCount - 1; upsampleIndex > 0; --upsampleIndex) {
+    executePostProcessSamplingPass(commandBuffer, upsampleIndex - 1, true, sceneSet);
+  };
 }
 
 void core::MRenderer::executePresentPass(VkCommandBuffer commandBuffer, VkDescriptorSet sceneSet) {
@@ -469,9 +490,7 @@ void core::MRenderer::renderFrame() {
 
   /* 4. Postprocessing pass */
 
-  for (uint8_t imageViewIndex = 0; imageViewIndex < postprocess.pDownsampleTexture->texture.levelCount; ++imageViewIndex) {
-    executeDownsamplingPass(cmdBuffer, imageViewIndex, frameSet);
-  }
+  executePostProcessPass(cmdBuffer, frameSet);
 
   /* 5. Final presentation pass */
 
