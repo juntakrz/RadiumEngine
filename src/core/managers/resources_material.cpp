@@ -80,6 +80,7 @@ void core::MResources::initialize() {
   materialInfo = RMaterialInfo{};
   materialInfo.name = RMAT_GPBR;
   materialInfo.textures.baseColor = RTGT_GPBR;
+  materialInfo.textures.normal = RTGT_PPBLOOM;
   materialInfo.alphaMode = EAlphaMode::Opaque;
   materialInfo.doubleSided = false;
   materialInfo.manageTextures = true;
@@ -92,24 +93,6 @@ void core::MResources::initialize() {
   }
 
   core::renderer.getMaterialData()->pGPBR = pMaterial;
-
-  // Create post process downsampling material
-  materialInfo = RMaterialInfo{};
-  materialInfo.name = RMAT_PPBLOOM;
-  materialInfo.textures.baseColor = RTGT_GPBR;
-  materialInfo.textures.normal = RTGT_PPBLOOM;
-  materialInfo.alphaMode = EAlphaMode::Opaque;
-  materialInfo.doubleSided = false;
-  materialInfo.manageTextures = true;
-  materialInfo.passFlags = EDynamicRenderingPass::PPDownsample;
-
-  if (!(pMaterial = createMaterial(&materialInfo))) {
-    RE_LOG(Critical, "Failed to create post processing downsampling material.");
-
-    return;
-  }
-
-  core::renderer.getMaterialData()->pBloom = pMaterial;
 }
 
 uint32_t core::MResources::getFreeCombinedSamplerIndex() {

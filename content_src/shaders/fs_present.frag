@@ -2,6 +2,7 @@
 #extension GL_EXT_nonuniform_qualifier : require
 
 #define COLORMAP	0
+#define BLOOMMAP	1
 #define MAXTEXTURES 6
 
 layout (location = 0) in vec2 inUV;
@@ -31,6 +32,8 @@ layout (push_constant) uniform Material {
 layout (location = 0) out vec4 outColor;
 
 void main() {
-	vec3 color = texture(samplers[material.samplerIndex[COLORMAP]], inUV).rgb;
-	outColor = vec4(color, 1.0);
+	vec3 baseColor = texture(samplers[material.samplerIndex[COLORMAP]], inUV).rgb;
+	vec3 bloomColor = texture(samplers[material.samplerIndex[BLOOMMAP]], inUV).rgb;
+	baseColor = mix(baseColor, bloomColor, 0.1);
+	outColor = vec4(baseColor, 1.0);
 }

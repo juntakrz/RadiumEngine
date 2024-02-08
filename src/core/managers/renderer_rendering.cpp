@@ -309,7 +309,7 @@ void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uin
 void core::MRenderer::executePostProcessSamplingPass(VkCommandBuffer commandBuffer, const uint32_t imageViewIndex,
                                                      const bool upsample, VkDescriptorSet sceneSet) {
   // Used as a shader coordinate into either PBR texture or downsampling texture and its mip level
-  material.pBloom->pushConstantBlock.baseColorTextureSet = imageViewIndex;
+  material.pGPBR->pushConstantBlock.baseColorTextureSet = imageViewIndex;
   postprocess.subRange.baseMipLevel = imageViewIndex;
 
   setImageLayout(commandBuffer, postprocess.pBloomTexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, postprocess.subRange);
@@ -333,7 +333,7 @@ void core::MRenderer::executePostProcessSamplingPass(VkCommandBuffer commandBuff
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pRenderPass->pipeline);
 
   vkCmdPushConstants(commandBuffer, pRenderPass->layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(RSceneVertexPCB),
-                     sizeof(RSceneFragmentPCB), &material.pBloom->pushConstantBlock);
+                     sizeof(RSceneFragmentPCB), &material.pGPBR->pushConstantBlock);
 
   vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 

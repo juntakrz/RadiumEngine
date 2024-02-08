@@ -60,7 +60,6 @@ class MRenderer {
     RMaterial* pSunShadow = nullptr;
     RMaterial* pGBuffer = nullptr;
     RMaterial* pGPBR = nullptr;
-    RMaterial* pBloom = nullptr;
   } material;
 
   struct RSceneBuffers {
