@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "core/core.h"
+#include "core/objects.h"
 #include "core/managers/input.h"
+#include "core/managers/renderer.h"
 #include "core/managers/window.h"
 #include "util/util.h"
 
@@ -12,7 +14,7 @@ core::MInput::MInput() {
 void core::MInput::scanInput() {
   GLFWwindow* pWindow = core::window.getWindow();
 
-  // get status for every bound repeated action key and call the proper function
+  // Get status for every bound repeated action key and call the proper function
   for (const auto& it : m_inputBinds) {
     int keyState = glfwGetKey(pWindow, it.second);
 
@@ -25,6 +27,19 @@ void core::MInput::scanInput() {
 
     }
   }
+
+  // Process mouse axis bound functions
+  for (const auto& it : m_mouseXAxisFunctions) {
+    it->exec();
+  }
+
+  for (const auto& it : m_mouseYAxisFunctions) {
+    it->exec();
+  }
+
+  // Reset cursor delta after processing axes
+  m_cursorDelta.x = 0.0f;
+  m_cursorDelta.y = 0.0f;
 }
 
 uint32_t core::MInput::bindingToKey(const char* bindingName) { 
@@ -40,9 +55,11 @@ TResult core::MInput::initialize(GLFWwindow* window) {
   TResult chkResult = RE_OK;
 
   glfwSetKeyCallback(window, keyEventCallback);
+  glfwSetCursorPosCallback(window, cursorPositionCallback);
 
   bindFunction(GETKEY("devKey"), GLFW_PRESS, this, &MInput::actPressTest);
   bindFunction(GETKEY("devKey"), GLFW_RELEASE, this, &MInput::actReleaseTest);
+  bindFunction(GETKEY("controlMode"), GLFW_RELEASE, this, &MInput::actToggleMouseLook);
 
   return chkResult;
 }
@@ -62,6 +79,22 @@ TInputFuncs& core::MInput::getBindings(bool bRepeated) {
   return (bRepeated) ? get().m_inputFuncsRepeated : get().m_inputFuncsSingle;
 }
 
+EControlMode core::MInput::getControlMode() {
+  return m_controlMode;
+}
+
+void core::MInput::setMouseAcceleration(const float value) {
+  m_mouseRawAcceleration = 1000.0f * value;
+}
+
+const glm::vec2& core::MInput::getMousePosition() {
+  return m_cursorPosition;
+}
+
+const glm::vec2& core::MInput::getMouseDelta() {
+  return m_cursorDelta;
+}
+
 void core::MInput::keyEventCallback(GLFWwindow* window, int key, int scancode,
                               int action, int mods) {
 
@@ -75,6 +108,49 @@ void core::MInput::keyEventCallback(GLFWwindow* window, int key, int scancode,
   }
 }
 
+void core::MInput::cursorPositionCallback(GLFWwindow* window, double x, double y) {
+  // Convert to screen space
+  MInput& input = get();
+
+  float cursorX = static_cast<float>(x / config::renderWidth * 2.0f - 1.0f);
+  float cursorY = static_cast<float>(y / config::renderHeight * 2.0f - 1.0f);
+
+  input.m_cursorDelta.x = (cursorX - input.m_cursorPosition.x) * input.m_mouseRawAcceleration;
+  input.m_cursorDelta.y = (input.m_cursorPosition.y - cursorY) * input.m_mouseRawAcceleration;
+
+  input.m_cursorPosition.x = cursorX;
+  input.m_cursorPosition.y = cursorY;
+
+  //RE_LOG(Log, "Cursor delta X: %1.3f / Y: %1.3f", input.m_cursorDelta.x, input.m_cursorDelta.y);
+}
+
 void core::MInput::actPressTest() { RE_LOG(Log, "Test key pressed."); }
 
 void core::MInput::actReleaseTest() { RE_LOG(Log, "Test key released."); }
+
+void core::MInput::actToggleMouseLook() {
+  GLFWwindow* pWindow = core::window.getWindow();
+
+  switch (m_controlMode) {
+    case EControlMode::Cursor: {
+      glfwSetInputMode(pWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+      if (glfwRawMouseMotionSupported()) {
+        glfwSetInputMode(pWindow, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+      }
+
+      m_controlMode = EControlMode::MouseLook;
+      break;
+    }
+    case EControlMode::MouseLook: {
+      glfwSetInputMode(pWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+
+      if (glfwRawMouseMotionSupported()) {
+        glfwSetInputMode(pWindow, GLFW_RAW_MOUSE_MOTION, GLFW_FALSE);
+      }
+
+      m_controlMode = EControlMode::Cursor;
+      break;
+    }
+  }
+}

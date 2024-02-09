@@ -68,11 +68,17 @@ void core::run() {
   //
   
   // create entities
+  materialInfo = RMaterialInfo{};
+  materialInfo.name = "RMat_Light0";
+  materialInfo.emissiveIntensity = glm::vec4(3.5f, 2.4f, 1.0f, 0.0f);
+  RMaterial* pNewMaterial = core::resources.createMaterial(&materialInfo);
+
   core::actors.createPawn("sphere0");
   APawn* pPawn = core::actors.getPawn("sphere0");
   pPawn->setModel(core::world.getModel("mdlSphere"));
   pPawn->setLocation(1.0f, -0.8f, 2.0f);
   pPawn->setScale(0.2f);
+  pPawn->getModel()->setPrimitiveMaterial(0, 0, "RMat_Light0");
   pPawn->bindToRenderer();
 
   AStatic* pStatic = core::actors.createStatic("Skybox");

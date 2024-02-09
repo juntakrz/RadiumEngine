@@ -411,7 +411,7 @@ TResult core::MRenderer::createDescriptorSets() {
       VkDescriptorImageInfo imageDescriptors[3]{
           core::resources.getTexture(RTGT_ENVFILTER)->texture.imageInfo,
           core::resources.getTexture(RTGT_ENVIRRAD)->texture.imageInfo,
-          core::resources.getTexture(RTGT_LUTMAP)->texture.imageInfo};
+          core::resources.getTexture(RTGT_BRDFMAP)->texture.imageInfo};
 
       for (VkDescriptorImageInfo& imageInfo : imageDescriptors) {
         imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -435,7 +435,7 @@ TResult core::MRenderer::createDescriptorSets() {
       writeDescriptorSets[3].dstBinding = 3;
       writeDescriptorSets[3].pImageInfo = &imageDescriptors[1];
 
-      // RTGT_LUTMAP
+      // RTGT_BRDFMAP
       writeDescriptorSets[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
       writeDescriptorSets[4].descriptorType =
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;

@@ -356,7 +356,7 @@ TResult core::MRenderer::createImageTargets() {
 #endif
 
   // target for BRDF LUT generation
-  rtName = RTGT_LUTMAP;
+  rtName = RTGT_BRDFMAP;
 
   textureInfo.name = rtName;
   textureInfo.width = core::vulkan::LUTExtent;
@@ -390,7 +390,7 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.format = core::vulkan::formatHDR16;
   textureInfo.isCubemap = false;
   textureInfo.layerCount = 1u;
-  textureInfo.mipLevels = 5u;     // A small number of mip maps should be enough for post processing
+  textureInfo.mipLevels = 6u;     // A small number of mip maps should be enough for post processing
   textureInfo.extraViews = true;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
@@ -552,7 +552,7 @@ TResult core::MRenderer::setDefaultComputeJobs() {
     info.width = core::vulkan::LUTExtent / 8;
     info.height = core::vulkan::LUTExtent / 4;
     info.transtionToShaderReadOnly = true;
-    info.pImageAttachments = { core::resources.getTexture(RTGT_LUTMAP) };
+    info.pImageAttachments = { core::resources.getTexture(RTGT_BRDFMAP) };
   }
 
   // Environment irradiance map

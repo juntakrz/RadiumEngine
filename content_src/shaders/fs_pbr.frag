@@ -125,18 +125,18 @@ float filterPCF(vec3 shadowCoord, vec2 offset, uint distanceIndex) {
 	return 1.0;
 }
 
-float getShadow(vec3 fragmentPosition, uint distanceIndex) {
+float getShadow(vec3 fragmentPosition, int distanceIndex) {
 	ivec2 texDim = textureSize(samplers[lighting.samplerIndex[SUNLIGHTINDEX]], 0);
 	float shadow = 0.0;
 	float scale = 1.5;
 	float dx = scale * 1.0 / float(texDim.x);
 	float dy = scale * 1.0 / float(texDim.y);
 	int count = 0;
-	int range = 3 - int(distanceIndex);
+	int range = 3 - distanceIndex;
 
 	float FOVMultiplier = 1.0;
 
-	for (uint i = 0; i < distanceIndex; i++) {
+	for (int i = 0; i < distanceIndex; i++) {
 		FOVMultiplier *= SHADOWFOVMULT;
 	}
 
@@ -224,13 +224,16 @@ void main() {
 
 	// Calculate shadow
 	float relativeLength = length(scene.camPos - worldPos);
-
-	uint distanceIndex = 0;
-	if (relativeLength > cascadeDistance0) distanceIndex = 1;
-	if (relativeLength > cascadeDistance1) distanceIndex = 2;
-	if (relativeLength > cascadeDistance2) distanceIndex = 3;
-
-	color *= getShadow(worldPos, distanceIndex);
+	
+	;
+	for (int distanceIndex = MAXCASCADES - 1; distanceIndex > -1; distanceIndex--) {
+		if (relativeLength > cascadeDistances[distanceIndex]) { 
+			color *= getShadow(worldPos, distanceIndex);
+			break;
+		}
+	}
+	
+	// Emissive colors are not affected by shadows as they are supposed to glow
 	color += emissive;
 	
 	outColor = vec4(color, baseColor.a);

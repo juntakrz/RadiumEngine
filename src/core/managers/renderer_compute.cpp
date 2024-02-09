@@ -122,11 +122,11 @@ void core::MRenderer::executeComputeImage(VkCommandBuffer commandBuffer,
 }
 
 void core::MRenderer::generateLUTMap() {
-  RE_LOG(Log, "Generating BRDF LUT map to '%s' texture.", RTGT_LUTMAP);
+  RE_LOG(Log, "Generating BRDF LUT map to '%s' texture.", RTGT_BRDFMAP);
 
   core::time.tickTimer();
 
-  RTexture* pLUTTexture = core::resources.getTexture(RTGT_LUTMAP);
+  RTexture* pLUTTexture = core::resources.getTexture(RTGT_BRDFMAP);
   std::vector<RTexture*> pTextures;
   pTextures.emplace_back(pLUTTexture);
 
@@ -162,7 +162,7 @@ void core::MRenderer::generateLUTMap() {
     writeDescriptorSet.dstSet = core::renderer.getSceneDescriptorSet(i);
     writeDescriptorSet.dstBinding = 4;
     writeDescriptorSet.pImageInfo =
-      &core::resources.getTexture(RTGT_LUTMAP)->texture.imageInfo;
+      &core::resources.getTexture(RTGT_BRDFMAP)->texture.imageInfo;
 
     vkUpdateDescriptorSets(core::renderer.logicalDevice.device, 1,
       &writeDescriptorSet, 0, nullptr);

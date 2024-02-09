@@ -69,6 +69,11 @@ enum class EComputePipeline {
   ImageEnvFilter
 };
 
+enum class EControlMode {
+  Cursor,
+  MouseLook
+};
+
 enum class EDescriptorSetLayout {
   Scene,
   Material,

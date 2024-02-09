@@ -2,6 +2,8 @@
 
 #include "common.h"
 
+enum class EControlMode;
+
 #define GETKEY(x) core::MInput::get().bindingToKey(x)
 
 // stores function calls for a given input
@@ -33,11 +35,23 @@ class MInput {
   // GLFW key codes and function names bound to them
   TInputBinds m_inputBinds;
 
+  std::vector<TFuncPtr> m_mouseXAxisFunctions;
+  std::vector<TFuncPtr> m_mouseYAxisFunctions;
+
+  // Screen space cursor position [-1 ... 1]
+  glm::vec2 m_cursorPosition;
+  glm::vec2 m_cursorDelta;
+
+  EControlMode m_controlMode;
+
+  float m_mouseRawAcceleration = 1000.0f;
+
  private:
   MInput();
 
   void actPressTest();
   void actReleaseTest();
+  void actToggleMouseLook();
 
   // set up default inputs always used by the engine
   void setDefaultInputs();
@@ -53,7 +67,7 @@ class MInput {
 
   TResult initialize(GLFWwindow* window);
 
-  // scans input for all bound inputs, should be called every frame
+  // Scans input for all bound inputs, should be called every frame
   void scanInput();
 
   uint32_t bindingToKey(const char* bindingName);
@@ -68,10 +82,26 @@ class MInput {
     keyBind[action] = std::make_unique<OFuncPtr<C>>(owner, function);
   }
 
-  // get either repeated or single input function bindings
+  template <typename C>
+  void bindFunctionToMouseAxis(C* owner, void (C::* function)(), const bool isVerticalAxis) {
+    (isVerticalAxis) ? m_mouseYAxisFunctions.emplace_back(std::make_unique<OFuncPtr<C>>(owner, function))
+                     : m_mouseYAxisFunctions.emplace_back(std::make_unique<OFuncPtr<C>>(owner, function));
+  }
+
+  EControlMode getControlMode();
+
+  // Recommended value range [0.1 ... 1.5]
+  void setMouseAcceleration(const float value);
+  const glm::vec2& getMousePosition();
+  const glm::vec2& getMouseDelta();
+
+  // Get either repeated or single input function bindings
   static TInputFuncs& getBindings(bool bRepeated);
 
   static void keyEventCallback(GLFWwindow* window, int key, int scancode,
                                int action, int mods);
+
+  // GLFW cursor position is relative to the top right corner of the window
+  static void cursorPositionCallback(GLFWwindow* window, double x, double y);
 };
 }  // namespace core
