@@ -16,6 +16,7 @@ void main() {
 	vec3 baseColor = texture(samplers[material.samplerIndex[COLORMAP]], inUV).rgb;
 	vec3 bloomColor = texture(samplers[material.samplerIndex[BLOOMMAP]], inUV).rgb;
 
-	baseColor = mix(baseColor, bloomColor, 0.12);
+	//baseColor = mix(baseColor, bloomColor, 0.12);
+	baseColor += bloomColor;
 	outColor = vec4(baseColor, 1.0);
 }

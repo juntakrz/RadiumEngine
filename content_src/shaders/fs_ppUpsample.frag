@@ -48,5 +48,7 @@ void main() {
     color += (b+d+f+h) * 2.0;
 	color *= 1.0 / 16.0;
 
+    //color += textureLod(samplers[textureIndex], vec2(inUV.x, inUV.y), LOD - 1).rgb * 0.5;
+
 	outColor = vec4(color, 1.0);
 }

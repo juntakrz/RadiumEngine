@@ -62,5 +62,10 @@ void main() {
     color += (b + d + f + h) * 0.0625;
     color += (j + k + l + m) * 0.125;
 
+    if (material.baseColorTextureSet == 0) {
+        color -= BLOOMTHRESHOLD;
+        color = max(color, 0.0);
+    }
+
 	outColor = vec4(color, 1.0);
 }

@@ -1,8 +1,8 @@
 layout (push_constant) uniform Material {
 	layout(offset = 16) 
 	int baseColorTextureSet;
-	int physicalDescriptorTextureSet;
-	int normalTextureSet;	
+	int normalTextureSet;
+	int physicalDescriptorTextureSet;	
 	int occlusionTextureSet;		// 16
 	int emissiveTextureSet;
 	int extraTextureSet;

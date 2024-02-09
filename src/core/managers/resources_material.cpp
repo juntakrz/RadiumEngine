@@ -28,7 +28,7 @@ void core::MResources::initialize() {
   materialInfo.name = "default";
   materialInfo.passFlags = EDynamicRenderingPass::OpaqueCullBack;
   materialInfo.textures.baseColor = RE_WHITETEXTURE;
-  materialInfo.emissiveIntensity = glm::vec4(12.0f, 8.0f, 1.0f, 1.0f);
+  materialInfo.emissiveIntensity = glm::vec4(4.0f, 2.5f, 1.0f, 1.0f);
   materialInfo.metallicFactor = 0.1f;
   materialInfo.roughnessFactor = 0.6f;
 

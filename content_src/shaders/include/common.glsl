@@ -4,6 +4,7 @@
 #define MAXCASCADES 4
 #define SHADOWFOVMULT 0.5
 #define SUNLIGHTINDEX 0
+#define BLOOMTHRESHOLD 0.86
 
 #define COLORMAP	0
 #define NORMALMAP	1

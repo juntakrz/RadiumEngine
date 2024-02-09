@@ -50,7 +50,7 @@ vec3 ACESTonemap(vec3 x) {
 
 vec4 tonemap(vec4 color) {
 	vec3 outColor = ACESTonemap(color.rgb);
-	return vec4(pow(outColor, vec3(1.0f / lighting.gamma)), color.a);
+	return vec4(pow(outColor, vec3(1.0 / lighting.gamma)), color.a);
 }
 
 vec3 getDiffuse(vec3 inColor) {
