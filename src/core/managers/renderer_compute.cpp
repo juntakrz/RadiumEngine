@@ -121,7 +121,7 @@ void core::MRenderer::executeComputeImage(VkCommandBuffer commandBuffer,
   vkCmdDispatch(commandBuffer, compute.imageExtent.width, compute.imageExtent.height, compute.imageExtent.depth);
 }
 
-void core::MRenderer::generateLUTMap() {
+void core::MRenderer::generateBRDFMap() {
   RE_LOG(Log, "Generating BRDF LUT map to '%s' texture.", RTGT_BRDFMAP);
 
   core::time.tickTimer();

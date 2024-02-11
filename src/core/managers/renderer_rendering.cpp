@@ -1,30 +1,12 @@
 #include "pch.h"
 #include "core/core.h"
 #include "core/managers/actors.h"
-#include "core/managers/animations.h"
 #include "core/managers/time.h"
 #include "core/managers/world.h"
 #include "core/world/actors/entity.h"
 #include "core/model/model.h"
 #include "core/material/texture.h"
 #include "core/managers/renderer.h"
-
-// runs in a dedicated thread
-void core::MRenderer::updateBoundEntities() {
-  AEntity* pEntity = nullptr;
-
-  // update animation matrices
-  core::animations.runAnimationQueue();
-
-  for (auto& bindInfo : system.bindings) {
-    if ((pEntity = bindInfo.pEntity) == nullptr) {
-      continue;
-    }
-
-    // update model matrices
-    pEntity->updateModel();
-  }
-}
 
 void core::MRenderer::drawBoundEntities(VkCommandBuffer commandBuffer, const uint32_t instanceCount) {
   // go through bound models and generate draw calls for each
@@ -164,8 +146,8 @@ void core::MRenderer::renderEnvironmentMaps(
   environment.tracking.layer++;
 }
 
-void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId, VkDescriptorSet sceneSet,
-                                                  RMaterial* pPushMaterial, bool renderQuad) {
+void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId,
+                                           RMaterial* pPushMaterial, bool renderQuad) {
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(passId);
   renderView.pCurrentPass = pRenderPass;
   VkRenderingInfo* pRenderingInfo = &renderView.pCurrentPass->renderingInfo;
@@ -203,7 +185,7 @@ void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynam
   const uint32_t dynamicOffset = config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
 
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->layout, 0,
-                          1, &sceneSet, 1, &dynamicOffset);
+                          1, &renderView.pCurrentSet, 1, &dynamicOffset);
 
   if (pPushMaterial) {
     vkCmdPushConstants(commandBuffer, renderView.pCurrentPass->layout, VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -247,7 +229,7 @@ void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynam
   }
 }
 
-void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uint32_t cascadeIndex, VkDescriptorSet sceneSet) {
+void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uint32_t cascadeIndex) {
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::Shadow);
   renderView.pCurrentPass = pRenderPass;
 
@@ -283,7 +265,7 @@ void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uin
   const uint32_t dynamicOffset = config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
 
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->layout, 0,
-    1, &sceneSet, 1, &dynamicOffset);
+    1, &renderView.pCurrentSet, 1, &dynamicOffset);
 
   vkCmdPushConstants(commandBuffer, renderView.pCurrentPass->layout, VK_SHADER_STAGE_VERTEX_BIT, 0u,
                      sizeof(RSceneVertexPCB), &scene.vertexPushBlock);
@@ -307,7 +289,7 @@ void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uin
 }
 
 void core::MRenderer::executePostProcessSamplingPass(VkCommandBuffer commandBuffer, const uint32_t imageViewIndex,
-                                                     const bool upsample, VkDescriptorSet sceneSet) {
+                                                     const bool upsample) {
   // Used as a shader coordinate into either PBR texture or downsampling texture and its mip level
   material.pGPBR->pushConstantBlock.baseColorTextureSet = imageViewIndex;
   postprocess.subRange.baseMipLevel = imageViewIndex;
@@ -342,22 +324,68 @@ void core::MRenderer::executePostProcessSamplingPass(VkCommandBuffer commandBuff
   setImageLayout(commandBuffer, postprocess.pBloomTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, postprocess.subRange);
 }
 
-void core::MRenderer::executePostProcessPass(VkCommandBuffer commandBuffer, VkDescriptorSet sceneSet) {
+void core::MRenderer::executePostProcessGetExposurePass(VkCommandBuffer commandBuffer) {
+  RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::PPGetExposure);
+  renderView.pCurrentPass = pRenderPass;
+
+  VkImageSubresourceRange subRange{};
+  subRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  subRange.baseArrayLayer = 0u;
+  subRange.layerCount = 1u;
+  subRange.baseMipLevel = 0u;
+  subRange.levelCount = postprocess.pExposureTexture->texture.levelCount;
+
+  setImageLayout(commandBuffer, postprocess.pExposureTexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
+
+  VkRenderingInfo overrideInfo{};
+  overrideInfo = pRenderPass->renderingInfo;
+  overrideInfo.renderArea = postprocess.scissors[0];
+
+  vkCmdBeginRendering(commandBuffer, &pRenderPass->renderingInfo);
+
+  setViewport(commandBuffer, pRenderPass->viewportId);
+  renderView.currentViewportId = renderView.pCurrentPass->viewportId;
+
+  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->pipeline);
+
+  vkCmdPushConstants(commandBuffer, renderView.pCurrentPass->layout, VK_SHADER_STAGE_FRAGMENT_BIT,
+    sizeof(RSceneVertexPCB), sizeof(RSceneFragmentPCB), &material.pGPBR->pushConstantBlock);
+
+  vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+
+  vkCmdEndRendering(commandBuffer);
+
+  generateMipMaps(commandBuffer, postprocess.pExposureTexture, postprocess.pExposureTexture->texture.levelCount);
+
+  setImageLayout(commandBuffer, postprocess.pExposureTexture, VK_IMAGE_LAYOUT_GENERAL, subRange);
+
+  VkImageSubresourceLayers subresource{};
+  subresource.aspectMask = postprocess.pExposureTexture->texture.aspectMask;
+  subresource.baseArrayLayer = 0u;
+  subresource.layerCount = 1u;
+  subresource.mipLevel = postprocess.pExposureTexture->texture.levelCount - 1;
+
+  copyImageToBuffer(commandBuffer, postprocess.pExposureTexture, postprocess.exposureStorageBuffer.buffer, 16, 16, &subresource);
+}
+
+void core::MRenderer::executePostProcessPass(VkCommandBuffer commandBuffer) {
   const uint8_t levelCount = postprocess.pBloomTexture->texture.levelCount;
 
   for (uint8_t downsampleIndex = 0; downsampleIndex < levelCount; ++downsampleIndex) {
-    executePostProcessSamplingPass(commandBuffer, downsampleIndex, false, sceneSet);
+    executePostProcessSamplingPass(commandBuffer, downsampleIndex, false);
 
   }
 
   // Upsample from the lower mip level and write to the one above it
   // Thus the initial index is the next to last one
   for (uint8_t upsampleIndex = levelCount - 1; upsampleIndex > 0; --upsampleIndex) {
-    executePostProcessSamplingPass(commandBuffer, upsampleIndex - 1, true, sceneSet);
+    executePostProcessSamplingPass(commandBuffer, upsampleIndex - 1, true);
   };
+
+  executePostProcessGetExposurePass(commandBuffer);
 }
 
-void core::MRenderer::executePresentPass(VkCommandBuffer commandBuffer, VkDescriptorSet sceneSet) {
+void core::MRenderer::executePresentPass(VkCommandBuffer commandBuffer) {
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::Present);
   renderView.pCurrentPass = pRenderPass;
 
@@ -435,17 +463,18 @@ void core::MRenderer::renderFrame() {
 
   VkCommandBuffer cmdBuffer = command.buffersGraphics[renderView.frameInFlight];
 
-  // update lighting UBO if required
+  // Update lighting UBO if required
   updateLightingUBO(renderView.frameInFlight);
 
-  VkDescriptorSet frameSet = scene.descriptorSets[renderView.frameInFlight];
+  // Use this frame's scene descriptor set
+  renderView.pCurrentSet = scene.descriptorSets[renderView.frameInFlight];
 
   VkCommandBufferBeginInfo beginInfo{};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   beginInfo.pInheritanceInfo = nullptr;
   beginInfo.flags = 0;
 
-  // start recording vulkan command buffer
+  // Start recording vulkan command buffer
   if (vkBeginCommandBuffer(cmdBuffer, &beginInfo) != VK_SUCCESS) {
     RE_LOG(Error, "Failure when trying to record command buffer.");
     return;
@@ -469,7 +498,7 @@ void core::MRenderer::renderFrame() {
   updateSceneUBO(renderView.frameInFlight);
 
   for (uint8_t cascadeIndex = 0; cascadeIndex < config::shadowCascades; ++cascadeIndex) {
-    executeShadowPass(cmdBuffer, cascadeIndex, frameSet);
+    executeShadowPass(cmdBuffer, cascadeIndex);
   }
 
   /* 3. Main scene */
@@ -478,23 +507,23 @@ void core::MRenderer::renderFrame() {
   updateSceneUBO(renderView.frameInFlight);
 
   // G-Buffer passes
-  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::OpaqueCullBack, frameSet);
-  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::OpaqueCullNone, frameSet);
-  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::BlendCullNone, frameSet);
+  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::OpaqueCullBack);
+  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::OpaqueCullNone);
+  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::BlendCullNone);
 
   // Deferred rendering pass using G-Buffer collected data
-  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::PBR, frameSet, material.pGBuffer, true);
+  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::PBR, material.pGBuffer, true);
 
   // Additional front rendering passes
-  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::Skybox, frameSet);
+  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::Skybox);
 
   /* 4. Postprocessing pass */
 
-  executePostProcessPass(cmdBuffer, frameSet);
+  executePostProcessPass(cmdBuffer);
 
   /* 5. Final presentation pass */
 
-  executePresentPass(cmdBuffer, frameSet);
+  executePresentPass(cmdBuffer);
 
   // End writing commands and prepare to submit buffer to rendering queue
   if (vkEndCommandBuffer(cmdBuffer) != VK_SUCCESS) {

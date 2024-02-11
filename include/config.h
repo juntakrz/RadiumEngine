@@ -19,7 +19,8 @@
 #define RTGT_ENV                "RTCube_Env"
 #define RTGT_ENVFILTER          "RTCube_EnvSkybox"
 #define RTGT_ENVIRRAD           "RTCube_EnvIrrad"
-#define RTGT_BRDFMAP             "RT2D_EnvLUT"
+#define RTGT_BRDFMAP            "RT2D_EnvBRDF"
+#define RTGT_EXPOSUREMAP        "RT2D_Exposure"
 
 #define RTGT_GPOSITION          "RT2D_GPosition"    // fragment world space position output
 #define RTGT_GDIFFUSE           "RT2D_GDiffuse"     // diffuse output

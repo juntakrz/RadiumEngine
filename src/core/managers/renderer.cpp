@@ -245,6 +245,8 @@ void core::MRenderer::destroyUniformBuffers() {
   for (auto& it : lighting.buffers) {
     vmaDestroyBuffer(memAlloc, it.buffer, it.allocation);
   }
+
+  vmaDestroyBuffer(memAlloc, postprocess.exposureStorageBuffer.buffer, postprocess.exposureStorageBuffer.allocation);
 }
 
 TResult core::MRenderer::createImageTargets() {
@@ -369,6 +371,32 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_STORAGE_BIT |
                            VK_IMAGE_USAGE_SAMPLED_BIT;
+
+  pNewTexture = core::resources.createTexture(&textureInfo);
+
+  if (!pNewTexture) {
+    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
+    return RE_CRITICAL;
+  }
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
+#endif
+
+  // target for exposure calculation
+  rtName = RTGT_EXPOSUREMAP;
+
+  textureInfo = RTextureInfo{};
+  textureInfo.name = rtName;
+  textureInfo.width = core::vulkan::envIrradianceExtent;
+  textureInfo.height = core::vulkan::envIrradianceExtent;
+  textureInfo.format = VK_FORMAT_R32_SFLOAT;
+  textureInfo.isCubemap = false;
+  textureInfo.layerCount = 1u;
+  textureInfo.mipLevels = math::getMipLevels(core::vulkan::envIrradianceExtent >> 4);
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -651,6 +679,7 @@ TResult core::MRenderer::setRendererDefaults() {
 
   // Set default post processing info
   postprocess.pBloomTexture = core::resources.getTexture(RTGT_PPBLOOM);
+  postprocess.pExposureTexture = core::resources.getTexture(RTGT_EXPOSUREMAP);
   postprocess.subRange.aspectMask = postprocess.pBloomTexture->texture.aspectMask;
   postprocess.subRange.baseArrayLayer = 0u;
   postprocess.subRange.layerCount = 1u;
@@ -674,6 +703,9 @@ TResult core::MRenderer::setRendererDefaults() {
     postprocess.scissors[PPIndex].offset = {0, 0};
     postprocess.scissors[PPIndex].extent = {currentWidth, currentHeight};
   }
+
+  // Create compute shader storage buffer for retrieving exposure results
+  createBuffer(EBufferType::CPU_STORAGE, 1024, postprocess.exposureStorageBuffer, nullptr);
 
   return RE_OK;
 }

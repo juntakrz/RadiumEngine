@@ -82,10 +82,13 @@ class MRenderer {
 
   struct RPostProcessData {
     RTexture* pBloomTexture = nullptr;
+    RTexture* pExposureTexture = nullptr;
 
     VkImageSubresourceRange subRange;
     std::vector<VkViewport> viewports;
     std::vector<VkRect2D> scissors;
+
+    RBuffer exposureStorageBuffer;
   } postprocess;
 
   // swapchain data
@@ -146,6 +149,7 @@ class MRenderer {
     void* pCurrentMaterial = nullptr;
 
     RDynamicRenderingPass* pCurrentPass = nullptr;
+    VkDescriptorSet pCurrentSet = nullptr;
     EViewport currentViewportId = EViewport::vpCount;
 
     uint32_t currentFrameIndex = 0;
@@ -299,6 +303,9 @@ class MRenderer {
                                                            const char* extensionToCheck = nullptr,
                                                            bool* pCheckResult = nullptr);
 
+  void updateBoundEntities();
+  void updateExposureLevel();
+
 public:
   TResult copyImage(VkCommandBuffer cmdBuffer, VkImage srcImage,
                     VkImage dstImage, VkImageLayout srcImageLayout,
@@ -385,9 +392,10 @@ public:
      VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
 
    // expects 'optimal layout' image as a source
-   TResult copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
-     uint32_t width, uint32_t height,
-     uint32_t layerCount);
+   TResult copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage, uint32_t width, uint32_t height, uint32_t layerCount);
+
+   TResult copyImageToBuffer(VkCommandBuffer commandBuffer, RTexture *pSrcImage, VkBuffer dstBuffer,
+                             uint32_t width, uint32_t height, VkImageSubresourceLayers* subresource);
 
   //
   // ***PHYSICAL DEVICE
@@ -496,7 +504,7 @@ public:
                              const bool useExtraImageViews = false, const bool useExtraSamplerViews = false);
   void executeComputeImage(VkCommandBuffer commandBuffer, EComputePipeline pipeline);
 
-  void generateLUTMap();
+  void generateBRDFMap();
 
  public:
   void queueComputeJob(RComputeJobInfo* pInfo);
@@ -508,9 +516,7 @@ public:
   //
 
  private:
-  void updateBoundEntities();
-
-  // draw bound entities using specific pipeline
+  // Draw bound entities using specific pipeline
   void drawBoundEntities(VkCommandBuffer commandBuffer, const uint32_t instanceCount = 1);
 
   void renderPrimitive(VkCommandBuffer cmdBuffer, WPrimitive* pPrimitive, REntityBindInfo* pBindInfo, const uint32_t instanceCount = 1u);
@@ -518,15 +524,16 @@ public:
   void renderEnvironmentMaps(VkCommandBuffer commandBuffer,
                              const uint32_t frameInterval = 1u);
 
-  void executeRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId, VkDescriptorSet sceneSet,
-                                   RMaterial* pPushMaterial = nullptr, bool renderQuad = false);
+  void executeRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId,
+                            RMaterial* pPushMaterial = nullptr, bool renderQuad = false);
 
-  void executeShadowPass(VkCommandBuffer commandBuffer, const uint32_t cascadeIndex, VkDescriptorSet sceneSet);
+  void executeShadowPass(VkCommandBuffer commandBuffer, const uint32_t cascadeIndex);
 
-  void executePostProcessSamplingPass(VkCommandBuffer commandBuffer, const uint32_t imageViewIndex, const bool upsample, VkDescriptorSet sceneSet);
-  void executePostProcessPass(VkCommandBuffer commandBuffer, VkDescriptorSet sceneSet);
+  void executePostProcessSamplingPass(VkCommandBuffer commandBuffer, const uint32_t imageViewIndex, const bool upsample);
+  void executePostProcessGetExposurePass(VkCommandBuffer commandBuffer);
+  void executePostProcessPass(VkCommandBuffer commandBuffer);
 
-  void executePresentPass(VkCommandBuffer commandBuffer, VkDescriptorSet sceneSet);
+  void executePresentPass(VkCommandBuffer commandBuffer);
 
  public:
   void renderFrame();

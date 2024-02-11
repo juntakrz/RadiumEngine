@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "core/core.h"
+#include "core/material/texture.h"
 #include "core/managers/renderer.h"
 
 TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuffer& outBuffer, void* inData)
@@ -118,6 +119,39 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
       memcpy(pData, inData, size);
       vmaUnmapMemory(memAlloc, outBuffer.allocation);
     }
+
+    return RE_OK;
+  }
+
+  case (uint8_t)EBufferType::CPU_STORAGE: {
+    bufferCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+                           | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+    bufferCreateInfo.size = size;
+    bufferCreateInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+    bufferCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();
+    bufferCreateInfo.queueFamilyIndexCount =
+      static_cast<uint32_t>(queueFamilyIndices.size());
+
+    allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT |
+      VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
+    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
+      &outBuffer.buffer, &outBuffer.allocation,
+      &outBuffer.allocInfo) != VK_SUCCESS) {
+      RE_LOG(Error, "Failed to create CPU_STORAGE buffer.");
+      return RE_ERROR;
+    };
+
+    if (inData) {
+      memcpy(outBuffer.allocInfo.pMappedData, inData, size);
+    }
+
+    VkBufferDeviceAddressInfo bdaInfo{};
+    bdaInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+    bdaInfo.buffer = outBuffer.buffer;
+
+    outBuffer.deviceAddress = vkGetBufferDeviceAddress(logicalDevice.device, &bdaInfo);
 
     return RE_OK;
   }
@@ -369,6 +403,26 @@ TResult core::MRenderer::copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
 
   flushCommandBuffer(cmdBuffer, ECmdType::Transfer);
+
+  return RE_OK;
+}
+
+TResult core::MRenderer::copyImageToBuffer(VkCommandBuffer commandBuffer, RTexture* pSrcImage, VkBuffer dstBuffer,
+                                           uint32_t width, uint32_t height, VkImageSubresourceLayers* subresource) {
+  if (!pSrcImage || !dstBuffer) {
+    RE_LOG(Error, "copyImageToBuffer received nullptr as an argument.");
+    return RE_ERROR;
+  }
+
+  VkBufferImageCopy imageCopy{};
+  imageCopy.imageSubresource = *subresource;
+  imageCopy.imageExtent = { width, height, 1 };
+  imageCopy.imageOffset = { 0, 0, 0 };
+  imageCopy.bufferOffset = 0;
+  imageCopy.bufferRowLength = 0;
+  imageCopy.bufferImageHeight = 0;
+
+  vkCmdCopyImageToBuffer(commandBuffer, pSrcImage->texture.image, pSrcImage->texture.imageLayout, dstBuffer, 1, &imageCopy);
 
   return RE_OK;
 }

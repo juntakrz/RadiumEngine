@@ -1,10 +1,24 @@
 #version 460
 #extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_scalar_block_layout : require
 
 #include "include/common.glsl"
 #include "include/fragment.glsl"
 
 layout (location = 0) in vec2 inUV;
+
+layout (std430, set = 0, binding = 1) uniform UBOLighting {
+	vec4 lightLocations[MAXLIGHTS];
+    vec4 lightColor[MAXLIGHTS];
+	mat4 lightViews[MAXSHADOWCASTERS];
+	mat4 lightOrthoMatrix;
+	uint samplerIndex[MAXSHADOWCASTERS];
+	uint lightCount;
+	float exposure;
+	float gamma;
+	float prefilteredCubeMipLevels;
+	float scaleIBLAmbient;
+} lighting;
 
 // Material bindings
 

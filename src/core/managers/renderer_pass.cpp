@@ -291,6 +291,24 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     createDynamicRenderingPass(EDynamicRenderingPass::PPUpsample, &info);
   }
 
+  // "Post processing get exposure" pass
+  {
+    RTexture* pColorAttachment = core::resources.getTexture(RTGT_EXPOSUREMAP);
+
+    RDynamicRenderingInfo info{};
+    info.pipelineLayout = EPipelineLayout::Scene;
+    info.viewportId = EViewport::vpEnvIrrad;          // Reuse irradiance resolution for exposure map
+    info.vertexShader = "vs_quad.spv";
+    info.fragmentShader = "fs_ppGetExposure.spv";
+    info.colorAttachmentClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
+    info.layoutInfo.validateColorAttachmentLayout = true;
+    info.layoutInfo.transitionColorAttachmentLayout = true;
+    info.layoutInfo.colorAttachmentsOutLayout = VK_IMAGE_LAYOUT_GENERAL;
+    info.colorAttachments = { { pColorAttachment, pColorAttachment->texture.view, pColorAttachment->texture.imageFormat } };
+
+    createDynamicRenderingPass(EDynamicRenderingPass::PPGetExposure, &info);
+  }
+
   // "Present" final output pass
   {
     RTexture* pDepthAttachment = core::resources.getTexture(RTGT_DEPTH);

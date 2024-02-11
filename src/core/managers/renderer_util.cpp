@@ -1,9 +1,11 @@
 #include "pch.h"
 #include "vk_mem_alloc.h"
 #include "core/core.h"
+#include "core/managers/animations.h"
 #include "core/managers/ref.h"
 #include "core/managers/renderer.h"
 #include "core/managers/actors.h"
+#include "core/managers/time.h"
 #include "core/material/texture.h"
 #include "core/model/model.h"
 #include "core/world/actors/camera.h"
@@ -1013,4 +1015,40 @@ ACamera* core::MRenderer::getCamera() { return view.pActiveCamera; }
 
 void core::MRenderer::setIBLScale(float newScale) {
   lighting.data.scaleIBLAmbient = newScale;
+}
+
+// Runs in a dedicated thread
+void core::MRenderer::updateBoundEntities() {
+  AEntity* pEntity = nullptr;
+
+  // Update animation matrices
+  core::animations.runAnimationQueue();
+
+  for (auto& bindInfo : system.bindings) {
+    if ((pEntity = bindInfo.pEntity) == nullptr) {
+      continue;
+    }
+
+    // Update model matrices
+    pEntity->updateModel();
+  }
+
+  // Use this thread to also quickly process camera exposure level
+  updateExposureLevel();
+}
+
+void core::MRenderer::updateExposureLevel() {
+  float brightnessData[256];
+  memcpy(brightnessData, postprocess.exposureStorageBuffer.allocInfo.pMappedData, 1024);
+
+  float averageBrightness = 0.0f;
+  for (int i = 0; i < 256; ++i) {
+    averageBrightness += std::min(brightnessData[i], 1.0f);
+  }
+
+  averageBrightness /= 256.0f;
+  
+  lighting.data.exposure = averageBrightness;
+  //const float deltaTime = core::time.getDeltaTime();
+  //lighting.data.exposure += (lighting.data.exposure < averageBrightness) ? 0.002f : (lighting.data.exposure > averageBrightness) ? -0.002f : 0.0f;
 }

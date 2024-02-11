@@ -36,14 +36,15 @@ enum EAnimationLoadMode {
 enum class EBufferType {  // VkBuffer creation mode
   NONE,
   STAGING,            // CPU staging buffer
-  CPU_UNIFORM,        // uniform buffer for GPU programs
-  CPU_VERTEX,         // vertex buffer for the iGPU (UNUSED)
-  CPU_INDEX,          // index buffer for the iGPU (UNUSED)
-  DGPU_VERTEX,        // dedicated GPU vertex buffer
-  DGPU_INDEX,         // dedicated GPU index buffer
-  DGPU_STORAGE,       // dedicated GPU storage buffer
-  DGPU_SAMPLER,       // dedicated GPU storage buffer for sampler descriptors
-  DGPU_RESOURCE,      // dedicated GPU storage buffer for resource descriptors
+  CPU_UNIFORM,        // Uniform buffer for GPU programs
+  CPU_VERTEX,         // Vertex buffer for the iGPU (UNUSED)
+  CPU_INDEX,          // Index buffer for the iGPU (UNUSED)
+  CPU_STORAGE,        // Storage buffer for CPU to write and read data from
+  DGPU_VERTEX,        // Dedicated GPU vertex buffer
+  DGPU_INDEX,         // Dedicated GPU index buffer
+  DGPU_STORAGE,       // Dedicated GPU storage buffer
+  DGPU_SAMPLER,       // Dedicated GPU storage buffer for sampler descriptors
+  DGPU_RESOURCE,      // Dedicated GPU storage buffer for resource descriptors
 };
 
 enum class ECameraProjection {
@@ -96,7 +97,8 @@ enum EDynamicRenderingPass : uint32_t {
   PBR                 = 0b10000000,
   PPDownsample        = 0b100000000,
   PPUpsample          = 0b1000000000,
-  Present             = 0b10000000000
+  PPGetExposure       = 0b10000000000,
+  Present             = 0b100000000000
 };
 
 enum class ELightType {
