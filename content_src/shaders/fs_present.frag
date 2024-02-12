@@ -13,54 +13,35 @@ layout (location = 0) in vec2 inUV;
 
 layout (set = 2, binding = 0) uniform sampler2D samplers[];
 
-layout (std430, set = 0, binding = 1) uniform UBOLighting {
-	vec4 lightLocations[MAXLIGHTS];
-    vec4 lightColor[MAXLIGHTS];
-	mat4 lightViews[MAXSHADOWCASTERS];
-	mat4 lightOrthoMatrix;
-	uint samplerIndex[MAXSHADOWCASTERS];
-	uint lightCount;
-	float averageSceneLuminance;
-	float gamma;
-	float prefilteredCubeMipLevels;
-	float scaleIBLAmbient;
-} lighting;
-
 layout (location = 0) out vec4 outColor;
 
 void main() {
 	vec3 baseColor = texture(samplers[material.samplerIndex[COLORMAP]], inUV).rgb;
 	vec3 bloomColor = texture(samplers[material.samplerIndex[BLOOMMAP]], inUV).rgb;
+	float exposure = lighting.exposure;
 
-	float luminance = dot(baseColor, vec3(0.2126, 0.7152, 0.0722));
-	float exposureAdjustment = luminance / (9.6 * lighting.averageSceneLuminance);
+	float luminance = dot(baseColor, RGB_TO_LUM);
+	float exposureAdjustment = luminance / (9.6 * lighting.averageLuminance);
+
+	baseColor = pow(baseColor, vec3(2.2));
 	baseColor *= vec3(exposureAdjustment / luminance);
+	
+	baseColor = pow(baseColor, vec3(1.0 / 2.2));
 
 #ifdef TONEMAP_ACES
-    //baseColor += bloomColor * 0.5;
     baseColor = tonemapACES(baseColor);
-    baseColor = vec3(1.0) - exp(-baseColor * 9.6);
-	baseColor += bloomColor * 1.2;
 #endif
 
 #ifdef TONEMAP_AMD
-    baseColor = vec3(1.0) - exp(-baseColor * 4.5);
-    baseColor = AMDTonemapper(baseColor);
-	baseColor += bloomColor;
+    baseColor = tonemapAMD(baseColor);
 #endif
 
-#ifdef TONEMAP_REINHARD
-    const float whitePoint = 0.5;
-	vec3 numerator = baseColor * (1.0 + (baseColor / vec3(whitePoint * whitePoint)));
-    baseColor = numerator / (1.0 + baseColor);
-    baseColor = vec3(1.0) - exp(-baseColor * 4.5);
-	baseColor += bloomColor;
+#ifdef TONEMAP_REINHARDWP
+    baseColor = tonemapReinhardWP(baseColor, 0.9);
 #endif
 
-#ifdef TONEMAP_NONE
-	baseColor = vec3(1.0) - exp(-baseColor * 4.5);
-	baseColor += bloomColor;
-#endif
+	baseColor += bloomColor * 0.6;
+	baseColor = vec3(1.0) - exp(-baseColor * exposure);
 
 	outColor = vec4(baseColor, 1.0);
 }

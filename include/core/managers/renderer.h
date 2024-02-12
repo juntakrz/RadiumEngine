@@ -371,6 +371,8 @@ public:
   ACamera* getCamera();
 
   void setIBLScale(float newScale);
+  void setShadowColor(const glm::vec3& color);
+  void setBloomIntensity(const float intensity);
 
   //
   // ***BUFFER

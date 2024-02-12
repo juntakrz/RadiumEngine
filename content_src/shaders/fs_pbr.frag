@@ -16,19 +16,6 @@ layout (set = 0, binding = 0) uniform UBOScene {
 	vec3 camPos;
 } scene;
 
-layout (std430, set = 0, binding = 1) uniform UBOLighting {
-	vec4 lightLocations[MAXLIGHTS];
-    vec4 lightColor[MAXLIGHTS];
-	mat4 lightViews[MAXSHADOWCASTERS];
-	mat4 lightOrthoMatrix;
-	uint samplerIndex[MAXSHADOWCASTERS];
-	uint lightCount;
-	float averageLuminance;
-	float gamma;
-	float prefilteredCubeMipLevels;
-	float scaleIBLAmbient;
-} lighting;
-
 // environment bindings
 layout (set = 0, binding = 2) uniform samplerCube prefilteredMap;
 layout (set = 0, binding = 3) uniform samplerCube irradianceMap;
@@ -156,7 +143,7 @@ float getShadow(vec3 fragmentPosition, int distanceIndex) {
 
 void main() {
 	const float occlusionStrength = 1.0;
-	const float emissiveFactor = 1.0;
+	const vec3 shadowColor = lighting.shadowColor.rgb + vec3(1.0);
 	vec3 f0 = vec3(0.04);
 
 	// Retrieve G-buffer data
@@ -212,13 +199,14 @@ void main() {
 	color += getIBLContribution(diffuseColor, specularColor, perceptualRoughness, NdotV, normal, reflection);
 	color = mix(color, color * ao, occlusionStrength);
 
-	// Calculate shadow
+	// Calculate shadow and its color
 	float relativeLength = length(scene.camPos - worldPos);
 	
-	;
 	for (int distanceIndex = MAXCASCADES - 1; distanceIndex > -1; distanceIndex--) {
 		if (relativeLength > cascadeDistances[distanceIndex]) { 
-			color *= getShadow(worldPos, distanceIndex);
+			vec3 shadow = shadowColor * getShadow(worldPos, distanceIndex);
+			shadow = clamp(shadow, 0.0, 1.0);
+			color *= shadow;
 			break;
 		}
 	}

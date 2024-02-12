@@ -165,7 +165,7 @@ RMaterial* core::MResources::createMaterial(
   newMat.pushConstantBlock.alphaMode = static_cast<float>(pDesc->alphaMode);
   newMat.pushConstantBlock.alphaCutoff = pDesc->alphaCutoff;
   newMat.pushConstantBlock.bumpIntensity = pDesc->bumpIntensity;
-  newMat.pushConstantBlock.emissiveIntensity = pDesc->emissiveIntensity;
+  newMat.pushConstantBlock.glowColor = pDesc->glowColor;
 
   // disable reading from texture in shader if no texture is available
   newMat.pushConstantBlock.baseColorTextureSet = newMat.pBaseColor ? pDesc->texCoordSets.baseColor : -1;

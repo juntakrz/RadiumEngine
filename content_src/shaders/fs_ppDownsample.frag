@@ -1,24 +1,9 @@
 #version 460
-#extension GL_EXT_nonuniform_qualifier : require
-#extension GL_EXT_scalar_block_layout : require
 
 #include "include/common.glsl"
 #include "include/fragment.glsl"
 
 layout (location = 0) in vec2 inUV;
-
-layout (std430, set = 0, binding = 1) uniform UBOLighting {
-	vec4 lightLocations[MAXLIGHTS];
-    vec4 lightColor[MAXLIGHTS];
-	mat4 lightViews[MAXSHADOWCASTERS];
-	mat4 lightOrthoMatrix;
-	uint samplerIndex[MAXSHADOWCASTERS];
-	uint lightCount;
-	float averageSceneLuminance;
-	float gamma;
-	float prefilteredCubeMipLevels;
-	float scaleIBLAmbient;
-} lighting;
 
 // Material bindings
 
@@ -77,10 +62,10 @@ void main() {
     color += (j + k + l + m) * 0.125;
 
     if (material.baseColorTextureSet == 0) {
-        float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
-	    float exposureAdjustment = luminance / (9.6 * lighting.averageSceneLuminance);
+        float luminance = dot(color, RGB_TO_LUM);
+	    float exposureAdjustment = luminance / (9.6 * lighting.averageLuminance);
 
-	    color *= clamp(exposureAdjustment, 1.0, 10.0);
+	    color *= clamp(exposureAdjustment, lighting.bloomIntensity, 10.0);
 
         color -= BLOOMTHRESHOLD;
         color = max(color, 0.0);

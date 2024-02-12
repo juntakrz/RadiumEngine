@@ -52,6 +52,7 @@ void core::run() {
   materialInfo.name = "skybox";
   materialInfo.passFlags = EDynamicRenderingPass::Skybox | EDynamicRenderingPass::EnvSkybox;
   materialInfo.textures.baseColor = "skyboxCubemap.ktx2";
+  //materialInfo.glowColor = glm::vec4(0.5);
   core::resources.createMaterial(&materialInfo);
 
   // create map models
@@ -70,7 +71,7 @@ void core::run() {
   // create entities
   materialInfo = RMaterialInfo{};
   materialInfo.name = "RMat_Light0";
-  materialInfo.emissiveIntensity = glm::vec4(3.5f, 2.4f, 1.0f, 0.0f);
+  materialInfo.glowColor = glm::vec4(3.5f, 2.4f, 1.0f, 0.0f);
   RMaterial* pNewMaterial = core::resources.createMaterial(&materialInfo);
 
   core::actors.createPawn("sphere0");

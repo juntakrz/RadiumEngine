@@ -110,5 +110,5 @@ void main() {
 	}
 
 	// brighten or darken color emission
-	outEmissive += vec4(material.emissiveIntensity);
+	outEmissive += vec4(material.glowColor);
 }

@@ -298,7 +298,7 @@ struct RMaterialInfo {
   float metallicFactor = 0.0f;
   float roughnessFactor = 1.0f;
   float bumpIntensity = 1.0f;
-  glm::vec4 emissiveIntensity = glm::vec4(0.0f);
+  glm::vec4 glowColor = glm::vec4(0.0f);
 
   // if 'Null' - pipeline is determined using material properties
   uint32_t passFlags = EDynamicRenderingPass::Null;
@@ -430,7 +430,10 @@ struct RLightingUBO {
   glm::mat4 lightOrthoMatrix;                 // default orthogonal projection matrix for light views
   uint32_t samplerArrayIndex[RE_MAXSHADOWCASTERS];
   uint32_t lightCount = 0;
+  glm::vec4 shadowColor = {0.0f, 0.0f, 0.0f, 1.0f};
   float averageLuminance = 1.0f;
+  float bloomIntensity = 1.0f;
+  float exposure = 4.5f;
   float gamma = 2.2f;
   float prefilteredCubeMipLevels;
   float scaleIBLAmbient = 1.0f;
@@ -450,7 +453,7 @@ struct RSceneFragmentPCB {
   float alphaMode;
   float alphaCutoff;
   float bumpIntensity;
-  glm::vec4 emissiveIntensity;            // 48
+  glm::vec4 glowColor;            // 48
   uint32_t samplerIndex[RE_MAXTEXTURES];
 };
 

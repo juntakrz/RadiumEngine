@@ -1017,6 +1017,16 @@ void core::MRenderer::setIBLScale(float newScale) {
   lighting.data.scaleIBLAmbient = newScale;
 }
 
+void core::MRenderer::setShadowColor(const glm::vec3& color) {
+  lighting.data.shadowColor.x = color.x;
+  lighting.data.shadowColor.y = color.y;
+  lighting.data.shadowColor.z = color.z;
+}
+
+void core::MRenderer::setBloomIntensity(const float intensity) {
+  lighting.data.bloomIntensity = intensity;
+}
+
 // Runs in a dedicated thread
 void core::MRenderer::updateBoundEntities() {
   AEntity* pEntity = nullptr;
@@ -1038,6 +1048,7 @@ void core::MRenderer::updateBoundEntities() {
 }
 
 void core::MRenderer::updateExposureLevel() {
+  const float deltaTime = core::time.getDeltaTime();
   float brightnessData[256];
   memcpy(brightnessData, postprocess.exposureStorageBuffer.allocInfo.pMappedData, 1024);
 
@@ -1047,6 +1058,12 @@ void core::MRenderer::updateExposureLevel() {
   }
 
   averageLuminance /= 256.0f;
-  
-  lighting.data.averageLuminance = averageLuminance;
+
+  if (lighting.data.averageLuminance < averageLuminance - 0.01f ||
+      lighting.data.averageLuminance > averageLuminance + 0.01f) {
+  lighting.data.averageLuminance +=
+      (lighting.data.averageLuminance < averageLuminance)
+          ? deltaTime * 0.25f
+          : -deltaTime * 0.25f;
+  }
 }

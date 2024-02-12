@@ -1,3 +1,19 @@
+layout (std430, set = 0, binding = 1) uniform UBOLighting {
+	vec4 lightLocations[MAXLIGHTS];
+    vec4 lightColor[MAXLIGHTS];
+	mat4 lightViews[MAXSHADOWCASTERS];
+	mat4 lightOrthoMatrix;
+	uint samplerIndex[MAXSHADOWCASTERS];
+	uint lightCount;
+	vec4 shadowColor;
+	float averageLuminance;
+	float bloomIntensity;
+	float exposure;
+	float gamma;
+	float prefilteredCubeMipLevels;
+	float scaleIBLAmbient;
+} lighting;
+
 layout (push_constant) uniform Material {
 	layout(offset = 16) 
 	int baseColorTextureSet;
@@ -11,6 +27,6 @@ layout (push_constant) uniform Material {
 	float alphaMask;	
 	float alphaMaskCutoff;
 	float bumpIntensity;
-	vec4 emissiveIntensity;			// 48
+	vec4 glowColor;					// 48
 	uint samplerIndex[MAXTEXTURES];
 } material;

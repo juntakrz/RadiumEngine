@@ -1,3 +1,6 @@
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_scalar_block_layout : require
+
 #define MAXJOINTS 128
 #define MAXLIGHTS 32
 #define MAXSHADOWCASTERS 4
@@ -16,6 +19,8 @@
 #define EMISMAP		4
 #define EXTRAMAP	5
 #define MAXTEXTURES 6
+
+#define RGB_TO_LUM vec3(0.2126, 0.7152, 0.0722)
 
 const float M_PI = 3.141592653589793;
 const float TWO_PI = M_PI * 2.0;
@@ -211,7 +216,7 @@ float ColTone(float x, vec4 p)
     return z / (pow(z, p.g)*p.b + p.a); 
 }
 
-vec3 AMDTonemapper(vec3 color)
+vec3 tonemapAMD(vec3 color)
 {
     const float hdrMax = 16.0; // How much HDR range before clipping. HDR modes likely need this pushed up to say 25.0.
     const float contrast = 2.0; // Use as a baseline to tune the amount of contrast the tonemapper has.
@@ -245,4 +250,13 @@ vec3 AMDTonemapper(vec3 color)
     // then apply ratio to peak
     color = peak * ratio;
     return color;
-}  
+}
+
+//
+//  Reinhard with a white point
+//
+
+vec3 tonemapReinhardWP(vec3 v, float whitePoint) {
+	vec3 numerator = v * (1.0 + (v / vec3(whitePoint * whitePoint)));
+    return numerator / (1.0 + v);
+}
