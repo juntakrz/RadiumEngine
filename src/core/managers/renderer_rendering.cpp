@@ -371,6 +371,8 @@ void core::MRenderer::executePostProcessGetExposurePass(VkCommandBuffer commandB
 void core::MRenderer::executePostProcessPass(VkCommandBuffer commandBuffer) {
   const uint8_t levelCount = postprocess.pBloomTexture->texture.levelCount;
 
+  executePostProcessGetExposurePass(commandBuffer);
+
   for (uint8_t downsampleIndex = 0; downsampleIndex < levelCount; ++downsampleIndex) {
     executePostProcessSamplingPass(commandBuffer, downsampleIndex, false);
 
@@ -381,8 +383,6 @@ void core::MRenderer::executePostProcessPass(VkCommandBuffer commandBuffer) {
   for (uint8_t upsampleIndex = levelCount - 1; upsampleIndex > 0; --upsampleIndex) {
     executePostProcessSamplingPass(commandBuffer, upsampleIndex - 1, true);
   };
-
-  executePostProcessGetExposurePass(commandBuffer);
 }
 
 void core::MRenderer::executePresentPass(VkCommandBuffer commandBuffer) {

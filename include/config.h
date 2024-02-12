@@ -3,18 +3,18 @@
 
 #include "pch.h"
 
-#define RE_ERRORLIMIT           RE_ERROR        // terminate program if some error exceeds this level
+#define RE_ERRORLIMIT           RE_ERROR        // Terminate program if some error exceeds this level
 #define MAX_FRAMES_IN_FLIGHT    2u
 #define MAX_TRANSFER_BUFFERS    2u
-#define RE_MAXLIGHTS            32u             // includes directional light, always at index 0
+#define RE_MAXLIGHTS            32u             // Includes directional light, always at index 0
 #define RE_MAXSHADOWCASTERS     4u
 
 // render targets
 #define RTGT_PRESENT            "RT2D_Present"      // Final swapchain target
-#define RTGT_DEPTH              "RT2D_Depth"        // active camera depth render target
-#define RTGT_SHADOW             "RT2D_Shadow"       // shadow render target (depth)
-#define RTGT_ENVSRC             "RT2D_EnvSrc"       // source texture for environment cubemaps
-#define RTGT_PPBLOOM            "RT2D_PPBloom"      // post processing target
+#define RTGT_DEPTH              "RT2D_Depth"        // Active camera depth render target
+#define RTGT_SHADOW             "RT2D_Shadow"       // Shadow render target (depth)
+#define RTGT_ENVSRC             "RT2D_EnvSrc"       // Source texture for environment cubemaps
+#define RTGT_PPBLOOM            "RT2D_PPBloom"      // Post processing target
 
 #define RTGT_ENV                "RTCube_Env"
 #define RTGT_ENVFILTER          "RTCube_EnvSkybox"
@@ -22,12 +22,12 @@
 #define RTGT_BRDFMAP            "RT2D_EnvBRDF"
 #define RTGT_EXPOSUREMAP        "RT2D_Exposure"
 
-#define RTGT_GPOSITION          "RT2D_GPosition"    // fragment world space position output
-#define RTGT_GDIFFUSE           "RT2D_GDiffuse"     // diffuse output
-#define RTGT_GNORMAL            "RT2D_GNormal"      // normals output
-#define RTGT_GPHYSICAL          "RT2D_GPhysical"    // physical properties output
-#define RTGT_GEMISSIVE          "RT2D_GEmissive"    // emissive color output
-#define RTGT_GPBR               "RT2D_GPBR"         // render target for combined G-Buffer output
+#define RTGT_GPOSITION          "RT2D_GPosition"    // Fragment world space position output
+#define RTGT_GDIFFUSE           "RT2D_GDiffuse"     // Diffuse output
+#define RTGT_GNORMAL            "RT2D_GNormal"      // Normals output
+#define RTGT_GPHYSICAL          "RT2D_GPhysical"    // Physical properties output
+#define RTGT_GEMISSIVE          "RT2D_GEmissive"    // Emissive color output
+#define RTGT_GPBR               "RT2D_GPBR"         // Render target for combined G-Buffer output
 
 // default materials
 #define RMAT_GBUFFER            "RMat_GBuffer"

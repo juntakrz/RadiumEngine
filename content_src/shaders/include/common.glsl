@@ -131,3 +131,118 @@ float distributionGGX(float NdotH, float roughness)
 	float denom = NdotH * NdotH * (alpha2 - 1.0) + 1.0;
 	return (alpha2)/(M_PI * denom*denom); 
 }
+
+// ===== TONEMAPPING =================================================
+
+//
+//  ACES Full
+//
+
+const mat3 ACES_InputMatrix = mat3(
+    0.59719, 0.35458, 0.04823,
+    0.07600, 0.90834, 0.01566,
+    0.02840, 0.13383, 0.83777
+);
+
+mat3 ACES_OutputMatrix = mat3(
+    1.60475, -0.53108, -0.07367,
+    -0.10208,  1.10813, -0.00605,
+    -0.00327, -0.07276,  1.07602
+);
+
+vec3 ACES_Mul(mat3 m, vec3 v) {
+    float x = m[0][0] * v[0] + m[0][1] * v[1] + m[0][2] * v[2];
+    float y = m[1][0] * v[0] + m[1][1] * v[1] + m[1][2] * v[2];
+    float z = m[2][0] * v[0] + m[2][1] * v[1] + m[2][2] * v[2];
+    return vec3(x, y, z);
+}
+
+vec3 ACES_RDTAndODTFit(vec3 v) {
+    vec3 a = v * (v + 0.0245786) - 0.000090537;
+    vec3 b = v * (0.983729 * v + 0.4329510) + 0.238081;
+    return a / b;
+}
+
+vec3 tonemapACES(vec3 v) {
+    v = ACES_Mul(ACES_InputMatrix, v);
+    v = ACES_RDTAndODTFit(v);
+    return ACES_Mul(ACES_OutputMatrix, v);
+}
+
+//
+//  ACES Approximation
+//
+
+vec3 tonemapACESApprox(vec3 v) {
+    float a = 2.51;
+    float b = 0.03;
+    float c = 2.43;
+    float d = 0.59;
+    float e = 0.14;
+
+    return clamp((v * (a * v + b)) / (v * (c * v + d) + e), 0.0, 1.0);
+}
+
+//
+// AMD Tonemapper (from Khronos ShaderLibVK) 
+//
+
+// General tonemapping operator, build 'b' term.
+float ColToneB(float hdrMax, float contrast, float shoulder, float midIn, float midOut) 
+{
+    return
+        -((-pow(midIn, contrast) + (midOut*(pow(hdrMax, contrast*shoulder)*pow(midIn, contrast) -
+            pow(hdrMax, contrast)*pow(midIn, contrast*shoulder)*midOut)) /
+            (pow(hdrMax, contrast*shoulder)*midOut - pow(midIn, contrast*shoulder)*midOut)) /
+            (pow(midIn, contrast*shoulder)*midOut));
+}
+
+// General tonemapping operator, build 'c' term.
+float ColToneC(float hdrMax, float contrast, float shoulder, float midIn, float midOut) 
+{
+    return (pow(hdrMax, contrast*shoulder)*pow(midIn, contrast) - pow(hdrMax, contrast)*pow(midIn, contrast*shoulder)*midOut) /
+           (pow(hdrMax, contrast*shoulder)*midOut - pow(midIn, contrast*shoulder)*midOut);
+}
+
+// General tonemapping operator, p := {contrast,shoulder,b,c}.
+float ColTone(float x, vec4 p) 
+{ 
+    float z = pow(x, p.r); 
+    return z / (pow(z, p.g)*p.b + p.a); 
+}
+
+vec3 AMDTonemapper(vec3 color)
+{
+    const float hdrMax = 16.0; // How much HDR range before clipping. HDR modes likely need this pushed up to say 25.0.
+    const float contrast = 2.0; // Use as a baseline to tune the amount of contrast the tonemapper has.
+    const float shoulder = 1.0; // Likely don’t need to mess with this factor, unless matching existing tonemapper is not working well..
+    const float midIn = 0.18; // most games will have a {0.0 to 1.0} range for LDR so midIn should be 0.18.
+    const float midOut = 0.18; // Use for LDR. For HDR10 10:10:10:2 use maybe 0.18/25.0 to start. For scRGB, I forget what a good starting point is, need to re-calculate.
+
+    float b = ColToneB(hdrMax, contrast, shoulder, midIn, midOut);
+    float c = ColToneC(hdrMax, contrast, shoulder, midIn, midOut);
+
+    #define EPS 1e-6f
+    float peak = max(color.r, max(color.g, color.b));
+    peak = max(EPS, peak);
+
+    vec3 ratio = color / peak;
+    peak = ColTone(peak, vec4(contrast, shoulder, b, c) );
+    // then process ratio
+
+    // probably want send these pre-computed (so send over saturation/crossSaturation as a constant)
+    float crosstalk = 4.0; // controls amount of channel crosstalk
+    float saturation = contrast; // full tonal range saturation control
+    float crossSaturation = contrast*16.0; // crosstalk saturation
+
+    float white = 1.0;
+
+    // wrap crosstalk in transform
+    ratio = pow(abs(ratio), vec3(saturation / crossSaturation));
+    ratio = mix(ratio, vec3(white), vec3(pow(peak, crosstalk)));
+    ratio = pow(abs(ratio), vec3(crossSaturation));
+
+    // then apply ratio to peak
+    color = peak * ratio;
+    return color;
+}  

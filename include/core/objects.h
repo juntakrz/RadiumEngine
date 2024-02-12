@@ -430,7 +430,7 @@ struct RLightingUBO {
   glm::mat4 lightOrthoMatrix;                 // default orthogonal projection matrix for light views
   uint32_t samplerArrayIndex[RE_MAXSHADOWCASTERS];
   uint32_t lightCount = 0;
-  float exposure = 4.5f;
+  float averageLuminance = 1.0f;
   float gamma = 2.2f;
   float prefilteredCubeMipLevels;
   float scaleIBLAmbient = 1.0f;

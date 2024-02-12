@@ -14,7 +14,7 @@ layout (std430, set = 0, binding = 1) uniform UBOLighting {
 	mat4 lightOrthoMatrix;
 	uint samplerIndex[MAXSHADOWCASTERS];
 	uint lightCount;
-	float exposure;
+	float averageSceneLuminance;
 	float gamma;
 	float prefilteredCubeMipLevels;
 	float scaleIBLAmbient;
@@ -77,6 +77,11 @@ void main() {
     color += (j + k + l + m) * 0.125;
 
     if (material.baseColorTextureSet == 0) {
+        float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
+	    float exposureAdjustment = luminance / (9.6 * lighting.averageSceneLuminance);
+
+	    color *= clamp(exposureAdjustment, 1.0, 10.0);
+
         color -= BLOOMTHRESHOLD;
         color = max(color, 0.0);
     }

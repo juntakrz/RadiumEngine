@@ -23,7 +23,7 @@ layout (std430, set = 0, binding = 1) uniform UBOLighting {
 	mat4 lightOrthoMatrix;
 	uint samplerIndex[MAXSHADOWCASTERS];
 	uint lightCount;
-	float exposure;
+	float averageLuminance;
 	float gamma;
 	float prefilteredCubeMipLevels;
 	float scaleIBLAmbient;
@@ -38,19 +38,9 @@ layout (set = 0, binding = 4) uniform sampler2D BRDFLUTMap;
 layout (set = 2, binding = 0) uniform sampler2D samplers[];
 layout (set = 2, binding = 0) uniform sampler2DArray arraySamplers[];
 
-vec3 ACESTonemap(vec3 x) {
-    float a = 2.51;
-    float b = 0.03;
-    float c = 2.43;
-    float d = 0.59;
-    float e = 0.14;
-
-    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
-}
-
-vec4 tonemap(vec4 color) {
-	vec3 outColor = ACESTonemap(color.rgb);
-	return vec4(pow(outColor, vec3(1.0 / lighting.gamma)), color.a);
+vec3 tonemap(vec3 v) {
+	vec3 color = tonemapACESApprox(v);
+	return pow(color, vec3(1.0 / lighting.gamma));
 }
 
 vec3 getDiffuse(vec3 inColor) {
@@ -94,8 +84,8 @@ vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, 
 
 	// retrieve a scale and bias to F0
 	vec2 brdf = (texture(BRDFLUTMap, vec2(NdotV, 1.0 - roughness))).rg;
-	vec3 diffuseLight = tonemap(texture(irradianceMap, n)).rgb;
-	vec3 specularLight = tonemap(textureLod(prefilteredMap, reflection, lod)).rgb;
+	vec3 diffuseLight = tonemap(texture(irradianceMap, n).rgb);
+	vec3 specularLight = tonemap(textureLod(prefilteredMap, reflection, lod).rgb);
 
 	diffuseLight.r = pow(diffuseLight.r, 2.2);
 	diffuseLight.g = pow(diffuseLight.g, 2.2);
@@ -129,10 +119,10 @@ float getShadow(vec3 fragmentPosition, int distanceIndex) {
 	ivec2 texDim = textureSize(samplers[lighting.samplerIndex[SUNLIGHTINDEX]], 0);
 	float shadow = 0.0;
 	float scale = 1.5;
-	float dx = scale * 1.0 / float(texDim.x);
-	float dy = scale * 1.0 / float(texDim.y);
+	float dx = scale * (1.0 / float(texDim.x));
+	float dy = scale * (1.0 / float(texDim.y));
 	int count = 0;
-	int range = 3 - distanceIndex;
+	int range = 4 - distanceIndex;
 
 	float FOVMultiplier = 1.0;
 

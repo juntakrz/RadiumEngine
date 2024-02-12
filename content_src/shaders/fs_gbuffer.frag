@@ -66,7 +66,7 @@ void main() {
 	if (material.alphaMask > 0.9 && outColor.a < material.alphaMaskCutoff && material.alphaMaskCutoff < 1.1) {
 		discard;
 	}
-
+	
 	// apply vertex colors if present
 	outColor *= inColor0;
 

@@ -1041,14 +1041,12 @@ void core::MRenderer::updateExposureLevel() {
   float brightnessData[256];
   memcpy(brightnessData, postprocess.exposureStorageBuffer.allocInfo.pMappedData, 1024);
 
-  float averageBrightness = 0.0f;
+  float averageLuminance = 0.0f;
   for (int i = 0; i < 256; ++i) {
-    averageBrightness += std::min(brightnessData[i], 1.0f);
+    averageLuminance += brightnessData[i];
   }
 
-  averageBrightness /= 256.0f;
+  averageLuminance /= 256.0f;
   
-  lighting.data.exposure = averageBrightness;
-  //const float deltaTime = core::time.getDeltaTime();
-  //lighting.data.exposure += (lighting.data.exposure < averageBrightness) ? 0.002f : (lighting.data.exposure > averageBrightness) ? -0.002f : 0.0f;
+  lighting.data.averageLuminance = averageLuminance;
 }
