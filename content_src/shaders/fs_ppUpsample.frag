@@ -15,7 +15,7 @@ layout (location = 0) out vec4 outColor;
 void main() {
 	// baseColorTextureSet is an index into the target mip level, upsampling will use the lower resolution one
 	uint textureIndex = material.samplerIndex[NORMALMAP];
-	int LOD = material.baseColorTextureSet + 1;
+	int LOD = material.textureSets + 1;
 
 	ivec2 resolution = textureSize(samplers[textureIndex], LOD);
 	vec2 texelSize = 1.0 / vec2(resolution); 

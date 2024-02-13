@@ -431,7 +431,7 @@ struct RLightingUBO {
   uint32_t samplerArrayIndex[RE_MAXSHADOWCASTERS];
   uint32_t lightCount = 0;
   glm::vec4 shadowColor = {0.0f, 0.0f, 0.0f, 1.0f};
-  float averageLuminance = 1.0f;
+  float averageLuminance = 0.5f;
   float bloomIntensity = 1.0f;
   float exposure = 4.5f;
   float gamma = 2.2f;
@@ -440,21 +440,16 @@ struct RLightingUBO {
 };
 
 // Push constant block used by the scene fragment shader
-// (96 bytes, 112 bytes total of 128 Vulkan spec)
+// (64 bytes, 80 bytes total of 128 Vulkan spec)
 struct RSceneFragmentPCB {
-  int32_t baseColorTextureSet;
-  int32_t normalTextureSet;
-  int32_t metallicRoughnessTextureSet;
-  int32_t occlusionTextureSet;            // 16
-  int32_t emissiveTextureSet;
-  int32_t extraTextureSet;
+  int32_t textureSets = 0;                // Each 2 bits store a UV index 0, 1 or none
   float metallicFactor;
-  float roughnessFactor;                  // 32
+  float roughnessFactor;
   float alphaMode;
   float alphaCutoff;
   float bumpIntensity;
-  glm::vec4 glowColor;            // 48
   uint32_t samplerIndex[RE_MAXTEXTURES];
+  glm::vec4 glowColor;
 };
 
 // Push constant block used by the scene vertex shader

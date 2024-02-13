@@ -74,7 +74,7 @@ class MRenderer {
 
     std::vector<RTexture*> pGBufferTargets;
 
-    // per frame in flight buffered camera/lighting descriptor sets
+    // Per frame in flight buffered camera/lighting descriptor sets
     std::vector<VkDescriptorSet> descriptorSets;
 
     RSceneVertexPCB vertexPushBlock;
@@ -121,7 +121,6 @@ class MRenderer {
 
     std::vector<REntityBindInfo> bindings;  // entities rendered during the current frame
     std::vector<VkDrawIndexedIndirectCommand> drawCommands;
-    std::unordered_map<EDynamicRenderingPass, std::vector<WPrimitive*>> primitivesByPass;  // TODO
   } system;
 
   // current camera view data

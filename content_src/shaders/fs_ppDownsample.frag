@@ -13,8 +13,8 @@ layout (location = 0) out vec4 outColor;
 
 void main() {
 	// baseColorTextureSet is used as an index into the original PBR texture or the mip level of the downsampled texture
-	uint textureIndex = (material.baseColorTextureSet == 0) ? material.samplerIndex[COLORMAP] : material.samplerIndex[NORMALMAP];
-	int LOD = (material.baseColorTextureSet == 0) ? 0 : material.baseColorTextureSet - 1;
+	uint textureIndex = (material.textureSets == 0) ? material.samplerIndex[COLORMAP] : material.samplerIndex[NORMALMAP];
+	int LOD = (material.textureSets == 0) ? 0 : material.textureSets - 1;
 
 	ivec2 resolution = textureSize(samplers[textureIndex], LOD);
 	vec2 texelSize = 1.0 / vec2(resolution); 
@@ -61,7 +61,7 @@ void main() {
     color += (b + d + f + h) * 0.0625;
     color += (j + k + l + m) * 0.125;
 
-    if (material.baseColorTextureSet == 0) {
+    if (material.textureSets == 0) {
         float luminance = dot(color, RGB_TO_LUM);
 	    float exposureAdjustment = luminance / (9.6 * lighting.averageLuminance);
 

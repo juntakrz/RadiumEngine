@@ -150,6 +150,12 @@ RMaterial* core::MResources::createMaterial(
     return m_materials.at(pDesc->name).get();
   }
 
+  // Storing index 0 as 0b10 and 1 as 0b11 to save precious push block space
+  // and for a reliable bitwise retrieval in the shader
+  auto fGetTextureIndex = [](const int8_t textureSet, const int8_t textureIndex) {
+    return (textureSet + 2) << (textureIndex * 2);
+  };
+
   RMaterial newMat;
   newMat.name = pDesc->name;
 
@@ -168,12 +174,12 @@ RMaterial* core::MResources::createMaterial(
   newMat.pushConstantBlock.glowColor = pDesc->glowColor;
 
   // disable reading from texture in shader if no texture is available
-  newMat.pushConstantBlock.baseColorTextureSet = newMat.pBaseColor ? pDesc->texCoordSets.baseColor : -1;
-  newMat.pushConstantBlock.normalTextureSet = newMat.pNormal ? pDesc->texCoordSets.normal : -1;
-  newMat.pushConstantBlock.metallicRoughnessTextureSet = newMat.pMetalRoughness ? pDesc->texCoordSets.metalRoughness : -1;
-  newMat.pushConstantBlock.occlusionTextureSet = newMat.pOcclusion ? pDesc->texCoordSets.occlusion : -1;
-  newMat.pushConstantBlock.emissiveTextureSet = newMat.pEmissive ? pDesc->texCoordSets.emissive : -1;
-  newMat.pushConstantBlock.extraTextureSet = newMat.pExtra ? pDesc->texCoordSets.extra : -1;
+  newMat.pushConstantBlock.textureSets |= newMat.pBaseColor ? fGetTextureIndex(pDesc->texCoordSets.baseColor, 0) : 0;
+  newMat.pushConstantBlock.textureSets |= newMat.pNormal ? fGetTextureIndex(pDesc->texCoordSets.normal, 1) : 0;
+  newMat.pushConstantBlock.textureSets |= newMat.pMetalRoughness ? fGetTextureIndex(pDesc->texCoordSets.metalRoughness, 2) : 0;
+  newMat.pushConstantBlock.textureSets |= newMat.pOcclusion ? fGetTextureIndex(pDesc->texCoordSets.occlusion, 3) : 0;
+  newMat.pushConstantBlock.textureSets |= newMat.pEmissive ? fGetTextureIndex(pDesc->texCoordSets.emissive, 4) : 0;
+  newMat.pushConstantBlock.textureSets |= newMat.pExtra ? fGetTextureIndex(pDesc->texCoordSets.extra, 5) : 0;
 
   newMat.pushConstantBlock.samplerIndex[0] = newMat.pBaseColor ? newMat.pBaseColor->combinedSamplerIndex : 0;
   newMat.pushConstantBlock.samplerIndex[1] = newMat.pNormal ? newMat.pNormal->combinedSamplerIndex : 0;

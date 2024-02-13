@@ -927,7 +927,7 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
   pEntity->setRendererBindingIndex(
       static_cast<int32_t>(system.bindings.size() - 1));
 
-  // store new offsets into scene buffer data
+  // Store new offsets into scene buffer data
   scene.currentVertexOffset += pModel->m_vertexCount;
   scene.currentIndexOffset += pModel->m_indexCount;
 

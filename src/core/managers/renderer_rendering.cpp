@@ -167,7 +167,7 @@ void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynam
       setImageLayout(commandBuffer, pImage, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
     }
   }
-  // TODO:
+
   if (pRenderPass->validateDepthAttachmentLayout) {
     VkImageSubresourceRange subRange{};
     subRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
@@ -290,8 +290,8 @@ void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uin
 
 void core::MRenderer::executePostProcessSamplingPass(VkCommandBuffer commandBuffer, const uint32_t imageViewIndex,
                                                      const bool upsample) {
-  // Used as a shader coordinate into either PBR texture or downsampling texture and its mip level
-  material.pGPBR->pushConstantBlock.baseColorTextureSet = imageViewIndex;
+  // Store a shader coordinate into either PBR texture or downsampling texture and its mip level
+  material.pGPBR->pushConstantBlock.textureSets = imageViewIndex;
   postprocess.subRange.baseMipLevel = imageViewIndex;
 
   setImageLayout(commandBuffer, postprocess.pBloomTexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, postprocess.subRange);

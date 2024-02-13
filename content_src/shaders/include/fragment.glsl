@@ -16,17 +16,22 @@ layout (std430, set = 0, binding = 1) uniform UBOLighting {
 
 layout (push_constant) uniform Material {
 	layout(offset = 16) 
-	int baseColorTextureSet;
-	int normalTextureSet;
-	int physicalDescriptorTextureSet;	
-	int occlusionTextureSet;		// 16
-	int emissiveTextureSet;
-	int extraTextureSet;
+	int textureSets;			// bitwise texture sets
 	float metallicFactor;	
-	float roughnessFactor;			// 32
+	float roughnessFactor;
 	float alphaMask;	
 	float alphaMaskCutoff;
 	float bumpIntensity;
-	vec4 glowColor;					// 48
 	uint samplerIndex[MAXTEXTURES];
+	vec4 glowColor;
 } material;
+
+int getTextureSet(int textureType) {
+	const int firstSetLookup = 2;
+	const int secondSetLookup = 3;
+	const int checkTextureSet = material.textureSets >> (textureType * 2);
+
+	if ((checkTextureSet & secondSetLookup) == secondSetLookup) return 1;
+	if ((checkTextureSet & firstSetLookup) == firstSetLookup) return 0;
+	return -1;
+}
