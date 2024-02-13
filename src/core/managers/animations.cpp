@@ -59,7 +59,7 @@ int32_t core::MAnimations::addAnimationToQueue(const WAnimationInfo* pAnimationI
   QueueEntry* pExistingEntry = nullptr;
 
   for (QueueEntry& queuedAnimation : m_animationQueue) {
-    if (queuedAnimation.pModel == pAnimationInfo->pModel &&
+    if (queuedAnimation.pEntity == pAnimationInfo->pEntity &&
         queuedAnimation.pAnimation->getName() == pAnimationInfo->animationName) {
 
       pExistingEntry = &queuedAnimation;
@@ -70,7 +70,7 @@ int32_t core::MAnimations::addAnimationToQueue(const WAnimationInfo* pAnimationI
   const float duration = pAnimation->m_duration;
 
   QueueEntry entry;
-  entry.pModel = pAnimationInfo->pModel;
+  entry.pEntity = pAnimationInfo->pEntity;
   entry.pAnimation = pAnimation;
   entry.startTime = (pAnimationInfo->startTime > duration)
                         ? duration
@@ -113,14 +113,14 @@ void core::MAnimations::runAnimationQueue() {
     const auto& keyFrames = queueEntry.pAnimation->getKeyFrames();
 
     for (const auto& node : animatedNodes) {
-      WModel::Node* pNode = queueEntry.pModel->getNode(node.index);
+      AEntity::AnimatedNodeBinding* pNodeBinding = queueEntry.pEntity->getAnimatedNodeBinding(node.index);
 
-      if (keyFrames.empty() || !pNode) {
+      if (keyFrames.empty() || !pNodeBinding) {
         m_cleanupQueue.emplace_back(queueEntry.queueIndex);
         break;
       }
 
-      const int32_t skinIndex = pNode->skinIndex;
+      const int32_t skinIndex = pNodeBinding->skinIndex;
       const bool hasSkin = !keyFrames.at(0).skinMatrices.empty();
 
       // write interpolated frame data directly to node's mesh uniform block
@@ -135,7 +135,7 @@ void core::MAnimations::runAnimationQueue() {
           if (u <= 1.0f) {
             math::interpolate(keyFrames.at(i).nodeMatrices.at(node.index),
                               keyFrames.at(i + 1).nodeMatrices.at(node.index),
-                              u, pNode->pMesh->uniformBlock.nodeMatrix);
+                              u, pNodeBinding->transformBufferBlock.nodeMatrix);
 
             if (hasSkin) {
               const size_t jointCount =
@@ -143,12 +143,10 @@ void core::MAnimations::runAnimationQueue() {
 
               for (int32_t j = 0; j < jointCount; ++j) {
                 math::interpolate(
-                    keyFrames.at(i).skinMatrices[skinIndex][j],
-                    keyFrames.at(i + 1).skinMatrices[skinIndex][j], u,
-                    pNode->pMesh->uniformBlock.jointMatrices[j]);
+                  keyFrames.at(i).skinMatrices[skinIndex][j],
+                  keyFrames.at(i + 1).skinMatrices[skinIndex][j], u,
+                  pNodeBinding->transformBufferBlock.jointMatrices[j]);
               }
-
-              pNode->pMesh->uniformBlock.jointCount = (float)jointCount;
             }
 
             // frame update finished, exit loop
@@ -197,10 +195,10 @@ void core::MAnimations::cleanupQueue() {
 }
 
 bool core::MAnimations::getOrRegisterActorOffsetIndex(AEntity* pActor,
-                                                      size_t& outIndex) {
-  size_t freeIndex = -1;
+                                                      uint32_t& outIndex) {
+  uint32_t freeIndex = -1;
 
-  for (size_t i = 0; i < m_rootTransformBufferIndices.size(); ++i) {
+  for (uint32_t i = 0; i < m_rootTransformBufferIndices.size(); ++i) {
     if (m_rootTransformBufferIndices[i] == nullptr && freeIndex == -1) {
       freeIndex = i;
     }
@@ -217,10 +215,10 @@ bool core::MAnimations::getOrRegisterActorOffsetIndex(AEntity* pActor,
 }
 
 bool core::MAnimations::getOrRegisterNodeOffsetIndex(
-    AEntity::AnimatedNodeBinding* pNode, size_t& outIndex) {
-  size_t freeIndex = -1;
+    AEntity::AnimatedNodeBinding* pNode, uint32_t& outIndex) {
+  uint32_t freeIndex = -1;
 
-  for (size_t i = 0; i < m_rootTransformBufferIndices.size(); ++i) {
+  for (uint32_t i = 0; i < m_rootTransformBufferIndices.size(); ++i) {
     if (m_nodeTransformBufferIndices[i] == nullptr && freeIndex == -1) {
       freeIndex = i;
     }
@@ -236,22 +234,21 @@ bool core::MAnimations::getOrRegisterNodeOffsetIndex(
   return true;  // registered node to the first free index
 }
 
-bool core::MAnimations::getOrRegisterSkinOffsetIndex(WModel::Skin* pSkin,
-                                                     size_t& outIndex) {
-  size_t freeIndex = -1;
+bool core::MAnimations::getOrRegisterSkinOffsetIndex(AEntity::AnimatedNodeBinding* pNode, uint32_t& outIndex) {
+  uint32_t freeIndex = -1;
 
-  for (size_t i = 0; i < m_skinTransformBufferIndices.size(); ++i) {
+  for (uint32_t i = 0; i < m_skinTransformBufferIndices.size(); ++i) {
     if (m_skinTransformBufferIndices[i] == nullptr && freeIndex == -1) {
       freeIndex = i;
     }
 
-    if (m_skinTransformBufferIndices[i] == pSkin) {
+    if (m_skinTransformBufferIndices[i] == &pNode->skinIndex) {
       outIndex = i;
       return false;  // skin is already registered
     }
   }
 
-  m_skinTransformBufferIndices[freeIndex] = pSkin;
+  m_skinTransformBufferIndices[freeIndex] = &pNode->skinIndex;
   outIndex = freeIndex;
 
   return true;  // registered skin to the first free index

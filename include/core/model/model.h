@@ -44,8 +44,7 @@ class WModel {
     std::vector<std::unique_ptr<WPrimitive>> pPrimitives;
     std::vector<std::unique_ptr<WPrimitive>> pBoundingBoxes;
 
-    // stores mesh and joints transformation matrices
-    RMeshUBO uniformBlock;
+    RMeshUBO stagingTransformBlock;   // Used only for preprocessing animations
 
     struct {
       glm::vec3 min = glm::vec3(0.0f);
@@ -107,11 +106,10 @@ class WModel {
 
   std::string m_name = "$NONAMEMODEL$";
 
-  size_t m_sceneVertexOffset = 0u;
-  size_t m_sceneIndexOffset = 0u;
+  uint32_t m_sceneVertexOffset = 0u;
+  uint32_t m_sceneIndexOffset = 0u;
   uint32_t m_vertexCount = 0u;
   uint32_t m_indexCount = 0u;
-  bool m_isBoundToScene = false;
   int32_t m_meshCount = 0;
 
   std::vector<std::unique_ptr<WModel::Node>> m_pChildNodes;
@@ -132,9 +130,6 @@ class WModel {
 
   // stored references to used animations
   std::vector<std::string> m_boundAnimations;
-
-  // currently active animations (name / index in update queue)
-  std::unordered_map<std::string, int32_t> m_playingAnimations;
 
   // stored skins
   std::vector<std::unique_ptr<Skin>> m_pSkins;
@@ -157,6 +152,8 @@ class WModel {
 
   // resets all transformation matrices stored in uniform blocks to identity
   void resetUniformBlockData();
+
+  void uploadToSceneBuffer();
 
  public:
   WPrimitive* getPrimitive(const int32_t meshIndex,
@@ -208,20 +205,8 @@ class WModel {
   int32_t getSkinCount() noexcept;
   WModel::Skin* getSkin(int32_t skinIndex) noexcept;
 
-  // call to store reference data when model is getting bound to scene buffers
-  void setSceneBindingData(size_t vertexOffset, size_t indexOffset);
-
-  // must be called when removing the model from scene buffers
-  void clearSceneBindingData();
-
   // check if model can have the animation assigned and bind it
   void bindAnimation(const std::string& name);
-
-  // simplified version of playAnimation
-  void playAnimation(const std::string& name, const float speed = 1.0f,
-                     const bool loop = true, const bool isReversed = false);
-
-  void playAnimation(const WAnimationInfo* pAnimationInfo);
 
   // cleans all primitives and nodes within,
   // model itself won't get destroyed on its own

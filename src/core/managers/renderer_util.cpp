@@ -262,6 +262,65 @@ std::vector<VkExtensionProperties> core::MRenderer::getInstanceExtensions(const 
   return extensionProperties;
 }
 
+TResult core::MRenderer::createQueryPool() {
+  VkQueryPoolCreateInfo poolCreate{};
+  poolCreate.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+  poolCreate.queryType = VK_QUERY_TYPE_OCCLUSION;
+  poolCreate.queryCount = config::scene::nodeBudget;    // TODO: Node budget is quite large, but find a more valid number
+  
+  if (vkCreateQueryPool(logicalDevice.device, &poolCreate, nullptr, &system.queryPool) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to create query pool.");
+    return RE_CRITICAL;
+  }
+
+  return RE_OK;
+}
+
+void core::MRenderer::destroyQueryPool() {
+  vkDestroyQueryPool(logicalDevice.device, system.queryPool, nullptr);
+}
+
+// Runs in a dedicated thread
+void core::MRenderer::updateBoundEntities() {
+  AEntity* pEntity = nullptr;
+
+  // Update animation matrices
+  core::animations.runAnimationQueue();
+
+  for (auto& bindInfo : system.bindings) {
+    if ((pEntity = bindInfo.pEntity) == nullptr) {
+      continue;
+    }
+
+    // Update model matrices
+    pEntity->updateModel();
+  }
+
+  // Use this thread to also quickly process camera exposure level
+  updateExposureLevel();
+}
+
+void core::MRenderer::updateExposureLevel() {
+  const float deltaTime = core::time.getDeltaTime();
+  float brightnessData[256];
+  memcpy(brightnessData, postprocess.exposureStorageBuffer.allocInfo.pMappedData, 1024);
+
+  float averageLuminance = 0.0f;
+  for (int i = 0; i < 256; ++i) {
+    averageLuminance += brightnessData[i];
+  }
+
+  averageLuminance /= 256.0f;
+
+  if (lighting.data.averageLuminance < averageLuminance - 0.01f ||
+    lighting.data.averageLuminance > averageLuminance + 0.01f) {
+    lighting.data.averageLuminance +=
+      (lighting.data.averageLuminance < averageLuminance)
+      ? deltaTime * 0.25f
+      : -deltaTime * 0.25f;
+  }
+}
+
 // PUBLIC
 
 TResult core::MRenderer::copyImage(VkCommandBuffer cmdBuffer, VkImage srcImage,
@@ -885,31 +944,18 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
 
   WModel* pModel = pEntity->getModel();
 
-  // copy vertex buffer
-  VkBufferCopy copyInfo{};
-  copyInfo.srcOffset = 0u;
-  copyInfo.dstOffset = scene.currentVertexOffset * sizeof(RVertex);
-  copyInfo.size = sizeof(RVertex) * pModel->m_vertexCount;
-
-  copyBuffer(&pModel->staging.vertexBuffer, &scene.vertexBuffer, &copyInfo);
-
-  // copy index buffer
-  copyInfo.dstOffset = scene.currentIndexOffset * sizeof(uint32_t);
-  copyInfo.size = sizeof(uint32_t) * pModel->m_indexCount;
-
-  copyBuffer(&pModel->staging.indexBuffer, &scene.indexBuffer, &copyInfo);
-
-  // store reference data to model in the scene buffers
-  pModel->setSceneBindingData(scene.currentVertexOffset,
-                              scene.currentIndexOffset);
-
   // add model to rendering queue, store its offsets
   REntityBindInfo bindInfo{};
   bindInfo.pEntity = pEntity;
-  bindInfo.vertexOffset = scene.currentVertexOffset;
-  bindInfo.vertexCount = pModel->m_vertexCount;
-  bindInfo.indexOffset = scene.currentIndexOffset;
-  bindInfo.indexCount = pModel->m_indexCount;
+
+  const size_t primitiveCount = pModel->m_pLinearPrimitives.size();
+  bindInfo.primitiveReferences.resize(primitiveCount);
+
+  for (size_t i = 0; i < primitiveCount; ++i) {
+    bindInfo.primitiveReferences[i].pPrimitive = pModel->m_pLinearPrimitives[i];
+    bindInfo.primitiveReferences[i].UID = scene.currentPrimitiveUID++;
+    bindInfo.primitiveReferences[i].isVisible = true;
+  }
 
   system.bindings.emplace_back(bindInfo);
 
@@ -926,12 +972,6 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
 
   pEntity->setRendererBindingIndex(
       static_cast<int32_t>(system.bindings.size() - 1));
-
-  // Store new offsets into scene buffer data
-  scene.currentVertexOffset += pModel->m_vertexCount;
-  scene.currentIndexOffset += pModel->m_indexCount;
-
-  pModel->clearStagingData();
 
 #ifndef NDEBUG
   RE_LOG(Log, "Bound model \"%s\" to graphics pipeline.", pModel->getName());
@@ -958,6 +998,33 @@ void core::MRenderer::unbindEntity(uint32_t index) {
 }
 
 void core::MRenderer::clearBoundEntities() { system.bindings.clear(); }
+
+void core::MRenderer::uploadModelToSceneBuffer(WModel* pModel) {
+  // Copy vertex buffer
+  VkBufferCopy copyInfo{};
+  copyInfo.srcOffset = 0u;
+  copyInfo.dstOffset = scene.currentVertexOffset * sizeof(RVertex);
+  copyInfo.size = sizeof(RVertex) * pModel->m_vertexCount;
+
+  copyBuffer(&pModel->staging.vertexBuffer, &scene.vertexBuffer, &copyInfo);
+
+  // Copy index buffer
+  copyInfo.dstOffset = scene.currentIndexOffset * sizeof(uint32_t);
+  copyInfo.size = sizeof(uint32_t) * pModel->m_indexCount;
+
+  copyBuffer(&pModel->staging.indexBuffer, &scene.indexBuffer, &copyInfo);
+
+  // Set offsets in the model for future reference
+  pModel->m_sceneVertexOffset = scene.currentVertexOffset;
+  pModel->m_sceneIndexOffset = scene.currentIndexOffset;
+
+  // Remove model staging data from memory
+  pModel->clearStagingData();
+
+  // Move scene offsets
+  scene.currentVertexOffset += pModel->m_vertexCount;
+  scene.currentIndexOffset += pModel->m_indexCount;
+}
 
 void core::MRenderer::setCamera(const char* name) {
   view.pActiveCamera = core::actors.getCamera(name);
@@ -1025,45 +1092,4 @@ void core::MRenderer::setShadowColor(const glm::vec3& color) {
 
 void core::MRenderer::setBloomIntensity(const float intensity) {
   lighting.data.bloomIntensity = intensity;
-}
-
-// Runs in a dedicated thread
-void core::MRenderer::updateBoundEntities() {
-  AEntity* pEntity = nullptr;
-
-  // Update animation matrices
-  core::animations.runAnimationQueue();
-
-  for (auto& bindInfo : system.bindings) {
-    if ((pEntity = bindInfo.pEntity) == nullptr) {
-      continue;
-    }
-
-    // Update model matrices
-    pEntity->updateModel();
-  }
-
-  // Use this thread to also quickly process camera exposure level
-  updateExposureLevel();
-}
-
-void core::MRenderer::updateExposureLevel() {
-  const float deltaTime = core::time.getDeltaTime();
-  float brightnessData[256];
-  memcpy(brightnessData, postprocess.exposureStorageBuffer.allocInfo.pMappedData, 1024);
-
-  float averageLuminance = 0.0f;
-  for (int i = 0; i < 256; ++i) {
-    averageLuminance += brightnessData[i];
-  }
-
-  averageLuminance /= 256.0f;
-
-  if (lighting.data.averageLuminance < averageLuminance - 0.01f ||
-      lighting.data.averageLuminance > averageLuminance + 0.01f) {
-  lighting.data.averageLuminance +=
-      (lighting.data.averageLuminance < averageLuminance)
-          ? deltaTime * 0.25f
-          : -deltaTime * 0.25f;
-  }
 }

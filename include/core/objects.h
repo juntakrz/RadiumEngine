@@ -229,11 +229,19 @@ struct RDynamicRenderingPass {
 };
 
 struct REntityBindInfo {
+  struct PrimitiveData {
+    class WPrimitive* pPrimitive = nullptr;
+    uint32_t UID = 0;
+    bool isVisible = true;
+  };
+
   AEntity* pEntity = nullptr;
-  uint32_t vertexOffset = 0u;
+  std::vector<PrimitiveData> primitiveReferences;
+
+  /*uint32_t vertexOffset = 0u;
   uint32_t indexOffset = 0u;
   uint32_t vertexCount = 0u;
-  uint32_t indexCount = 0u;
+  uint32_t indexCount = 0u;*/
 };
 
 struct RFramebuffer {
@@ -474,7 +482,7 @@ struct RSceneUBO {
 };
 
 struct WAnimationInfo {
-  class WModel* pModel;
+  class AEntity* pEntity;
   std::string animationName;
   float startTime = 0.0f;
   float endTime = std::numeric_limits<float>::max();

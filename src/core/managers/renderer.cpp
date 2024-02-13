@@ -927,6 +927,8 @@ TResult core::MRenderer::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorPool();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSets();
 
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createQueryPool();
+
   return chkResult;
 }
 
@@ -945,6 +947,7 @@ void core::MRenderer::deinitialize() {
   core::world.destroyAllModels();
   core::resources.destroyAllTextures();
   destroyDescriptorPool();
+  destroyQueryPool();
   destroyUniformBuffers();
   destroyMemAlloc();
   if(requireValidationLayers) MDebug::get().destroy(APIInstance);

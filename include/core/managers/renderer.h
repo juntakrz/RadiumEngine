@@ -6,6 +6,7 @@
 #include "common.h"
 #include "core/world/actors/camera.h"
 
+class WModel;
 class WPrimitive;
 struct RTexture;
 struct RMaterial;
@@ -70,6 +71,7 @@ class MRenderer {
     RBuffer skinTransformBuffer;
     uint32_t currentVertexOffset = 0u;
     uint32_t currentIndexOffset = 0u;
+    uint32_t currentPrimitiveUID = 0u;
     VkDescriptorSet transformDescriptorSet;
 
     std::vector<RTexture*> pGBufferTargets;
@@ -121,6 +123,8 @@ class MRenderer {
 
     std::vector<REntityBindInfo> bindings;  // entities rendered during the current frame
     std::vector<VkDrawIndexedIndirectCommand> drawCommands;
+
+    VkQueryPool queryPool;
   } system;
 
   // current camera view data
@@ -302,6 +306,9 @@ class MRenderer {
                                                            const char* extensionToCheck = nullptr,
                                                            bool* pCheckResult = nullptr);
 
+  TResult createQueryPool();
+  void destroyQueryPool();
+
   void updateBoundEntities();
   void updateExposureLevel();
 
@@ -358,6 +365,8 @@ public:
 
   // clear all primitive bindings
   void clearBoundEntities();
+
+  void uploadModelToSceneBuffer(WModel* pModel);
 
   // set camera from create cameras by name
   void setCamera(const char* name);

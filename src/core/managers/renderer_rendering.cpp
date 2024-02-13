@@ -44,8 +44,7 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
 
   // mesh descriptor set is at binding 1 (TODO: change from mesh to actor)
   if (renderView.pCurrentMesh != pMesh) {
-    uint32_t skinOffset =
-        (pNode->pSkin) ? static_cast<uint32_t>(pNode->pSkin->bufferOffset) : 0u;
+    uint32_t skinOffset = (pNode->pSkin) ? pEntity->getSkinTransformBufferOffset(pNode->skinIndex) : 0u;
     uint32_t dynamicOffsets[3] = {
         pEntity->getRootTransformBufferOffset(),
         pEntity->getNodeTransformBufferOffset(pNode->index), skinOffset};
@@ -65,8 +64,8 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
   }
 
   int32_t vertexOffset =
-      (int32_t)pBindInfo->vertexOffset + (int32_t)pPrimitive->vertexOffset;
-  uint32_t indexOffset = pBindInfo->indexOffset + pPrimitive->indexOffset;
+      (int32_t)pBindInfo->pEntity->getModel()->m_sceneVertexOffset + (int32_t)pPrimitive->vertexOffset;
+  uint32_t indexOffset = pBindInfo->pEntity->getModel()->m_sceneIndexOffset + pPrimitive->indexOffset;
 
   // TODO: implement draw indirect
   vkCmdDrawIndexed(cmdBuffer, pPrimitive->indexCount, instanceCount, indexOffset, vertexOffset, 0);

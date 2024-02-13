@@ -14,9 +14,18 @@ class AEntity : public ABase {
  protected:
   struct AnimatedNodeBinding {
     int32_t nodeIndex = -1;
-    size_t nodeTransformBufferIndex = -1;
-    size_t nodeTransformBufferOffset = -1;
+    uint32_t nodeTransformBufferIndex = -1;
+    uint32_t nodeTransformBufferOffset = -1;
+
+    int32_t skinIndex = -1;
+    uint32_t skinTransformBufferIndex = -1;
+    uint32_t skinTransformBufferOffset = -1;
+    
+    RMeshUBO transformBufferBlock;
+    bool requiresTransformBufferBlockUpdate = true;
   };
+
+  glm::mat4 m_modelMatrix;
 
   EActorType m_typeId = EActorType::Entity;
 
@@ -24,11 +33,16 @@ class AEntity : public ABase {
   // renderer bind index
   int32_t m_bindIndex = -1;
   // root transform buffer bind index and offset
-  size_t m_rootTransformBufferIndex = -1;
-  size_t m_rootTransformBufferOffset = -1;
+  uint32_t m_rootTransformBufferIndex = -1;
+  uint32_t m_rootTransformBufferOffset = -1;
 
   std::vector<AnimatedNodeBinding> m_animatedNodes;
-  
+
+  // currently active animations (name / index in update queue)
+  std::unordered_map<std::string, int32_t> m_playingAnimations;
+
+  AnimatedNodeBinding* getAnimatedNodeBinding(const uint32_t nodeIndex);
+  void updateTransformBuffers() noexcept;
 
  public:
   AEntity() noexcept {};
@@ -43,4 +57,11 @@ class AEntity : public ABase {
   void setRendererBindingIndex(int32_t bindingIndex);
   uint32_t getRootTransformBufferOffset();
   uint32_t getNodeTransformBufferOffset(int32_t nodeIndex);
+  uint32_t getSkinTransformBufferOffset(int32_t skinIndex);
+
+  // simplified version of playAnimation
+  void playAnimation(const std::string& name, const float speed = 1.0f,
+    const bool loop = true, const bool isReversed = false);
+
+  void playAnimation(const WAnimationInfo* pAnimationInfo);
 };

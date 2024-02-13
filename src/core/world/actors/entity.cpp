@@ -5,6 +5,39 @@
 #include "core/model/model.h"
 #include "core/world/actors/entity.h"
 
+AEntity::AnimatedNodeBinding* AEntity::getAnimatedNodeBinding(const uint32_t nodeIndex) {
+  for (auto& node : m_animatedNodes) {
+    if (node.nodeIndex == nodeIndex) return &node;
+  }
+
+  return nullptr;
+}
+
+void AEntity::updateTransformBuffers() noexcept {
+  for (auto& node : m_animatedNodes) {
+    if (!node.requiresTransformBufferBlockUpdate) return;
+
+    int8_t* pNodeMemoryAddress =
+      static_cast<int8_t*>(core::renderer.getSceneBuffers()
+        ->nodeTransformBuffer.allocInfo.pMappedData) +
+      node.nodeTransformBufferOffset;
+
+    // Copy node transform data for vertex shader (node matrix and joint count)
+    memcpy(pNodeMemoryAddress, &node.transformBufferBlock,
+      sizeof(glm::mat4) + sizeof(float));
+
+    if (node.skinIndex != -1) {
+      int8_t* pSkinMemoryAddress = static_cast<int8_t*>(core::renderer.getSceneBuffers()
+        ->skinTransformBuffer.allocInfo.pMappedData) + node.skinTransformBufferOffset;
+
+      memcpy(pSkinMemoryAddress, node.transformBufferBlock.jointMatrices.data(),
+             sizeof(glm::mat4) * node.transformBufferBlock.jointMatrices.size());
+    }
+
+    node.requiresTransformBufferBlockUpdate = false;
+  }
+}
+
 void AEntity::setModel(WModel* pModel) {
   if (!pModel) {
     RE_LOG(Error, "Failed to set model for actor '%s', received nullptr.",
@@ -23,6 +56,12 @@ void AEntity::setModel(WModel* pModel) {
     if (pNode->pMesh) {
       m_animatedNodes.emplace_back();
       m_animatedNodes.back().nodeIndex = pNode->index;
+
+      if (pNode->pSkin) {
+        m_animatedNodes.back().skinIndex = pNode->pSkin->index;
+        m_animatedNodes.back().transformBufferBlock.jointMatrices.resize(pNode->pSkin->joints.size());
+        m_animatedNodes.back().transformBufferBlock.jointCount = static_cast<float>(pNode->pSkin->joints.size());
+      }
     }
   }
 }
@@ -41,12 +80,7 @@ void AEntity::updateModel() {
 
     memcpy(pMemAddress, pMatrix, sizeof(glm::mat4));
 
-    for (auto& it : m_animatedNodes) {
-      m_pModel->updateNodeTransformBuffer(
-          it.nodeIndex, static_cast<uint32_t>(it.nodeTransformBufferOffset));
-    }
-
-    m_pModel->updateSkinTransformBuffer();
+    updateTransformBuffers();
   }
 }
 
@@ -73,22 +107,15 @@ void AEntity::bindToRenderer() {
         m_name.c_str());
   }
 
-  // register actor's animated node transform matrices
+  // Register actor's animated node transform matrices
   for (auto& animatedNode : m_animatedNodes) {
-    core::animations.getOrRegisterNodeOffsetIndex(
-        &animatedNode, animatedNode.nodeTransformBufferIndex);
-    animatedNode.nodeTransformBufferOffset =
-        animatedNode.nodeTransformBufferIndex * config::scene::nodeBlockSize;
-  }
-
-  // register inverse bind matrices
-  // unlike root and node matrices these are not unique per entity
-  for (int32_t i = 0; i < m_pModel->m_pSkins.size(); ++i) {
-    core::animations.getOrRegisterSkinOffsetIndex(
-        m_pModel->m_pSkins[i].get(), m_pModel->m_pSkins[i]->bufferIndex);
-
-    m_pModel->m_pSkins[i]->bufferOffset =
-        m_pModel->m_pSkins[i]->bufferIndex * config::scene::skinBlockSize;
+    core::animations.getOrRegisterNodeOffsetIndex(&animatedNode, animatedNode.nodeTransformBufferIndex);
+    animatedNode.nodeTransformBufferOffset = animatedNode.nodeTransformBufferIndex * config::scene::nodeBlockSize;
+  
+    if (animatedNode.skinIndex != -1) {
+      core::animations.getOrRegisterSkinOffsetIndex(&animatedNode, animatedNode.skinTransformBufferIndex);
+      animatedNode.skinTransformBufferOffset = animatedNode.skinTransformBufferIndex * config::scene::skinBlockSize;
+    }
   }
 }
 
@@ -104,13 +131,13 @@ void AEntity::setRendererBindingIndex(int32_t bindingIndex) {
 }
 
 uint32_t AEntity::getRootTransformBufferOffset() {
-  return static_cast<uint32_t>(m_rootTransformBufferOffset);
+  return m_rootTransformBufferOffset;
 }
 
 uint32_t AEntity::getNodeTransformBufferOffset(int32_t nodeIndex) {
   for (const auto& it : m_animatedNodes) {
     if (it.nodeIndex == nodeIndex) {
-      return static_cast<uint32_t>(it.nodeTransformBufferOffset);
+      return it.nodeTransformBufferOffset;
     }
   }
 
@@ -118,4 +145,57 @@ uint32_t AEntity::getNodeTransformBufferOffset(int32_t nodeIndex) {
          m_name.c_str());
 
   return -1;
+}
+
+uint32_t AEntity::getSkinTransformBufferOffset(int32_t skinIndex) {
+  for (const auto& it : m_animatedNodes) {
+    if (it.skinIndex != -1 && it.skinIndex == skinIndex) {
+      return it.skinTransformBufferOffset;
+    }
+  }
+
+  return 0;
+}
+
+void AEntity::playAnimation(const std::string& name, const float speed,
+  const bool loop, const bool isReversed) {
+  //for (const auto& boundAnimation : m_boundAnimations) {
+    //if (boundAnimation == name) {
+      WAnimationInfo animationInfo;
+      animationInfo.animationName = name;
+      animationInfo.pEntity = this;
+      animationInfo.speed = speed;
+      animationInfo.loop = loop;
+
+      if (isReversed) {
+        const float endTime = animationInfo.endTime;
+        animationInfo.endTime = animationInfo.startTime;
+        animationInfo.startTime = endTime;
+      }
+
+      m_playingAnimations[name] = core::animations.addAnimationToQueue(&animationInfo);
+
+      /*return;
+    }
+  }
+
+  RE_LOG(Error, "Can't play animation '%s' as it was not bound to model '%s'.",
+    name.c_str(), m_name.c_str());*/
+}
+
+void AEntity::playAnimation(const WAnimationInfo* pAnimationInfo) {
+  if (!pAnimationInfo) {
+    RE_LOG(Error, "Failed to play animation for '%s', no data was provided.",
+      m_name.c_str());
+    return;
+  }
+
+  /*for (const auto& boundAnimation : m_boundAnimations) {
+    if (boundAnimation == pAnimationInfo->animationName) {*/
+      m_playingAnimations[pAnimationInfo->animationName] =
+        core::animations.addAnimationToQueue(pAnimationInfo);
+
+  //    return;
+  //  }
+  //}
 }
