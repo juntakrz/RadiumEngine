@@ -5,7 +5,15 @@
 #include "core/model/model.h"
 #include "core/world/actors/entity.h"
 
-AEntity::AnimatedNodeBinding* AEntity::getAnimatedNodeBinding(const uint32_t nodeIndex) {
+AEntity::AnimatedSkinBinding* AEntity::getAnimatedSkinBinding(const int32_t skinIndex) {
+  if (skinIndex > -1 && skinIndex < m_animatedSkins.size()) {
+    return &m_animatedSkins[skinIndex];
+  }
+
+  return nullptr;
+}
+
+AEntity::AnimatedNodeBinding* AEntity::getAnimatedNodeBinding(const int32_t nodeIndex) {
   for (auto& node : m_animatedNodes) {
     if (node.nodeIndex == nodeIndex) return &node;
   }
@@ -14,8 +22,16 @@ AEntity::AnimatedNodeBinding* AEntity::getAnimatedNodeBinding(const uint32_t nod
 }
 
 void AEntity::updateTransformBuffers() noexcept {
+  for (auto& skin : m_animatedSkins) {
+    int8_t* pSkinMemoryAddress = static_cast<int8_t*>(core::renderer.getSceneBuffers()
+      ->skinTransformBuffer.allocInfo.pMappedData) + skin.skinTransformBufferOffset;
+
+    memcpy(pSkinMemoryAddress, skin.transformBufferBlock.jointMatrices.data(),
+      sizeof(glm::mat4) * skin.transformBufferBlock.jointMatrices.size());
+  }
+
   for (auto& node : m_animatedNodes) {
-    if (!node.requiresTransformBufferBlockUpdate) return;
+    if (!node.requiresTransformBufferBlockUpdate) continue;
 
     int8_t* pNodeMemoryAddress =
       static_cast<int8_t*>(core::renderer.getSceneBuffers()
@@ -25,14 +41,6 @@ void AEntity::updateTransformBuffers() noexcept {
     // Copy node transform data for vertex shader (node matrix and joint count)
     memcpy(pNodeMemoryAddress, &node.transformBufferBlock,
       sizeof(glm::mat4) + sizeof(float));
-
-    if (node.skinIndex != -1) {
-      int8_t* pSkinMemoryAddress = static_cast<int8_t*>(core::renderer.getSceneBuffers()
-        ->skinTransformBuffer.allocInfo.pMappedData) + node.skinTransformBufferOffset;
-
-      memcpy(pSkinMemoryAddress, node.transformBufferBlock.jointMatrices.data(),
-             sizeof(glm::mat4) * node.transformBufferBlock.jointMatrices.size());
-    }
 
     node.requiresTransformBufferBlockUpdate = false;
   }
@@ -51,7 +59,23 @@ void AEntity::setModel(WModel* pModel) {
 
   std::vector<WModel::Node*>& pNodes = m_pModel->getAllNodes();
 
-  // create node list for all animated nodes
+  // Create skin list
+  const size_t skinCount = pModel->m_pSkins.size();
+  m_animatedSkins.resize(skinCount);
+
+  for (size_t skinIndex = 0; skinIndex < skinCount; ++skinIndex) {
+    // Skins should be stored sequentially in the model, but this index check is here just in case they aren't
+    const int32_t modelSkinIndex = pModel->m_pSkins[skinIndex]->index;
+    m_animatedSkins[modelSkinIndex].skinIndex = pModel->m_pSkins[skinIndex]->index;
+    m_animatedSkins[modelSkinIndex].transformBufferBlock.jointMatrices.resize(pModel->m_pSkins[skinIndex]->joints.size());
+
+    // Set all matrices to identity to avoid NaN results in case no animation will be set
+    for (auto& jointMatrix : m_animatedSkins[modelSkinIndex].transformBufferBlock.jointMatrices) {
+      jointMatrix = glm::mat4(1.0f);
+    }
+  }
+
+  // Create node list for all animated nodes
   for (auto& pNode : pNodes) {
     if (pNode->pMesh) {
       m_animatedNodes.emplace_back();
@@ -59,8 +83,8 @@ void AEntity::setModel(WModel* pModel) {
 
       if (pNode->pSkin) {
         m_animatedNodes.back().skinIndex = pNode->pSkin->index;
-        m_animatedNodes.back().transformBufferBlock.jointMatrices.resize(pNode->pSkin->joints.size());
         m_animatedNodes.back().transformBufferBlock.jointCount = static_cast<float>(pNode->pSkin->joints.size());
+        m_animatedNodes.back().pSkinBinding = getAnimatedSkinBinding(pNode->pSkin->index);
       }
     }
   }
@@ -94,7 +118,7 @@ void AEntity::bindToRenderer() {
 
   m_bindIndex = (int32_t)core::renderer.bindEntity(this);
 
-  // register actor's root transform matrix
+  // Register actor's root transform matrix
   bool isNew = core::animations.getOrRegisterActorOffsetIndex(
       this, m_rootTransformBufferIndex);
   m_rootTransformBufferOffset = sizeof(glm::mat4) * m_rootTransformBufferIndex;
@@ -107,15 +131,16 @@ void AEntity::bindToRenderer() {
         m_name.c_str());
   }
 
+  // Register actor's animated skin transform matrices
+  for (auto& animatedSkin : m_animatedSkins) {
+    core::animations.getOrRegisterSkinOffsetIndex(&animatedSkin, animatedSkin.skinTransformBufferIndex);
+    animatedSkin.skinTransformBufferOffset = animatedSkin.skinTransformBufferIndex * config::scene::skinBlockSize;
+  }
+
   // Register actor's animated node transform matrices
   for (auto& animatedNode : m_animatedNodes) {
     core::animations.getOrRegisterNodeOffsetIndex(&animatedNode, animatedNode.nodeTransformBufferIndex);
     animatedNode.nodeTransformBufferOffset = animatedNode.nodeTransformBufferIndex * config::scene::nodeBlockSize;
-  
-    if (animatedNode.skinIndex != -1) {
-      core::animations.getOrRegisterSkinOffsetIndex(&animatedNode, animatedNode.skinTransformBufferIndex);
-      animatedNode.skinTransformBufferOffset = animatedNode.skinTransformBufferIndex * config::scene::skinBlockSize;
-    }
   }
 }
 
@@ -148,10 +173,8 @@ uint32_t AEntity::getNodeTransformBufferOffset(int32_t nodeIndex) {
 }
 
 uint32_t AEntity::getSkinTransformBufferOffset(int32_t skinIndex) {
-  for (const auto& it : m_animatedNodes) {
-    if (it.skinIndex != -1 && it.skinIndex == skinIndex) {
-      return it.skinTransformBufferOffset;
-    }
+  if (skinIndex > -1 && skinIndex < m_animatedSkins.size()) {
+     return m_animatedSkins[skinIndex].skinTransformBufferOffset;
   }
 
   return 0;

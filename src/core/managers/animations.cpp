@@ -108,9 +108,37 @@ void core::MAnimations::runAnimationQueue() {
   cleanupQueue();
   
   for (auto& queueEntry : m_animationQueue) {
-    // get a list of all nodes affected by the animation
+    // Get a list of all nodes affected by the animation
     const auto& animatedNodes = queueEntry.pAnimation->getAnimatedNodes();
     const auto& keyFrames = queueEntry.pAnimation->getKeyFrames();
+
+    // Update skins, each skinMatrices vector's index per frame corresponds to skin's index
+    for (int32_t skinIndex = 0; skinIndex < keyFrames[0].skinMatrices.size(); ++skinIndex) {
+      for (size_t keyFrame = 0; keyFrame < keyFrames.size() - 1; ++keyFrame) {
+        if ((queueEntry.time >= keyFrames.at(keyFrame).timeStamp) &&
+          (queueEntry.time <= keyFrames.at(keyFrame + 1).timeStamp)) {
+          // get interpolation coefficient based on time between frames
+          float u =
+            std::max(0.0f, queueEntry.time - keyFrames.at(keyFrame).timeStamp) /
+            (keyFrames.at(keyFrame + 1).timeStamp - keyFrames.at(keyFrame).timeStamp);
+
+          if (u <= 1.0f) {
+            const size_t jointCount =
+              keyFrames.at(keyFrame).skinMatrices.at(skinIndex).size();
+
+            for (size_t jointIndex = 0; jointIndex < jointCount; ++jointIndex) {
+              math::interpolate(
+                keyFrames.at(keyFrame).skinMatrices[skinIndex][jointIndex],
+                keyFrames.at(keyFrame + 1).skinMatrices[skinIndex][jointIndex], u,
+                queueEntry.pEntity->getAnimatedSkinBinding(skinIndex)->transformBufferBlock.jointMatrices[jointIndex]);
+            }
+          }
+
+          // frame update finished, exit loop
+          break;
+        }
+      }
+    }
 
     for (const auto& node : animatedNodes) {
       AEntity::AnimatedNodeBinding* pNodeBinding = queueEntry.pEntity->getAnimatedNodeBinding(node.index);
@@ -119,9 +147,6 @@ void core::MAnimations::runAnimationQueue() {
         m_cleanupQueue.emplace_back(queueEntry.queueIndex);
         break;
       }
-
-      const int32_t skinIndex = pNodeBinding->skinIndex;
-      const bool hasSkin = !keyFrames.at(0).skinMatrices.empty();
 
       // write interpolated frame data directly to node's mesh uniform block
       for (size_t i = 0; i < keyFrames.size() - 1; ++i) {
@@ -137,23 +162,13 @@ void core::MAnimations::runAnimationQueue() {
                               keyFrames.at(i + 1).nodeMatrices.at(node.index),
                               u, pNodeBinding->transformBufferBlock.nodeMatrix);
 
-            if (hasSkin) {
-              const size_t jointCount =
-                  keyFrames.at(i).skinMatrices.at(skinIndex).size();
-
-              for (int32_t j = 0; j < jointCount; ++j) {
-                math::interpolate(
-                  keyFrames.at(i).skinMatrices[skinIndex][j],
-                  keyFrames.at(i + 1).skinMatrices[skinIndex][j], u,
-                  pNodeBinding->transformBufferBlock.jointMatrices[j]);
-              }
-            }
-
             // frame update finished, exit loop
             break;
           }
         }
       }
+
+      pNodeBinding->requiresTransformBufferBlockUpdate = true;
     }
 
     const float timeStep = core::time.getDeltaTime() * queueEntry.speed;
@@ -234,7 +249,7 @@ bool core::MAnimations::getOrRegisterNodeOffsetIndex(
   return true;  // registered node to the first free index
 }
 
-bool core::MAnimations::getOrRegisterSkinOffsetIndex(AEntity::AnimatedNodeBinding* pNode, uint32_t& outIndex) {
+bool core::MAnimations::getOrRegisterSkinOffsetIndex(AEntity::AnimatedSkinBinding* pSkin, uint32_t& outIndex) {
   uint32_t freeIndex = -1;
 
   for (uint32_t i = 0; i < m_skinTransformBufferIndices.size(); ++i) {
@@ -242,13 +257,13 @@ bool core::MAnimations::getOrRegisterSkinOffsetIndex(AEntity::AnimatedNodeBindin
       freeIndex = i;
     }
 
-    if (m_skinTransformBufferIndices[i] == &pNode->skinIndex) {
+    if (m_skinTransformBufferIndices[i] == pSkin) {
       outIndex = i;
       return false;  // skin is already registered
     }
   }
 
-  m_skinTransformBufferIndices[freeIndex] = &pNode->skinIndex;
+  m_skinTransformBufferIndices[freeIndex] = pSkin;
   outIndex = freeIndex;
 
   return true;  // registered skin to the first free index

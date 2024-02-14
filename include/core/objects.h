@@ -467,10 +467,9 @@ struct RSceneVertexPCB {
   float padding[3];
 };
 
-struct RMeshUBO {
+struct RNodeUBO {
   glm::mat4 nodeMatrix = glm::mat4(1.0f);
   float jointCount = 0.0f;
-  std::vector<glm::mat4> jointMatrices;
 };
 
 // camera and view matrix UBO for vertex shader
@@ -479,6 +478,10 @@ struct RSceneUBO {
   alignas(16) glm::mat4 projection = glm::mat4(1.0f);
   alignas(16) glm::vec3 cameraPosition = glm::vec3(0.0f);
   VkDeviceAddress vertexBufferAddress = 0u;
+};
+
+struct RSkinUBO {
+  std::vector<glm::mat4> jointMatrices;
 };
 
 struct WAnimationInfo {

@@ -33,6 +33,8 @@ class WModel {
     size_t bufferIndex = -1;   // index into skin buffer
     size_t bufferOffset = -1;  // offset in bytes into skin buffer
 
+    RSkinUBO stagingTransformBlock;   // Used only for preprocessing animations
+
     struct {
       std::vector<glm::mat4> inverseBindMatrices;
       bool recalculateSkinMatrices = true;
@@ -44,8 +46,8 @@ class WModel {
     std::vector<std::unique_ptr<WPrimitive>> pPrimitives;
     std::vector<std::unique_ptr<WPrimitive>> pBoundingBoxes;
 
-    RMeshUBO stagingTransformBlock;   // Used only for preprocessing animations
-
+    RNodeUBO stagingTransformBlock;   // Used only for preprocessing animations
+                                      // Storing node transformation only for nodes with mesh data
     struct {
       glm::vec3 min = glm::vec3(0.0f);
       glm::vec3 max = glm::vec3(0.0f);

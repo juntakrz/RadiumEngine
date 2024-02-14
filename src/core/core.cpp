@@ -98,8 +98,16 @@ void core::run() {
 
   //core::animations.loadAnimation("Idle");
   
-  pStatic->getModel()->bindAnimation("Idle");
+  pStatic->getModel()->bindAnimation("Idle");   // TODO: not used, fix or deprecate
   pStatic->playAnimation("Idle");
+
+  pStatic = core::actors.createStatic("Static02");
+  pStatic->setModel(core::world.getModel("mdlGuy"));
+  pStatic->bindToRenderer();
+  pStatic->setLocation(2.5f, -1.38f, 2.1f);
+  pStatic->setRotation({ 0.0f, 1.0f, 0.0f }, glm::radians(180.0f));
+  pStatic->setScale(0.32f);
+  pStatic->playAnimation("SwordAndShieldIdle");
 
   pStatic = core::actors.createStatic("StaticCastle");
   pStatic->setModel(core::world.getModel("mdlCastle"));

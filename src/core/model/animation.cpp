@@ -93,7 +93,7 @@ void WAnimation::addKeyFrame(WModel* pModel, const float timeStamp) {
       if (pNode->pSkin) {
         if (keyFrame.skinMatrices[pNode->pSkin->index].empty()) {
           keyFrame.skinMatrices[pNode->pSkin->index] =
-              pNode->pMesh->stagingTransformBlock.jointMatrices;
+              pNode->pSkin->stagingTransformBlock.jointMatrices;
         }
       }
     }

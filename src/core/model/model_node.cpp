@@ -25,14 +25,14 @@ void WModel::Node::updateStagingNodeMatrices(WAnimation* pOutAnimation) {
 
     if (pSkin && pSkin->staging.recalculateSkinMatrices) {
       // Update joint matrices
-      size_t numJoints = std::min((uint32_t)pSkin->joints.size(), RE_MAXJOINTS);
+      uint32_t numJoints = std::min(static_cast<uint32_t>(pSkin->joints.size()), RE_MAXJOINTS);
 
-      for (size_t i = 0; i < numJoints; i++) {
+      for (uint32_t i = 0; i < numJoints; i++) {
         glm::mat4 jointMatrix = pSkin->joints[i]->transformedNodeMatrix *
                                 pSkin->staging.inverseBindMatrices[i];
-        pMesh->stagingTransformBlock.jointMatrices[i] = jointMatrix;
+        pSkin->stagingTransformBlock.jointMatrices[i] = jointMatrix;
       }
-      pMesh->stagingTransformBlock.jointCount = (float)numJoints;
+
       pSkin->staging.recalculateSkinMatrices = false;
     }
   }

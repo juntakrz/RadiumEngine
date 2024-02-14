@@ -12,20 +12,28 @@ class AEntity : public ABase {
   friend class core::MAnimations;
 
  protected:
+   struct AnimatedSkinBinding {
+     int32_t skinIndex = -1;
+     uint32_t skinTransformBufferIndex = -1;
+     uint32_t skinTransformBufferOffset = -1;
+
+     RSkinUBO transformBufferBlock;
+   };
+
   struct AnimatedNodeBinding {
     int32_t nodeIndex = -1;
     uint32_t nodeTransformBufferIndex = -1;
     uint32_t nodeTransformBufferOffset = -1;
 
     int32_t skinIndex = -1;
-    uint32_t skinTransformBufferIndex = -1;
-    uint32_t skinTransformBufferOffset = -1;
-    
-    RMeshUBO transformBufferBlock;
+    RNodeUBO transformBufferBlock;
+
+    AnimatedSkinBinding* pSkinBinding = nullptr;
+
     bool requiresTransformBufferBlockUpdate = true;
   };
 
-  glm::mat4 m_modelMatrix;
+  glm::mat4 m_modelMatrix = glm::mat4(1.0f);
 
   EActorType m_typeId = EActorType::Entity;
 
@@ -36,12 +44,14 @@ class AEntity : public ABase {
   uint32_t m_rootTransformBufferIndex = -1;
   uint32_t m_rootTransformBufferOffset = -1;
 
+  std::vector<AnimatedSkinBinding> m_animatedSkins;
   std::vector<AnimatedNodeBinding> m_animatedNodes;
 
   // currently active animations (name / index in update queue)
   std::unordered_map<std::string, int32_t> m_playingAnimations;
 
-  AnimatedNodeBinding* getAnimatedNodeBinding(const uint32_t nodeIndex);
+  AnimatedSkinBinding* getAnimatedSkinBinding(const int32_t skinIndex);
+  AnimatedNodeBinding* getAnimatedNodeBinding(const int32_t nodeIndex);
   void updateTransformBuffers() noexcept;
 
  public:

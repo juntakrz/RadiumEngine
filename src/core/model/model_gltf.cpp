@@ -93,13 +93,9 @@ TResult WModel::createModel(const char* name, const tinygltf::Model* pInModel,
 
       // set joint count for every instance of a skin
       if (pNode->pSkin) {
-        size_t jointCount =
-            std::min((uint32_t)pNode->pSkin->joints.size(), RE_MAXJOINTS);
-        pNode->pMesh->stagingTransformBlock.jointCount = (float)jointCount;
-
-        if (pNode->pMesh->stagingTransformBlock.jointMatrices.empty() && jointCount) {
-          pNode->pMesh->stagingTransformBlock.jointMatrices.resize(jointCount);
-        }
+        float jointCount =
+            (float)std::min((uint32_t)pNode->pSkin->joints.size(), RE_MAXJOINTS);
+        pNode->pMesh->stagingTransformBlock.jointCount = jointCount;
       }
     }
   }
@@ -861,6 +857,7 @@ void WModel::loadSkins() {
              accessor.count * sizeof(glm::mat4));
     }
 
+    pSkin->stagingTransformBlock.jointMatrices.resize(pSkin->joints.size());
     ++index;
   }
 }

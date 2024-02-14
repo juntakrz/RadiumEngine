@@ -307,6 +307,8 @@ void core::MRenderer::updateExposureLevel() {
 
   float averageLuminance = 0.0f;
   for (int i = 0; i < 256; ++i) {
+    brightnessData[i] = (brightnessData[i] - 0.25f) * 2.0f + 0.25f;
+    brightnessData[i] = std::min(1.5f, std::max(brightnessData[i], 0.0f));
     averageLuminance += brightnessData[i];
   }
 

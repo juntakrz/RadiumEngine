@@ -60,7 +60,7 @@ class MAnimations {
   std::vector<AEntity*> m_rootTransformBufferIndices;
 
   // Index of a skin in a skin transform buffer
-  std::vector<int32_t*> m_skinTransformBufferIndices;
+  std::vector<AEntity::AnimatedSkinBinding*> m_skinTransformBufferIndices;
 
   MAnimations();
 
@@ -93,6 +93,6 @@ class MAnimations {
   bool getOrRegisterActorOffsetIndex(class AEntity* pActor, uint32_t& outIndex);
   // returns true if node was registered, false if already present
   bool getOrRegisterNodeOffsetIndex(AEntity::AnimatedNodeBinding* pNode, uint32_t& outIndex);
-  bool getOrRegisterSkinOffsetIndex(AEntity::AnimatedNodeBinding* pNode, uint32_t& outIndex);
+  bool getOrRegisterSkinOffsetIndex(AEntity::AnimatedSkinBinding* pSkin, uint32_t& outIndex);
 };
 }  // namespace core
