@@ -1,10 +1,17 @@
 #version 460
 #define RE_MAXJOINTS 128
 
+#extension GL_EXT_buffer_reference: require
+
+layout(buffer_reference, std430) buffer SkinTransformBuffer {
+  mat4 jointMatrix[RE_MAXJOINTS];
+};
+
 layout(binding = 0) uniform UBOView {
 	mat4 view;
 	mat4 projection;
 	vec3 cameraPos;
+	SkinTransformBuffer skinTransformBuffer;
 } scene;
 
 layout (set = 1, binding = 0) uniform UBOMesh0 {
@@ -39,10 +46,10 @@ void main(){
 
 	if (node.jointCount > 0.0) {
 		mat4 skinMatrix = 
-			inWeight.x * skin.jointMatrix[int(inJoint.x)] +
-			inWeight.y * skin.jointMatrix[int(inJoint.y)] +
-			inWeight.z * skin.jointMatrix[int(inJoint.z)] +
-			inWeight.w * skin.jointMatrix[int(inJoint.w)];
+			inWeight.x * scene.skinTransformBuffer.jointMatrix[int(inJoint.x)] +
+			inWeight.y * scene.skinTransformBuffer.jointMatrix[int(inJoint.y)] +
+			inWeight.z * scene.skinTransformBuffer.jointMatrix[int(inJoint.z)] +
+			inWeight.w * scene.skinTransformBuffer.jointMatrix[int(inJoint.w)];
 
 		worldPos = model.rootMatrix * node.nodeMatrix * skinMatrix * vec4(inPos, 1.0);
 		outNormal = normalize(transpose(inverse(mat3(model.rootMatrix * node.nodeMatrix * skinMatrix))) * inNormal);
@@ -52,6 +59,7 @@ void main(){
 	}
 
 	outWorldPos = worldPos.xyz / worldPos.w;
+
 	outUV0 = inUV0;
 	outUV1 = inUV1;
 	outColor0 = inColor0;

@@ -178,9 +178,17 @@ TResult core::MRenderer::createSceneBuffers() {
   RE_LOG(Log,
          "Allocating scene buffer for %d unique skins.",
          config::scene::entityBudget);
-  createBuffer(EBufferType::CPU_UNIFORM,
+  createBuffer(EBufferType::CPU_STORAGE,
                config::scene::getSkinTransformBufferSize(),
                scene.skinTransformBuffer, nullptr);
+
+  scene.instanceBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+  for (int8_t instanceBufferId = 0; instanceBufferId < MAX_FRAMES_IN_FLIGHT; ++instanceBufferId) {
+    RE_LOG(Log, "Allocating scene instance buffer for %d instances.",
+      config::scene::getNodeTransformBufferSize());
+    createBuffer(EBufferType::CPU_VERTEX, sizeof(RInstanceData) * config::scene::getNodeTransformBufferSize(),
+      scene.instanceBuffers[instanceBufferId], nullptr);
+  }
 
   return RE_OK;
 }
@@ -198,6 +206,11 @@ void core::MRenderer::destroySceneBuffers() {
                    scene.nodeTransformBuffer.allocation);
   vmaDestroyBuffer(memAlloc, scene.skinTransformBuffer.buffer,
                    scene.skinTransformBuffer.allocation);
+
+  for (int8_t instanceBufferId = 0; instanceBufferId < MAX_FRAMES_IN_FLIGHT; ++instanceBufferId) {
+    vmaDestroyBuffer(memAlloc, scene.instanceBuffers[instanceBufferId].buffer,
+                     scene.instanceBuffers[instanceBufferId].allocation);
+  }
 }
 
 core::MRenderer::RLightingData* core::MRenderer::getLightingData() {
@@ -217,7 +230,7 @@ core::MRenderer::RSceneBuffers* core::MRenderer::getSceneBuffers() {
 }
 
 TResult core::MRenderer::createUniformBuffers() {
-  view.modelViewProjectionBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+  scene.sceneBuffers.resize(MAX_FRAMES_IN_FLIGHT);
   lighting.buffers.resize(MAX_FRAMES_IN_FLIGHT);
 
   core::vulkan::minUniformBufferAlignment = physicalDevice.deviceProperties.properties.limits.minUniformBufferOffsetAlignment;
@@ -229,7 +242,7 @@ TResult core::MRenderer::createUniformBuffers() {
 
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
     createBuffer(EBufferType::CPU_UNIFORM, uboMVPSize,
-                 view.modelViewProjectionBuffers[i], nullptr);
+                 scene.sceneBuffers[i], nullptr);
     createBuffer(EBufferType::CPU_UNIFORM, uboLightingSize, lighting.buffers[i],
                  &lighting.data);
   }
@@ -238,7 +251,7 @@ TResult core::MRenderer::createUniformBuffers() {
 }
 
 void core::MRenderer::destroyUniformBuffers() {
-  for (auto& it : view.modelViewProjectionBuffers) {
+  for (auto& it : scene.sceneBuffers) {
     vmaDestroyBuffer(memAlloc, it.buffer, it.allocation);
   }
 
@@ -707,6 +720,9 @@ TResult core::MRenderer::setRendererDefaults() {
   // Create compute shader storage buffer for retrieving exposure results
   createBuffer(EBufferType::CPU_STORAGE, 1024, postprocess.exposureStorageBuffer, nullptr);
 
+  // Store buffer device addresses in appropriate data structures
+  scene.sceneBufferObject.skinTransformBufferAddress = scene.skinTransformBuffer.deviceAddress;
+
   return RE_OK;
 }
 
@@ -850,10 +866,13 @@ TResult core::MRenderer::createSyncObjects() {
     }
   }
 
-  // create continuously running threads
+  // Create asynchronously running threads
   RE_LOG(Log, "Creating entity update thread.");
   sync.asyncUpdateEntities.bindFunction(this, &MRenderer::updateBoundEntities);
   sync.asyncUpdateEntities.start();
+
+  sync.asyncUpdateEntities.bindFunction(this, &MRenderer::updateInstanceBuffer);
+  sync.asyncUpdateInstanceBuffers.start();
 
   return RE_OK;
 }
@@ -874,14 +893,14 @@ void core::MRenderer::destroySyncObjects() {
 }
 
 void core::MRenderer::updateSceneUBO(uint32_t currentImage) {
-  view.worldViewProjectionData.view = view.pActiveCamera->getView();
-  view.worldViewProjectionData.projection = view.pActiveCamera->getProjection();
-  view.worldViewProjectionData.cameraPosition = view.pActiveCamera->getLocation();
+  scene.sceneBufferObject.view = view.pActiveCamera->getView();
+  scene.sceneBufferObject.projection = view.pActiveCamera->getProjection();
+  scene.sceneBufferObject.cameraPosition = view.pActiveCamera->getLocation();
 
-  uint8_t* pSceneUBO = static_cast<uint8_t*>(view.modelViewProjectionBuffers[currentImage].allocInfo.pMappedData) +
+  uint8_t* pSceneUBO = static_cast<uint8_t*>(scene.sceneBuffers[currentImage].allocInfo.pMappedData) +
                        config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
 
-  memcpy(pSceneUBO, &view.worldViewProjectionData, sizeof(RSceneUBO));
+  memcpy(pSceneUBO, &scene.sceneBufferObject, sizeof(RSceneUBO));
 }
 
 void core::MRenderer::waitForSystemIdle() {
@@ -962,7 +981,7 @@ const VkDescriptorSet core::MRenderer::getSceneDescriptorSet(
 }
 
 RSceneUBO* core::MRenderer::getSceneUBO() {
-  return &view.worldViewProjectionData;
+  return &scene.sceneBufferObject;
 }
 
 core::MRenderer::REnvironmentData* core::MRenderer::getEnvironmentData() {

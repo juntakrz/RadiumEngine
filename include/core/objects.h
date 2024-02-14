@@ -229,19 +229,7 @@ struct RDynamicRenderingPass {
 };
 
 struct REntityBindInfo {
-  struct PrimitiveData {
-    class WPrimitive* pPrimitive = nullptr;
-    uint32_t UID = 0;
-    bool isVisible = true;
-  };
-
   AEntity* pEntity = nullptr;
-  std::vector<PrimitiveData> primitiveReferences;
-
-  /*uint32_t vertexOffset = 0u;
-  uint32_t indexOffset = 0u;
-  uint32_t vertexCount = 0u;
-  uint32_t indexCount = 0u;*/
 };
 
 struct RFramebuffer {
@@ -266,6 +254,13 @@ struct RGraphicsPipelineInfo {
     float slopeFactor = 0.0f;
     float clamp = 0.0f;
   } depthBias;
+};
+
+// References into three transform buffers
+struct RInstanceData {
+  int32_t modelMatrixId = -1;
+  int32_t nodeMatrixId = -1;
+  int32_t skinMatrixId = -1;
 };
 
 struct RLightInfo {
@@ -366,7 +361,7 @@ struct RVertex {
   glm::vec4 weight;  // WEIGHT
   glm::vec4 color;   // COLOR      aligned to 96 bytes per vertex on device
 
-  static VkVertexInputBindingDescription getBindingDesc();
+  static std::vector<VkVertexInputBindingDescription> getBindingDescs();
   static std::vector<VkVertexInputAttributeDescription> getAttributeDescs();
 };
 
@@ -477,7 +472,7 @@ struct RSceneUBO {
   alignas(16) glm::mat4 view = glm::mat4(1.0f);
   alignas(16) glm::mat4 projection = glm::mat4(1.0f);
   alignas(16) glm::vec3 cameraPosition = glm::vec3(0.0f);
-  VkDeviceAddress vertexBufferAddress = 0u;
+  VkDeviceAddress skinTransformBufferAddress = 0u;
 };
 
 struct RSkinUBO {
@@ -511,4 +506,11 @@ struct WModelConfigInfo {
   float framerate = 15.0f;
   // speed up extracted animations while sampling, will apply to all
   float speed = 1.0f;
+};
+
+struct WPrimitiveInstanceData {
+  int32_t instanceIndex = 0;
+  bool isVisible = true;
+
+  RInstanceData instanceBufferBlock;
 };

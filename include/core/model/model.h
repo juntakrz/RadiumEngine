@@ -30,8 +30,8 @@ class WModel {
     int32_t index;
     Node* skeletonRoot = nullptr;
     std::vector<Node*> joints;
-    size_t bufferIndex = -1;   // index into skin buffer
-    size_t bufferOffset = -1;  // offset in bytes into skin buffer
+    size_t bufferIndex = -1;   // Index into skin buffer
+    size_t bufferOffset = -1;  // Offset in bytes into skin buffer
 
     RSkinUBO stagingTransformBlock;   // Used only for preprocessing animations
 

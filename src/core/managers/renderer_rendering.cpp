@@ -8,7 +8,7 @@
 #include "core/material/texture.h"
 #include "core/managers/renderer.h"
 
-void core::MRenderer::drawBoundEntities(VkCommandBuffer commandBuffer, const uint32_t instanceCount) {
+void core::MRenderer::drawBoundEntities(VkCommandBuffer commandBuffer) {
   // go through bound models and generate draw calls for each
   AEntity* pEntity = nullptr;
   WModel* pModel = nullptr;
@@ -28,7 +28,7 @@ void core::MRenderer::drawBoundEntities(VkCommandBuffer commandBuffer, const uin
     for (const auto& primitive : primitives) {
       if (!checkPass(primitive->pMaterial->passFlags, renderView.pCurrentPass->passId)) continue;
 
-      renderPrimitive(commandBuffer, primitive, &bindInfo, instanceCount);
+      renderPrimitive(commandBuffer, primitive, &bindInfo, 1u);
     }
   }
 }
@@ -479,8 +479,11 @@ void core::MRenderer::renderFrame() {
     return;
   }
 
-  VkDeviceSize vbOffset = 0u;
-  vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &scene.vertexBuffer.buffer, &vbOffset);
+  VkBuffer vertexBuffers[2] = {scene.vertexBuffer.buffer, scene.instanceBuffers[renderView.frameInFlight].buffer};
+  VkDeviceSize vbOffsets[2] = {0, 0};
+  //VkDeviceSize vbOffset = 0u;
+  //vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &scene.vertexBuffer.buffer, &vbOffset);
+  vkCmdBindVertexBuffers(cmdBuffer, 0, 2, vertexBuffers, vbOffsets);
   vkCmdBindIndexBuffer(cmdBuffer, scene.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
   vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
     getPipelineLayout(EPipelineLayout::Scene), 2, 1, &material.descriptorSet, 0, nullptr);

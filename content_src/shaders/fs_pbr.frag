@@ -114,7 +114,7 @@ float getShadow(vec3 fragmentPosition, int distanceIndex) {
 	float FOVMultiplier = 1.0;
 
 	for (int i = 0; i < distanceIndex; i++) {
-		FOVMultiplier *= SHADOWFOVMULT;
+		FOVMultiplier *= (i < 1) ? SHADOWFOVMULT : SHADOWFOVMULT * SHADOWFOVMULT;
 	}
 
 	mat4 newProjection = lighting.lightOrthoMatrix;

@@ -115,12 +115,12 @@ void core::MAnimations::runAnimationQueue() {
     // Update skins, each skinMatrices vector's index per frame corresponds to skin's index
     for (int32_t skinIndex = 0; skinIndex < keyFrames[0].skinMatrices.size(); ++skinIndex) {
       for (size_t keyFrame = 0; keyFrame < keyFrames.size() - 1; ++keyFrame) {
-        if ((queueEntry.time >= keyFrames.at(keyFrame).timeStamp) &&
-          (queueEntry.time <= keyFrames.at(keyFrame + 1).timeStamp)) {
+        if ((queueEntry.time >= keyFrames[keyFrame].timeStamp) &&
+          (queueEntry.time <= keyFrames[keyFrame + 1].timeStamp)) {
           // get interpolation coefficient based on time between frames
           float u =
-            std::max(0.0f, queueEntry.time - keyFrames.at(keyFrame).timeStamp) /
-            (keyFrames.at(keyFrame + 1).timeStamp - keyFrames.at(keyFrame).timeStamp);
+            std::max(0.0f, queueEntry.time - keyFrames[keyFrame].timeStamp) /
+            (keyFrames[keyFrame + 1].timeStamp - keyFrames[keyFrame].timeStamp);
 
           if (u <= 1.0f) {
             const size_t jointCount =
@@ -128,8 +128,8 @@ void core::MAnimations::runAnimationQueue() {
 
             for (size_t jointIndex = 0; jointIndex < jointCount; ++jointIndex) {
               math::interpolate(
-                keyFrames.at(keyFrame).skinMatrices[skinIndex][jointIndex],
-                keyFrames.at(keyFrame + 1).skinMatrices[skinIndex][jointIndex], u,
+                keyFrames[keyFrame].skinMatrices[skinIndex][jointIndex],
+                keyFrames[keyFrame + 1].skinMatrices[skinIndex][jointIndex], u,
                 queueEntry.pEntity->getAnimatedSkinBinding(skinIndex)->transformBufferBlock.jointMatrices[jointIndex]);
             }
           }
@@ -150,16 +150,16 @@ void core::MAnimations::runAnimationQueue() {
 
       // write interpolated frame data directly to node's mesh uniform block
       for (size_t i = 0; i < keyFrames.size() - 1; ++i) {
-        if ((queueEntry.time >= keyFrames.at(i).timeStamp) &&
-            (queueEntry.time <= keyFrames.at(i + 1).timeStamp)) {
+        if ((queueEntry.time >= keyFrames[i].timeStamp) &&
+            (queueEntry.time <= keyFrames[i + 1].timeStamp)) {
           // get interpolation coefficient based on time between frames
           float u =
-              std::max(0.0f, queueEntry.time - keyFrames.at(i).timeStamp) /
-              (keyFrames.at(i + 1).timeStamp - keyFrames.at(i).timeStamp);
+              std::max(0.0f, queueEntry.time - keyFrames[i].timeStamp) /
+              (keyFrames[i + 1].timeStamp - keyFrames[i].timeStamp);
 
           if (u <= 1.0f) {
-            math::interpolate(keyFrames.at(i).nodeMatrices.at(node.index),
-                              keyFrames.at(i + 1).nodeMatrices.at(node.index),
+            math::interpolate(keyFrames[i].nodeMatrices.at(node.index),
+                              keyFrames[i + 1].nodeMatrices.at(node.index),
                               u, pNodeBinding->transformBufferBlock.nodeMatrix);
 
             // frame update finished, exit loop

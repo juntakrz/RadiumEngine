@@ -370,8 +370,7 @@ TResult core::MRenderer::createDescriptorSets() {
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
       // model*view*projection data for descriptor set
       VkDescriptorBufferInfo descriptorBufferInfoMVP;
-      descriptorBufferInfoMVP.buffer =
-          view.modelViewProjectionBuffers[i].buffer;
+      descriptorBufferInfoMVP.buffer = scene.sceneBuffers[i].buffer;
       descriptorBufferInfoMVP.offset = 0;
       descriptorBufferInfoMVP.range = sizeof(RSceneUBO);
 

@@ -950,16 +950,15 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
   REntityBindInfo bindInfo{};
   bindInfo.pEntity = pEntity;
 
-  const size_t primitiveCount = pModel->m_pLinearPrimitives.size();
-  bindInfo.primitiveReferences.resize(primitiveCount);
+  system.bindings.emplace_back(bindInfo);
 
-  for (size_t i = 0; i < primitiveCount; ++i) {
-    bindInfo.primitiveReferences[i].pPrimitive = pModel->m_pLinearPrimitives[i];
-    bindInfo.primitiveReferences[i].UID = scene.currentPrimitiveUID++;
-    bindInfo.primitiveReferences[i].isVisible = true;
+  // Add a reference to all WModel entries of AEntity if they don't already exist
+  if (scene.pModelReferences.find(pModel) == scene.pModelReferences.end()) {
+    scene.pModelReferences.emplace(pModel);
   }
 
-  system.bindings.emplace_back(bindInfo);
+  // Add a number of model primitives to total primitive instances rendered
+  scene.totalInstances += pModel->m_pLinearPrimitives.size();
 
   // TODO: implement indirect draw command properly
   /*VkDrawIndexedIndirectCommand drawCommand{};

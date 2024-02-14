@@ -358,14 +358,14 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
   colorBlendInfo.blendConstants[2] = 0.0f;
   colorBlendInfo.blendConstants[3] = 0.0f;
 
-  VkVertexInputBindingDescription vertexBindingDesc = RVertex::getBindingDesc();
+  const auto& vertexBindingDescs = RVertex::getBindingDescs();
   const auto& attributeDescs = RVertex::getAttributeDescs();
 
   VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
   vertexInputInfo.sType =
       VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-  vertexInputInfo.pVertexBindingDescriptions = &vertexBindingDesc;
-  vertexInputInfo.vertexBindingDescriptionCount = 1;
+  vertexInputInfo.pVertexBindingDescriptions = vertexBindingDescs.data();
+  vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(vertexBindingDescs.size());
   vertexInputInfo.pVertexAttributeDescriptions = attributeDescs.data();
   vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescs.size());
 

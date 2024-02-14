@@ -65,13 +65,14 @@ class MRenderer {
 
   struct RSceneBuffers {
     RBuffer vertexBuffer;
+    std::vector<RBuffer> instanceBuffers;
     RBuffer indexBuffer;
     RBuffer rootTransformBuffer;
     RBuffer nodeTransformBuffer;
     RBuffer skinTransformBuffer;
     uint32_t currentVertexOffset = 0u;
     uint32_t currentIndexOffset = 0u;
-    uint32_t currentPrimitiveUID = 0u;
+    size_t totalInstances = 0u;
     VkDescriptorSet transformDescriptorSet;
 
     std::vector<RTexture*> pGBufferTargets;
@@ -80,6 +81,11 @@ class MRenderer {
     std::vector<VkDescriptorSet> descriptorSets;
 
     RSceneVertexPCB vertexPushBlock;
+    
+    std::vector<RBuffer> sceneBuffers;
+    RSceneUBO sceneBufferObject;
+
+    std::unordered_set<WModel*> pModelReferences;
   } scene;
 
   struct RPostProcessData {
@@ -109,6 +115,7 @@ class MRenderer {
     std::vector<VkSemaphore> semRenderFinished;
     std::vector<VkFence> fenceInFlight;
     RAsync asyncUpdateEntities;
+    RAsync asyncUpdateInstanceBuffers;
   } sync;
 
   // render system data - passes, pipelines, mesh data to render
@@ -132,8 +139,6 @@ class MRenderer {
     RCameraInfo cameraSettings;
     ACamera* pActiveCamera = nullptr;
     ACamera* pSunCamera = nullptr;
-    std::vector<RBuffer> modelViewProjectionBuffers;
-    RSceneUBO worldViewProjectionData;
   } view;
 
  public:
@@ -407,6 +412,8 @@ public:
    TResult copyImageToBuffer(VkCommandBuffer commandBuffer, RTexture *pSrcImage, VkBuffer dstBuffer,
                              uint32_t width, uint32_t height, VkImageSubresourceLayers* subresource);
 
+   void updateInstanceBuffer();
+
   //
   // ***PHYSICAL DEVICE
   //
@@ -527,7 +534,7 @@ public:
 
  private:
   // Draw bound entities using specific pipeline
-  void drawBoundEntities(VkCommandBuffer commandBuffer, const uint32_t instanceCount = 1);
+  void drawBoundEntities(VkCommandBuffer commandBuffer);
 
   void renderPrimitive(VkCommandBuffer cmdBuffer, WPrimitive* pPrimitive, REntityBindInfo* pBindInfo, const uint32_t instanceCount = 1u);
 

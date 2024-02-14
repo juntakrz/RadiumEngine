@@ -15,6 +15,8 @@ class WPrimitive {
   RMaterial* pMaterial = nullptr;
   void* pOwnerNode = nullptr;
 
+  std::vector<WPrimitiveInstanceData> instanceData;
+
   struct {
     glm::vec3 min = glm::vec3(0.0f);
     glm::vec3 max = glm::vec3(0.0f);

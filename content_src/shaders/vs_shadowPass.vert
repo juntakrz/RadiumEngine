@@ -55,7 +55,7 @@ void main(){
 	float FOVMultiplier = 1.0;
 
 	for (uint i = 0; i < pushBlock.cascadeIndex; i++) {
-		FOVMultiplier *= SHADOWFOVMULT;
+		FOVMultiplier *= (i < 1) ? SHADOWFOVMULT : SHADOWFOVMULT * SHADOWFOVMULT;
 	}
 
 	mat4 newProjection = scene.projection;
