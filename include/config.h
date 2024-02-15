@@ -21,6 +21,8 @@
 #define RTGT_ENVIRRAD           "RTCube_EnvIrrad"
 #define RTGT_BRDFMAP            "RT2D_EnvBRDF"
 #define RTGT_EXPOSUREMAP        "RT2D_Exposure"
+#define RTGT_MOTIONMAP          "RT2D_Motion"
+#define RTGT_PREVFRAME          "RT2D_PrevFrame"
 
 #define RTGT_GPOSITION          "RT2D_GPosition"    // Fragment world space position output
 #define RTGT_GDIFFUSE           "RT2D_GDiffuse"     // Diffuse output

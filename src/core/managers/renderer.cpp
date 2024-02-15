@@ -144,14 +144,11 @@ void core::MRenderer::destroySurface() {
 TResult core::MRenderer::createSceneBuffers() {
   // set dynamic uniform buffer block sizes
   config::scene::cameraBlockSize =
-      static_cast<uint32_t>(util::getVulkanAlignedSize(
-          sizeof(RSceneUBO), core::vulkan::minUniformBufferAlignment));
+      static_cast<uint32_t>(util::getVulkanAlignedSize(sizeof(RSceneUBO), core::vulkan::minUniformBufferAlignment));
   config::scene::nodeBlockSize =
-      static_cast<uint32_t>(util::getVulkanAlignedSize(
-          sizeof(glm::mat4) + sizeof(float), core::vulkan::minUniformBufferAlignment));
+      static_cast<uint32_t>(util::getVulkanAlignedSize(sizeof(glm::mat4) * 2 + sizeof(float), core::vulkan::minUniformBufferAlignment));
   config::scene::skinBlockSize =
-      static_cast<uint32_t>(util::getVulkanAlignedSize(
-          sizeof(glm::mat4) * RE_MAXJOINTS, core::vulkan::minUniformBufferAlignment));
+      static_cast<uint32_t>(util::getVulkanAlignedSize(sizeof(glm::mat4) * RE_MAXJOINTS * 2, core::vulkan::minUniformBufferAlignment));
 
   RE_LOG(Log, "Allocating scene storage vertex buffer for %d vertices.",
     config::scene::vertexBudget);
@@ -424,6 +421,7 @@ TResult core::MRenderer::createImageTargets() {
 
   // target for post process downsampling
   rtName = RTGT_PPBLOOM;
+
   textureInfo = RTextureInfo{};
   textureInfo.name = rtName;
   textureInfo.width = config::renderWidth / 2;
@@ -433,6 +431,36 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.layerCount = 1u;
   textureInfo.mipLevels = 6u;     // A small number of mip maps should be enough for post processing
   textureInfo.extraViews = true;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+  textureInfo.samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  textureInfo.samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  textureInfo.samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+
+  pNewTexture = core::resources.createTexture(&textureInfo);
+
+  if (!pNewTexture) {
+    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
+    return RE_CRITICAL;
+  }
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
+#endif
+
+  // target for post process downsampling
+  rtName = RTGT_PREVFRAME;
+
+  textureInfo = RTextureInfo{};
+  textureInfo.name = rtName;
+  textureInfo.width = config::renderWidth;
+  textureInfo.height = config::renderHeight;
+  textureInfo.format = core::vulkan::formatHDR16;
+  textureInfo.isCubemap = false;
+  textureInfo.layerCount = 1u;
+  textureInfo.mipLevels = 1u;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -481,11 +509,15 @@ TResult core::MRenderer::createGBufferRenderTargets() {
   targetNames.emplace_back(RTGT_GNORMAL);
   targetNames.emplace_back(RTGT_GPHYSICAL);
   targetNames.emplace_back(RTGT_GEMISSIVE);
+  targetNames.emplace_back(RTGT_MOTIONMAP);
 
   for (const auto& targetName : targetNames) {
     core::resources.destroyTexture(targetName.c_str(), true);
 
-    VkFormat imageFormat = (targetName == RTGT_GPOSITION) ? core::vulkan::formatHDR32 : core::vulkan::formatHDR16;
+    VkFormat imageFormat = core::vulkan::formatHDR16;
+
+    if (targetName == RTGT_GPOSITION) imageFormat = core::vulkan::formatHDR32;
+    else if (targetName == RTGT_MOTIONMAP) imageFormat = VK_FORMAT_R16G16_SFLOAT;
 
     RTexture* pNewTarget;
     if ((pNewTarget = createFragmentRenderTarget(targetName.c_str(), imageFormat)) == nullptr) {
@@ -693,11 +725,23 @@ TResult core::MRenderer::setRendererDefaults() {
   // Set default post processing info
   postprocess.pBloomTexture = core::resources.getTexture(RTGT_PPBLOOM);
   postprocess.pExposureTexture = core::resources.getTexture(RTGT_EXPOSUREMAP);
-  postprocess.subRange.aspectMask = postprocess.pBloomTexture->texture.aspectMask;
-  postprocess.subRange.baseArrayLayer = 0u;
-  postprocess.subRange.layerCount = 1u;
-  postprocess.subRange.baseMipLevel = 0u;
-  postprocess.subRange.levelCount = 1u;
+  postprocess.pGPBRTexture = core::resources.getTexture(RTGT_GPBR);
+  postprocess.pPreviousFrameTexture = core::resources.getTexture(RTGT_PREVFRAME);
+
+  postprocess.bloomSubRange.aspectMask = postprocess.pBloomTexture->texture.aspectMask;
+  postprocess.bloomSubRange.baseArrayLayer = 0u;
+  postprocess.bloomSubRange.layerCount = 1u;
+  postprocess.bloomSubRange.baseMipLevel = 0u;
+  postprocess.bloomSubRange.levelCount = 1u;
+
+  postprocess.previousFrameCopy.extent = { config::renderWidth, config::renderHeight, 1 };
+  postprocess.previousFrameCopy.srcOffset = { 0, 0, 0 };
+  postprocess.previousFrameCopy.srcSubresource.aspectMask = postprocess.pGPBRTexture->texture.aspectMask;
+  postprocess.previousFrameCopy.srcSubresource.baseArrayLayer = 0u;
+  postprocess.previousFrameCopy.srcSubresource.layerCount = 1u;
+  postprocess.previousFrameCopy.srcSubresource.mipLevel = 0u;
+  postprocess.previousFrameCopy.dstOffset = postprocess.previousFrameCopy.srcOffset;
+  postprocess.previousFrameCopy.dstSubresource = postprocess.previousFrameCopy.srcSubresource;
 
   postprocess.viewports.resize(postprocess.pBloomTexture->texture.levelCount);
   postprocess.scissors.resize(postprocess.pBloomTexture->texture.levelCount);
@@ -719,9 +763,6 @@ TResult core::MRenderer::setRendererDefaults() {
 
   // Create compute shader storage buffer for retrieving exposure results
   createBuffer(EBufferType::CPU_STORAGE, 1024, postprocess.exposureStorageBuffer, nullptr);
-
-  // Store buffer device addresses in appropriate data structures
-  scene.sceneBufferObject.skinTransformBufferAddress = scene.skinTransformBuffer.deviceAddress;
 
   return RE_OK;
 }

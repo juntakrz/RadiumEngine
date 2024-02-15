@@ -1,7 +1,6 @@
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_scalar_block_layout : require
 
-#define MAXJOINTS 128
 #define MAXLIGHTS 32
 #define MAXSHADOWCASTERS 4
 #define MAXCASCADES 4

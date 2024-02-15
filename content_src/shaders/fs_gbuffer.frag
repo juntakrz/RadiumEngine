@@ -9,6 +9,7 @@ layout (location = 1) in vec3 inNormal;
 layout (location = 2) in vec2 inUV0;
 layout (location = 3) in vec2 inUV1;
 layout (location = 4) in vec4 inColor0;
+layout (location = 5) in vec4 inPrevWorldPos;
 
 // scene bindings
 layout (set = 0, binding = 0) uniform UBOScene {
@@ -24,6 +25,7 @@ layout (location = 1) out vec4 outColor;
 layout (location = 2) out vec4 outNormal;
 layout (location = 3) out vec4 outPhysical;		// x = metalness, y = roughness, z = ambient occlusion
 layout (location = 4) out vec4 outEmissive;
+layout (location = 5) out vec2 outMotion;
 
 const float minRoughness = 0.04;
 
@@ -116,4 +118,7 @@ void main() {
 
 	// Brighten or darken emission by the glow color value
 	outEmissive += vec4(material.glowColor);
+
+	// 6. Store motion vector
+	outMotion = inWorldPos.xy - (inPrevWorldPos.xy / inPrevWorldPos.w);
 }

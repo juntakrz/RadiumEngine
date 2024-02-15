@@ -1,34 +1,7 @@
 #version 460
 
 #include "include/common.glsl"
-
-struct NodeTransformBlock {
-	mat4 nodeMatrix;
-	float jointCount;
-	float padding[15];
-};
-
-struct SkinTransformBlock {
-	mat4 jointMatrix[MAXJOINTS];
-};
-
-layout(binding = 0) uniform UBOView {
-	mat4 view;
-	mat4 projection;
-	vec3 cameraPos;
-} scene;
-
-layout (set = 1, binding = 0) buffer UBOMesh0 {
-	mat4 rootMatrix[];
-} model;
-
-layout (set = 1, binding = 1) buffer UBOMesh1 {
-	NodeTransformBlock block[];
-} node;
-
-layout (set = 1, binding = 2) buffer UBOMesh2 {
-	SkinTransformBlock block[];
-} skin;
+#include "include/vertex.glsl"
 
 // Per vertex
 layout(location = 0) in vec3 inPos;
@@ -61,9 +34,9 @@ void main(){
 			inWeight.z * skin.block[skinIndex].jointMatrix[int(inJoint.z)] +
 			inWeight.w * skin.block[skinIndex].jointMatrix[int(inJoint.w)];
 
-		worldPos = model.rootMatrix[modelIndex] * node.block[nodeIndex].nodeMatrix * skinMatrix * vec4(inPos, 1.0);
+		worldPos = model.block[modelIndex].matrix * node.block[nodeIndex].matrix * skinMatrix * vec4(inPos, 1.0);
 	} else {
-		worldPos = model.rootMatrix[modelIndex] * node.block[nodeIndex].nodeMatrix * vec4(inPos, 1.0);
+		worldPos = model.block[modelIndex].matrix * node.block[nodeIndex].matrix * vec4(inPos, 1.0);
 	}
 
 	worldPos = vec4(worldPos.xyz / worldPos.w, 1.0);

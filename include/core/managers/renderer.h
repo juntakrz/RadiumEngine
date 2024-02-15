@@ -92,10 +92,14 @@ class MRenderer {
   struct RPostProcessData {
     RTexture* pBloomTexture = nullptr;
     RTexture* pExposureTexture = nullptr;
+    RTexture* pPreviousFrameTexture = nullptr;
+    RTexture* pGPBRTexture = nullptr;
 
-    VkImageSubresourceRange subRange;
+    VkImageSubresourceRange bloomSubRange;
     std::vector<VkViewport> viewports;
     std::vector<VkRect2D> scissors;
+
+    VkImageCopy previousFrameCopy;
 
     RBuffer exposureStorageBuffer;
   } postprocess;
@@ -550,6 +554,8 @@ public:
   void executePostProcessPass(VkCommandBuffer commandBuffer);
 
   void executePresentPass(VkCommandBuffer commandBuffer);
+
+  void storeFrame(VkCommandBuffer commandBuffer);
 
  public:
   void renderFrame();

@@ -266,9 +266,9 @@ void core::MRenderer::executePostProcessSamplingPass(VkCommandBuffer commandBuff
                                                      const bool upsample) {
   // Store a shader coordinate into either PBR texture or downsampling texture and its mip level
   material.pGPBR->pushConstantBlock.textureSets = imageViewIndex;
-  postprocess.subRange.baseMipLevel = imageViewIndex;
+  postprocess.bloomSubRange.baseMipLevel = imageViewIndex;
 
-  setImageLayout(commandBuffer, postprocess.pBloomTexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, postprocess.subRange);
+  setImageLayout(commandBuffer, postprocess.pBloomTexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, postprocess.bloomSubRange);
 
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass((upsample) ? EDynamicRenderingPass::PPUpsample : EDynamicRenderingPass::PPDownsample);
   renderView.pCurrentPass = pRenderPass;
@@ -295,7 +295,7 @@ void core::MRenderer::executePostProcessSamplingPass(VkCommandBuffer commandBuff
 
   vkCmdEndRendering(commandBuffer);
 
-  setImageLayout(commandBuffer, postprocess.pBloomTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, postprocess.subRange);
+  setImageLayout(commandBuffer, postprocess.pBloomTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, postprocess.bloomSubRange);
 }
 
 void core::MRenderer::executePostProcessGetExposurePass(VkCommandBuffer commandBuffer) {
@@ -396,6 +396,11 @@ void core::MRenderer::executePresentPass(VkCommandBuffer commandBuffer) {
   vkCmdEndRendering(commandBuffer);
 
   setImageLayout(commandBuffer, pImage, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, subRange);
+}
+
+void core::MRenderer::storeFrame(VkCommandBuffer commandBuffer) {
+  copyImage(commandBuffer, postprocess.pGPBRTexture->texture.image, postprocess.pPreviousFrameTexture->texture.image,
+    postprocess.pGPBRTexture->texture.imageLayout, postprocess.pPreviousFrameTexture->texture.imageLayout, postprocess.previousFrameCopy);
 }
 
 void core::MRenderer::renderFrame() {
@@ -500,6 +505,7 @@ void core::MRenderer::renderFrame() {
 
   /* 4. Postprocessing pass */
 
+  storeFrame(cmdBuffer);
   executePostProcessPass(cmdBuffer);
 
   /* 5. Final presentation pass */

@@ -3,33 +3,7 @@
 
 #extension GL_EXT_buffer_reference: require
 
-struct NodeTransformBlock {
-	mat4 matrix;
-	float jointCount;
-	float padding[15];
-};
-
-struct SkinTransformBlock {
-	mat4 jointMatrix[RE_MAXJOINTS];
-};
-
-layout(binding = 0) uniform UBOView {
-	mat4 view;
-	mat4 projection;
-	vec3 cameraPos;
-} scene;
-
-layout (set = 1, binding = 0) buffer UBOMesh0 {
-	mat4 matrix[];
-} model;
-
-layout (set = 1, binding = 1) buffer UBOMesh1 {
-	NodeTransformBlock block[];
-} node;
-
-layout (set = 1, binding = 2) buffer UBOMesh2 {
-	SkinTransformBlock block[];
-} skin;
+#include "include/vertex.glsl"
 
 // Per Vertex
 layout(location = 0) in vec3 inPos;
@@ -48,56 +22,45 @@ layout(location = 1) out vec3 outNormal;
 layout(location = 2) out vec2 outUV0;
 layout(location = 3) out vec2 outUV1;
 layout(location = 4) out vec4 outColor0;
+layout(location = 5) out vec4 outPrevWorldPos;
 
 void main(){
 	const uint modelIndex = inInstanceTransformIndices.x;
 	const uint nodeIndex = inInstanceTransformIndices.y;
 	const uint skinIndex = inInstanceTransformIndices.z;
 
-	mat4 debug_modelMatrix = model.matrix[modelIndex];
-	float debug_jointCount = node.block[nodeIndex].jointCount;
-	mat4 debug_nodeMatrix = node.block[nodeIndex].matrix;
-
 	vec4 worldPos;
+	vec4 prevWorldPos;
 
 	if (node.block[nodeIndex].jointCount > 0.0) {
-//		mat4 skinMatrix = 
-//			inWeight.x * scene.skinTransformBuffer.block[skinIndex].jointMatrix[int(inJoint.x)] +
-//			inWeight.y * scene.skinTransformBuffer.block[skinIndex].jointMatrix[int(inJoint.y)] +
-//			inWeight.z * scene.skinTransformBuffer.block[skinIndex].jointMatrix[int(inJoint.z)] +
-//			inWeight.w * scene.skinTransformBuffer.block[skinIndex].jointMatrix[int(inJoint.w)];
-
 		mat4 skinMatrix = 
 			inWeight.x * skin.block[skinIndex].jointMatrix[int(inJoint.x)] +
 			inWeight.y * skin.block[skinIndex].jointMatrix[int(inJoint.y)] +
 			inWeight.z * skin.block[skinIndex].jointMatrix[int(inJoint.z)] +
 			inWeight.w * skin.block[skinIndex].jointMatrix[int(inJoint.w)];
 
-		worldPos = model.matrix[modelIndex] * node.block[nodeIndex].matrix * skinMatrix * vec4(inPos, 1.0);
-		outNormal = normalize(transpose(inverse(mat3(model.matrix[modelIndex] * node.block[nodeIndex].matrix * skinMatrix))) * inNormal);
+		mat4 prevSkinMatrix = 
+			inWeight.x * skin.block[skinIndex].prevJointMatrix[int(inJoint.x)] +
+			inWeight.y * skin.block[skinIndex].prevJointMatrix[int(inJoint.y)] +
+			inWeight.z * skin.block[skinIndex].prevJointMatrix[int(inJoint.z)] +
+			inWeight.w * skin.block[skinIndex].prevJointMatrix[int(inJoint.w)];
+
+		worldPos = model.block[modelIndex].matrix * node.block[nodeIndex].matrix * skinMatrix * vec4(inPos, 1.0);
+		prevWorldPos = model.block[modelIndex].prevMatrix * node.block[nodeIndex].prevMatrix * prevSkinMatrix * vec4(inPos, 1.0);
+		outNormal = normalize(transpose(inverse(mat3(model.block[modelIndex].matrix * node.block[nodeIndex].matrix * skinMatrix))) * inNormal);
 	} else {
-		worldPos = model.matrix[modelIndex] * node.block[nodeIndex].matrix * vec4(inPos, 1.0);
-		outNormal = normalize(transpose(inverse(mat3(model.matrix[modelIndex] * node.block[nodeIndex].matrix))) * inNormal);
+		worldPos = model.block[modelIndex].matrix * node.block[nodeIndex].matrix * vec4(inPos, 1.0);
+		prevWorldPos = model.block[modelIndex].prevMatrix * node.block[nodeIndex].prevMatrix * vec4(inPos, 1.0);
+		outNormal = normalize(transpose(inverse(mat3(model.block[modelIndex].matrix * node.block[nodeIndex].matrix))) * inNormal);
 	}
 
-//		mat4 skinMatrix = 
-//			inWeight.x * skin.jointMatrix[int(inJoint.x)] +
-//			inWeight.y * skin.jointMatrix[int(inJoint.y)] +
-//			inWeight.z * skin.jointMatrix[int(inJoint.z)] +
-//			inWeight.w * skin.jointMatrix[int(inJoint.w)];
-
-//		worldPos = model.rootMatrix * node.nodeMatrix * skinMatrix * vec4(inPos, 1.0);
-//		outNormal = normalize(transpose(inverse(mat3(model.rootMatrix * node.nodeMatrix * skinMatrix))) * inNormal);
-//	} else {
-//		worldPos = model.rootMatrix * node.nodeMatrix * vec4(inPos, 1.0);
-//		outNormal = normalize(transpose(inverse(mat3(model.rootMatrix * node.nodeMatrix))) * inNormal);
-//	}
-
 	outWorldPos = worldPos.xyz / worldPos.w;
+	outPrevWorldPos = vec4(prevWorldPos.xyz / prevWorldPos.w, 1.0);
 
 	outUV0 = inUV0;
 	outUV1 = inUV1;
 	outColor0 = inColor0;
 
+	outPrevWorldPos = scene.projection * scene.view * outPrevWorldPos;
 	gl_Position = scene.projection * scene.view * vec4(outWorldPos, 1.0);
 }

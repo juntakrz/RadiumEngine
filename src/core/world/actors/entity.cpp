@@ -26,8 +26,13 @@ void AEntity::updateTransformBuffers() noexcept {
     int8_t* pSkinMemoryAddress = static_cast<int8_t*>(core::renderer.getSceneBuffers()
       ->skinTransformBuffer.allocInfo.pMappedData) + skin.skinTransformBufferOffset;
 
+    int8_t* pPreviousSkinMemoryAddress = pSkinMemoryAddress + (sizeof(glm::mat4) * RE_MAXJOINTS);
+
+    memcpy(pPreviousSkinMemoryAddress, pSkinMemoryAddress,
+           sizeof(glm::mat4) * skin.transformBufferBlock.jointMatrices.size());
+
     memcpy(pSkinMemoryAddress, skin.transformBufferBlock.jointMatrices.data(),
-      sizeof(glm::mat4) * skin.transformBufferBlock.jointMatrices.size());
+           sizeof(glm::mat4) * skin.transformBufferBlock.jointMatrices.size());
   }
 
   for (auto& node : m_animatedNodes) {
@@ -35,8 +40,13 @@ void AEntity::updateTransformBuffers() noexcept {
 
     int8_t* pNodeMemoryAddress =
       static_cast<int8_t*>(core::renderer.getSceneBuffers()
-        ->nodeTransformBuffer.allocInfo.pMappedData) +
-      node.nodeTransformBufferOffset;
+        ->nodeTransformBuffer.allocInfo.pMappedData) + node.nodeTransformBufferOffset;
+
+    // Adjust by a single transform matrix plus GPU aligned float
+    int8_t* pPreviousNodeMemoryAddress = pNodeMemoryAddress + (sizeof(glm::mat4) + 16);
+
+    // Store previous frame node transformation matrix
+    memcpy(pPreviousNodeMemoryAddress, pNodeMemoryAddress, sizeof(glm::mat4));
 
     // Copy node transform data for vertex shader (node matrix and joint count)
     memcpy(pNodeMemoryAddress, &node.transformBufferBlock,
@@ -94,14 +104,14 @@ WModel* AEntity::getModel() { return m_pModel; }
 
 void AEntity::updateModel() {
   if (m_pModel && m_bindIndex != -1) {
-    glm::mat4* pMemAddress =
-        static_cast<glm::mat4*>(
-            core::renderer.getSceneBuffers()
-                ->rootTransformBuffer.allocInfo.pMappedData) +
-        m_rootTransformBufferIndex;
+    glm::mat4* pMemAddress = static_cast<glm::mat4*>(core::renderer.getSceneBuffers()
+                             ->rootTransformBuffer.allocInfo.pMappedData) + m_rootTransformBufferIndex * 2;
+    glm::mat4* pPreviousDataAddress = pMemAddress + 1;
+
+    // Copy previous frame transform
+    memcpy(pPreviousDataAddress, pMemAddress, sizeof(glm::mat4));
 
     const glm::mat4* pMatrix = &getRootTransformationMatrix(); 
-
     memcpy(pMemAddress, pMatrix, sizeof(glm::mat4));
 
     updateTransformBuffers();

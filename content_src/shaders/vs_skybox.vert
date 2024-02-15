@@ -1,23 +1,6 @@
 #version 460
 
-struct NodeTransformBlock {
-	mat4 matrix;
-	float jointCount;
-	float padding[15];
-};
-
-layout(binding = 0) uniform UBOView {
-	mat4 view;
-	mat4 projection;
-} scene;
-
-layout (set = 1, binding = 0) buffer UBOMesh0 {
-	mat4 matrix[];
-} model;
-
-layout (set = 1, binding = 1) buffer UBOMesh1 {
-	NodeTransformBlock block[];
-} node;
+#include "include/vertex.glsl"
 
 // Per Vertex
 layout(location = 0) in vec3 inPos;
@@ -46,7 +29,7 @@ void main(){
 	view[3][1] = 0.0;
 	view[3][2] = 0.0;
 	
-	vec4 worldPos = model.matrix[modelIndex] * node.block[nodeIndex].matrix * vec4(inPos, 1.0);
+	vec4 worldPos = model.block[modelIndex].matrix * node.block[nodeIndex].matrix * vec4(inPos, 1.0);
 	worldPos = scene.projection * view * worldPos;
 
 	gl_Position = worldPos.xyww;
