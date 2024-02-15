@@ -10,50 +10,22 @@
 
 void core::MRenderer::drawBoundEntities(VkCommandBuffer commandBuffer) {
   // go through bound models and generate draw calls for each
-  AEntity* pEntity = nullptr;
-  WModel* pModel = nullptr;
   renderView.refresh();
 
-  for (auto& bindInfo : system.bindings) {
-    if ((pEntity = bindInfo.pEntity) == nullptr) {
-      continue;
-    }
-
-    if ((pModel = bindInfo.pEntity->getModel()) == nullptr) {
-      continue;
-    }
-
+  for (WModel* pModel : scene.pModelReferences) {
     auto& primitives = pModel->getPrimitives();
 
     for (const auto& primitive : primitives) {
       if (!checkPass(primitive->pMaterial->passFlags, renderView.pCurrentPass->passId)) continue;
 
-      renderPrimitive(commandBuffer, primitive, &bindInfo, 1u);
+      renderPrimitive(commandBuffer, primitive, pModel);
     }
   }
 }
 
 void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
                                       WPrimitive* pPrimitive,
-                                      REntityBindInfo* pBindInfo,
-                                      const uint32_t instanceCount) {
-
-  WModel::Node* pNode = reinterpret_cast<WModel::Node*>(pPrimitive->pOwnerNode);
-  WModel::Mesh* pMesh = pNode->pMesh.get();
-  AEntity* pEntity = pBindInfo->pEntity;
-
-  // mesh descriptor set is at binding 1 (TODO: change from mesh to actor)
-  if (renderView.pCurrentMesh != pMesh) {
-    uint32_t skinOffset = (pNode->pSkin) ? pEntity->getSkinTransformBufferOffset(pNode->skinIndex) : 0u;
-    uint32_t dynamicOffsets[3] = {
-        pEntity->getRootTransformBufferOffset(),
-        pEntity->getNodeTransformBufferOffset(pNode->index), skinOffset};
-    vkCmdBindDescriptorSets(
-        cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->layout,
-        1, 1, &scene.transformDescriptorSet, 3, dynamicOffsets);
-    renderView.pCurrentMesh = pMesh;
-  }
-
+                                      WModel* pModel) {
   // bind material descriptor set only if material is different (binding 2)
   if (renderView.pCurrentMaterial != pPrimitive->pMaterial) {
     vkCmdPushConstants(cmdBuffer, renderView.pCurrentPass->layout,
@@ -63,9 +35,12 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
     renderView.pCurrentMaterial = pPrimitive->pMaterial;
   }
 
-  int32_t vertexOffset =
-      (int32_t)pBindInfo->pEntity->getModel()->m_sceneVertexOffset + (int32_t)pPrimitive->vertexOffset;
-  uint32_t indexOffset = pBindInfo->pEntity->getModel()->m_sceneIndexOffset + pPrimitive->indexOffset;
+  uint32_t instanceCount = static_cast<uint32_t>(pPrimitive->instanceData.size());
+  int32_t vertexOffset = (int32_t)pModel->m_sceneVertexOffset + (int32_t)pPrimitive->vertexOffset;
+  uint32_t indexOffset = pModel->m_sceneIndexOffset + pPrimitive->indexOffset;
+
+  VkDeviceSize instanceOffset = sizeof(RInstanceData) * pPrimitive->instanceData[0].instanceIndex;
+  vkCmdBindVertexBuffers(cmdBuffer, 1, 1, &scene.instanceBuffers[renderView.frameInFlight].buffer, &instanceOffset);
 
   // TODO: implement draw indirect
   vkCmdDrawIndexed(cmdBuffer, pPrimitive->indexCount, instanceCount, indexOffset, vertexOffset, 0);
@@ -479,14 +454,16 @@ void core::MRenderer::renderFrame() {
     return;
   }
 
-  /*VkDeviceSize vbOffset = 0u;
-  vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &scene.vertexBuffer.buffer, &vbOffset);*/
-
-  VkBuffer vertexBuffers[2] = { scene.vertexBuffer.buffer, scene.instanceBuffers[renderView.frameInFlight].buffer };
-  VkDeviceSize vbOffsets[2] = { 0, 0 };
-  vkCmdBindVertexBuffers(cmdBuffer, 0, 2, vertexBuffers, vbOffsets);
+  VkDeviceSize vbOffset = 0u;
+  vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &scene.vertexBuffer.buffer, &vbOffset);
+  vkCmdBindVertexBuffers(cmdBuffer, 1, 1, &scene.instanceBuffers[renderView.frameInFlight].buffer, &vbOffset);
 
   vkCmdBindIndexBuffer(cmdBuffer, scene.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+  uint32_t transformOffsets[3] = { 0u, 0u, 0u };
+  vkCmdBindDescriptorSets( cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+    getPipelineLayout(EPipelineLayout::Scene), 1, 1, &scene.transformDescriptorSet, 3, transformOffsets);
+
   vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
     getPipelineLayout(EPipelineLayout::Scene), 2, 1, &material.descriptorSet, 0, nullptr);
 

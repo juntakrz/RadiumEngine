@@ -3,6 +3,7 @@
 struct NodeTransformBlock {
 	mat4 matrix;
 	float jointCount;
+	float padding[15];
 };
 
 layout(binding = 0) uniform UBOView {

@@ -4,8 +4,9 @@
 #extension GL_EXT_buffer_reference: require
 
 struct NodeTransformBlock {
-	mat4 nodeMatrix;
+	mat4 matrix;
 	float jointCount;
+	float padding[15];
 };
 
 struct SkinTransformBlock {
@@ -19,7 +20,7 @@ layout(binding = 0) uniform UBOView {
 } scene;
 
 layout (set = 1, binding = 0) buffer UBOMesh0 {
-	mat4 rootMatrix[];
+	mat4 matrix[];
 } model;
 
 layout (set = 1, binding = 1) buffer UBOMesh1 {
@@ -53,6 +54,10 @@ void main(){
 	const uint nodeIndex = inInstanceTransformIndices.y;
 	const uint skinIndex = inInstanceTransformIndices.z;
 
+	mat4 debug_modelMatrix = model.matrix[modelIndex];
+	float debug_jointCount = node.block[nodeIndex].jointCount;
+	mat4 debug_nodeMatrix = node.block[nodeIndex].matrix;
+
 	vec4 worldPos;
 
 	if (node.block[nodeIndex].jointCount > 0.0) {
@@ -68,11 +73,11 @@ void main(){
 			inWeight.z * skin.block[skinIndex].jointMatrix[int(inJoint.z)] +
 			inWeight.w * skin.block[skinIndex].jointMatrix[int(inJoint.w)];
 
-		worldPos = model.rootMatrix[modelIndex] * node.block[nodeIndex].nodeMatrix * skinMatrix * vec4(inPos, 1.0);
-		outNormal = normalize(transpose(inverse(mat3(model.rootMatrix[modelIndex] * node.block[nodeIndex].nodeMatrix * skinMatrix))) * inNormal);
+		worldPos = model.matrix[modelIndex] * node.block[nodeIndex].matrix * skinMatrix * vec4(inPos, 1.0);
+		outNormal = normalize(transpose(inverse(mat3(model.matrix[modelIndex] * node.block[nodeIndex].matrix * skinMatrix))) * inNormal);
 	} else {
-		worldPos = model.rootMatrix[modelIndex] * node.block[nodeIndex].nodeMatrix * vec4(inPos, 1.0);
-		outNormal = normalize(transpose(inverse(mat3(model.rootMatrix[modelIndex] * node.block[nodeIndex].nodeMatrix))) * inNormal);
+		worldPos = model.matrix[modelIndex] * node.block[nodeIndex].matrix * vec4(inPos, 1.0);
+		outNormal = normalize(transpose(inverse(mat3(model.matrix[modelIndex] * node.block[nodeIndex].matrix))) * inNormal);
 	}
 
 //		mat4 skinMatrix = 

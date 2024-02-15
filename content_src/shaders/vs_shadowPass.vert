@@ -5,6 +5,7 @@
 struct NodeTransformBlock {
 	mat4 nodeMatrix;
 	float jointCount;
+	float padding[15];
 };
 
 struct SkinTransformBlock {

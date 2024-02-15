@@ -261,6 +261,7 @@ struct RInstanceData {
   int32_t modelMatrixId = -1;
   int32_t nodeMatrixId = -1;
   int32_t skinMatrixId = -1;
+  float padding;
 };
 
 struct RLightInfo {

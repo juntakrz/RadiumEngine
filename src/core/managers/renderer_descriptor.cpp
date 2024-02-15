@@ -483,17 +483,17 @@ TResult core::MRenderer::createDescriptorSets() {
     VkDescriptorBufferInfo rootMatrixBufferInfo{};
     rootMatrixBufferInfo.buffer = scene.rootTransformBuffer.buffer;
     rootMatrixBufferInfo.offset = 0;
-    rootMatrixBufferInfo.range = sizeof(glm::mat4);  // root matrix
+    rootMatrixBufferInfo.range = VK_WHOLE_SIZE;  // root matrix
 
     VkDescriptorBufferInfo nodeMatrixBufferInfo{};
     nodeMatrixBufferInfo.buffer = scene.nodeTransformBuffer.buffer;
     nodeMatrixBufferInfo.offset = 0;
-    nodeMatrixBufferInfo.range = config::scene::nodeBlockSize;
+    nodeMatrixBufferInfo.range = VK_WHOLE_SIZE;
 
     VkDescriptorBufferInfo skinningMatricesBufferInfo{};
     skinningMatricesBufferInfo.buffer = scene.skinTransformBuffer.buffer;
     skinningMatricesBufferInfo.offset = 0;
-    skinningMatricesBufferInfo.range = config::scene::skinBlockSize;
+    skinningMatricesBufferInfo.range = VK_WHOLE_SIZE;
 
     std::vector<VkWriteDescriptorSet> writeSets(3);
     writeSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

@@ -154,7 +154,6 @@ class MRenderer {
 
   // data for easy access by any other object
   struct {
-    void* pCurrentMesh = nullptr;
     void* pCurrentMaterial = nullptr;
 
     RDynamicRenderingPass* pCurrentPass = nullptr;
@@ -169,7 +168,6 @@ class MRenderer {
     bool isEnvironmentPass = false;                 // is in the process of generating
 
     void refresh() {
-      pCurrentMesh = nullptr;
       pCurrentMaterial = nullptr;
     }
   } renderView;
@@ -537,7 +535,7 @@ public:
   // Draw bound entities using specific pipeline
   void drawBoundEntities(VkCommandBuffer commandBuffer);
 
-  void renderPrimitive(VkCommandBuffer cmdBuffer, WPrimitive* pPrimitive, REntityBindInfo* pBindInfo, const uint32_t instanceCount = 1u);
+  void renderPrimitive(VkCommandBuffer cmdBuffer, WPrimitive* pPrimitive, WModel* pModel);
 
   void renderEnvironmentMaps(VkCommandBuffer commandBuffer,
                              const uint32_t frameInterval = 1u);

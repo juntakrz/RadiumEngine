@@ -432,6 +432,7 @@ void core::MRenderer::updateInstanceBuffer() {
       for (auto& instanceDataEntry : primitive->instanceData) {
         if (instanceDataEntry.isVisible) {
           instanceData[index] = instanceDataEntry.instanceBufferBlock;
+          instanceDataEntry.instanceIndex = index;
           index++;
         }
       }

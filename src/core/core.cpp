@@ -57,6 +57,7 @@ void core::run() {
 
   // create map models
   core::world.createModel(EPrimitiveType::Sphere, "mdlSphere", 16, false);
+  core::world.createModel(EPrimitiveType::Sphere, "mdlSphere1", 4, false);
   core::world.createModel(EPrimitiveType::Cube, "mdlBox1", 1, false);
 
   core::world.getModel(RMDL_SKYBOX)->setPrimitiveMaterial(0, 0, "skybox");
@@ -108,6 +109,14 @@ void core::run() {
   pStatic->setRotation({ 0.0f, 1.0f, 0.0f }, glm::radians(180.0f));
   pStatic->setScale(0.32f);
   pStatic->playAnimation("SwordAndShieldIdle");
+
+  pStatic = core::actors.createStatic("Static03");
+  pStatic->setModel(core::world.getModel("mdlGuy"));
+  pStatic->bindToRenderer();
+  pStatic->setLocation(1.0f, -1.1f, 0.4f);
+  pStatic->setRotation({ 0.0f, 1.0f, 0.0f }, glm::radians(-150.0f));
+  pStatic->setScale(0.32f);
+  pStatic->playAnimation("SwordAndShieldIdle", 1.1f, true, true);
 
   pStatic = core::actors.createStatic("StaticCastle");
   pStatic->setModel(core::world.getModel("mdlCastle"));

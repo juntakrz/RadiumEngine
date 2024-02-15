@@ -71,7 +71,7 @@ std::vector<VkVertexInputAttributeDescription> RVertex::getAttributeDescs() {
 
   // Instance
   attrDescs[7].binding = 1;
-  attrDescs[7].format = VK_FORMAT_R8G8B8_UINT;
+  attrDescs[7].format = VK_FORMAT_R32G32B32_UINT;
   attrDescs[7].location = 7;
   attrDescs[7].offset = 0;
 

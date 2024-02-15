@@ -147,12 +147,6 @@ class WModel {
   // sorts primitives
   void sortPrimitivesByMaterial();
 
-  // update node transform buffer at node offsets
-  void updateNodeTransformBuffer(int32_t nodeIndex,
-                                 uint32_t bufferOffset) noexcept;
-
-  void updateSkinTransformBuffer() noexcept;
-
   // resets all transformation matrices stored in uniform blocks to identity
   void resetUniformBlockData();
 
