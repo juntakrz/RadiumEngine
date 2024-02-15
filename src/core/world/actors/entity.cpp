@@ -207,8 +207,8 @@ uint32_t AEntity::getSkinTransformBufferOffset(int32_t skinIndex) {
 
 void AEntity::playAnimation(const std::string& name, const float speed,
   const bool loop, const bool isReversed) {
-  //for (const auto& boundAnimation : m_boundAnimations) {
-    //if (boundAnimation == name) {
+  for (const auto& boundAnimation : m_pModel->m_boundAnimations) {
+    if (boundAnimation == name) {
       WAnimationInfo animationInfo;
       animationInfo.animationName = name;
       animationInfo.pEntity = this;
@@ -223,12 +223,13 @@ void AEntity::playAnimation(const std::string& name, const float speed,
 
       m_playingAnimations[name] = core::animations.addAnimationToQueue(&animationInfo);
 
-      /*return;
+      return;
     }
   }
 
-  RE_LOG(Error, "Can't play animation '%s' as it was not bound to model '%s'.",
-    name.c_str(), m_name.c_str());*/
+  if (m_pModel->bindAnimation(name)) {
+    playAnimation(name, speed, loop, isReversed);
+  }
 }
 
 void AEntity::playAnimation(const WAnimationInfo* pAnimationInfo) {

@@ -202,8 +202,8 @@ class WModel {
   int32_t getSkinCount() noexcept;
   WModel::Skin* getSkin(int32_t skinIndex) noexcept;
 
-  // check if model can have the animation assigned and bind it
-  void bindAnimation(const std::string& name);
+  // check if model can play the animation and bind it, returning the result
+  bool bindAnimation(const std::string& name);
 
   // cleans all primitives and nodes within,
   // model itself won't get destroyed on its own

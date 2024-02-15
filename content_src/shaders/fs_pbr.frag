@@ -91,6 +91,12 @@ vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, 
 	return diffuse + specular;
 }
 
+float interpolateCascades(float dist, int cascadeIndex){
+	float cascadeStart = cascadeDistances[cascadeIndex];
+    float cascadeEnd = cascadeDistances[cascadeIndex + 1];
+    return (dist - cascadeStart) / (cascadeEnd - cascadeStart);
+}
+
 float filterPCF(vec3 shadowCoord, vec2 offset, uint distanceIndex) {
 	float shadowDepth = texture(arraySamplers[lighting.samplerIndex[SUNLIGHTINDEX]], vec3(shadowCoord.st + offset, distanceIndex)).r;
 	shadowDepth += 0.00001 * float(distanceIndex + 2);
@@ -200,16 +206,28 @@ void main() {
 	color = mix(color, color * ao, occlusionStrength);
 
 	// Calculate shadow and its color
-	float relativeLength = length(scene.camPos - worldPos);
-	
-	for (int distanceIndex = MAXCASCADES - 1; distanceIndex > -1; distanceIndex--) {
-		if (relativeLength > cascadeDistances[distanceIndex]) { 
-			vec3 shadow = shadowColor * getShadow(worldPos, distanceIndex);
-			shadow = clamp(shadow, 0.0, 1.0);
-			color *= shadow;
+	float relativeDistance = length(scene.camPos - worldPos);
+	float shadowA = 0.0f;
+
+	int distanceIndex;
+	for (distanceIndex = MAXCASCADES - 1; distanceIndex > -1; distanceIndex--) {
+		if (relativeDistance > cascadeDistances[distanceIndex]) { 
+			shadowA = getShadow(worldPos, distanceIndex);
+
+			// Smoothly interpolate shadow cascades
+			if (distanceIndex < MAXCASCADES - 1) {
+				float interpolation = interpolateCascades(relativeDistance, distanceIndex);
+				float shadowB = getShadow(worldPos, distanceIndex + 1);
+				shadowA = mix(shadowA, shadowB, interpolation);
+			}
 			break;
 		}
 	}
+	
+	//vec3 shadow = shadowColor * getShadow(worldPos, relativeDistance);
+	vec3 shadow = shadowColor * shadowA;
+	shadow = clamp(shadow, 0.0, 1.0);
+	color *= shadow;
 	
 	// Emissive colors are not affected by shadows as they are supposed to glow
 	color += emissive;

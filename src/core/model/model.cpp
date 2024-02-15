@@ -213,10 +213,10 @@ void WModel::setPrimitiveMaterial(const int32_t meshIndex,
   pPrimitive->pMaterial = pMaterial;
 }
 
-void WModel::bindAnimation(const std::string& name) {
+bool WModel::bindAnimation(const std::string& name) {
   for (const auto& boundAnimation : m_boundAnimations) {
     if (boundAnimation == name) {
-      return;
+      return true;
     }
   }
 
@@ -226,7 +226,7 @@ void WModel::bindAnimation(const std::string& name) {
     RE_LOG(Error,
            "Failed to bind animation '%s' to model '%s'. Animation not found.",
            name.c_str(), m_name.c_str());
-    return;
+    return false;
   }
 
   if (!pAnimation->validateModel(this)) {
@@ -234,10 +234,11 @@ void WModel::bindAnimation(const std::string& name) {
            "Failed to bind animation '%s' to model '%s'. Model has an "
            "incompatible node structure.",
            name.c_str(), m_name.c_str());
-    return;
+    return false;
   }
 
   m_boundAnimations.emplace_back(name);
+  return true;
 }
 
 TResult WModel::clean() {

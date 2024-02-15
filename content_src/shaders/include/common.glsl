@@ -29,7 +29,7 @@ const float HALF_PI = M_PI * 0.5;
 // Shadow cascade data
 // Distances should be proportionally tied to the size of the shadow view frustum
 // By default it's nextDistance = prevDistance * 2. First distance value is 0.
-const float cascadeDistances[4] = { 0.0, 2.0, 4.0, 8.0 };
+const float cascadeDistances[MAXCASCADES] = { 0.0, 2.0, 4.0, 8.0 };
 
 float max3(vec3 v) {
   return max(max(v.x, v.y), v.z);
