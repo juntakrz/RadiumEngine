@@ -5,7 +5,6 @@
 #include "core/model/primitivegen_include.h"
 
 class WPrimitive {
-
  public:
   uint32_t vertexOffset = 0u;    // initial vertex location in owning model
   uint32_t indexOffset = 0u;     // initial index location in owning model

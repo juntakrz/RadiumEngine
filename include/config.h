@@ -74,8 +74,8 @@ namespace scene {
 
 const size_t vertexBudget = 10000000u;                  // ~960 MBs for vertex data
 const size_t indexBudget = 100000000u;                  // ~400 MBs for index data
-const size_t entityBudget = 10000u;                     // ~0.6 MBs for root transformation matrices
-const size_t nodeBudget = RE_MAXJOINTS * entityBudget;  // ~164 MBs for node transformation matrices
+const size_t entityBudget = 1000u;                      // ~64 KBs for root transformation matrices
+const size_t nodeBudget = RE_MAXJOINTS * entityBudget;  // ~16 MBs for node transformation matrices
 const size_t cameraBudget = 64u;                        // ~9 KBs for camera MVP data
 
 extern uint32_t sampledImageBudget;

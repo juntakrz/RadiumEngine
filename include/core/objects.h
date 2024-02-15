@@ -509,7 +509,7 @@ struct WModelConfigInfo {
 };
 
 struct WPrimitiveInstanceData {
-  int32_t instanceIndex = 0;
+  uint32_t instanceIndex = 0;
   bool isVisible = true;
 
   RInstanceData instanceBufferBlock;

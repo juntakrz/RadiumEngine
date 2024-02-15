@@ -65,8 +65,11 @@ class AEntity : public ABase {
   virtual void unbindFromRenderer();
   int32_t getRendererBindingIndex();
   void setRendererBindingIndex(int32_t bindingIndex);
+  uint32_t getRootTransformBufferIndex();
   uint32_t getRootTransformBufferOffset();
+  uint32_t getNodeTransformBufferIndex(int32_t nodeIndex);
   uint32_t getNodeTransformBufferOffset(int32_t nodeIndex);
+  uint32_t getSkinTransformBufferIndex(int32_t skinIndex);
   uint32_t getSkinTransformBufferOffset(int32_t skinIndex);
 
   // simplified version of playAnimation

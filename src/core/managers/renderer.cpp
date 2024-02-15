@@ -165,13 +165,13 @@ TResult core::MRenderer::createSceneBuffers() {
 
   RE_LOG(Log, "Allocating scene buffer for %d entities with transformation.",
          config::scene::entityBudget);
-  createBuffer(EBufferType::CPU_UNIFORM,
+  createBuffer(EBufferType::CPU_STORAGE,
                config::scene::getRootTransformBufferSize(),
                scene.rootTransformBuffer, nullptr);
 
   RE_LOG(Log, "Allocating scene buffer for %d unique nodes with transformation.",
          config::scene::nodeBudget);
-  createBuffer(EBufferType::CPU_UNIFORM,
+  createBuffer(EBufferType::CPU_STORAGE,
                config::scene::getNodeTransformBufferSize(),
                scene.nodeTransformBuffer, nullptr);
 
@@ -186,7 +186,7 @@ TResult core::MRenderer::createSceneBuffers() {
   for (int8_t instanceBufferId = 0; instanceBufferId < MAX_FRAMES_IN_FLIGHT; ++instanceBufferId) {
     RE_LOG(Log, "Allocating scene instance buffer for %d instances.",
       config::scene::getNodeTransformBufferSize());
-    createBuffer(EBufferType::CPU_VERTEX, sizeof(RInstanceData) * config::scene::getNodeTransformBufferSize(),
+    createBuffer(EBufferType::CPU_VERTEX, sizeof(RInstanceData) * config::scene::nodeBudget,
       scene.instanceBuffers[instanceBufferId], nullptr);
   }
 

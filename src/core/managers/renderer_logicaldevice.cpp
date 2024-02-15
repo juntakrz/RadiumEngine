@@ -53,6 +53,10 @@ TResult core::MRenderer::initLogicalDevice(
   bdaFeatures.bufferDeviceAddress = VK_TRUE;
   bdaFeatures.pNext = &descriptorIndexingFeatures;
 
+#ifndef NDEBUG
+  //bdaFeatures.bufferDeviceAddressCaptureReplay = VK_TRUE;
+#endif
+
   // Vulkan 1.3: Enabling dynamic rendering
   VkPhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures{};
   dynamicRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;

@@ -73,6 +73,7 @@ class MRenderer {
     uint32_t currentVertexOffset = 0u;
     uint32_t currentIndexOffset = 0u;
     size_t totalInstances = 0u;
+    uint32_t currentInstanceUID = 0;
     VkDescriptorSet transformDescriptorSet;
 
     std::vector<RTexture*> pGBufferTargets;

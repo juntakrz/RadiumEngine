@@ -944,13 +944,13 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
     return -1;
   }
 
-  WModel* pModel = pEntity->getModel();
-
   // add model to rendering queue, store its offsets
   REntityBindInfo bindInfo{};
   bindInfo.pEntity = pEntity;
 
   system.bindings.emplace_back(bindInfo);
+
+  WModel* pModel = pEntity->getModel();
 
   // Add a reference to all WModel entries of AEntity if they don't already exist
   if (scene.pModelReferences.find(pModel) == scene.pModelReferences.end()) {
@@ -959,6 +959,17 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
 
   // Add a number of model primitives to total primitive instances rendered
   scene.totalInstances += pModel->m_pLinearPrimitives.size();
+
+  for (auto& primitive : pModel->m_pLinearPrimitives) {
+    WModel::Node* pNode = reinterpret_cast<WModel::Node*>(primitive->pOwnerNode);
+
+    auto& instanceData = primitive->instanceData.emplace_back();
+    instanceData.instanceIndex = scene.currentInstanceUID++;
+    instanceData.isVisible = true;
+    instanceData.instanceBufferBlock.modelMatrixId = pEntity->getRootTransformBufferIndex();
+    instanceData.instanceBufferBlock.nodeMatrixId = pEntity->getNodeTransformBufferIndex(pNode->index);
+    instanceData.instanceBufferBlock.skinMatrixId = pEntity->getSkinTransformBufferIndex(pNode->skinIndex);
+  }
 
   // TODO: implement indirect draw command properly
   /*VkDrawIndexedIndirectCommand drawCommand{};

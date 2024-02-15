@@ -18,6 +18,7 @@ std::set<int32_t> RVkQueueFamilyIndices::getAsSet() const {
 
 std::vector<VkVertexInputBindingDescription> RVertex::getBindingDescs() {
     std::vector<VkVertexInputBindingDescription> bindingDescs(2);
+
     bindingDescs[0].binding = 0;
     bindingDescs[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     bindingDescs[0].stride = sizeof(RVertex);
@@ -70,9 +71,9 @@ std::vector<VkVertexInputAttributeDescription> RVertex::getAttributeDescs() {
 
   // Instance
   attrDescs[7].binding = 1;
-  attrDescs[7].format = VK_FORMAT_R32G32B32_SFLOAT;
+  attrDescs[7].format = VK_FORMAT_R8G8B8_UINT;
   attrDescs[7].location = 7;
-  attrDescs[7].offset = sizeof(RInstanceData);
+  attrDescs[7].offset = 0;
 
   return attrDescs;
 }

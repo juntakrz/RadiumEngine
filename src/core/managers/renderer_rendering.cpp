@@ -479,11 +479,13 @@ void core::MRenderer::renderFrame() {
     return;
   }
 
-  VkBuffer vertexBuffers[2] = {scene.vertexBuffer.buffer, scene.instanceBuffers[renderView.frameInFlight].buffer};
-  VkDeviceSize vbOffsets[2] = {0, 0};
-  //VkDeviceSize vbOffset = 0u;
-  //vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &scene.vertexBuffer.buffer, &vbOffset);
+  /*VkDeviceSize vbOffset = 0u;
+  vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &scene.vertexBuffer.buffer, &vbOffset);*/
+
+  VkBuffer vertexBuffers[2] = { scene.vertexBuffer.buffer, scene.instanceBuffers[renderView.frameInFlight].buffer };
+  VkDeviceSize vbOffsets[2] = { 0, 0 };
   vkCmdBindVertexBuffers(cmdBuffer, 0, 2, vertexBuffers, vbOffsets);
+
   vkCmdBindIndexBuffer(cmdBuffer, scene.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
   vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
     getPipelineLayout(EPipelineLayout::Scene), 2, 1, &material.descriptorSet, 0, nullptr);
@@ -585,7 +587,9 @@ void core::MRenderer::renderFrame() {
     return;
   }
 
+  // Synchronize CPU threads
   sync.asyncUpdateEntities.update();
+  sync.asyncUpdateInstanceBuffers.update();
 
   renderView.frameInFlight = ++renderView.frameInFlight % MAX_FRAMES_IN_FLIGHT;
   ++renderView.framesRendered;

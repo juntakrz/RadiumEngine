@@ -116,8 +116,6 @@ void AEntity::bindToRenderer() {
     return;
   }
 
-  m_bindIndex = (int32_t)core::renderer.bindEntity(this);
-
   // Register actor's root transform matrix
   bool isNew = core::animations.getOrRegisterActorOffsetIndex(
       this, m_rootTransformBufferIndex);
@@ -142,6 +140,8 @@ void AEntity::bindToRenderer() {
     core::animations.getOrRegisterNodeOffsetIndex(&animatedNode, animatedNode.nodeTransformBufferIndex);
     animatedNode.nodeTransformBufferOffset = animatedNode.nodeTransformBufferIndex * config::scene::nodeBlockSize;
   }
+
+  m_bindIndex = (int32_t)core::renderer.bindEntity(this);
 }
 
 void AEntity::unbindFromRenderer() {
@@ -155,8 +155,25 @@ void AEntity::setRendererBindingIndex(int32_t bindingIndex) {
   m_bindIndex = bindingIndex;
 }
 
+uint32_t AEntity::getRootTransformBufferIndex() {
+  return m_rootTransformBufferIndex;
+}
+
 uint32_t AEntity::getRootTransformBufferOffset() {
   return m_rootTransformBufferOffset;
+}
+
+uint32_t AEntity::getNodeTransformBufferIndex(int32_t nodeIndex) {
+  for (const auto& it : m_animatedNodes) {
+    if (it.nodeIndex == nodeIndex) {
+      return it.nodeTransformBufferIndex;
+    }
+  }
+
+  RE_LOG(Warning, "Requested node '%d' is missing for actor '%s'.", nodeIndex,
+    m_name.c_str());
+
+  return -1;
 }
 
 uint32_t AEntity::getNodeTransformBufferOffset(int32_t nodeIndex) {
@@ -170,6 +187,14 @@ uint32_t AEntity::getNodeTransformBufferOffset(int32_t nodeIndex) {
          m_name.c_str());
 
   return -1;
+}
+
+uint32_t AEntity::getSkinTransformBufferIndex(int32_t skinIndex) {
+  if (skinIndex > -1 && skinIndex < m_animatedSkins.size()) {
+    return m_animatedSkins[skinIndex].skinTransformBufferIndex;
+  }
+
+  return 0;
 }
 
 uint32_t AEntity::getSkinTransformBufferOffset(int32_t skinIndex) {

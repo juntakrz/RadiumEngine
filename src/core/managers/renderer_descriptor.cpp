@@ -248,11 +248,11 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
                                         VK_NULL_HANDLE);
 
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
-        {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1,
+        {0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1,
          VK_SHADER_STAGE_VERTEX_BIT, nullptr},
-        {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1,
+        {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1,
          VK_SHADER_STAGE_VERTEX_BIT, nullptr},
-        {2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1,
+        {2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1,
          VK_SHADER_STAGE_VERTEX_BIT, nullptr}};
 
     VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
@@ -497,21 +497,21 @@ TResult core::MRenderer::createDescriptorSets() {
 
     std::vector<VkWriteDescriptorSet> writeSets(3);
     writeSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeSets[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    writeSets[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
     writeSets[0].descriptorCount = 1;
     writeSets[0].dstSet = scene.transformDescriptorSet;
     writeSets[0].dstBinding = 0;
     writeSets[0].pBufferInfo = &rootMatrixBufferInfo;
 
     writeSets[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeSets[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    writeSets[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
     writeSets[1].descriptorCount = 1;
     writeSets[1].dstSet = scene.transformDescriptorSet;
     writeSets[1].dstBinding = 1;
     writeSets[1].pBufferInfo = &nodeMatrixBufferInfo;
 
     writeSets[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeSets[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    writeSets[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
     writeSets[2].descriptorCount = 1;
     writeSets[2].dstSet = scene.transformDescriptorSet;
     writeSets[2].dstBinding = 2;

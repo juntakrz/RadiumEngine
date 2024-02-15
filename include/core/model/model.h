@@ -22,6 +22,7 @@ class WModel {
   friend class core::MRenderer;
   friend class core::MWorld;
   friend class AEntity;
+  friend class WPrimitive;
   struct Node;
 
  private:
