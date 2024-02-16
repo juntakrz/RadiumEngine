@@ -25,6 +25,8 @@ layout (set = 0, binding = 4) uniform sampler2D BRDFLUTMap;
 layout (set = 2, binding = 0) uniform sampler2D samplers[];
 layout (set = 2, binding = 0) uniform sampler2DArray arraySamplers[];
 
+const shadowBias = 0.00001;
+
 vec3 tonemap(vec3 v) {
 	vec3 color = tonemapACESApprox(v);
 	return pow(color, vec3(1.0 / lighting.gamma));
@@ -99,7 +101,7 @@ float interpolateCascades(float dist, int cascadeIndex){
 
 float filterPCF(vec3 shadowCoord, vec2 offset, uint distanceIndex) {
 	float shadowDepth = texture(arraySamplers[lighting.samplerIndex[SUNLIGHTINDEX]], vec3(shadowCoord.st + offset, distanceIndex)).r;
-	shadowDepth += 0.00001 * float(distanceIndex + 2);
+	shadowDepth += shadowBias * float(distanceIndex + 1);
 
 	if (shadowCoord.z > shadowDepth) {
 		return 0.1;
