@@ -367,7 +367,7 @@ TResult core::MRenderer::createImageTargets() {
   RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
 #endif
 
-  // target for BRDF LUT generation
+  // Target for BRDF LUT generation
   rtName = RTGT_BRDFMAP;
 
   textureInfo.name = rtName;
@@ -393,7 +393,7 @@ TResult core::MRenderer::createImageTargets() {
   RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
 #endif
 
-  // target for exposure calculation
+  // Target for exposure calculation
   rtName = RTGT_EXPOSUREMAP;
 
   textureInfo = RTextureInfo{};
@@ -450,7 +450,7 @@ TResult core::MRenderer::createImageTargets() {
   RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
 #endif
 
-  // target for post process downsampling
+  // Target for TAA, stores history
   rtName = RTGT_PREVFRAME;
 
   textureInfo = RTextureInfo{};
@@ -468,6 +468,23 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
   textureInfo.samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
   textureInfo.samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+
+  pNewTexture = core::resources.createTexture(&textureInfo);
+
+  if (!pNewTexture) {
+    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
+    return RE_CRITICAL;
+  }
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
+#endif
+
+  // Target for TAA, stores final PBR + TAA history and velocity
+  rtName = RTGT_PPTAA;
+
+  textureInfo.name = rtName;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -509,7 +526,7 @@ TResult core::MRenderer::createGBufferRenderTargets() {
   targetNames.emplace_back(RTGT_GNORMAL);
   targetNames.emplace_back(RTGT_GPHYSICAL);
   targetNames.emplace_back(RTGT_GEMISSIVE);
-  targetNames.emplace_back(RTGT_MOTIONMAP);
+  targetNames.emplace_back(RTGT_VELOCITYMAP);
 
   for (const auto& targetName : targetNames) {
     core::resources.destroyTexture(targetName.c_str(), true);
@@ -517,7 +534,7 @@ TResult core::MRenderer::createGBufferRenderTargets() {
     VkFormat imageFormat = core::vulkan::formatHDR16;
 
     if (targetName == RTGT_GPOSITION) imageFormat = core::vulkan::formatHDR32;
-    else if (targetName == RTGT_MOTIONMAP) imageFormat = VK_FORMAT_R16G16_SFLOAT;
+    else if (targetName == RTGT_VELOCITYMAP) imageFormat = VK_FORMAT_R16G16_SFLOAT;
 
     RTexture* pNewTarget;
     if ((pNewTarget = createFragmentRenderTarget(targetName.c_str(), imageFormat)) == nullptr) {
@@ -725,7 +742,7 @@ TResult core::MRenderer::setRendererDefaults() {
   // Set default post processing info
   postprocess.pBloomTexture = core::resources.getTexture(RTGT_PPBLOOM);
   postprocess.pExposureTexture = core::resources.getTexture(RTGT_EXPOSUREMAP);
-  postprocess.pGPBRTexture = core::resources.getTexture(RTGT_GPBR);
+  postprocess.pTAATexture = core::resources.getTexture(RTGT_PPTAA);
   postprocess.pPreviousFrameTexture = core::resources.getTexture(RTGT_PREVFRAME);
 
   postprocess.bloomSubRange.aspectMask = postprocess.pBloomTexture->texture.aspectMask;
@@ -736,7 +753,7 @@ TResult core::MRenderer::setRendererDefaults() {
 
   postprocess.previousFrameCopy.extent = { config::renderWidth, config::renderHeight, 1 };
   postprocess.previousFrameCopy.srcOffset = { 0, 0, 0 };
-  postprocess.previousFrameCopy.srcSubresource.aspectMask = postprocess.pGPBRTexture->texture.aspectMask;
+  postprocess.previousFrameCopy.srcSubresource.aspectMask = postprocess.pTAATexture->texture.aspectMask;
   postprocess.previousFrameCopy.srcSubresource.baseArrayLayer = 0u;
   postprocess.previousFrameCopy.srcSubresource.layerCount = 1u;
   postprocess.previousFrameCopy.srcSubresource.mipLevel = 0u;
@@ -763,6 +780,10 @@ TResult core::MRenderer::setRendererDefaults() {
 
   // Create compute shader storage buffer for retrieving exposure results
   createBuffer(EBufferType::CPU_STORAGE, 1024, postprocess.exposureStorageBuffer, nullptr);
+
+  // Calculate a Halton Sequence for TAA jittering
+  system.haltonJitter.resize(core::vulkan::haltonSequenceCount);
+  math::getHaltonJitter(system.haltonJitter, config::renderWidth, config::renderHeight);
 
   return RE_OK;
 }
@@ -937,6 +958,7 @@ void core::MRenderer::updateSceneUBO(uint32_t currentImage) {
   scene.sceneBufferObject.view = view.pActiveCamera->getView();
   scene.sceneBufferObject.projection = view.pActiveCamera->getProjection();
   scene.sceneBufferObject.cameraPosition = view.pActiveCamera->getLocation();
+  scene.sceneBufferObject.haltonJitter = system.haltonJitter[renderView.framesRendered % core::vulkan::haltonSequenceCount];
 
   uint8_t* pSceneUBO = static_cast<uint8_t*>(scene.sceneBuffers[currentImage].allocInfo.pMappedData) +
                        config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();

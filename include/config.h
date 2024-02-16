@@ -11,6 +11,7 @@
 
 // render targets
 #define RTGT_PRESENT            "RT2D_Present"      // Final swapchain target
+#define RTGT_PPTAA              "RT2D_TAA"          // PBR + velocity and history images
 #define RTGT_DEPTH              "RT2D_Depth"        // Active camera depth render target
 #define RTGT_SHADOW             "RT2D_Shadow"       // Shadow render target (depth)
 #define RTGT_ENVSRC             "RT2D_EnvSrc"       // Source texture for environment cubemaps
@@ -21,7 +22,7 @@
 #define RTGT_ENVIRRAD           "RTCube_EnvIrrad"
 #define RTGT_BRDFMAP            "RT2D_EnvBRDF"
 #define RTGT_EXPOSUREMAP        "RT2D_Exposure"
-#define RTGT_MOTIONMAP          "RT2D_Motion"
+#define RTGT_VELOCITYMAP        "RT2D_Velocity"
 #define RTGT_PREVFRAME          "RT2D_PrevFrame"
 
 #define RTGT_GPOSITION          "RT2D_GPosition"    // Fragment world space position output
@@ -126,6 +127,7 @@ extern VkDeviceSize minUniformBufferAlignment;
 extern VkDeviceSize descriptorBufferOffsetAlignment;
 constexpr bool applyGLTFLeftHandedFix = false;    // currently ok for static models, but has issues with skin
 constexpr uint32_t maxSampler2DDescriptors = 32u; // amount of allowed variable index descriptors
+constexpr uint8_t haltonSequenceCount = 16u;
 }
 }  // namespace core
 

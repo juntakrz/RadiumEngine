@@ -98,7 +98,8 @@ enum EDynamicRenderingPass : uint32_t {
   PPDownsample        = 0b100000000,
   PPUpsample          = 0b1000000000,
   PPGetExposure       = 0b10000000000,
-  Present             = 0b100000000000
+  PPTAA               = 0b100000000000,
+  Present             = 0b1000000000000
 };
 
 enum class ELightType {
@@ -287,7 +288,9 @@ struct RMaterialInfo {
     std::string metalRoughness = "";
     std::string occlusion = "";
     std::string emissive = "";
-    std::string extra = "";
+    std::string extra0 = "";
+    std::string extra1 = "";
+    std::string extra2 = "";
   } textures;
 
   struct {
@@ -296,7 +299,9 @@ struct RMaterialInfo {
     int8_t metalRoughness = 0;
     int8_t occlusion = 0;
     int8_t emissive = 0;
-    int8_t extra = 0;
+    int8_t extra0 = 0;
+    int8_t extra1 = 0;
+    int8_t extra2 = 0;
   } texCoordSets;
 
   float metallicFactor = 0.0f;
@@ -477,6 +482,7 @@ struct RSceneUBO {
   alignas(16) glm::mat4 view = glm::mat4(1.0f);
   alignas(16) glm::mat4 projection = glm::mat4(1.0f);
   alignas(16) glm::vec3 cameraPosition = glm::vec3(0.0f);
+  alignas(16) glm::vec2 haltonJitter = glm::vec2(0.0f);
 };
 
 struct RSkinUBO {

@@ -93,7 +93,7 @@ class MRenderer {
     RTexture* pBloomTexture = nullptr;
     RTexture* pExposureTexture = nullptr;
     RTexture* pPreviousFrameTexture = nullptr;
-    RTexture* pGPBRTexture = nullptr;
+    RTexture* pTAATexture = nullptr;
 
     VkImageSubresourceRange bloomSubRange;
     std::vector<VkViewport> viewports;
@@ -129,6 +129,7 @@ class MRenderer {
     std::unordered_map<EPipelineLayout, VkPipelineLayout> layouts;
     std::unordered_map<EComputePipeline, VkPipeline> computePipelines;
     std::vector<RViewport> viewports;
+    std::vector<glm::vec2> haltonJitter;
 
     VkDescriptorPool descriptorPool;
     std::unordered_map<EDescriptorSetLayout, VkDescriptorSetLayout> descriptorSetLayouts;
@@ -293,7 +294,8 @@ class MRenderer {
 
  private:
   // create single layer render target for fragment shader output, uses swapchain resolution unless defined
-  RTexture* createFragmentRenderTarget(const char* name, VkFormat format, uint32_t width = 0, uint32_t height = 0);
+  RTexture* createFragmentRenderTarget(const char* name, VkFormat format, uint32_t width = 0, uint32_t height = 0,
+    VkSamplerAddressMode addressMode = VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT);
 
   TResult createViewports();
   void setViewport(VkCommandBuffer commandBuffer, EViewport index);
@@ -549,13 +551,12 @@ public:
 
   void executeShadowPass(VkCommandBuffer commandBuffer, const uint32_t cascadeIndex);
 
+  void executePostProcesssTAAPass(VkCommandBuffer commandBuffer);
   void executePostProcessSamplingPass(VkCommandBuffer commandBuffer, const uint32_t imageViewIndex, const bool upsample);
   void executePostProcessGetExposurePass(VkCommandBuffer commandBuffer);
   void executePostProcessPass(VkCommandBuffer commandBuffer);
 
   void executePresentPass(VkCommandBuffer commandBuffer);
-
-  void storeFrame(VkCommandBuffer commandBuffer);
 
  public:
   void renderFrame();

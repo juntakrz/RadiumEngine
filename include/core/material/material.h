@@ -14,7 +14,9 @@ struct RMaterial {
   RTexture* pMetalRoughness = nullptr;
   RTexture* pOcclusion = nullptr;
   RTexture* pEmissive = nullptr;
-  RTexture* pExtra = nullptr;
+  RTexture* pExtra0 = nullptr;
+  RTexture* pExtra1 = nullptr;
+  RTexture* pExtra2 = nullptr;
 
   RSceneFragmentPCB pushConstantBlock;
 

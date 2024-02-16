@@ -21,6 +21,7 @@ layout(binding = 0) uniform UBOView {
 	mat4 view;
 	mat4 projection;
 	vec3 cameraPos;
+	vec2 haltonJitter;
 } scene;
 
 layout (set = 1, binding = 0) buffer UBOMesh0 {

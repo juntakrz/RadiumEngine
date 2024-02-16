@@ -12,7 +12,8 @@
 
 // PRIVATE
 
-RTexture* core::MRenderer::createFragmentRenderTarget(const char* name, VkFormat format, uint32_t width, uint32_t height) {
+RTexture* core::MRenderer::createFragmentRenderTarget(const char* name, VkFormat format, uint32_t width, uint32_t height,
+                                                      VkSamplerAddressMode addressMode) {
   if (width == 0 || height == 0) {
     width = swapchain.imageExtent.width;
     height = swapchain.imageExtent.height;
@@ -28,9 +29,9 @@ RTexture* core::MRenderer::createFragmentRenderTarget(const char* name, VkFormat
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
 
-  textureInfo.samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-  textureInfo.samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-  textureInfo.samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  textureInfo.samplerInfo.addressModeU = addressMode;
+  textureInfo.samplerInfo.addressModeV = addressMode;
+  textureInfo.samplerInfo.addressModeW = addressMode;
 
   RTexture* pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -735,8 +736,7 @@ TResult core::MRenderer::generateSingleMipMap(VkCommandBuffer cmdBuffer,
       pTexture->texture.imageFormat != VK_FORMAT_D24_UNORM_S8_UINT) {
     barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   } else {
-    barrier.subresourceRange.aspectMask =
-        VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
   }
 
   // convert source mip level to TRANSFER SRC layout

@@ -309,6 +309,22 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     createDynamicRenderingPass(EDynamicRenderingPass::PPGetExposure, &info);
   }
 
+  // TAA pass, takes a PBR output up to this point and adds history and velocity data
+  {
+    RTexture* pColorAttachment = core::resources.getTexture(RTGT_PPTAA);
+
+    RDynamicRenderingInfo info{};
+    info.pipelineLayout = EPipelineLayout::Scene;
+    info.viewportId = EViewport::vpMain;
+    info.vertexShader = "vs_quad.spv";
+    info.fragmentShader = "fs_ppTAA.spv";
+    info.colorAttachmentClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
+    info.layoutInfo.transitionColorAttachmentLayout = true;
+    info.colorAttachments = { { pColorAttachment, pColorAttachment->texture.view, pColorAttachment->texture.imageFormat } };
+
+    createDynamicRenderingPass(EDynamicRenderingPass::PPTAA, &info);
+  }
+
   // "Present" final output pass
   {
     RTexture* pDepthAttachment = core::resources.getTexture(RTGT_DEPTH);

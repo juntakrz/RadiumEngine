@@ -391,6 +391,7 @@
     <None Include="content_src\shaders\fs_pbr.frag" />
     <None Include="content_src\shaders\fs_ppDownsample.frag" />
     <None Include="content_src\shaders\fs_ppGetExposure.frag" />
+    <None Include="content_src\shaders\fs_ppTAA.frag" />
     <None Include="content_src\shaders\fs_ppUpsample.frag" />
     <None Include="content_src\shaders\fs_present.frag" />
     <None Include="content_src\shaders\fs_shadowPass.frag" />
@@ -398,6 +399,7 @@
     <None Include="content_src\shaders\gs_shadowPass.geom" />
     <None Include="content_src\shaders\include\common.glsl" />
     <None Include="content_src\shaders\include\fragment.glsl" />
+    <None Include="content_src\shaders\include\vertex.glsl" />
     <None Include="content_src\shaders\vs_brdfLUT.vert" />
     <None Include="content_src\shaders\vs_scene.vert" />
     <None Include="content_src\shaders\vs_quad.vert" />

@@ -1,6 +1,4 @@
 #version 460
-#extension GL_EXT_nonuniform_qualifier : require
-#extension GL_EXT_scalar_block_layout : require
 
 #include "include/common.glsl"
 #include "include/fragment.glsl"
@@ -16,7 +14,7 @@ layout (set = 2, binding = 0) uniform sampler2D samplers[];
 layout (location = 0) out vec4 outColor;
 
 void main() {
-	vec3 baseColor = texture(samplers[material.samplerIndex[COLORMAP]], inUV).rgb;
+	vec3 baseColor = texture(samplers[material.samplerIndex[EMISMAP]], inUV).rgb;
 	vec3 bloomColor = texture(samplers[material.samplerIndex[BLOOMMAP]], inUV).rgb;
 	float exposure = lighting.exposure;
 

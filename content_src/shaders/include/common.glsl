@@ -16,8 +16,10 @@
 #define AOMAP       3
 #define POSITIONMAP	3
 #define EMISMAP		4
-#define EXTRAMAP	5
-#define MAXTEXTURES 6
+#define EXTRAMAP0	5
+#define EXTRAMAP1   6
+#define EXTRAMAP2   7
+#define MAXTEXTURES 8
 
 #define RGB_TO_LUM vec3(0.2126, 0.7152, 0.0722)
 

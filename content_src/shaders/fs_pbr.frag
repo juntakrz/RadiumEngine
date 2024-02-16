@@ -111,7 +111,7 @@ float filterPCF(vec3 shadowCoord, vec2 offset, uint distanceIndex) {
 float getShadow(vec3 fragmentPosition, int distanceIndex) {
 	ivec2 texDim = textureSize(samplers[lighting.samplerIndex[SUNLIGHTINDEX]], 0);
 	float shadow = 0.0;
-	float scale = 1.5;
+	float scale = 1.0;
 	float dx = scale * (1.0 / float(texDim.x));
 	float dy = scale * (1.0 / float(texDim.y));
 	int count = 0;
@@ -231,6 +231,6 @@ void main() {
 	
 	// Emissive colors are not affected by shadows as they are supposed to glow
 	color += emissive;
-	
+
 	outColor = vec4(color, baseColor.a);
 }

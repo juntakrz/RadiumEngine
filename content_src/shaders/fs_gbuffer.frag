@@ -9,7 +9,8 @@ layout (location = 1) in vec3 inNormal;
 layout (location = 2) in vec2 inUV0;
 layout (location = 3) in vec2 inUV1;
 layout (location = 4) in vec4 inColor0;
-layout (location = 5) in vec4 inPrevWorldPos;
+layout (location = 5) in vec4 inCurrentWorldPos;
+layout (location = 6) in vec4 inPrevWorldPos;
 
 // scene bindings
 layout (set = 0, binding = 0) uniform UBOScene {
@@ -25,9 +26,21 @@ layout (location = 1) out vec4 outColor;
 layout (location = 2) out vec4 outNormal;
 layout (location = 3) out vec4 outPhysical;		// x = metalness, y = roughness, z = ambient occlusion
 layout (location = 4) out vec4 outEmissive;
-layout (location = 5) out vec2 outMotion;
+layout (location = 5) out vec2 outVelocity;
 
 const float minRoughness = 0.04;
+
+vec2 getVelocity(vec4 prevPos, vec4 currentPos){
+	prevPos /= prevPos.w;
+	prevPos.xy = (prevPos.xy - 1.0) * 0.5;
+	prevPos.y = 1 - prevPos.y;
+
+	currentPos /= currentPos.w;
+	currentPos.xy = (currentPos.xy - 1.0) * 0.5;
+	currentPos.y = 1 - currentPos.y;
+
+	return (currentPos - prevPos).xy;
+}
 
 vec3 getNormal(int textureSet) {
 	vec3 tangentNormal = vec3(vec2(texture(samplers[material.samplerIndex[NORMALMAP]], textureSet == 0 ? inUV0 : inUV1).rg * 2.0 - 1.0), 1.0);
@@ -119,6 +132,6 @@ void main() {
 	// Brighten or darken emission by the glow color value
 	outEmissive += vec4(material.glowColor);
 
-	// 6. Store motion vector
-	outMotion = inWorldPos.xy - (inPrevWorldPos.xy / inPrevWorldPos.w);
+	// 6. Store velocity vector
+	outVelocity = getVelocity(inPrevWorldPos, inCurrentWorldPos);
 }

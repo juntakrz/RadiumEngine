@@ -237,8 +237,7 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
 
   switch (pInfo->targetLayout) {
     case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL: {
-      subRange.aspectMask =
-          VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+      subRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
       break;
     }
     case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL: {

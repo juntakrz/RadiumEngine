@@ -22,7 +22,8 @@ layout(location = 1) out vec3 outNormal;
 layout(location = 2) out vec2 outUV0;
 layout(location = 3) out vec2 outUV1;
 layout(location = 4) out vec4 outColor0;
-layout(location = 5) out vec4 outPrevWorldPos;
+layout(location = 5) out vec4 outCurrentMVPPos;
+layout(location = 6) out vec4 outPrevMVPPos;
 
 void main(){
 	const uint modelIndex = inInstanceTransformIndices.x;
@@ -55,12 +56,17 @@ void main(){
 	}
 
 	outWorldPos = worldPos.xyz / worldPos.w;
-	outPrevWorldPos = vec4(prevWorldPos.xyz / prevWorldPos.w, 1.0);
+
+	outPrevMVPPos = vec4(prevWorldPos.xyz / prevWorldPos.w, 1.0);
 
 	outUV0 = inUV0;
 	outUV1 = inUV1;
 	outColor0 = inColor0;
 
-	outPrevWorldPos = scene.projection * scene.view * outPrevWorldPos;
-	gl_Position = scene.projection * scene.view * vec4(outWorldPos, 1.0);
+	// Storing unjittered vertex values for the velocity vector calculation
+	outPrevMVPPos = scene.projection * scene.view * outPrevMVPPos;
+	outCurrentMVPPos = scene.projection * scene.view * vec4(outWorldPos, 1.0);
+
+	// Jittering an output vertex position for TAA history accumulation
+	gl_Position = outCurrentMVPPos + vec4(scene.haltonJitter * outCurrentMVPPos.w, 0.0, 0.0);
 }

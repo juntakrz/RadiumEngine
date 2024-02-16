@@ -262,6 +262,41 @@ void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uin
   }
 }
 
+void core::MRenderer::executePostProcesssTAAPass(VkCommandBuffer commandBuffer) {
+  RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::PPTAA);
+  renderView.pCurrentPass = pRenderPass;
+
+  RTexture* pTAATexture = pRenderPass->pImageReferences[0];
+
+  VkImageSubresourceRange subRange{};
+  subRange.aspectMask = pTAATexture->texture.aspectMask;
+  subRange.baseArrayLayer = 0u;
+  subRange.layerCount = 1u;
+  subRange.baseMipLevel = 0u;
+  subRange.levelCount = 1u;
+  
+  setImageLayout(commandBuffer, pTAATexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
+
+  vkCmdBeginRendering(commandBuffer, &pRenderPass->renderingInfo);
+
+  setViewport(commandBuffer, pRenderPass->viewportId);
+  renderView.currentViewportId = renderView.pCurrentPass->viewportId;
+
+  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->pipeline);
+
+  vkCmdPushConstants(commandBuffer, renderView.pCurrentPass->layout, VK_SHADER_STAGE_FRAGMENT_BIT,
+    sizeof(RSceneVertexPCB), sizeof(RSceneFragmentPCB), &material.pGPBR->pushConstantBlock);
+
+  vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+
+  vkCmdEndRendering(commandBuffer);
+
+  setImageLayout(commandBuffer, pTAATexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subRange);
+
+  copyImage(commandBuffer, postprocess.pTAATexture->texture.image, postprocess.pPreviousFrameTexture->texture.image,
+    postprocess.pTAATexture->texture.imageLayout, postprocess.pPreviousFrameTexture->texture.imageLayout, postprocess.previousFrameCopy);
+}
+
 void core::MRenderer::executePostProcessSamplingPass(VkCommandBuffer commandBuffer, const uint32_t imageViewIndex,
                                                      const bool upsample) {
   // Store a shader coordinate into either PBR texture or downsampling texture and its mip level
@@ -344,7 +379,8 @@ void core::MRenderer::executePostProcessGetExposurePass(VkCommandBuffer commandB
 
 void core::MRenderer::executePostProcessPass(VkCommandBuffer commandBuffer) {
   const uint8_t levelCount = postprocess.pBloomTexture->texture.levelCount;
-
+  
+  executePostProcesssTAAPass(commandBuffer);
   executePostProcessGetExposurePass(commandBuffer);
 
   for (uint8_t downsampleIndex = 0; downsampleIndex < levelCount; ++downsampleIndex) {
@@ -396,11 +432,6 @@ void core::MRenderer::executePresentPass(VkCommandBuffer commandBuffer) {
   vkCmdEndRendering(commandBuffer);
 
   setImageLayout(commandBuffer, pImage, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, subRange);
-}
-
-void core::MRenderer::storeFrame(VkCommandBuffer commandBuffer) {
-  copyImage(commandBuffer, postprocess.pGPBRTexture->texture.image, postprocess.pPreviousFrameTexture->texture.image,
-    postprocess.pGPBRTexture->texture.imageLayout, postprocess.pPreviousFrameTexture->texture.imageLayout, postprocess.previousFrameCopy);
 }
 
 void core::MRenderer::renderFrame() {
@@ -505,7 +536,6 @@ void core::MRenderer::renderFrame() {
 
   /* 4. Postprocessing pass */
 
-  storeFrame(cmdBuffer);
   executePostProcessPass(cmdBuffer);
 
   /* 5. Final presentation pass */
