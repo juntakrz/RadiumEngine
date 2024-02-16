@@ -67,6 +67,7 @@ void core::run() {
 
   core::world.loadModelFromFile("content/models/wc3guy/scene.gltf", "mdlGuy", &modelConfigInfo);
   core::world.loadModelFromFile("content/models/castle/scene.gltf", "mdlCastle");
+  core::world.loadModelFromFile("content/models/tree/scene.gltf", "mdlTree");
   //
   
   // create entities
@@ -124,6 +125,13 @@ void core::run() {
   pStatic->setLocation(0.0f, 6.17f, 12.0f);
   pStatic->setRotation({-0.5f, -0.4f, 0.0f});
   pStatic->setScale(2.0f);
+
+  pStatic = core::actors.createStatic("StaticTree0");
+  pStatic->setModel(core::world.getModel("mdlTree"));
+  pStatic->bindToRenderer();
+  pStatic->setLocation(1.0f, -1.35f, -0.8f);
+  pStatic->setRotation({ 0.0f, 0.0f, 1.5f });
+  pStatic->setScale({ 1.0f, 1.25f, 1.0f });
 
   //core::animations.saveAnimation("SwordAndShieldIdle", "SwordAndShieldIdle");
   //

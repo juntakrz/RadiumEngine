@@ -119,13 +119,15 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
     }
   }
 
-  // standard RMaterial set of 6 texture maps
+  // standard RMaterial set of 8 texture maps
   // 0 - baseColor
   // 1 - normal
   // 2 - metalness / roughness
   // 3 - ambient occlusion
   // 4 - emissive
-  // 5 - extra
+  // 5 - extra0
+  // 6 - extra1
+  // 7 - extra2
   {
     system.descriptorSetLayouts.emplace(EDescriptorSetLayout::Material,
                                         VK_NULL_HANDLE);
@@ -142,6 +144,10 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
         {4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
          VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
         {5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
+        VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+        {6, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
+         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+        {7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
          VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}};
 
     VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};

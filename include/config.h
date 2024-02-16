@@ -125,8 +125,8 @@ const VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 constexpr uint8_t maxFramesInFlight = MAX_FRAMES_IN_FLIGHT;
 extern VkDeviceSize minUniformBufferAlignment;
 extern VkDeviceSize descriptorBufferOffsetAlignment;
-constexpr bool applyGLTFLeftHandedFix = false;    // currently ok for static models, but has issues with skin
-constexpr uint32_t maxSampler2DDescriptors = 32u; // amount of allowed variable index descriptors
+constexpr bool applyGLTFLeftHandedFix = false;
+constexpr uint32_t maxSampler2DDescriptors = 4096u; // amount of allowed variable index descriptors
 constexpr uint8_t haltonSequenceCount = 16u;
 }
 }  // namespace core

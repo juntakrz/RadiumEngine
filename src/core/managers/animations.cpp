@@ -233,7 +233,7 @@ bool core::MAnimations::getOrRegisterNodeOffsetIndex(
     AEntity::AnimatedNodeBinding* pNode, uint32_t& outIndex) {
   uint32_t freeIndex = -1;
 
-  for (uint32_t i = 0; i < m_rootTransformBufferIndices.size(); ++i) {
+  for (uint32_t i = 0; i < m_nodeTransformBufferIndices.size(); ++i) {
     if (m_nodeTransformBufferIndices[i] == nullptr && freeIndex == -1) {
       freeIndex = i;
     }

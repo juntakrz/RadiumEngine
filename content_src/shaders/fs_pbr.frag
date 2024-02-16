@@ -25,7 +25,7 @@ layout (set = 0, binding = 4) uniform sampler2D BRDFLUTMap;
 layout (set = 2, binding = 0) uniform sampler2D samplers[];
 layout (set = 2, binding = 0) uniform sampler2DArray arraySamplers[];
 
-const shadowBias = 0.00001;
+const float shadowBias = 0.00001;
 
 vec3 tonemap(vec3 v) {
 	vec3 color = tonemapACESApprox(v);
@@ -93,7 +93,7 @@ vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, 
 	return diffuse + specular;
 }
 
-float interpolateCascades(float dist, int cascadeIndex){
+float interpolateCascades(float dist, int cascadeIndex) {
 	float cascadeStart = cascadeDistances[cascadeIndex];
     float cascadeEnd = cascadeDistances[cascadeIndex + 1];
     return (dist - cascadeStart) / (cascadeEnd - cascadeStart);
