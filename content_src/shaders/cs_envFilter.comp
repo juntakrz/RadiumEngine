@@ -13,7 +13,7 @@ layout (push_constant) uniform PushBlock {
     ivec4 intValues;	// x - total mip levels, y - current face, z - num samples
 } pushBlock;
 
-const uint sourceSize = 512u;
+const uint sourceSize = 512;
 
 void prefilterCubemap(ivec3 srcPosition, ivec2 cubemapSize, int mipLevel, float roughness) {
 	const uint divisor = 1 << mipLevel;

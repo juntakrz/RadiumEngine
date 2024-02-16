@@ -194,36 +194,6 @@ TResult core::MRenderer::createComputePipelines() {
   }
 
   //
-  // Compute Image pipeline for mipmapping R16G16B16A16_SFLOAT image
-  //
-  {
-    VkPipelineShaderStageCreateInfo shaderStage =
-        loadShader("cs_mipmap16f.spv", VK_SHADER_STAGE_COMPUTE_BIT);
-    computePipelineInfo.stage = shaderStage;
-
-    VkPipelineRenderingCreateInfo pipelineRenderingInfo{};
-    pipelineRenderingInfo.sType =
-        VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
-    pipelineRenderingInfo.colorAttachmentCount = 1;
-    pipelineRenderingInfo.pColorAttachmentFormats = &core::vulkan::formatHDR16;
-    pipelineRenderingInfo.viewMask = 0;
-
-    system.computePipelines.emplace(EComputePipeline::ImageMipMap16f,
-      VK_NULL_HANDLE);
-
-    if (vkCreateComputePipelines(
-            logicalDevice.device, VK_NULL_HANDLE, 1, &computePipelineInfo,
-            nullptr, &getComputePipeline(EComputePipeline::ImageMipMap16f)) !=
-        VK_SUCCESS) {
-      RE_LOG(Critical, "Failed to create Compute Image 'MipMap16f' pipeline.");
-
-      return RE_CRITICAL;
-    }
-
-    vkDestroyShaderModule(logicalDevice.device, shaderStage.module, nullptr);
-  }
-
-  //
   // Compute Image pipeline for processing environmental irradiance cubemap
   //
   {
@@ -388,14 +358,14 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
   colorBlendInfo.blendConstants[2] = 0.0f;
   colorBlendInfo.blendConstants[3] = 0.0f;
 
-  VkVertexInputBindingDescription vertexBindingDesc = RVertex::getBindingDesc();
+  const auto& vertexBindingDescs = RVertex::getBindingDescs();
   const auto& attributeDescs = RVertex::getAttributeDescs();
 
   VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
   vertexInputInfo.sType =
       VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-  vertexInputInfo.pVertexBindingDescriptions = &vertexBindingDesc;
-  vertexInputInfo.vertexBindingDescriptionCount = 1;
+  vertexInputInfo.pVertexBindingDescriptions = vertexBindingDescs.data();
+  vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(vertexBindingDescs.size());
   vertexInputInfo.pVertexAttributeDescriptions = attributeDescs.data();
   vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescs.size());
 

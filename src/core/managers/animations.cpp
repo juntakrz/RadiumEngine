@@ -59,7 +59,7 @@ int32_t core::MAnimations::addAnimationToQueue(const WAnimationInfo* pAnimationI
   QueueEntry* pExistingEntry = nullptr;
 
   for (QueueEntry& queuedAnimation : m_animationQueue) {
-    if (queuedAnimation.pModel == pAnimationInfo->pModel &&
+    if (queuedAnimation.pEntity == pAnimationInfo->pEntity &&
         queuedAnimation.pAnimation->getName() == pAnimationInfo->animationName) {
 
       pExistingEntry = &queuedAnimation;
@@ -70,7 +70,7 @@ int32_t core::MAnimations::addAnimationToQueue(const WAnimationInfo* pAnimationI
   const float duration = pAnimation->m_duration;
 
   QueueEntry entry;
-  entry.pModel = pAnimationInfo->pModel;
+  entry.pEntity = pAnimationInfo->pEntity;
   entry.pAnimation = pAnimation;
   entry.startTime = (pAnimationInfo->startTime > duration)
                         ? duration
@@ -108,54 +108,67 @@ void core::MAnimations::runAnimationQueue() {
   cleanupQueue();
   
   for (auto& queueEntry : m_animationQueue) {
-    // get a list of all nodes affected by the animation
+    // Get a list of all nodes affected by the animation
     const auto& animatedNodes = queueEntry.pAnimation->getAnimatedNodes();
     const auto& keyFrames = queueEntry.pAnimation->getKeyFrames();
 
-    for (const auto& node : animatedNodes) {
-      WModel::Node* pNode = queueEntry.pModel->getNode(node.index);
+    // Update skins, each skinMatrices vector's index per frame corresponds to skin's index
+    for (int32_t skinIndex = 0; skinIndex < keyFrames[0].skinMatrices.size(); ++skinIndex) {
+      for (size_t keyFrame = 0; keyFrame < keyFrames.size() - 1; ++keyFrame) {
+        if ((queueEntry.time >= keyFrames[keyFrame].timeStamp) &&
+          (queueEntry.time <= keyFrames[keyFrame + 1].timeStamp)) {
+          // get interpolation coefficient based on time between frames
+          float u =
+            std::max(0.0f, queueEntry.time - keyFrames[keyFrame].timeStamp) /
+            (keyFrames[keyFrame + 1].timeStamp - keyFrames[keyFrame].timeStamp);
 
-      if (keyFrames.empty() || !pNode) {
+          if (u <= 1.0f) {
+            const size_t jointCount =
+              keyFrames.at(keyFrame).skinMatrices.at(skinIndex).size();
+
+            for (size_t jointIndex = 0; jointIndex < jointCount; ++jointIndex) {
+              math::interpolate(
+                keyFrames[keyFrame].skinMatrices[skinIndex][jointIndex],
+                keyFrames[keyFrame + 1].skinMatrices[skinIndex][jointIndex], u,
+                queueEntry.pEntity->getAnimatedSkinBinding(skinIndex)->transformBufferBlock.jointMatrices[jointIndex]);
+            }
+          }
+
+          // frame update finished, exit loop
+          break;
+        }
+      }
+    }
+
+    for (const auto& node : animatedNodes) {
+      AEntity::AnimatedNodeBinding* pNodeBinding = queueEntry.pEntity->getAnimatedNodeBinding(node.index);
+
+      if (keyFrames.empty() || !pNodeBinding) {
         m_cleanupQueue.emplace_back(queueEntry.queueIndex);
         break;
       }
 
-      const int32_t skinIndex = pNode->skinIndex;
-      const bool hasSkin = !keyFrames.at(0).skinMatrices.empty();
-
       // write interpolated frame data directly to node's mesh uniform block
       for (size_t i = 0; i < keyFrames.size() - 1; ++i) {
-        if ((queueEntry.time >= keyFrames.at(i).timeStamp) &&
-            (queueEntry.time <= keyFrames.at(i + 1).timeStamp)) {
+        if ((queueEntry.time >= keyFrames[i].timeStamp) &&
+            (queueEntry.time <= keyFrames[i + 1].timeStamp)) {
           // get interpolation coefficient based on time between frames
           float u =
-              std::max(0.0f, queueEntry.time - keyFrames.at(i).timeStamp) /
-              (keyFrames.at(i + 1).timeStamp - keyFrames.at(i).timeStamp);
+              std::max(0.0f, queueEntry.time - keyFrames[i].timeStamp) /
+              (keyFrames[i + 1].timeStamp - keyFrames[i].timeStamp);
 
           if (u <= 1.0f) {
-            math::interpolate(keyFrames.at(i).nodeMatrices.at(node.index),
-                              keyFrames.at(i + 1).nodeMatrices.at(node.index),
-                              u, pNode->pMesh->uniformBlock.nodeMatrix);
-
-            if (hasSkin) {
-              const size_t jointCount =
-                  keyFrames.at(i).skinMatrices.at(skinIndex).size();
-
-              for (int32_t j = 0; j < jointCount; ++j) {
-                math::interpolate(
-                    keyFrames.at(i).skinMatrices[skinIndex][j],
-                    keyFrames.at(i + 1).skinMatrices[skinIndex][j], u,
-                    pNode->pMesh->uniformBlock.jointMatrices[j]);
-              }
-
-              pNode->pMesh->uniformBlock.jointCount = (float)jointCount;
-            }
+            math::interpolate(keyFrames[i].nodeMatrices.at(node.index),
+                              keyFrames[i + 1].nodeMatrices.at(node.index),
+                              u, pNodeBinding->transformBufferBlock.nodeMatrix);
 
             // frame update finished, exit loop
             break;
           }
         }
       }
+
+      pNodeBinding->requiresTransformBufferBlockUpdate = true;
     }
 
     const float timeStep = core::time.getDeltaTime() * queueEntry.speed;
@@ -197,10 +210,10 @@ void core::MAnimations::cleanupQueue() {
 }
 
 bool core::MAnimations::getOrRegisterActorOffsetIndex(AEntity* pActor,
-                                                      size_t& outIndex) {
-  size_t freeIndex = -1;
+                                                      uint32_t& outIndex) {
+  uint32_t freeIndex = -1;
 
-  for (size_t i = 0; i < m_rootTransformBufferIndices.size(); ++i) {
+  for (uint32_t i = 0; i < m_rootTransformBufferIndices.size(); ++i) {
     if (m_rootTransformBufferIndices[i] == nullptr && freeIndex == -1) {
       freeIndex = i;
     }
@@ -217,10 +230,10 @@ bool core::MAnimations::getOrRegisterActorOffsetIndex(AEntity* pActor,
 }
 
 bool core::MAnimations::getOrRegisterNodeOffsetIndex(
-    AEntity::AnimatedNodeBinding* pNode, size_t& outIndex) {
-  size_t freeIndex = -1;
+    AEntity::AnimatedNodeBinding* pNode, uint32_t& outIndex) {
+  uint32_t freeIndex = -1;
 
-  for (size_t i = 0; i < m_rootTransformBufferIndices.size(); ++i) {
+  for (uint32_t i = 0; i < m_rootTransformBufferIndices.size(); ++i) {
     if (m_nodeTransformBufferIndices[i] == nullptr && freeIndex == -1) {
       freeIndex = i;
     }
@@ -236,11 +249,10 @@ bool core::MAnimations::getOrRegisterNodeOffsetIndex(
   return true;  // registered node to the first free index
 }
 
-bool core::MAnimations::getOrRegisterSkinOffsetIndex(WModel::Skin* pSkin,
-                                                     size_t& outIndex) {
-  size_t freeIndex = -1;
+bool core::MAnimations::getOrRegisterSkinOffsetIndex(AEntity::AnimatedSkinBinding* pSkin, uint32_t& outIndex) {
+  uint32_t freeIndex = -1;
 
-  for (size_t i = 0; i < m_skinTransformBufferIndices.size(); ++i) {
+  for (uint32_t i = 0; i < m_skinTransformBufferIndices.size(); ++i) {
     if (m_skinTransformBufferIndices[i] == nullptr && freeIndex == -1) {
       freeIndex = i;
     }

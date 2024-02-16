@@ -121,12 +121,12 @@ void core::MRenderer::executeComputeImage(VkCommandBuffer commandBuffer,
   vkCmdDispatch(commandBuffer, compute.imageExtent.width, compute.imageExtent.height, compute.imageExtent.depth);
 }
 
-void core::MRenderer::generateLUTMap() {
-  RE_LOG(Log, "Generating BRDF LUT map to '%s' texture.", RTGT_LUTMAP);
+void core::MRenderer::generateBRDFMap() {
+  RE_LOG(Log, "Generating BRDF LUT map to '%s' texture.", RTGT_BRDFMAP);
 
   core::time.tickTimer();
 
-  RTexture* pLUTTexture = core::resources.getTexture(RTGT_LUTMAP);
+  RTexture* pLUTTexture = core::resources.getTexture(RTGT_BRDFMAP);
   std::vector<RTexture*> pTextures;
   pTextures.emplace_back(pLUTTexture);
 
@@ -162,7 +162,7 @@ void core::MRenderer::generateLUTMap() {
     writeDescriptorSet.dstSet = core::renderer.getSceneDescriptorSet(i);
     writeDescriptorSet.dstBinding = 4;
     writeDescriptorSet.pImageInfo =
-      &core::resources.getTexture(RTGT_LUTMAP)->texture.imageInfo;
+      &core::resources.getTexture(RTGT_BRDFMAP)->texture.imageInfo;
 
     vkUpdateDescriptorSets(core::renderer.logicalDevice.device, 1,
       &writeDescriptorSet, 0, nullptr);
@@ -172,7 +172,7 @@ void core::MRenderer::generateLUTMap() {
   RE_LOG(Log, "Generating BRDF LUT map took %.4f milliseconds.", timeSpent);
 }
 
-void core::MRenderer::createComputeJob(RComputeJobInfo* pInfo) {
+void core::MRenderer::queueComputeJob(RComputeJobInfo* pInfo) {
   if (pInfo) {
     if (pInfo->depth == 0) pInfo->depth = 1;
 
@@ -180,69 +180,85 @@ void core::MRenderer::createComputeJob(RComputeJobInfo* pInfo) {
   }
 }
 
-void core::MRenderer::executeComputeJobs() {
-  if (compute.jobs.empty()) return;
-
-  RComputeJobInfo& info = compute.jobs.front();
-
-  switch (info.jobType) {
+void core::MRenderer::executeComputeJobImmediate(RComputeJobInfo* pInfo, const bool beginBuffer) {
+  switch (pInfo->jobType) {
     case EComputeJob::Image: {
-      VkCommandBuffer transitionBuffer = createCommandBuffer(ECmdType::Transfer, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
+      VkCommandBuffer graphicsBuffer = command.buffersGraphics[renderView.frameInFlight];
+    
+      if (beginBuffer) beginCommandBuffer(graphicsBuffer);
+
       VkImageSubresourceRange range{};
       range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
       range.baseArrayLayer = 0;
       range.baseMipLevel = 0;
 
-      compute.imageExtent.width = info.width;
-      compute.imageExtent.height = info.height;
-      compute.imageExtent.depth = info.depth;
-      compute.imagePCB.intValues = info.intValues;
-      compute.imagePCB.floatValues = info.floatValues;
+      compute.imageExtent.width = pInfo->width;
+      compute.imageExtent.height = pInfo->height;
+      compute.imageExtent.depth = pInfo->depth;
+      compute.imagePCB.intValues = pInfo->intValues;
+      compute.imagePCB.floatValues = pInfo->floatValues;
 
-      for (auto& image : info.pImageAttachments) {
+      for (auto& image : pInfo->pImageAttachments) {
         range.layerCount = image->texture.layerCount;
         range.levelCount = image->texture.levelCount;
 
-        setImageLayout(transitionBuffer, image, VK_IMAGE_LAYOUT_GENERAL, range);
+        setImageLayout(graphicsBuffer, image, VK_IMAGE_LAYOUT_GENERAL, range);
       }
 
-      for (auto& sampler : info.pSamplerAttachments) {
+      for (auto& sampler : pInfo->pSamplerAttachments) {
         range.layerCount = sampler->texture.layerCount;
         range.levelCount = sampler->texture.levelCount;
 
-        setImageLayout(transitionBuffer, sampler, VK_IMAGE_LAYOUT_GENERAL, range);
+        setImageLayout(graphicsBuffer, sampler, VK_IMAGE_LAYOUT_GENERAL, range);
       }
 
-      flushCommandBuffer(transitionBuffer, ECmdType::Transfer, false, true);
-
-      updateComputeImageSet(&info.pImageAttachments, &info.pSamplerAttachments, info.useExtraImageViews, info.useExtraSamplerViews);
+      updateComputeImageSet(&pInfo->pImageAttachments, &pInfo->pSamplerAttachments, pInfo->useExtraImageViews, pInfo->useExtraSamplerViews);
 
       VkCommandBuffer cmdBuffer = createCommandBuffer(ECmdType::Compute, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
-      executeComputeImage(cmdBuffer, info.pipeline);
+      executeComputeImage(cmdBuffer, pInfo->pipeline);
+
+      VkMemoryBarrier2 memoryBarrier{};
+      memoryBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+      memoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+      memoryBarrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
+      memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
+      memoryBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+
+      VkDependencyInfo computeDependency{};
+      computeDependency.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+      computeDependency.memoryBarrierCount = 1u;
+      computeDependency.pMemoryBarriers = &memoryBarrier;
+
+      vkCmdPipelineBarrier2(cmdBuffer, &computeDependency);
+
       flushCommandBuffer(cmdBuffer, ECmdType::Compute, true);
 
-      beginCommandBuffer(transitionBuffer);
-
-      if (info.transtionToShaderReadOnly) {
-        for (auto& image : info.pImageAttachments) {
+      if (pInfo->transtionToShaderReadOnly) {
+        for (auto& image : pInfo->pImageAttachments) {
           range.layerCount = image->texture.layerCount;
           range.levelCount = image->texture.levelCount;
 
-          setImageLayout(transitionBuffer, image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, range);
+          setImageLayout(graphicsBuffer, image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, range);
         }
 
-        for (auto& sampler : info.pSamplerAttachments) {
+        for (auto& sampler : pInfo->pSamplerAttachments) {
           range.layerCount = sampler->texture.layerCount;
           range.levelCount = sampler->texture.levelCount;
 
-          setImageLayout(transitionBuffer, sampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, range);
+          setImageLayout(graphicsBuffer, sampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, range);
         }
       }
 
-      flushCommandBuffer(transitionBuffer, ECmdType::Transfer, true);
-
-      compute.jobs.erase(compute.jobs.begin());
-      return;
+      if (beginBuffer) flushCommandBuffer(graphicsBuffer, ECmdType::Graphics);
+      break;
     }
   }
+}
+
+void core::MRenderer::executeQueuedComputeJobs() {
+  if (compute.jobs.empty()) return;
+
+  RComputeJobInfo* pInfo = &compute.jobs.front();
+  executeComputeJobImmediate(pInfo, true);
+  compute.jobs.erase(compute.jobs.begin());
 }

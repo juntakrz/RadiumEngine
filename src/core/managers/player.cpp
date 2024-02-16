@@ -33,6 +33,9 @@ void core::MPlayer::bindDefaultMethods() {
                            &MPlayer::pitchUp, true);
   core::input.bindFunction(GETKEY("pitchDown"), GLFW_PRESS, this,
                            &MPlayer::pitchDown, true);
+
+  core::input.bindFunctionToMouseAxis(this, &MPlayer::rollMouse, false);
+  core::input.bindFunctionToMouseAxis(this, &MPlayer::pitchMouse, true);
 }
 
 void core::MPlayer::initialize() { bindDefaultMethods(); }
@@ -98,10 +101,30 @@ void core::MPlayer::rollRight() {
   m_pActor->rotate({0.0f, 1.0f, 0.0f}, m_movementData.rotationDelta);
 }
 
+void core::MPlayer::rollMouse() {
+  switch (core::input.getControlMode()) {
+    case EControlMode::MouseLook: {
+        float rollDelta = core::input.getMouseDelta().x;
+        m_pActor->rotate({ 0.0f, 1.0f, 0.0f }, rollDelta);
+        break;
+    }
+  }
+}
+
+
 void core::MPlayer::pitchUp() {
   m_pActor->rotate({1.0f, 0.0f, 0.0f}, -m_movementData.rotationDelta);
 }
 
 void core::MPlayer::pitchDown() {
   m_pActor->rotate({1.0f, 0.0f, 0.0f}, m_movementData.rotationDelta);
+}
+
+void core::MPlayer::pitchMouse() {
+  switch (core::input.getControlMode()) {
+    case EControlMode::MouseLook: {
+      float pitchDelta = core::input.getMouseDelta().y;
+      m_pActor->rotate({ 1.0f, 0.0f, 0.0f }, -pitchDelta);
+    }
+  }
 }

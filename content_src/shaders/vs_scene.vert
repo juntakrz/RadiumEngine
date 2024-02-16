@@ -1,25 +1,11 @@
 #version 460
 #define RE_MAXJOINTS 128
 
-layout(binding = 0) uniform UBOView {
-	mat4 view;
-	mat4 projection;
-	vec3 cameraPos;
-} scene;
+#extension GL_EXT_buffer_reference: require
 
-layout (set = 1, binding = 0) uniform UBOMesh0 {
-	mat4 rootMatrix;
-} model;
+#include "include/vertex.glsl"
 
-layout (set = 1, binding = 1) uniform UBOMesh1 {
-	mat4 nodeMatrix;
-	float jointCount;
-} node;
-
-layout (set = 1, binding = 2) uniform UBOMesh2 {
-	mat4 jointMatrix[RE_MAXJOINTS];
-} skin;
-
+// Per Vertex
 layout(location = 0) in vec3 inPos;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inUV0;
@@ -28,33 +14,59 @@ layout(location = 4) in vec4 inJoint;
 layout(location = 5) in vec4 inWeight;
 layout(location = 6) in vec4 inColor0;
 
+// Per Instance
+layout(location = 7) in uvec3 inInstanceTransformIndices;		// x - model, y - node, z - skin
+
 layout(location = 0) out vec3 outWorldPos;
 layout(location = 1) out vec3 outNormal;
 layout(location = 2) out vec2 outUV0;
 layout(location = 3) out vec2 outUV1;
 layout(location = 4) out vec4 outColor0;
+layout(location = 5) out vec4 outCurrentMVPPos;
+layout(location = 6) out vec4 outPrevMVPPos;
 
 void main(){
+	const uint modelIndex = inInstanceTransformIndices.x;
+	const uint nodeIndex = inInstanceTransformIndices.y;
+	const uint skinIndex = inInstanceTransformIndices.z;
+
 	vec4 worldPos;
+	vec4 prevWorldPos;
 
-	if (node.jointCount > 0.0) {
+	if (node.block[nodeIndex].jointCount > 0.0) {
 		mat4 skinMatrix = 
-			inWeight.x * skin.jointMatrix[int(inJoint.x)] +
-			inWeight.y * skin.jointMatrix[int(inJoint.y)] +
-			inWeight.z * skin.jointMatrix[int(inJoint.z)] +
-			inWeight.w * skin.jointMatrix[int(inJoint.w)];
+			inWeight.x * skin.block[skinIndex].jointMatrix[int(inJoint.x)] +
+			inWeight.y * skin.block[skinIndex].jointMatrix[int(inJoint.y)] +
+			inWeight.z * skin.block[skinIndex].jointMatrix[int(inJoint.z)] +
+			inWeight.w * skin.block[skinIndex].jointMatrix[int(inJoint.w)];
 
-		worldPos = model.rootMatrix * node.nodeMatrix * skinMatrix * vec4(inPos, 1.0);
-		outNormal = normalize(transpose(inverse(mat3(model.rootMatrix * node.nodeMatrix * skinMatrix))) * inNormal);
+		mat4 prevSkinMatrix = 
+			inWeight.x * skin.block[skinIndex].prevJointMatrix[int(inJoint.x)] +
+			inWeight.y * skin.block[skinIndex].prevJointMatrix[int(inJoint.y)] +
+			inWeight.z * skin.block[skinIndex].prevJointMatrix[int(inJoint.z)] +
+			inWeight.w * skin.block[skinIndex].prevJointMatrix[int(inJoint.w)];
+
+		worldPos = model.block[modelIndex].matrix * node.block[nodeIndex].matrix * skinMatrix * vec4(inPos, 1.0);
+		prevWorldPos = model.block[modelIndex].prevMatrix * node.block[nodeIndex].prevMatrix * prevSkinMatrix * vec4(inPos, 1.0);
+		outNormal = normalize(transpose(inverse(mat3(model.block[modelIndex].matrix * node.block[nodeIndex].matrix * skinMatrix))) * inNormal);
 	} else {
-		worldPos = model.rootMatrix * node.nodeMatrix * vec4(inPos, 1.0);
-		outNormal = normalize(transpose(inverse(mat3(model.rootMatrix * node.nodeMatrix))) * inNormal);
+		worldPos = model.block[modelIndex].matrix * node.block[nodeIndex].matrix * vec4(inPos, 1.0);
+		prevWorldPos = model.block[modelIndex].prevMatrix * node.block[nodeIndex].prevMatrix * vec4(inPos, 1.0);
+		outNormal = normalize(transpose(inverse(mat3(model.block[modelIndex].matrix * node.block[nodeIndex].matrix))) * inNormal);
 	}
 
 	outWorldPos = worldPos.xyz / worldPos.w;
+
+	outPrevMVPPos = vec4(prevWorldPos.xyz / prevWorldPos.w, 1.0);
+
 	outUV0 = inUV0;
 	outUV1 = inUV1;
 	outColor0 = inColor0;
 
-	gl_Position = scene.projection * scene.view * vec4(outWorldPos, 1.0);
+	// Storing unjittered vertex values for the velocity vector calculation
+	outPrevMVPPos = scene.projection * scene.view * outPrevMVPPos;
+	outCurrentMVPPos = scene.projection * scene.view * vec4(outWorldPos, 1.0);
+
+	// Jittering an output vertex position for TAA history accumulation
+	gl_Position = outCurrentMVPPos + vec4(scene.haltonJitter * outCurrentMVPPos.w, 0.0, 0.0);
 }

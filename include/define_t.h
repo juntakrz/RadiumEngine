@@ -7,16 +7,15 @@ class OFuncPtr_Base {
   virtual void operator()(){};
 };
 
-template <typename C>
+template <typename C, typename... Args>
 class OFuncPtr : public OFuncPtr_Base {
   C* owner = nullptr;
   void (C::*func)() = nullptr;
-  void (C::*funcWithParameter)(float) = nullptr;
 
  public:
   OFuncPtr(C* pOwner, void (C::*pFunc)()) : owner(pOwner), func(pFunc){};
 
-  virtual void exec() override { (*this->owner.*this->func)(); }
+  virtual void exec() override { return (*this->owner.*this->func)(); }
   virtual void operator()() { return (*this->owner.*this->func)(); }
 };
 

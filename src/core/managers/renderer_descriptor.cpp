@@ -248,11 +248,11 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
                                         VK_NULL_HANDLE);
 
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
-        {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1,
+        {0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1,
          VK_SHADER_STAGE_VERTEX_BIT, nullptr},
-        {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1,
+        {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1,
          VK_SHADER_STAGE_VERTEX_BIT, nullptr},
-        {2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1,
+        {2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1,
          VK_SHADER_STAGE_VERTEX_BIT, nullptr}};
 
     VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
@@ -370,8 +370,7 @@ TResult core::MRenderer::createDescriptorSets() {
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
       // model*view*projection data for descriptor set
       VkDescriptorBufferInfo descriptorBufferInfoMVP;
-      descriptorBufferInfoMVP.buffer =
-          view.modelViewProjectionBuffers[i].buffer;
+      descriptorBufferInfoMVP.buffer = scene.sceneBuffers[i].buffer;
       descriptorBufferInfoMVP.offset = 0;
       descriptorBufferInfoMVP.range = sizeof(RSceneUBO);
 
@@ -411,7 +410,7 @@ TResult core::MRenderer::createDescriptorSets() {
       VkDescriptorImageInfo imageDescriptors[3]{
           core::resources.getTexture(RTGT_ENVFILTER)->texture.imageInfo,
           core::resources.getTexture(RTGT_ENVIRRAD)->texture.imageInfo,
-          core::resources.getTexture(RTGT_LUTMAP)->texture.imageInfo};
+          core::resources.getTexture(RTGT_BRDFMAP)->texture.imageInfo};
 
       for (VkDescriptorImageInfo& imageInfo : imageDescriptors) {
         imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -435,7 +434,7 @@ TResult core::MRenderer::createDescriptorSets() {
       writeDescriptorSets[3].dstBinding = 3;
       writeDescriptorSets[3].pImageInfo = &imageDescriptors[1];
 
-      // RTGT_LUTMAP
+      // RTGT_BRDFMAP
       writeDescriptorSets[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
       writeDescriptorSets[4].descriptorType =
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -484,35 +483,35 @@ TResult core::MRenderer::createDescriptorSets() {
     VkDescriptorBufferInfo rootMatrixBufferInfo{};
     rootMatrixBufferInfo.buffer = scene.rootTransformBuffer.buffer;
     rootMatrixBufferInfo.offset = 0;
-    rootMatrixBufferInfo.range = sizeof(glm::mat4);  // root matrix
+    rootMatrixBufferInfo.range = VK_WHOLE_SIZE;  // root matrix
 
     VkDescriptorBufferInfo nodeMatrixBufferInfo{};
     nodeMatrixBufferInfo.buffer = scene.nodeTransformBuffer.buffer;
     nodeMatrixBufferInfo.offset = 0;
-    nodeMatrixBufferInfo.range = config::scene::nodeBlockSize;
+    nodeMatrixBufferInfo.range = VK_WHOLE_SIZE;
 
     VkDescriptorBufferInfo skinningMatricesBufferInfo{};
     skinningMatricesBufferInfo.buffer = scene.skinTransformBuffer.buffer;
     skinningMatricesBufferInfo.offset = 0;
-    skinningMatricesBufferInfo.range = config::scene::skinBlockSize;
+    skinningMatricesBufferInfo.range = VK_WHOLE_SIZE;
 
     std::vector<VkWriteDescriptorSet> writeSets(3);
     writeSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeSets[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    writeSets[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
     writeSets[0].descriptorCount = 1;
     writeSets[0].dstSet = scene.transformDescriptorSet;
     writeSets[0].dstBinding = 0;
     writeSets[0].pBufferInfo = &rootMatrixBufferInfo;
 
     writeSets[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeSets[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    writeSets[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
     writeSets[1].descriptorCount = 1;
     writeSets[1].dstSet = scene.transformDescriptorSet;
     writeSets[1].dstBinding = 1;
     writeSets[1].pBufferInfo = &nodeMatrixBufferInfo;
 
     writeSets[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeSets[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    writeSets[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
     writeSets[2].descriptorCount = 1;
     writeSets[2].dstSet = scene.transformDescriptorSet;
     writeSets[2].dstBinding = 2;

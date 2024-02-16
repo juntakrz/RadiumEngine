@@ -3,6 +3,7 @@
 #extension GL_EXT_scalar_block_layout : require
 
 #include "include/common.glsl"
+#include "include/fragment.glsl"
 
 layout (location = 0) in vec2 inUV0;
 
@@ -15,19 +16,6 @@ layout (set = 0, binding = 0) uniform UBOScene {
 	vec3 camPos;
 } scene;
 
-layout (std430, set = 0, binding = 1) uniform UBOLighting {
-	vec4 lightLocations[MAXLIGHTS];
-    vec4 lightColor[MAXLIGHTS];
-	mat4 lightViews[MAXSHADOWCASTERS];
-	mat4 lightOrthoMatrix;
-	uint samplerIndex[MAXSHADOWCASTERS];
-	uint lightCount;
-	float exposure;
-	float gamma;
-	float prefilteredCubeMipLevels;
-	float scaleIBLAmbient;
-} lighting;
-
 // environment bindings
 layout (set = 0, binding = 2) uniform samplerCube prefilteredMap;
 layout (set = 0, binding = 3) uniform samplerCube irradianceMap;
@@ -37,36 +25,9 @@ layout (set = 0, binding = 4) uniform sampler2D BRDFLUTMap;
 layout (set = 2, binding = 0) uniform sampler2D samplers[];
 layout (set = 2, binding = 0) uniform sampler2DArray arraySamplers[];
 
-layout (push_constant) uniform Material {
-	layout(offset = 16) 
-	int baseColorTextureSet;
-	int physicalDescriptorTextureSet;
-	int normalTextureSet;	
-	int occlusionTextureSet;		// 16
-	int emissiveTextureSet;
-	int extraTextureSet;
-	float metallicFactor;	
-	float roughnessFactor;			// 32
-	float alphaMask;	
-	float alphaMaskCutoff;
-	float bumpIntensity;
-	float emissiveIntensity;		// 48
-	uint samplerIndex[MAXTEXTURES];
-} material;
-
-vec3 ACESTonemap(vec3 x) {
-    float a = 2.51;
-    float b = 0.03;
-    float c = 2.43;
-    float d = 0.59;
-    float e = 0.14;
-
-    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
-}
-
-vec4 tonemap(vec4 color) {
-	vec3 outColor = ACESTonemap(color.rgb);
-	return vec4(pow(outColor, vec3(1.0f / lighting.gamma)), color.a);
+vec3 tonemap(vec3 v) {
+	vec3 color = tonemapACESApprox(v);
+	return pow(color, vec3(1.0 / lighting.gamma));
 }
 
 vec3 getDiffuse(vec3 inColor) {
@@ -110,8 +71,8 @@ vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, 
 
 	// retrieve a scale and bias to F0
 	vec2 brdf = (texture(BRDFLUTMap, vec2(NdotV, 1.0 - roughness))).rg;
-	vec3 diffuseLight = tonemap(texture(irradianceMap, n)).rgb;
-	vec3 specularLight = tonemap(textureLod(prefilteredMap, reflection, lod)).rgb;
+	vec3 diffuseLight = tonemap(texture(irradianceMap, n).rgb);
+	vec3 specularLight = tonemap(textureLod(prefilteredMap, reflection, lod).rgb);
 
 	diffuseLight.r = pow(diffuseLight.r, 2.2);
 	diffuseLight.g = pow(diffuseLight.g, 2.2);
@@ -130,9 +91,15 @@ vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, 
 	return diffuse + specular;
 }
 
+float interpolateCascades(float dist, int cascadeIndex){
+	float cascadeStart = cascadeDistances[cascadeIndex];
+    float cascadeEnd = cascadeDistances[cascadeIndex + 1];
+    return (dist - cascadeStart) / (cascadeEnd - cascadeStart);
+}
+
 float filterPCF(vec3 shadowCoord, vec2 offset, uint distanceIndex) {
 	float shadowDepth = texture(arraySamplers[lighting.samplerIndex[SUNLIGHTINDEX]], vec3(shadowCoord.st + offset, distanceIndex)).r;
-	shadowDepth += 0.0001 * float(distanceIndex + 2);
+	shadowDepth += 0.00001 * float(distanceIndex + 2);
 
 	if (shadowCoord.z > shadowDepth) {
 		return 0.1;
@@ -141,19 +108,19 @@ float filterPCF(vec3 shadowCoord, vec2 offset, uint distanceIndex) {
 	return 1.0;
 }
 
-float getShadow(vec3 fragmentPosition, uint distanceIndex) {
+float getShadow(vec3 fragmentPosition, int distanceIndex) {
 	ivec2 texDim = textureSize(samplers[lighting.samplerIndex[SUNLIGHTINDEX]], 0);
 	float shadow = 0.0;
-	float scale = 1.5;
-	float dx = scale * 1.0 / float(texDim.x);
-	float dy = scale * 1.0 / float(texDim.y);
+	float scale = 1.0;
+	float dx = scale * (1.0 / float(texDim.x));
+	float dy = scale * (1.0 / float(texDim.y));
 	int count = 0;
-	int range = 3 - int(distanceIndex);
+	int range = 4 - distanceIndex;
 
 	float FOVMultiplier = 1.0;
 
-	for (uint i = 0; i < distanceIndex; i++) {
-		FOVMultiplier *= 0.25;
+	for (int i = 0; i < distanceIndex; i++) {
+		FOVMultiplier *= (i < 1) ? SHADOWFOVMULT : SHADOWFOVMULT * SHADOWFOVMULT;
 	}
 
 	mat4 newProjection = lighting.lightOrthoMatrix;
@@ -171,7 +138,7 @@ float getShadow(vec3 fragmentPosition, uint distanceIndex) {
 	
 	for (int x = -range; x <= range; x++) {
 		for (int y = -range; y <= range; y++) {
-			vec2 offset = vec2(dx*x, dy*y);
+			vec2 offset = vec2(dx * x, dy * y);
 			shadow += filterPCF(shadowCoord, offset, distanceIndex);
 			count++;
 		}
@@ -182,10 +149,10 @@ float getShadow(vec3 fragmentPosition, uint distanceIndex) {
 
 void main() {
 	const float occlusionStrength = 1.0;
-	const float emissiveFactor = 1.0;
+	const vec3 shadowColor = lighting.shadowColor.rgb + vec3(1.0);
 	vec3 f0 = vec3(0.04);
 
-	// retrieve G-buffer data
+	// Retrieve G-buffer data
 	vec3 worldPos = texture(samplers[material.samplerIndex[POSITIONMAP]], inUV0).xyz;
 	vec4 baseColor = texture(samplers[material.samplerIndex[COLORMAP]], inUV0);
 	vec3 normal = texture(samplers[material.samplerIndex[NORMALMAP]], inUV0).rgb;
@@ -194,7 +161,6 @@ void main() {
 	float ao = texture(samplers[material.samplerIndex[PHYSMAP]], inUV0).b;
 	vec3 emissive = texture(samplers[material.samplerIndex[EMISMAP]], inUV0).rgb;
 
-	// do PBR
 	vec3 diffuseColor = baseColor.rgb * (vec3(1.0) - f0);
 	diffuseColor *= 1.0 - metallic;
 		
@@ -202,7 +168,7 @@ void main() {
 
 	vec3 specularColor = mix(f0, baseColor.rgb, metallic);
 
-	// Compute reflectance.
+	// Compute reflectance
 	float reflectance = max(max(specularColor.r, specularColor.g), specularColor.b);
 
 	// For typical incident reflectance range (between 4% to 100%) set the grazing reflectance to 100% for typical fresnel effect.
@@ -239,16 +205,32 @@ void main() {
 	color += getIBLContribution(diffuseColor, specularColor, perceptualRoughness, NdotV, normal, reflection);
 	color = mix(color, color * ao, occlusionStrength);
 
-	// Calculate shadow
-	float relativeLength = length(scene.camPos - worldPos);
+	// Calculate shadow and its color
+	float relativeDistance = length(scene.camPos - worldPos);
+	float shadowA = 0.0f;
 
-	uint distanceIndex = 0;
-	if (relativeLength > cascadeDistance0) distanceIndex = 1;
-	if (relativeLength > cascadeDistance1) distanceIndex = 2;
+	int distanceIndex;
+	for (distanceIndex = MAXCASCADES - 1; distanceIndex > -1; distanceIndex--) {
+		if (relativeDistance > cascadeDistances[distanceIndex]) { 
+			shadowA = getShadow(worldPos, distanceIndex);
 
-	color *= getShadow(worldPos, distanceIndex);
-
-	color += emissive;
+			// Smoothly interpolate shadow cascades
+			if (distanceIndex < MAXCASCADES - 1) {
+				float interpolation = interpolateCascades(relativeDistance, distanceIndex);
+				float shadowB = getShadow(worldPos, distanceIndex + 1);
+				shadowA = mix(shadowA, shadowB, interpolation);
+			}
+			break;
+		}
+	}
 	
+	//vec3 shadow = shadowColor * getShadow(worldPos, relativeDistance);
+	vec3 shadow = shadowColor * shadowA;
+	shadow = clamp(shadow, 0.0, 1.0);
+	color *= shadow;
+	
+	// Emissive colors are not affected by shadows as they are supposed to glow
+	color += emissive;
+
 	outColor = vec4(color, baseColor.a);
 }

@@ -144,14 +144,11 @@ void core::MRenderer::destroySurface() {
 TResult core::MRenderer::createSceneBuffers() {
   // set dynamic uniform buffer block sizes
   config::scene::cameraBlockSize =
-      static_cast<uint32_t>(util::getVulkanAlignedSize(
-          sizeof(RSceneUBO), core::vulkan::minUniformBufferAlignment));
+      static_cast<uint32_t>(util::getVulkanAlignedSize(sizeof(RSceneUBO), core::vulkan::minUniformBufferAlignment));
   config::scene::nodeBlockSize =
-      static_cast<uint32_t>(util::getVulkanAlignedSize(
-          sizeof(glm::mat4) + sizeof(float), core::vulkan::minUniformBufferAlignment));
+      static_cast<uint32_t>(util::getVulkanAlignedSize(sizeof(glm::mat4) * 2 + sizeof(float), core::vulkan::minUniformBufferAlignment));
   config::scene::skinBlockSize =
-      static_cast<uint32_t>(util::getVulkanAlignedSize(
-          sizeof(glm::mat4) * RE_MAXJOINTS, core::vulkan::minUniformBufferAlignment));
+      static_cast<uint32_t>(util::getVulkanAlignedSize(sizeof(glm::mat4) * RE_MAXJOINTS * 2, core::vulkan::minUniformBufferAlignment));
 
   RE_LOG(Log, "Allocating scene storage vertex buffer for %d vertices.",
     config::scene::vertexBudget);
@@ -165,22 +162,30 @@ TResult core::MRenderer::createSceneBuffers() {
 
   RE_LOG(Log, "Allocating scene buffer for %d entities with transformation.",
          config::scene::entityBudget);
-  createBuffer(EBufferType::CPU_UNIFORM,
+  createBuffer(EBufferType::CPU_STORAGE,
                config::scene::getRootTransformBufferSize(),
                scene.rootTransformBuffer, nullptr);
 
   RE_LOG(Log, "Allocating scene buffer for %d unique nodes with transformation.",
          config::scene::nodeBudget);
-  createBuffer(EBufferType::CPU_UNIFORM,
+  createBuffer(EBufferType::CPU_STORAGE,
                config::scene::getNodeTransformBufferSize(),
                scene.nodeTransformBuffer, nullptr);
 
   RE_LOG(Log,
          "Allocating scene buffer for %d unique skins.",
          config::scene::entityBudget);
-  createBuffer(EBufferType::CPU_UNIFORM,
+  createBuffer(EBufferType::CPU_STORAGE,
                config::scene::getSkinTransformBufferSize(),
                scene.skinTransformBuffer, nullptr);
+
+  scene.instanceBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+  for (int8_t instanceBufferId = 0; instanceBufferId < MAX_FRAMES_IN_FLIGHT; ++instanceBufferId) {
+    RE_LOG(Log, "Allocating scene instance buffer for %d instances.",
+      config::scene::getNodeTransformBufferSize());
+    createBuffer(EBufferType::CPU_VERTEX, sizeof(RInstanceData) * config::scene::nodeBudget,
+      scene.instanceBuffers[instanceBufferId], nullptr);
+  }
 
   return RE_OK;
 }
@@ -198,6 +203,11 @@ void core::MRenderer::destroySceneBuffers() {
                    scene.nodeTransformBuffer.allocation);
   vmaDestroyBuffer(memAlloc, scene.skinTransformBuffer.buffer,
                    scene.skinTransformBuffer.allocation);
+
+  for (int8_t instanceBufferId = 0; instanceBufferId < MAX_FRAMES_IN_FLIGHT; ++instanceBufferId) {
+    vmaDestroyBuffer(memAlloc, scene.instanceBuffers[instanceBufferId].buffer,
+                     scene.instanceBuffers[instanceBufferId].allocation);
+  }
 }
 
 core::MRenderer::RLightingData* core::MRenderer::getLightingData() {
@@ -217,7 +227,7 @@ core::MRenderer::RSceneBuffers* core::MRenderer::getSceneBuffers() {
 }
 
 TResult core::MRenderer::createUniformBuffers() {
-  view.modelViewProjectionBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+  scene.sceneBuffers.resize(MAX_FRAMES_IN_FLIGHT);
   lighting.buffers.resize(MAX_FRAMES_IN_FLIGHT);
 
   core::vulkan::minUniformBufferAlignment = physicalDevice.deviceProperties.properties.limits.minUniformBufferOffsetAlignment;
@@ -229,7 +239,7 @@ TResult core::MRenderer::createUniformBuffers() {
 
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
     createBuffer(EBufferType::CPU_UNIFORM, uboMVPSize,
-                 view.modelViewProjectionBuffers[i], nullptr);
+                 scene.sceneBuffers[i], nullptr);
     createBuffer(EBufferType::CPU_UNIFORM, uboLightingSize, lighting.buffers[i],
                  &lighting.data);
   }
@@ -238,13 +248,15 @@ TResult core::MRenderer::createUniformBuffers() {
 }
 
 void core::MRenderer::destroyUniformBuffers() {
-  for (auto& it : view.modelViewProjectionBuffers) {
+  for (auto& it : scene.sceneBuffers) {
     vmaDestroyBuffer(memAlloc, it.buffer, it.allocation);
   }
 
   for (auto& it : lighting.buffers) {
     vmaDestroyBuffer(memAlloc, it.buffer, it.allocation);
   }
+
+  vmaDestroyBuffer(memAlloc, postprocess.exposureStorageBuffer.buffer, postprocess.exposureStorageBuffer.allocation);
 }
 
 TResult core::MRenderer::createImageTargets() {
@@ -355,19 +367,19 @@ TResult core::MRenderer::createImageTargets() {
   RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
 #endif
 
-  rtName = RTGT_COMPUTE;
-  textureInfo = RTextureInfo{};
+  // Target for BRDF LUT generation
+  rtName = RTGT_BRDFMAP;
+
   textureInfo.name = rtName;
-  textureInfo.width = swapchain.imageExtent.width;
-  textureInfo.height = swapchain.imageExtent.height;
+  textureInfo.width = core::vulkan::LUTExtent;
+  textureInfo.height = textureInfo.width;
+  textureInfo.format = core::vulkan::formatLUT;
   textureInfo.isCubemap = false;
-  textureInfo.format = core::vulkan::formatHDR32;
   textureInfo.layerCount = 1u;
-  textureInfo.mipLevels = 1u;
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
+  textureInfo.mipLevels = 1;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-  textureInfo.usageFlags = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-                           VK_IMAGE_USAGE_STORAGE_BIT |
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_STORAGE_BIT |
                            VK_IMAGE_USAGE_SAMPLED_BIT;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
@@ -381,17 +393,98 @@ TResult core::MRenderer::createImageTargets() {
   RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
 #endif
 
-  // target for BRDF LUT generation
-  rtName = RTGT_LUTMAP;
+  // Target for exposure calculation
+  rtName = RTGT_EXPOSUREMAP;
+
+  textureInfo = RTextureInfo{};
+  textureInfo.name = rtName;
+  textureInfo.width = core::vulkan::envIrradianceExtent;
+  textureInfo.height = core::vulkan::envIrradianceExtent;
+  textureInfo.format = VK_FORMAT_R32_SFLOAT;
+  textureInfo.isCubemap = false;
+  textureInfo.layerCount = 1u;
+  textureInfo.mipLevels = math::getMipLevels(core::vulkan::envIrradianceExtent >> 4);
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+  pNewTexture = core::resources.createTexture(&textureInfo);
+
+  if (!pNewTexture) {
+    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
+    return RE_CRITICAL;
+  }
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
+#endif
+
+  // target for post process downsampling
+  rtName = RTGT_PPBLOOM;
+
+  textureInfo = RTextureInfo{};
+  textureInfo.name = rtName;
+  textureInfo.width = config::renderWidth / 2;
+  textureInfo.height = config::renderHeight / 2;
+  textureInfo.format = core::vulkan::formatHDR16;
+  textureInfo.isCubemap = false;
+  textureInfo.layerCount = 1u;
+  textureInfo.mipLevels = 6u;     // A small number of mip maps should be enough for post processing
+  textureInfo.extraViews = true;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+  textureInfo.samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  textureInfo.samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  textureInfo.samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+
+  pNewTexture = core::resources.createTexture(&textureInfo);
+
+  if (!pNewTexture) {
+    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
+    return RE_CRITICAL;
+  }
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
+#endif
+
+  // Target for TAA, stores history
+  rtName = RTGT_PREVFRAME;
+
+  textureInfo = RTextureInfo{};
+  textureInfo.name = rtName;
+  textureInfo.width = config::renderWidth;
+  textureInfo.height = config::renderHeight;
+  textureInfo.format = core::vulkan::formatHDR16;
+  textureInfo.isCubemap = false;
+  textureInfo.layerCount = 1u;
+  textureInfo.mipLevels = 1u;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+  textureInfo.samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  textureInfo.samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  textureInfo.samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+
+  pNewTexture = core::resources.createTexture(&textureInfo);
+
+  if (!pNewTexture) {
+    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
+    return RE_CRITICAL;
+  }
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
+#endif
+
+  // Target for TAA, stores final PBR + TAA history and velocity
+  rtName = RTGT_PPTAA;
 
   textureInfo.name = rtName;
-  textureInfo.width = core::vulkan::LUTExtent;
-  textureInfo.height = textureInfo.width;
-  textureInfo.format = core::vulkan::formatLUT;
-  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
-  textureInfo.usageFlags = VK_IMAGE_USAGE_STORAGE_BIT |
-                           VK_IMAGE_USAGE_SAMPLED_BIT;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -433,11 +526,15 @@ TResult core::MRenderer::createGBufferRenderTargets() {
   targetNames.emplace_back(RTGT_GNORMAL);
   targetNames.emplace_back(RTGT_GPHYSICAL);
   targetNames.emplace_back(RTGT_GEMISSIVE);
+  targetNames.emplace_back(RTGT_VELOCITYMAP);
 
   for (const auto& targetName : targetNames) {
     core::resources.destroyTexture(targetName.c_str(), true);
 
-    VkFormat imageFormat = (targetName == RTGT_GPOSITION) ? core::vulkan::formatHDR32 : core::vulkan::formatHDR16;
+    VkFormat imageFormat = core::vulkan::formatHDR16;
+
+    if (targetName == RTGT_GPOSITION) imageFormat = core::vulkan::formatHDR32;
+    else if (targetName == RTGT_VELOCITYMAP) imageFormat = VK_FORMAT_R16G16_SFLOAT;
 
     RTexture* pNewTarget;
     if ((pNewTarget = createFragmentRenderTarget(targetName.c_str(), imageFormat)) == nullptr) {
@@ -518,6 +615,10 @@ TResult core::MRenderer::createDepthTargets() {
   textureInfo.memoryFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
   textureInfo.vmaMemoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 
+  textureInfo.samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  textureInfo.samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  textureInfo.samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+
   pNewTexture = core::resources.createTexture(&textureInfo);
 
   if (!pNewTexture) {
@@ -541,7 +642,7 @@ TResult core::MRenderer::setDefaultComputeJobs() {
     info.width = core::vulkan::LUTExtent / 8;
     info.height = core::vulkan::LUTExtent / 4;
     info.transtionToShaderReadOnly = true;
-    info.pImageAttachments = { core::resources.getTexture(RTGT_LUTMAP) };
+    info.pImageAttachments = { core::resources.getTexture(RTGT_BRDFMAP) };
   }
 
   // Environment irradiance map
@@ -637,6 +738,52 @@ TResult core::MRenderer::setRendererDefaults() {
 
   // Set default lighting UBO data
   lighting.data.prefilteredCubeMipLevels = (float)math::getMipLevels(core::vulkan::envFilterExtent);
+
+  // Set default post processing info
+  postprocess.pBloomTexture = core::resources.getTexture(RTGT_PPBLOOM);
+  postprocess.pExposureTexture = core::resources.getTexture(RTGT_EXPOSUREMAP);
+  postprocess.pTAATexture = core::resources.getTexture(RTGT_PPTAA);
+  postprocess.pPreviousFrameTexture = core::resources.getTexture(RTGT_PREVFRAME);
+
+  postprocess.bloomSubRange.aspectMask = postprocess.pBloomTexture->texture.aspectMask;
+  postprocess.bloomSubRange.baseArrayLayer = 0u;
+  postprocess.bloomSubRange.layerCount = 1u;
+  postprocess.bloomSubRange.baseMipLevel = 0u;
+  postprocess.bloomSubRange.levelCount = 1u;
+
+  postprocess.previousFrameCopy.extent = { config::renderWidth, config::renderHeight, 1 };
+  postprocess.previousFrameCopy.srcOffset = { 0, 0, 0 };
+  postprocess.previousFrameCopy.srcSubresource.aspectMask = postprocess.pTAATexture->texture.aspectMask;
+  postprocess.previousFrameCopy.srcSubresource.baseArrayLayer = 0u;
+  postprocess.previousFrameCopy.srcSubresource.layerCount = 1u;
+  postprocess.previousFrameCopy.srcSubresource.mipLevel = 0u;
+  postprocess.previousFrameCopy.dstOffset = postprocess.previousFrameCopy.srcOffset;
+  postprocess.previousFrameCopy.dstSubresource = postprocess.previousFrameCopy.srcSubresource;
+
+  postprocess.viewports.resize(postprocess.pBloomTexture->texture.levelCount);
+  postprocess.scissors.resize(postprocess.pBloomTexture->texture.levelCount);
+  
+  for (uint8_t PPIndex = 0; PPIndex < postprocess.pBloomTexture->texture.levelCount; ++PPIndex) {
+    const uint32_t currentWidth = postprocess.pBloomTexture->texture.width / (1 << PPIndex);
+    const uint32_t currentHeight = postprocess.pBloomTexture->texture.height / (1 << PPIndex);
+
+    postprocess.viewports[PPIndex].x = 0.0f;
+    postprocess.viewports[PPIndex].y = static_cast<float>(currentHeight);
+    postprocess.viewports[PPIndex].width = static_cast<float>(currentWidth);
+    postprocess.viewports[PPIndex].height = -postprocess.viewports[PPIndex].y;
+    postprocess.viewports[PPIndex].minDepth = 0.0f;
+    postprocess.viewports[PPIndex].maxDepth = 1.0f;
+
+    postprocess.scissors[PPIndex].offset = {0, 0};
+    postprocess.scissors[PPIndex].extent = {currentWidth, currentHeight};
+  }
+
+  // Create compute shader storage buffer for retrieving exposure results
+  createBuffer(EBufferType::CPU_STORAGE, 1024, postprocess.exposureStorageBuffer, nullptr);
+
+  // Calculate a Halton Sequence for TAA jittering
+  system.haltonJitter.resize(core::vulkan::haltonSequenceCount);
+  math::getHaltonJitter(system.haltonJitter, config::renderWidth, config::renderHeight);
 
   return RE_OK;
 }
@@ -781,10 +928,13 @@ TResult core::MRenderer::createSyncObjects() {
     }
   }
 
-  // create continuously running threads
+  // Create asynchronously running threads
   RE_LOG(Log, "Creating entity update thread.");
   sync.asyncUpdateEntities.bindFunction(this, &MRenderer::updateBoundEntities);
   sync.asyncUpdateEntities.start();
+
+  sync.asyncUpdateEntities.bindFunction(this, &MRenderer::updateInstanceBuffer);
+  sync.asyncUpdateInstanceBuffers.start();
 
   return RE_OK;
 }
@@ -805,14 +955,15 @@ void core::MRenderer::destroySyncObjects() {
 }
 
 void core::MRenderer::updateSceneUBO(uint32_t currentImage) {
-  view.worldViewProjectionData.view = view.pActiveCamera->getView();
-  view.worldViewProjectionData.projection = view.pActiveCamera->getProjection();
-  view.worldViewProjectionData.cameraPosition = view.pActiveCamera->getLocation();
+  scene.sceneBufferObject.view = view.pActiveCamera->getView();
+  scene.sceneBufferObject.projection = view.pActiveCamera->getProjection();
+  scene.sceneBufferObject.cameraPosition = view.pActiveCamera->getLocation();
+  scene.sceneBufferObject.haltonJitter = system.haltonJitter[renderView.framesRendered % core::vulkan::haltonSequenceCount];
 
-  uint8_t* pSceneUBO = static_cast<uint8_t*>(view.modelViewProjectionBuffers[currentImage].allocInfo.pMappedData) +
+  uint8_t* pSceneUBO = static_cast<uint8_t*>(scene.sceneBuffers[currentImage].allocInfo.pMappedData) +
                        config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
 
-  memcpy(pSceneUBO, &view.worldViewProjectionData, sizeof(RSceneUBO));
+  memcpy(pSceneUBO, &scene.sceneBufferObject, sizeof(RSceneUBO));
 }
 
 void core::MRenderer::waitForSystemIdle() {
@@ -840,9 +991,7 @@ TResult core::MRenderer::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createMemAlloc();
 
   if (chkResult <= RE_ERRORLIMIT)
-    chkResult =
-    initSwapChain(core::vulkan::formatLDR, core::vulkan::colorSpace,
-                      core::vulkan::presentMode);
+    chkResult = initSwapChain(core::vulkan::formatLDR, core::vulkan::colorSpace, core::vulkan::presentMode);
   updateAspectRatio();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandPools();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandBuffers();
@@ -859,6 +1008,8 @@ TResult core::MRenderer::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createUniformBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorPool();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSets();
+
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createQueryPool();
 
   return chkResult;
 }
@@ -878,6 +1029,7 @@ void core::MRenderer::deinitialize() {
   core::world.destroyAllModels();
   core::resources.destroyAllTextures();
   destroyDescriptorPool();
+  destroyQueryPool();
   destroyUniformBuffers();
   destroyMemAlloc();
   if(requireValidationLayers) MDebug::get().destroy(APIInstance);
@@ -892,7 +1044,7 @@ const VkDescriptorSet core::MRenderer::getSceneDescriptorSet(
 }
 
 RSceneUBO* core::MRenderer::getSceneUBO() {
-  return &view.worldViewProjectionData;
+  return &scene.sceneBufferObject;
 }
 
 core::MRenderer::REnvironmentData* core::MRenderer::getEnvironmentData() {
@@ -904,6 +1056,10 @@ void core::MRenderer::updateLightingUBO(const int32_t frameIndex) {
 
   memcpy(lighting.buffers[frameIndex].allocInfo.pMappedData, &lighting.data,
          sizeof(RLightingUBO));
+}
+
+core::MRenderer::RPostProcessData* core::MRenderer::getPostProcessingData() {
+  return &postprocess;
 }
 
 void core::MRenderer::updateAspectRatio() {

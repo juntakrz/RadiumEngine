@@ -255,6 +255,76 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     createDynamicRenderingPass(EDynamicRenderingPass::Skybox, &info);
   }
 
+  // "Post processing downsample" pass
+  {
+    RTexture* pColorAttachment = core::resources.getTexture(RTGT_PPBLOOM);
+
+    RDynamicRenderingInfo info{};
+    info.pipelineLayout = EPipelineLayout::Scene;
+    info.viewportId = EViewport::vpMain;
+    info.vertexShader = "vs_quad.spv";
+    info.fragmentShader = "fs_ppDownsample.spv";
+    info.colorAttachmentClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
+    info.layoutInfo.validateColorAttachmentLayout = true;
+    info.layoutInfo.transitionColorAttachmentLayout = true;
+    info.layoutInfo.colorAttachmentsOutLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    info.colorAttachments = {{ pColorAttachment, pColorAttachment->texture.view, pColorAttachment->texture.imageFormat }};
+
+    createDynamicRenderingPass(EDynamicRenderingPass::PPDownsample, &info);
+  }
+
+  // "Post processing upsample" pass
+  {
+    RTexture* pColorAttachment = core::resources.getTexture(RTGT_PPBLOOM);
+
+    RDynamicRenderingInfo info{};
+    info.pipelineLayout = EPipelineLayout::Scene;
+    info.viewportId = EViewport::vpMain;
+    info.vertexShader = "vs_quad.spv";
+    info.fragmentShader = "fs_ppUpsample.spv";
+    info.colorAttachmentClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
+    info.layoutInfo.validateColorAttachmentLayout = true;
+    info.layoutInfo.transitionColorAttachmentLayout = true;
+    info.layoutInfo.colorAttachmentsOutLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    info.colorAttachments = {{ pColorAttachment, pColorAttachment->texture.view, pColorAttachment->texture.imageFormat }};
+
+    createDynamicRenderingPass(EDynamicRenderingPass::PPUpsample, &info);
+  }
+
+  // "Post processing get exposure" pass
+  {
+    RTexture* pColorAttachment = core::resources.getTexture(RTGT_EXPOSUREMAP);
+
+    RDynamicRenderingInfo info{};
+    info.pipelineLayout = EPipelineLayout::Scene;
+    info.viewportId = EViewport::vpEnvIrrad;          // Reuse irradiance resolution for exposure map
+    info.vertexShader = "vs_quad.spv";
+    info.fragmentShader = "fs_ppGetExposure.spv";
+    info.colorAttachmentClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
+    info.layoutInfo.validateColorAttachmentLayout = true;
+    info.layoutInfo.transitionColorAttachmentLayout = true;
+    info.layoutInfo.colorAttachmentsOutLayout = VK_IMAGE_LAYOUT_GENERAL;
+    info.colorAttachments = { { pColorAttachment, pColorAttachment->texture.view, pColorAttachment->texture.imageFormat } };
+
+    createDynamicRenderingPass(EDynamicRenderingPass::PPGetExposure, &info);
+  }
+
+  // TAA pass, takes a PBR output up to this point and adds history and velocity data
+  {
+    RTexture* pColorAttachment = core::resources.getTexture(RTGT_PPTAA);
+
+    RDynamicRenderingInfo info{};
+    info.pipelineLayout = EPipelineLayout::Scene;
+    info.viewportId = EViewport::vpMain;
+    info.vertexShader = "vs_quad.spv";
+    info.fragmentShader = "fs_ppTAA.spv";
+    info.colorAttachmentClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
+    info.layoutInfo.transitionColorAttachmentLayout = true;
+    info.colorAttachments = { { pColorAttachment, pColorAttachment->texture.view, pColorAttachment->texture.imageFormat } };
+
+    createDynamicRenderingPass(EDynamicRenderingPass::PPTAA, &info);
+  }
+
   // "Present" final output pass
   {
     RTexture* pDepthAttachment = core::resources.getTexture(RTGT_DEPTH);
