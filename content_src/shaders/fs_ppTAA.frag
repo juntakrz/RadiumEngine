@@ -7,10 +7,6 @@
 
 layout (location = 0) in vec2 inUV;
 
-// Material bindings
-
-layout (set = 2, binding = 0) uniform sampler2D samplers[];
-
 layout (location = 0) out vec4 outColor;
 
 void getTAAClampValues(vec3 color, vec2 offsetDelta, out vec3 boxMin, out vec3 boxMax) {
@@ -24,7 +20,7 @@ void getTAAClampValues(vec3 color, vec2 offsetDelta, out vec3 boxMin, out vec3 b
 			if (x == 0 && y == 0) continue;
 
 			vec2 offset = vec2(offsetDelta.x * x, offsetDelta.y * y);
-			vec3 sampleColor = texture(samplers[material.samplerIndex[COLORMAP]], inUV + offset).rgb;
+			vec3 sampleColor = texture(samplers[material.samplerIndex[EXTRAMAP0]], inUV + offset).rgb;
 			boxMin = min(boxMin, sampleColor);
 			boxMax = max(boxMax, sampleColor);
 		}
@@ -32,10 +28,10 @@ void getTAAClampValues(vec3 color, vec2 offsetDelta, out vec3 boxMin, out vec3 b
 }
 
 void getTAAClampValuesFast(vec3 color, vec2 offsetDelta, out vec3 boxMin, out vec3 boxMax){
-	vec3 neighbourColor0 = texture(samplers[material.samplerIndex[COLORMAP]], inUV + vec2(offsetDelta.x, 0.0)).rgb;
-    vec3 neighbourColor1 = texture(samplers[material.samplerIndex[COLORMAP]], inUV + vec2(0.0, offsetDelta.y)).rgb;
-    vec3 neighbourColor2 = texture(samplers[material.samplerIndex[COLORMAP]], inUV + vec2(-offsetDelta.x, 0.0)).rgb;
-    vec3 neighbourColor3 = texture(samplers[material.samplerIndex[COLORMAP]], inUV + vec2(0.0, -offsetDelta.y)).rgb;
+	vec3 neighbourColor0 = texture(samplers[material.samplerIndex[EXTRAMAP0]], inUV + vec2(offsetDelta.x, 0.0)).rgb;
+    vec3 neighbourColor1 = texture(samplers[material.samplerIndex[EXTRAMAP0]], inUV + vec2(0.0, offsetDelta.y)).rgb;
+    vec3 neighbourColor2 = texture(samplers[material.samplerIndex[EXTRAMAP0]], inUV + vec2(-offsetDelta.x, 0.0)).rgb;
+    vec3 neighbourColor3 = texture(samplers[material.samplerIndex[EXTRAMAP0]], inUV + vec2(0.0, -offsetDelta.y)).rgb;
     
     boxMin = min(color, min(neighbourColor0, min(neighbourColor1, min(neighbourColor2, neighbourColor3))));
     boxMax = max(color, max(neighbourColor0, max(neighbourColor1, max(neighbourColor2, neighbourColor3))));;
@@ -59,7 +55,7 @@ vec3 sharpenColor(vec3 color, vec2 offsetDelta) {
 			if (x == 0 && y == 0) continue;
 
 			vec2 offset = vec2(offsetDelta.x * x, offsetDelta.y * y);
-			sharpColor += texture(samplers[material.samplerIndex[COLORMAP]], inUV + offset).rgb * float(sharpeningKernel[x + range][y + range]);
+			sharpColor += texture(samplers[material.samplerIndex[EXTRAMAP0]], inUV + offset).rgb * float(sharpeningKernel[x + range][y + range]);
 		}
 	}
 
@@ -68,10 +64,10 @@ vec3 sharpenColor(vec3 color, vec2 offsetDelta) {
 }
 
 void main() {
-	ivec2 texDim = textureSize(samplers[material.samplerIndex[COLORMAP]], 0);
+	ivec2 texDim = textureSize(samplers[material.samplerIndex[EXTRAMAP0]], 0);
 	vec2 offsetDelta = vec2(1.0 / float(texDim.x), 1.0 / float(texDim.y));
 
-	vec3 color = texture(samplers[material.samplerIndex[COLORMAP]], inUV).rgb;
+	vec3 color = texture(samplers[material.samplerIndex[EXTRAMAP0]], inUV).rgb;
 	vec3 sharpColor = sharpenColor(color, offsetDelta);
 
 	color = mix(color, sharpColor, 0.1);

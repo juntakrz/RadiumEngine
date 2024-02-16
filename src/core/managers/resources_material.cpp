@@ -11,7 +11,8 @@ void core::MResources::initialize() {
   RE_LOG(Log, "Initializing materials manager data.");
 
   RMaterial* pMaterial = nullptr;
-  m_sampler2DIndices.resize(config::scene::sampledImageBudget, nullptr);
+  m_materialIndices.resize(config::scene::sampledImageBudget / RE_MAXTEXTURES, nullptr);
+  m_samplerIndices.resize(config::scene::sampledImageBudget, nullptr);
 
   // create the "default" material
   RSamplerInfo samplerInfo{};
@@ -70,12 +71,14 @@ void core::MResources::initialize() {
   // Create present material that takes combined output of all render passes as
   // a shader read only attachment
   materialInfo = RMaterialInfo{};
-  materialInfo.name = RMAT_GPBR;
+  materialInfo.name = RMAT_MAIN;
   materialInfo.textures.baseColor = RTGT_GPBR;
   materialInfo.textures.normal = RTGT_PPBLOOM;
   materialInfo.textures.metalRoughness = RTGT_VELOCITYMAP;
   materialInfo.textures.occlusion = RTGT_PREVFRAME;
   materialInfo.textures.emissive = RTGT_PPTAA;
+  materialInfo.textures.extra0 = RTGT_APBR;
+  materialInfo.textures.extra1 = RTGT_PPAO;
   materialInfo.alphaMode = EAlphaMode::Opaque;
   materialInfo.doubleSided = false;
   materialInfo.manageTextures = true;
@@ -88,11 +91,30 @@ void core::MResources::initialize() {
   }
 
   core::renderer.getMaterialData()->pGPBR = pMaterial;
+
+  // Create present material that takes combined output of all render passes as
+  // a shader read only attachment
+  materialInfo = RMaterialInfo{};
+  materialInfo.name = RMAT_BLUR;
+  materialInfo.textures.baseColor = RTGT_PPBLUR;
+  materialInfo.textures.occlusion = RTGT_PPAO;
+  materialInfo.alphaMode = EAlphaMode::Opaque;
+  materialInfo.doubleSided = false;
+  materialInfo.manageTextures = true;
+  materialInfo.passFlags = EDynamicRenderingPass::PPBlur;
+
+  if (!(pMaterial = createMaterial(&materialInfo))) {
+    RE_LOG(Critical, "Failed to create Vulkan present material.");
+
+    return;
+  }
+
+  core::renderer.getMaterialData()->pBlur = pMaterial;
 }
 
 uint32_t core::MResources::getFreeCombinedSamplerIndex() {
-  for (uint32_t i = 0; i < m_sampler2DIndices.size(); ++i) {
-    if (m_sampler2DIndices[i] == nullptr) return i;
+  for (uint32_t i = 0; i < m_samplerIndices.size(); ++i) {
+    if (m_samplerIndices[i] == nullptr) return i;
   }
 
   RE_LOG(Warning, "No more free sampler2D descriptor entries left.");
@@ -125,7 +147,7 @@ void core::MResources::updateMaterialDescriptorSet(RTexture* pTexture, EResource
       }
 
       writeSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-      writeSet.dstBinding = 0;
+      writeSet.dstBinding = 1;
       writeSet.dstArrayElement = index;
       writeSet.pImageInfo = &imageInfo;
 
@@ -133,7 +155,7 @@ void core::MResources::updateMaterialDescriptorSet(RTexture* pTexture, EResource
 
       // Store index data
       pTexture->combinedSamplerIndex = index;
-      m_sampler2DIndices[index] = pTexture;
+      m_samplerIndices[index] = pTexture;
 
       return;
     }
@@ -243,13 +265,36 @@ RMaterial* core::MResources::createMaterial(
       }
     }
 
-    // all glTF materials are featured in shadow prepass by default
-    newMat.passFlags |= EDynamicRenderingPass::Shadow;
+    // Check material for a single bit alpha and reassign it to OpaqueCullNone pass
+    if ((newMat.passFlags & EDynamicRenderingPass::BlendCullNone)
+      && (newMat.pBaseColor->texture.imageFormat == VK_FORMAT_BC1_RGBA_SRGB_BLOCK
+        || newMat.pBaseColor->texture.imageFormat == VK_FORMAT_BC1_RGBA_UNORM_BLOCK)) {
+      newMat.passFlags ^= EDynamicRenderingPass::BlendCullNone;
+      newMat.passFlags |= EDynamicRenderingPass::DiscardCullNone;
+    }
+
+    // All glTF materials are featured in shadow prepass by default, discard materials have their dedicated shadow pass
+    newMat.passFlags |= (newMat.passFlags & EDynamicRenderingPass::DiscardCullNone)
+      ? EDynamicRenderingPass::ShadowDiscard : EDynamicRenderingPass::Shadow;
   }
 
   RE_LOG(Log, "Creating material \"%s\".", newMat.name.c_str());
   m_materials.at(pDesc->name) = std::make_unique<RMaterial>(std::move(newMat));
-  return m_materials.at(pDesc->name).get();
+
+  RMaterial* pNewMaterial = m_materials.at(pDesc->name).get();
+
+  // Store material's data block in the buffer at an appropriate index
+  pNewMaterial->bufferIndex = getMaterialBufferIndex(pNewMaterial);
+
+  if (pNewMaterial->bufferIndex == -1) {
+    RE_LOG(Error, "Material buffer is out of free space.");
+  } else {
+    RSceneFragmentPCB* pMemAddress = (RSceneFragmentPCB*)core::renderer.getMaterialData()->buffer.allocInfo.pMappedData
+      + pNewMaterial->bufferIndex;
+    memcpy(pMemAddress, &pNewMaterial->pushConstantBlock, sizeof(RSceneFragmentPCB));
+  }
+
+  return pNewMaterial;
 }
 
 RMaterial* core::MResources::getMaterial(const char* name) noexcept {
@@ -267,6 +312,29 @@ RMaterial* core::MResources::getMaterial(const char* name) noexcept {
 
 uint32_t core::MResources::getMaterialCount() const noexcept {
   return static_cast<uint32_t>(m_materials.size());
+}
+
+uint32_t core::MResources::getMaterialBufferIndex(RMaterial* pMaterial) noexcept {
+  if (pMaterial->bufferIndex != -1) {
+    if (m_materialIndices[pMaterial->bufferIndex] != pMaterial) {
+      RE_LOG(Error, "Invalid material buffer index %d for '%s'. Possible data corruption.",
+        pMaterial->bufferIndex, pMaterial->name.c_str());
+    }
+
+    return pMaterial->bufferIndex;
+  }
+
+  uint32_t index = 0;
+  for (auto& it : m_materialIndices) {
+    if (it == nullptr) {
+      it = pMaterial;
+      return index;
+    }
+
+    ++index;
+  }
+
+  return -1;
 }
 
 TResult core::MResources::deleteMaterial(const char* name) noexcept {

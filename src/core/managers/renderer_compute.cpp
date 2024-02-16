@@ -180,12 +180,10 @@ void core::MRenderer::queueComputeJob(RComputeJobInfo* pInfo) {
   }
 }
 
-void core::MRenderer::executeComputeJobImmediate(RComputeJobInfo* pInfo, const bool beginBuffer) {
+void core::MRenderer::executeComputeJobImmediate(RComputeJobInfo* pInfo) {
   switch (pInfo->jobType) {
     case EComputeJob::Image: {
-      VkCommandBuffer graphicsBuffer = command.buffersGraphics[renderView.frameInFlight];
-    
-      if (beginBuffer) beginCommandBuffer(graphicsBuffer);
+      VkCommandBuffer computeBuffer = command.buffersCompute[renderView.frameInFlight];
 
       VkImageSubresourceRange range{};
       range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -202,26 +200,26 @@ void core::MRenderer::executeComputeJobImmediate(RComputeJobInfo* pInfo, const b
         range.layerCount = image->texture.layerCount;
         range.levelCount = image->texture.levelCount;
 
-        setImageLayout(graphicsBuffer, image, VK_IMAGE_LAYOUT_GENERAL, range);
+        setImageLayout(computeBuffer, image, VK_IMAGE_LAYOUT_GENERAL, range);
       }
 
       for (auto& sampler : pInfo->pSamplerAttachments) {
         range.layerCount = sampler->texture.layerCount;
         range.levelCount = sampler->texture.levelCount;
 
-        setImageLayout(graphicsBuffer, sampler, VK_IMAGE_LAYOUT_GENERAL, range);
+        setImageLayout(computeBuffer, sampler, VK_IMAGE_LAYOUT_GENERAL, range);
       }
 
       updateComputeImageSet(&pInfo->pImageAttachments, &pInfo->pSamplerAttachments, pInfo->useExtraImageViews, pInfo->useExtraSamplerViews);
 
-      VkCommandBuffer cmdBuffer = createCommandBuffer(ECmdType::Compute, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
-      executeComputeImage(cmdBuffer, pInfo->pipeline);
+      executeComputeImage(computeBuffer, pInfo->pipeline);
 
       VkMemoryBarrier2 memoryBarrier{};
       memoryBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
       memoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
       memoryBarrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
-      memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
+      //memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
+      memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
       memoryBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
 
       VkDependencyInfo computeDependency{};
@@ -229,27 +227,24 @@ void core::MRenderer::executeComputeJobImmediate(RComputeJobInfo* pInfo, const b
       computeDependency.memoryBarrierCount = 1u;
       computeDependency.pMemoryBarriers = &memoryBarrier;
 
-      vkCmdPipelineBarrier2(cmdBuffer, &computeDependency);
-
-      flushCommandBuffer(cmdBuffer, ECmdType::Compute, true);
+      vkCmdPipelineBarrier2(computeBuffer, &computeDependency);
 
       if (pInfo->transtionToShaderReadOnly) {
         for (auto& image : pInfo->pImageAttachments) {
           range.layerCount = image->texture.layerCount;
           range.levelCount = image->texture.levelCount;
 
-          setImageLayout(graphicsBuffer, image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, range);
+          setImageLayout(computeBuffer, image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, range);
         }
 
         for (auto& sampler : pInfo->pSamplerAttachments) {
           range.layerCount = sampler->texture.layerCount;
           range.levelCount = sampler->texture.levelCount;
 
-          setImageLayout(graphicsBuffer, sampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, range);
+          setImageLayout(computeBuffer, sampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, range);
         }
       }
 
-      if (beginBuffer) flushCommandBuffer(graphicsBuffer, ECmdType::Graphics);
       break;
     }
   }
@@ -258,7 +253,11 @@ void core::MRenderer::executeComputeJobImmediate(RComputeJobInfo* pInfo, const b
 void core::MRenderer::executeQueuedComputeJobs() {
   if (compute.jobs.empty()) return;
 
+  beginCommandBuffer(command.buffersCompute[renderView.frameInFlight], false);
+
   RComputeJobInfo* pInfo = &compute.jobs.front();
-  executeComputeJobImmediate(pInfo, true);
+  executeComputeJobImmediate(pInfo);
   compute.jobs.erase(compute.jobs.begin());
+
+  flushCommandBuffer(command.buffersCompute[renderView.frameInFlight], ECmdType::Compute);
 }

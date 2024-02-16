@@ -79,10 +79,10 @@ void WModel::sortPrimitivesByMaterial() {
 
   for (const auto& primitive : m_pLinearPrimitives) {
     wasPlaced = false;
-    primitiveMaterial = primitive->pMaterial;
+    primitiveMaterial = primitive->pInitialMaterial;
 
     for (auto& vector : vectors) {
-      if (vector[0]->pMaterial == primitiveMaterial) {
+      if (vector[0]->pInitialMaterial == primitiveMaterial) {
         vector.emplace_back(primitive);
         wasPlaced = true;
         break;
@@ -210,7 +210,7 @@ void WModel::setPrimitiveMaterial(const int32_t meshIndex,
     return;
   }
 
-  pPrimitive->pMaterial = pMaterial;
+  pPrimitive->pInitialMaterial = pMaterial;
 }
 
 bool WModel::bindAnimation(const std::string& name) {

@@ -67,21 +67,35 @@ void core::run() {
 
   core::world.loadModelFromFile("content/models/wc3guy/scene.gltf", "mdlGuy", &modelConfigInfo);
   core::world.loadModelFromFile("content/models/castle/scene.gltf", "mdlCastle");
+  core::world.loadModelFromFile("content/models/tree/scene.gltf", "mdlTree");
+  core::world.loadModelFromFile("content/models/grass_02/scene.gltf", "mdlGrass");
   //
-  
+
   // create entities
   materialInfo = RMaterialInfo{};
   materialInfo.name = "RMat_Light0";
   materialInfo.glowColor = glm::vec4(3.5f, 2.4f, 1.0f, 0.0f);
-  RMaterial* pNewMaterial = core::resources.createMaterial(&materialInfo);
+  core::resources.createMaterial(&materialInfo);
 
-  core::actors.createPawn("sphere0");
-  APawn* pPawn = core::actors.getPawn("sphere0");
+  materialInfo = RMaterialInfo{};
+  materialInfo.name = "RMat_Light1";
+  materialInfo.glowColor = glm::vec4(1.0f, 1.0f, 3.0f, 0.0f);
+  core::resources.createMaterial(&materialInfo);
+
+  
+  APawn* pPawn = core::actors.createPawn("sphere0");
   pPawn->setModel(core::world.getModel("mdlSphere"));
   pPawn->setLocation(1.0f, -0.8f, 2.0f);
-  pPawn->setScale(0.2f);
+  pPawn->setScale(0.18f);
   pPawn->getModel()->setPrimitiveMaterial(0, 0, "RMat_Light0");
   pPawn->bindToRenderer();
+
+  pPawn = core::actors.createPawn("sphere1");
+  pPawn->setModel(core::world.getModel("mdlSphere"));
+  pPawn->setLocation(1.5f, 1.4f, 3.3f);
+  pPawn->setScale(0.1f);
+  pPawn->bindToRenderer();
+  pPawn->setInstancePrimitiveMaterial(0, 0, "RMat_Light1");
 
   AStatic* pStatic = core::actors.createStatic("Skybox");
   pStatic->setModel(core::world.getModel(RMDL_SKYBOX));
@@ -124,6 +138,27 @@ void core::run() {
   pStatic->setLocation(0.0f, 6.17f, 12.0f);
   pStatic->setRotation({-0.5f, -0.4f, 0.0f});
   pStatic->setScale(2.0f);
+
+  pStatic = core::actors.createStatic("StaticTree0");
+  pStatic->setModel(core::world.getModel("mdlTree"));
+  pStatic->bindToRenderer();
+  pStatic->setLocation(1.0f, -1.35f, -0.8f);
+  pStatic->setRotation({ 0.0f, 0.0f, 1.5f });
+  pStatic->setScale({ 1.0f, 1.25f, 1.0f });
+
+  pStatic = core::actors.createStatic("StaticGrass0");
+  pStatic->setModel(core::world.getModel("mdlGrass"));
+  pStatic->bindToRenderer();
+  pStatic->setLocation(-0.12f, -0.7f, -0.3f);
+  pStatic->setRotation({ -1.707f, 0.0f, 0.0f });
+  pStatic->setScale(0.4f);
+
+  pStatic = core::actors.createStatic("StaticGrass1");
+  pStatic->setModel(core::world.getModel("mdlGrass"));
+  pStatic->bindToRenderer();
+  pStatic->setLocation(0.3f, -0.68f, -0.4f);
+  pStatic->setRotation({ -1.707f, 0.0f, 0.0f });
+  pStatic->setScale(0.4f);
 
   //core::animations.saveAnimation("SwordAndShieldIdle", "SwordAndShieldIdle");
   //
@@ -186,7 +221,6 @@ TResult core::create() {
 
   core::resources.initialize();
   core::world.initialize();
-  core::actors.initialize();
 
   core::renderer.renderInitFrame();
 

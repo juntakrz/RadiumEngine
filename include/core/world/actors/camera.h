@@ -50,6 +50,8 @@ class ACamera : public ABase {
   void setOrthographic(float horizontal, float vertical, float nearZ,
                        float farZ) noexcept;
 
+  glm::vec2 getNearAndFarPlane();
+
   // get view matrix for current camera position and rotation
   glm::mat4& getView();
   glm::mat4& getProjection();

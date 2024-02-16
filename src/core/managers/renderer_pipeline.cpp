@@ -58,35 +58,6 @@ TResult core::MRenderer::createPipelineLayouts() {
   }
 
 #ifndef NDEBUG
-  RE_LOG(Log, "Creating pipeline layout for \"PBR\".");
-#endif
-
-  layoutType = EPipelineLayout::PBR;
-  system.layouts.emplace(layoutType, VK_NULL_HANDLE);
-
-  descriptorSetLayouts.clear();
-  descriptorSetLayouts = {
-      getDescriptorSetLayout(EDescriptorSetLayout::Scene),    // 0
-      getDescriptorSetLayout(EDescriptorSetLayout::Model),    // 1
-      getDescriptorSetLayout(EDescriptorSetLayout::PBRInput)  // 2
-  };
-
-  layoutInfo = VkPipelineLayoutCreateInfo{};
-  layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-  layoutInfo.setLayoutCount =
-      static_cast<uint32_t>(descriptorSetLayouts.size());
-  layoutInfo.pSetLayouts = descriptorSetLayouts.data();
-  layoutInfo.pushConstantRangeCount = 0;
-  layoutInfo.pPushConstantRanges = VK_NULL_HANDLE;
-
-  if (vkCreatePipelineLayout(logicalDevice.device, &layoutInfo, nullptr,
-                             &getPipelineLayout(layoutType)) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create \"PBR\" pipeline layout.");
-
-    return RE_CRITICAL;
-  }
-
-#ifndef NDEBUG
   RE_LOG(Log, "Creating pipeline layout for \"Environment\".");
 #endif
 
@@ -317,8 +288,8 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
   VkPipelineDepthStencilStateCreateInfo depthStencilInfo{};
   depthStencilInfo.sType =
       VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-  depthStencilInfo.depthTestEnable = VK_TRUE;
-  depthStencilInfo.depthWriteEnable = VK_TRUE;
+  depthStencilInfo.depthTestEnable = pipelineInfo->enableDepthTest;
+  depthStencilInfo.depthWriteEnable = pipelineInfo->enableDepthWrite;
   depthStencilInfo.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
   depthStencilInfo.front = depthStencilInfo.back;
   depthStencilInfo.back.compareOp = VK_COMPARE_OP_ALWAYS;
@@ -335,7 +306,7 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
   colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
   colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
   colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-  colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+  colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
   colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
   colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 

@@ -8,15 +8,19 @@
 #include "core/material/texture.h"
 #include "core/managers/renderer.h"
 
-void core::MRenderer::drawBoundEntities(VkCommandBuffer commandBuffer) {
+void core::MRenderer::drawBoundEntities(VkCommandBuffer commandBuffer, EDynamicRenderingPass passOverride) {
   // go through bound models and generate draw calls for each
   renderView.refresh();
+
+  if (passOverride == EDynamicRenderingPass::Null) {
+    passOverride = renderView.pCurrentPass->passId;
+  }
 
   for (WModel* pModel : scene.pModelReferences) {
     auto& primitives = pModel->getPrimitives();
 
     for (const auto& primitive : primitives) {
-      if (!checkPass(primitive->pMaterial->passFlags, renderView.pCurrentPass->passId)) continue;
+      if (!checkPass(primitive->pInitialMaterial->passFlags, passOverride)) continue;
 
       renderPrimitive(commandBuffer, primitive, pModel);
     }
@@ -26,15 +30,6 @@ void core::MRenderer::drawBoundEntities(VkCommandBuffer commandBuffer) {
 void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
                                       WPrimitive* pPrimitive,
                                       WModel* pModel) {
-  // bind material descriptor set only if material is different (binding 2)
-  if (renderView.pCurrentMaterial != pPrimitive->pMaterial) {
-    vkCmdPushConstants(cmdBuffer, renderView.pCurrentPass->layout,
-                        VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(RSceneVertexPCB), sizeof(RSceneFragmentPCB),
-                        &pPrimitive->pMaterial->pushConstantBlock);
-
-    renderView.pCurrentMaterial = pPrimitive->pMaterial;
-  }
-
   uint32_t instanceCount = static_cast<uint32_t>(pPrimitive->instanceData.size());
   int32_t vertexOffset = (int32_t)pModel->m_sceneVertexOffset + (int32_t)pPrimitive->vertexOffset;
   uint32_t indexOffset = pModel->m_sceneIndexOffset + pPrimitive->indexOffset;
@@ -203,6 +198,30 @@ void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynam
   }
 }
 
+void core::MRenderer::prepareFrameResources(VkCommandBuffer commandBuffer) {
+  /*scene.transparencyLinkedListData.nodeCount = 0u;
+  memcpy(scene.transparencyLinkedListDataBuffer.allocInfo.pMappedData, &scene.transparencyLinkedListData, sizeof(uint32_t));*/
+
+  VkDeviceSize vbOffset = 0u;
+  vkCmdBindVertexBuffers(commandBuffer, 0, 1, &scene.vertexBuffer.buffer, &vbOffset);
+  vkCmdBindVertexBuffers(commandBuffer, 1, 1, &scene.instanceBuffers[renderView.frameInFlight].buffer, &vbOffset);
+
+  vkCmdBindIndexBuffer(commandBuffer, scene.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+  uint32_t transformOffsets[3] = { 0u, 0u, 0u };
+  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+    getPipelineLayout(EPipelineLayout::Scene), 1, 1, &scene.transformDescriptorSet, 3, transformOffsets);
+
+  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+    getPipelineLayout(EPipelineLayout::Scene), 2, 1, &material.descriptorSet, 0, nullptr);
+
+  // Update transparency data
+  vkCmdClearColorImage(commandBuffer, scene.pTransparencyStorageTexture->texture.image, scene.pTransparencyStorageTexture->texture.imageLayout,
+    &scene.transparencyLinkedListClearColor, 1u, &scene.transparencySubRange);
+  
+  vkCmdFillBuffer(commandBuffer, scene.transparencyLinkedListBuffer.buffer, 0, sizeof(uint32_t), 0);
+}
+
 void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uint32_t cascadeIndex) {
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::Shadow);
   renderView.pCurrentPass = pRenderPass;
@@ -234,9 +253,10 @@ void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uin
   setViewport(commandBuffer, renderView.pCurrentPass->viewportId);
   renderView.currentViewportId = renderView.pCurrentPass->viewportId;
 
-  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->pipeline);
-
   const uint32_t dynamicOffset = config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
+
+  // Normal shadow pass
+  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->pipeline);
 
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->layout, 0,
     1, &renderView.pCurrentSet, 1, &dynamicOffset);
@@ -245,6 +265,12 @@ void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uin
                      sizeof(RSceneVertexPCB), &scene.vertexPushBlock);
 
   drawBoundEntities(commandBuffer);
+
+  // Discard shadow pass
+  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+    getDynamicRenderingPass(EDynamicRenderingPass::ShadowDiscard)->pipeline);
+
+  drawBoundEntities(commandBuffer, EDynamicRenderingPass::ShadowDiscard);
 
   vkCmdEndRendering(commandBuffer);
 
@@ -262,7 +288,74 @@ void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uin
   }
 }
 
-void core::MRenderer::executePostProcesssTAAPass(VkCommandBuffer commandBuffer) {
+void core::MRenderer::executeAOBlurPass(VkCommandBuffer commandBuffer) {
+  RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::PPBlur);
+  renderView.pCurrentPass = pRenderPass;
+
+  // AO blur uses two passes - horizontal and vertical
+  for (uint8_t pass = 0; pass < 2; ++pass) {
+    VkRenderingAttachmentInfo overrideAttachment = pRenderPass->renderingInfo.pColorAttachments[0];
+
+    VkImageSubresourceRange subRange;
+    subRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    subRange.baseArrayLayer = 0u;
+    subRange.layerCount = 1u;
+    subRange.baseMipLevel = 0u;
+    subRange.levelCount = 1u;
+
+    switch (pass) {
+      case 0: {
+        setImageLayout(commandBuffer, pRenderPass->pImageReferences[0], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
+        overrideAttachment.imageView = pRenderPass->pImageReferences[0]->texture.view;
+
+        break;
+      }
+      default: {
+        RTexture* pAOTexture = material.pBlur->pOcclusion;
+        setImageLayout(commandBuffer, pAOTexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
+        overrideAttachment.imageView = pAOTexture->texture.view;
+
+        break;
+      }
+    }
+
+    VkRenderingInfo overrideInfo = pRenderPass->renderingInfo;
+    overrideInfo.pColorAttachments = &overrideAttachment;
+
+    vkCmdBeginRendering(commandBuffer, &overrideInfo);
+
+    setViewport(commandBuffer, pRenderPass->viewportId);
+    renderView.currentViewportId = renderView.pCurrentPass->viewportId;
+
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->pipeline);
+
+    // Used by internal shader operations to determine which type of processing to perform
+    material.pBlur->pushConstantBlock.textureSets = pass;
+
+    vkCmdPushConstants(commandBuffer, renderView.pCurrentPass->layout, VK_SHADER_STAGE_FRAGMENT_BIT,
+      sizeof(RSceneVertexPCB), sizeof(RSceneFragmentPCB), &material.pBlur->pushConstantBlock);
+
+    vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+
+    vkCmdEndRendering(commandBuffer);
+
+    switch (pass) {
+    case 0: {
+      setImageLayout(commandBuffer, pRenderPass->pImageReferences[0], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subRange);
+
+      break;
+    }
+    default: {
+      RTexture* pAOTexture = material.pBlur->pOcclusion;
+      setImageLayout(commandBuffer, pAOTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subRange);
+
+      break;
+    }
+    }
+  }
+}
+
+void core::MRenderer::executePostProcessTAAPass(VkCommandBuffer commandBuffer) {
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::PPTAA);
   renderView.pCurrentPass = pRenderPass;
 
@@ -311,8 +404,7 @@ void core::MRenderer::executePostProcessSamplingPass(VkCommandBuffer commandBuff
   VkRenderingAttachmentInfo overrideAttachment = pRenderPass->renderingInfo.pColorAttachments[0];
   overrideAttachment.imageView = pRenderPass->pImageReferences[0]->texture.extraViews[imageViewIndex].imageView;
 
-  VkRenderingInfo overrideInfo{};
-  overrideInfo = pRenderPass->renderingInfo;
+  VkRenderingInfo overrideInfo = pRenderPass->renderingInfo;
   overrideInfo.pColorAttachments = &overrideAttachment;
   overrideInfo.renderArea = postprocess.scissors[imageViewIndex];
 
@@ -380,7 +472,7 @@ void core::MRenderer::executePostProcessGetExposurePass(VkCommandBuffer commandB
 void core::MRenderer::executePostProcessPass(VkCommandBuffer commandBuffer) {
   const uint8_t levelCount = postprocess.pBloomTexture->texture.levelCount;
   
-  executePostProcesssTAAPass(commandBuffer);
+  executePostProcessTAAPass(commandBuffer);
   executePostProcessGetExposurePass(commandBuffer);
 
   for (uint8_t downsampleIndex = 0; downsampleIndex < levelCount; ++downsampleIndex) {
@@ -490,18 +582,8 @@ void core::MRenderer::renderFrame() {
     return;
   }
 
-  VkDeviceSize vbOffset = 0u;
-  vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &scene.vertexBuffer.buffer, &vbOffset);
-  vkCmdBindVertexBuffers(cmdBuffer, 1, 1, &scene.instanceBuffers[renderView.frameInFlight].buffer, &vbOffset);
-
-  vkCmdBindIndexBuffer(cmdBuffer, scene.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-  uint32_t transformOffsets[3] = { 0u, 0u, 0u };
-  vkCmdBindDescriptorSets( cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    getPipelineLayout(EPipelineLayout::Scene), 1, 1, &scene.transformDescriptorSet, 3, transformOffsets);
-
-  vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    getPipelineLayout(EPipelineLayout::Scene), 2, 1, &material.descriptorSet, 0, nullptr);
+  // Prepare and bind per frame resources
+  prepareFrameResources(cmdBuffer);
 
   /* 1. Environment generation */
 
@@ -526,6 +608,7 @@ void core::MRenderer::renderFrame() {
   // G-Buffer passes
   executeRenderingPass(cmdBuffer, EDynamicRenderingPass::OpaqueCullBack);
   executeRenderingPass(cmdBuffer, EDynamicRenderingPass::OpaqueCullNone);
+  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::DiscardCullNone);
   executeRenderingPass(cmdBuffer, EDynamicRenderingPass::BlendCullNone);
 
   // Deferred rendering pass using G-Buffer collected data
@@ -534,8 +617,13 @@ void core::MRenderer::renderFrame() {
   // Additional front rendering passes
   executeRenderingPass(cmdBuffer, EDynamicRenderingPass::Skybox);
 
+  executeAOBlurPass(cmdBuffer);
+
+  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::AlphaCompositing, material.pGPBR, true);
+
   /* 4. Postprocessing pass */
 
+  // Includes exposure, bloom and TAA passes
   executePostProcessPass(cmdBuffer);
 
   /* 5. Final presentation pass */
@@ -569,7 +657,6 @@ void core::MRenderer::renderFrame() {
                     sync.fenceInFlight[renderView.frameInFlight]) !=
       VK_SUCCESS) {
     RE_LOG(Error, "Failed to submit data to graphics queue.");
-    ;
   }
 
   VkSwapchainKHR swapChains[] = {swapChain};
@@ -611,6 +698,10 @@ void core::MRenderer::renderFrame() {
 void core::MRenderer::renderInitFrame() {
   // Generate BRDF LUT during the initial frame
   queueComputeJob(&environment.computeJobs.LUT);
+
+  RTexture* pNoiseTexture = core::resources.getTexture(RTGT_NOISEMAP);
+  core::resources.writeTexture(pNoiseTexture, system.randomOffsets.data(),
+    sizeof(glm::vec4) * system.randomOffsets.size());
 
   renderFrame();
 }

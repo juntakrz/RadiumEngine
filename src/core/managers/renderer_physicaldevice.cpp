@@ -232,7 +232,7 @@ TResult core::MRenderer::setPhysicalDeviceQueueFamilies(
     ++index;
   }
 
-  // if transfer queue family isn't found - use a free or first compute family
+  // If transfer queue family isn't found - use a free or first compute family
   if (queueFamilyIndices.transfer.empty()) {
     queueFamilyIndices.transfer.emplace_back(
         (queueFamilyIndices.compute.size() > 1)
@@ -249,6 +249,26 @@ TResult core::MRenderer::setPhysicalDeviceQueueFamilies(
            physicalDevice.deviceProperties.properties.deviceName);
 
     return RE_ERROR;
+  }
+
+  // Try to detect if a physical device is asynchronous compute capable
+  int32_t queueIndex = 0;
+  for (auto& queueCompute : deviceData.queueFamilyIndices.compute) {
+    for (auto& queueGraphics : deviceData.queueFamilyIndices.graphics) {
+      if (queueCompute != queueGraphics) {
+        RE_LOG(Log, "Asynchronous compute capability is detected.");
+
+        system.asyncComputeSupport = true;
+        break;
+      }
+    }
+
+    if (system.asyncComputeSupport) break;
+    ++queueIndex;
+  }
+
+  if (queueIndex > 0) {
+    std::swap(deviceData.queueFamilyIndices.compute[queueIndex], deviceData.queueFamilyIndices.compute[0]);
   }
 
   return RE_OK;

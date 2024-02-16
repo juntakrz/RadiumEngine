@@ -45,8 +45,6 @@ class MActors {
   MActors(const MActors&) = delete;
   MActors& operator=(const MActors&) = delete;
 
-  void initialize();
-
   // CAMERA
 
   ACamera* createCamera(const char* name,
