@@ -1,6 +1,4 @@
 #version 460
-#extension GL_EXT_nonuniform_qualifier : require
-#extension GL_EXT_scalar_block_layout : require
 
 #include "include/common.glsl"
 #include "include/fragment.glsl"
@@ -20,10 +18,6 @@ layout (set = 0, binding = 0) uniform UBOScene {
 layout (set = 0, binding = 2) uniform samplerCube prefilteredMap;
 layout (set = 0, binding = 3) uniform samplerCube irradianceMap;
 layout (set = 0, binding = 4) uniform sampler2D BRDFLUTMap;
-
-// PBR Input bindings
-layout (set = 2, binding = 0) uniform sampler2D samplers[];
-layout (set = 2, binding = 0) uniform sampler2DArray arraySamplers[];
 
 const float shadowBias = 0.00001;
 

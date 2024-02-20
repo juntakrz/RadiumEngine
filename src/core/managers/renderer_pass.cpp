@@ -117,6 +117,8 @@ TResult core::MRenderer::createDynamicRenderingPass(EDynamicRenderingPass passId
   pipelineInfo.geometryShader = pInfo->geometryShader;
   pipelineInfo.fragmentShader = pInfo->fragmentShader;
   pipelineInfo.enableBlending = pInfo->pipelineInfo.enableBlending;
+  pipelineInfo.enableDepthWrite = pInfo->pipelineInfo.enableDepthWrite;
+  pipelineInfo.enableDepthTest = pInfo->pipelineInfo.enableDepthTest;
   pipelineInfo.cullMode = pInfo->pipelineInfo.cullMode;
   pipelineInfo.primitiveTopology = pInfo->pipelineInfo.primitiveTopology;
   pipelineInfo.polygonMode = pInfo->pipelineInfo.polygonMode;
@@ -175,7 +177,7 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
   // G-Buffer passes
   {
     // Backface culled opaque pass
-    const uint32_t colorAttachmentCount = static_cast<uint32_t>(scene.pGBufferTargets.size());
+    uint32_t colorAttachmentCount = static_cast<uint32_t>(scene.pGBufferTargets.size());
     RTexture* pDepthAttachment = core::resources.getTexture(RTGT_DEPTH);
 
     RDynamicRenderingInfo info{};
@@ -211,8 +213,20 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
 
     // Blend pass without culling
 
+    //colorAttachmentCount = static_cast<uint32_t>(scene.pABufferTargets.size());
+
+    info.fragmentShader = "fs_abuffer.spv";
     info.pipelineInfo.enableBlending = VK_TRUE;
+    info.pipelineInfo.enableDepthWrite = VK_FALSE;
     info.layoutInfo.transitionColorAttachmentLayout = true;
+    info.clearColorAttachments = false;
+    info.colorAttachments.resize(0);
+
+    //info.colorAttachments.resize(colorAttachmentCount);
+    //for (uint8_t i = 0; i < colorAttachmentCount; ++i) {
+    //  info.colorAttachments[i] =
+    //  { scene.pABufferTargets[i], scene.pABufferTargets[i]->texture.view, scene.pABufferTargets[i]->texture.imageFormat };
+    //}
 
     createDynamicRenderingPass(EDynamicRenderingPass::BlendCullNone, &info);
 
@@ -253,6 +267,19 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     info.depthAttachment = { pDepthAttachment, pDepthAttachment->texture.view, pDepthAttachment->texture.imageFormat };
 
     createDynamicRenderingPass(EDynamicRenderingPass::Skybox, &info);
+  }
+
+  // Alpha compositing pass, return the results of alpha buffer
+  {
+    RDynamicRenderingInfo info{};
+    info.pipelineLayout = EPipelineLayout::Scene;
+    info.viewportId = EViewport::vpMain;
+    info.vertexShader = "vs_quad.spv";
+    info.fragmentShader = "fs_alphaCompositing.spv";
+    info.colorAttachmentClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
+    info.layoutInfo.transitionColorAttachmentLayout = true;
+
+    createDynamicRenderingPass(EDynamicRenderingPass::AlphaCompositing, &info);
   }
 
   // "Post processing downsample" pass

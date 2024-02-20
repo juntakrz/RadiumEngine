@@ -60,6 +60,7 @@ class MRenderer {
     VkDescriptorSet descriptorSet;
     RMaterial* pSunShadow = nullptr;
     RMaterial* pGBuffer = nullptr;
+    RMaterial* pABuffer = nullptr;
     RMaterial* pGPBR = nullptr;
   } material;
 
@@ -77,6 +78,11 @@ class MRenderer {
     VkDescriptorSet transformDescriptorSet;
 
     std::vector<RTexture*> pGBufferTargets;
+    std::vector<RTexture*> pABufferTargets;
+    RBuffer alphaLinkedListBuffer;
+    RBuffer alphaLinkedListDataBuffer;
+    RTransparencyLinkedListData alphaLinkedListData;
+    RTexture* pTransparencyStorageTexture = nullptr;
 
     // Per frame in flight buffered camera/lighting descriptor sets
     std::vector<VkDescriptorSet> descriptorSets;

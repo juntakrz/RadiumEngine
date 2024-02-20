@@ -326,6 +326,8 @@
     <None Include="content_src\shaders\fs_ppGetExposure.frag" />
     <None Include="content_src\shaders\include\vertex.glsl" />
     <None Include="content_src\shaders\fs_ppTAA.frag" />
+    <None Include="content_src\shaders\fs_abuffer.frag" />
+    <None Include="content_src\shaders\fs_alphaCompositing.frag" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="lib\glfw3.lib" />

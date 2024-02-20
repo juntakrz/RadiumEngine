@@ -35,3 +35,7 @@ int getTextureSet(int textureType) {
 	if ((checkTextureSet & firstSetLookup) == firstSetLookup) return 0;
 	return -1;
 }
+
+layout (set = 2, binding = 0) uniform sampler2D samplers[];
+layout (set = 2, binding = 0) uniform sampler2DArray arraySamplers[];
+layout (set = 2, binding = 0) uniform samplerCube cubeSamplers[];

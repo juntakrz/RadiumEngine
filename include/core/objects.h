@@ -77,9 +77,7 @@ enum class EControlMode {
 
 enum class EDescriptorSetLayout {
   Scene,
-  Material,
   MaterialEXT,
-  PBRInput,
   Model,
   ComputeImage,
   Dummy
@@ -94,12 +92,13 @@ enum EDynamicRenderingPass : uint32_t {
   MaskCullBack        = 0b10000,
   BlendCullNone       = 0b100000,
   Skybox              = 0b1000000,
-  PBR                 = 0b10000000,
-  PPDownsample        = 0b100000000,
-  PPUpsample          = 0b1000000000,
-  PPGetExposure       = 0b10000000000,
-  PPTAA               = 0b100000000000,
-  Present             = 0b1000000000000
+  AlphaCompositing    = 0b10000000,
+  PBR                 = 0b100000000,
+  PPDownsample        = 0b1000000000,
+  PPUpsample          = 0b10000000000,
+  PPGetExposure       = 0b100000000000,
+  PPTAA               = 0b1000000000000,
+  Present             = 0b10000000000000
 };
 
 enum class ELightType {
@@ -195,6 +194,8 @@ struct RDynamicRenderingInfo {
 
   struct {
     VkBool32 enableBlending = VK_FALSE;
+    VkBool32 enableDepthWrite = VK_TRUE;
+    VkBool32 enableDepthTest = VK_TRUE;
     VkPrimitiveTopology primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     VkPolygonMode polygonMode = VK_POLYGON_MODE_FILL;
     VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT;
@@ -245,6 +246,8 @@ struct RGraphicsPipelineInfo {
   std::string geometryShader;
   VkPipelineRenderingCreateInfo* pDynamicPipelineInfo = nullptr;
   VkBool32 enableBlending = VK_FALSE;
+  VkBool32 enableDepthWrite = VK_TRUE;
+  VkBool32 enableDepthTest = VK_TRUE;
   VkPrimitiveTopology primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
   VkPolygonMode polygonMode = VK_POLYGON_MODE_FILL;
   VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT;
@@ -351,6 +354,17 @@ struct RTextureInfo {
   VkMemoryPropertyFlags memoryFlags = NULL;
   VmaMemoryUsage vmaMemoryUsage = VMA_MEMORY_USAGE_AUTO;
   RSamplerInfo samplerInfo = RSamplerInfo{};
+};
+
+struct RTransparencyLinkedListData {
+  uint32_t settings[2];       // x = current node index, y = maximum allowed nodes
+};
+
+// An OIT linked node
+struct RTransparencyLinkedListNode {
+  glm::vec4 color;
+  float depth;
+  uint32_t next;
 };
 
 struct RViewport {

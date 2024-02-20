@@ -6,10 +6,6 @@
 
 layout (location = 0) in vec2 inUV;
 
-// Material bindings
-
-layout (set = 2, binding = 0) uniform sampler2D samplers[];
-
 layout (location = 0) out float outColor;
 
 void main() {

@@ -172,8 +172,7 @@ TResult core::MRenderer::createSceneBuffers() {
                config::scene::getNodeTransformBufferSize(),
                scene.nodeTransformBuffer, nullptr);
 
-  RE_LOG(Log,
-         "Allocating scene buffer for %d unique skins.",
+  RE_LOG(Log, "Allocating scene buffer for %d unique skins.",
          config::scene::entityBudget);
   createBuffer(EBufferType::CPU_STORAGE,
                config::scene::getSkinTransformBufferSize(),
@@ -186,6 +185,14 @@ TResult core::MRenderer::createSceneBuffers() {
     createBuffer(EBufferType::CPU_VERTEX, sizeof(RInstanceData) * config::scene::nodeBudget,
       scene.instanceBuffers[instanceBufferId], nullptr);
   }
+
+  RE_LOG(Log, "Allocating order independent transparency buffers.");
+  createBuffer(EBufferType::DGPU_STORAGE,
+    config::renderWidth * config::renderHeight * sizeof(RTransparencyLinkedListNode) * RE_MAXTRANSPARENTLAYERS,
+    scene.alphaLinkedListBuffer, nullptr);
+
+  createBuffer(EBufferType::CPU_STORAGE, sizeof(RTransparencyLinkedListData),
+    scene.alphaLinkedListDataBuffer, nullptr);
 
   return RE_OK;
 }
@@ -208,6 +215,9 @@ void core::MRenderer::destroySceneBuffers() {
     vmaDestroyBuffer(memAlloc, scene.instanceBuffers[instanceBufferId].buffer,
                      scene.instanceBuffers[instanceBufferId].allocation);
   }
+
+  vmaDestroyBuffer(memAlloc, scene.alphaLinkedListBuffer.buffer, scene.alphaLinkedListBuffer.allocation);
+  vmaDestroyBuffer(memAlloc, scene.alphaLinkedListDataBuffer.buffer, scene.alphaLinkedListDataBuffer.allocation);
 }
 
 core::MRenderer::RLightingData* core::MRenderer::getLightingData() {
@@ -497,6 +507,34 @@ TResult core::MRenderer::createImageTargets() {
   RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
 #endif
 
+  // Target for TAA, stores history
+  rtName = RTGT_ABUFFER;
+
+  textureInfo = RTextureInfo{};
+  textureInfo.name = rtName;
+  textureInfo.width = config::renderWidth;
+  textureInfo.height = config::renderHeight;
+  textureInfo.format = VK_FORMAT_R32_UINT;
+  textureInfo.isCubemap = false;
+  textureInfo.layerCount = 1u;
+  textureInfo.mipLevels = 1u;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_STORAGE_BIT;
+
+  pNewTexture = core::resources.createTexture(&textureInfo);
+
+  if (!pNewTexture) {
+    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
+    return RE_CRITICAL;
+  }
+
+  scene.pTransparencyStorageTexture = pNewTexture;
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
+#endif
+
   // set swapchain subresource copy region
   swapchain.copyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   swapchain.copyRegion.srcSubresource.baseArrayLayer = 0;
@@ -520,6 +558,7 @@ TResult core::MRenderer::createImageTargets() {
 TResult core::MRenderer::createGBufferRenderTargets() {
   std::vector<std::string> targetNames;
   scene.pGBufferTargets.clear();
+  scene.pABufferTargets.clear();
 
   targetNames.emplace_back(RTGT_GPOSITION);
   targetNames.emplace_back(RTGT_GDIFFUSE);
@@ -533,6 +572,7 @@ TResult core::MRenderer::createGBufferRenderTargets() {
 
     VkFormat imageFormat = core::vulkan::formatHDR16;
 
+    // Manage specific render target formats
     if (targetName == RTGT_GPOSITION) imageFormat = core::vulkan::formatHDR32;
     else if (targetName == RTGT_VELOCITYMAP) imageFormat = VK_FORMAT_R16G16_SFLOAT;
 
@@ -785,6 +825,11 @@ TResult core::MRenderer::setRendererDefaults() {
   system.haltonJitter.resize(core::vulkan::haltonSequenceCount);
   math::getHaltonJitter(system.haltonJitter, config::renderWidth, config::renderHeight);
 
+  // Setup transparency linked list
+  scene.alphaLinkedListData.settings[0] = 0u;
+  scene.alphaLinkedListData.settings[1] = config::renderWidth * config::renderHeight * RE_MAXTRANSPARENTLAYERS;
+  memcpy(scene.alphaLinkedListDataBuffer.allocInfo.pMappedData, &scene.alphaLinkedListData, sizeof(RTransparencyLinkedListData));
+
   return RE_OK;
 }
 
@@ -933,7 +978,7 @@ TResult core::MRenderer::createSyncObjects() {
   sync.asyncUpdateEntities.bindFunction(this, &MRenderer::updateBoundEntities);
   sync.asyncUpdateEntities.start();
 
-  sync.asyncUpdateEntities.bindFunction(this, &MRenderer::updateInstanceBuffer);
+  sync.asyncUpdateInstanceBuffers.bindFunction(this, &MRenderer::updateInstanceBuffer);
   sync.asyncUpdateInstanceBuffers.start();
 
   return RE_OK;
@@ -952,6 +997,9 @@ void core::MRenderer::destroySyncObjects() {
 
   RE_LOG(Log, "Stopping entity update thread.");
   sync.asyncUpdateEntities.stop();
+
+  RE_LOG(Log, "Stopping instance buffers update thread.");
+  sync.asyncUpdateInstanceBuffers.stop();
 }
 
 void core::MRenderer::updateSceneUBO(uint32_t currentImage) {

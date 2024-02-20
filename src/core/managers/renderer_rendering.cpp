@@ -534,8 +534,11 @@ void core::MRenderer::renderFrame() {
   // Additional front rendering passes
   executeRenderingPass(cmdBuffer, EDynamicRenderingPass::Skybox);
 
+  //executeRenderingPass(cmdBuffer, EDynamicRenderingPass::AlphaCompositing, material.pABuffer, true);
+
   /* 4. Postprocessing pass */
 
+  // Includes exposure, bloom and TAA passes
   executePostProcessPass(cmdBuffer);
 
   /* 5. Final presentation pass */

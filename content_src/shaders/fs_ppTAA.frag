@@ -7,10 +7,6 @@
 
 layout (location = 0) in vec2 inUV;
 
-// Material bindings
-
-layout (set = 2, binding = 0) uniform sampler2D samplers[];
-
 layout (location = 0) out vec4 outColor;
 
 void getTAAClampValues(vec3 color, vec2 offsetDelta, out vec3 boxMin, out vec3 boxMax) {

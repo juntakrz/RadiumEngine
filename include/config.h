@@ -8,6 +8,7 @@
 #define MAX_TRANSFER_BUFFERS    2u
 #define RE_MAXLIGHTS            32u             // Includes directional light, always at index 0
 #define RE_MAXSHADOWCASTERS     4u
+#define RE_MAXTRANSPARENTLAYERS 4u
 
 // render targets
 #define RTGT_PRESENT            "RT2D_Present"      // Final swapchain target
@@ -30,10 +31,12 @@
 #define RTGT_GNORMAL            "RT2D_GNormal"      // Normals output
 #define RTGT_GPHYSICAL          "RT2D_GPhysical"    // Physical properties output
 #define RTGT_GEMISSIVE          "RT2D_GEmissive"    // Emissive color output
+#define RTGT_ABUFFER            "RT2D_ABuffer"      // Forward+ alpha output
 #define RTGT_GPBR               "RT2D_GPBR"         // Render target for combined G-Buffer output
 
 // default materials
 #define RMAT_GBUFFER            "RMat_GBuffer"
+#define RMAT_ABUFFER            "RMat_ABuffer"
 #define RMAT_GPBR               "RMat_GPBR"
 #define RMAT_SHADOW             "RMat_Shadow"
 

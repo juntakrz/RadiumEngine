@@ -81,34 +81,32 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
     }
   }
 
-  // scene matrices and environmental maps
+  // Scene matrices and environmental maps
   // 0 - MVP matrix
-  // 1 - lighting variables
-  // 2 - environment filtered map
-  // 3 - environment irradiance map
-  // 4 - generated BRDF LUT map
+  // 1 - Lighting data
+  // 2 - Environment filtered map
+  // 3 - Environment irradiance map
+  // 4 - Generated BRDF LUT map
   {
     system.descriptorSetLayouts.emplace(EDescriptorSetLayout::Scene,
                                         VK_NULL_HANDLE);
 
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
-        {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1,
-         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
-        {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT,
-         nullptr},
-        {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
-         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
-        {3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
-         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
-        {4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
-         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+      {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1,
+        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+      {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT,
+        nullptr},
+      {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
+        VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+      {3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
+        VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+      {4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
+        VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
     };
     VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
-    setLayoutCreateInfo.sType =
-        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    setLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     setLayoutCreateInfo.pBindings = setLayoutBindings.data();
-    setLayoutCreateInfo.bindingCount =
-        static_cast<uint32_t>(setLayoutBindings.size());
+    setLayoutCreateInfo.bindingCount = static_cast<uint32_t>(setLayoutBindings.size());
 
     if (vkCreateDescriptorSetLayout(
             logicalDevice.device, &setLayoutCreateInfo, nullptr,
@@ -119,57 +117,9 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
     }
   }
 
-  // standard RMaterial set of 8 texture maps
-  // 0 - baseColor
-  // 1 - normal
-  // 2 - metalness / roughness
-  // 3 - ambient occlusion
-  // 4 - emissive
-  // 5 - extra0
-  // 6 - extra1
-  // 7 - extra2
-  {
-    system.descriptorSetLayouts.emplace(EDescriptorSetLayout::Material,
-                                        VK_NULL_HANDLE);
-
-    std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
-        {0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
-         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
-        {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
-         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
-        {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
-         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
-        {3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
-         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
-        {4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
-         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
-        {5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
-        VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
-        {6, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
-         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
-        {7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
-         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}};
-
-    VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
-    setLayoutCreateInfo.sType =
-        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    setLayoutCreateInfo.pBindings = setLayoutBindings.data();
-    setLayoutCreateInfo.bindingCount =
-        static_cast<uint32_t>(setLayoutBindings.size());
-
-    if (vkCreateDescriptorSetLayout(
-            logicalDevice.device, &setLayoutCreateInfo, nullptr,
-            &system.descriptorSetLayouts.at(EDescriptorSetLayout::Material)) !=
-        VK_SUCCESS) {
-      RE_LOG(Critical, "Failed to create material descriptor set layout.");
-      return RE_CRITICAL;
-    }
-  }
-
   // MaterialEXT descriptor layout
   {
-    system.descriptorSetLayouts.emplace(EDescriptorSetLayout::MaterialEXT,
-      VK_NULL_HANDLE);
+    system.descriptorSetLayouts.emplace(EDescriptorSetLayout::MaterialEXT, VK_NULL_HANDLE);
 
     const VkDescriptorBindingFlagsEXT bindingFlags =
       VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT |
@@ -177,23 +127,21 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
       VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT |
       VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT_EXT;
 
-    VkDescriptorSetLayoutBindingFlagsCreateInfoEXT bindingFlagsCreateInfo{};
-    bindingFlagsCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
-    bindingFlagsCreateInfo.bindingCount = 1;
-    bindingFlagsCreateInfo.pBindingFlags = &bindingFlags;
-
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
         {0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         config::scene::sampledImageBudget,
         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}
     };
 
+    VkDescriptorSetLayoutBindingFlagsCreateInfoEXT bindingFlagsCreateInfo{};
+    bindingFlagsCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
+    bindingFlagsCreateInfo.bindingCount = static_cast<uint32_t>(setLayoutBindings.size());;
+    bindingFlagsCreateInfo.pBindingFlags = &bindingFlags;
+
     VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
-    setLayoutCreateInfo.sType =
-      VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    setLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     setLayoutCreateInfo.pBindings = setLayoutBindings.data();
-    setLayoutCreateInfo.bindingCount =
-      static_cast<uint32_t>(setLayoutBindings.size());
+    setLayoutCreateInfo.bindingCount = static_cast<uint32_t>(setLayoutBindings.size());
     setLayoutCreateInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
     setLayoutCreateInfo.pNext = &bindingFlagsCreateInfo;
 
@@ -206,67 +154,33 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
     }
   }
 
-  // PBR input layout
-  // 0 - color input
-  // 1 - normal input
-  // 2 - physical input (metalness, roughness, ambient occlusion)
-  // 3 - position input
-  // 4 - emissive input
-  {
-    system.descriptorSetLayouts.emplace(EDescriptorSetLayout::PBRInput,
-                                        VK_NULL_HANDLE);
-
-    std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
-        {0, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1,
-         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
-        {1, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1,
-         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
-        {2, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1,
-         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
-        {3, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1,
-         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
-        {4, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1,
-         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}};
-
-    VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
-    setLayoutCreateInfo.sType =
-        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    setLayoutCreateInfo.pBindings = setLayoutBindings.data();
-    setLayoutCreateInfo.bindingCount =
-        static_cast<uint32_t>(setLayoutBindings.size());
-
-    if (vkCreateDescriptorSetLayout(
-            logicalDevice.device, &setLayoutCreateInfo, nullptr,
-            &system.descriptorSetLayouts.at(EDescriptorSetLayout::PBRInput)) !=
-        VK_SUCCESS) {
-      RE_LOG(Critical, "Failed to create PBR input descriptor set layout.");
-      return RE_CRITICAL;
-    }
-  }
-
-  // model transform matrices
-  // 0 - model transform matrices (offset stored in entity)
-  // 1 - per node transform matrices (offset SHOULD BE stored by animations
-  // manager) 2 - per model inverse bind matrices (offset SHOULD BE stored by
-  // animations manager)
+  // Model transform matrices
+  // 0 - Model transform matrices (offsets are stored by AEntity)
+  // 1 - Per node transform matrices
+  // 2 - Per model inverse bind matrices
+  // 3 - Transparency linked list node buffer
+  // 4 - Transparency linked list data buffer
   {
     system.descriptorSetLayouts.emplace(EDescriptorSetLayout::Model,
                                         VK_NULL_HANDLE);
 
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
-        {0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1,
-         VK_SHADER_STAGE_VERTEX_BIT, nullptr},
-        {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1,
-         VK_SHADER_STAGE_VERTEX_BIT, nullptr},
-        {2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1,
-         VK_SHADER_STAGE_VERTEX_BIT, nullptr}};
+      {0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1,
+        VK_SHADER_STAGE_VERTEX_BIT, nullptr},
+      {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1,
+        VK_SHADER_STAGE_VERTEX_BIT, nullptr},
+      {2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1,
+        VK_SHADER_STAGE_VERTEX_BIT, nullptr},
+      {3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
+        VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+      {4, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1,
+        VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}
+    };
 
     VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
-    setLayoutCreateInfo.sType =
-        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    setLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     setLayoutCreateInfo.pBindings = setLayoutBindings.data();
-    setLayoutCreateInfo.bindingCount =
-        static_cast<uint32_t>(setLayoutBindings.size());
+    setLayoutCreateInfo.bindingCount = static_cast<uint32_t>(setLayoutBindings.size());
 
     if (vkCreateDescriptorSetLayout(
             logicalDevice.device, &setLayoutCreateInfo, nullptr,
@@ -312,11 +226,9 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
     };
 
     VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
-    setLayoutCreateInfo.sType =
-        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    setLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     setLayoutCreateInfo.pBindings = setLayoutBindings.data();
-    setLayoutCreateInfo.bindingCount =
-        static_cast<uint32_t>(setLayoutBindings.size());
+    setLayoutCreateInfo.bindingCount = static_cast<uint32_t>(setLayoutBindings.size());
 
     if (vkCreateDescriptorSetLayout(
             logicalDevice.device, &setLayoutCreateInfo, nullptr,
@@ -501,7 +413,17 @@ TResult core::MRenderer::createDescriptorSets() {
     skinningMatricesBufferInfo.offset = 0;
     skinningMatricesBufferInfo.range = VK_WHOLE_SIZE;
 
-    std::vector<VkWriteDescriptorSet> writeSets(3);
+    VkDescriptorBufferInfo alphaLLBufferInfo{};
+    alphaLLBufferInfo.buffer = scene.alphaLinkedListBuffer.buffer;
+    alphaLLBufferInfo.offset = 0;
+    alphaLLBufferInfo.range = VK_WHOLE_SIZE;
+
+    VkDescriptorBufferInfo alphaLLBufferDataInfo{};
+    alphaLLBufferDataInfo.buffer = scene.alphaLinkedListDataBuffer.buffer;
+    alphaLLBufferDataInfo.offset = 0;
+    alphaLLBufferDataInfo.range = VK_WHOLE_SIZE;
+
+    std::vector<VkWriteDescriptorSet> writeSets(5);
     writeSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     writeSets[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
     writeSets[0].descriptorCount = 1;
@@ -522,6 +444,20 @@ TResult core::MRenderer::createDescriptorSets() {
     writeSets[2].dstSet = scene.transformDescriptorSet;
     writeSets[2].dstBinding = 2;
     writeSets[2].pBufferInfo = &skinningMatricesBufferInfo;
+
+    writeSets[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeSets[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    writeSets[3].descriptorCount = 1;
+    writeSets[3].dstSet = scene.transformDescriptorSet;
+    writeSets[3].dstBinding = 3;
+    writeSets[3].pBufferInfo = &alphaLLBufferInfo;
+
+    writeSets[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeSets[4].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    writeSets[4].descriptorCount = 1;
+    writeSets[4].dstSet = scene.transformDescriptorSet;
+    writeSets[4].dstBinding = 4;
+    writeSets[4].pBufferInfo = &alphaLLBufferDataInfo;
 
     vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeSets.size()),
                            writeSets.data(), 0, nullptr);

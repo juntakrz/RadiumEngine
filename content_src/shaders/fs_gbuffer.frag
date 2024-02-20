@@ -19,8 +19,6 @@ layout (set = 0, binding = 0) uniform UBOScene {
 	vec3 camPos;
 } scene;
 
-layout (set = 2, binding = 0) uniform sampler2D samplers[];
-
 layout (location = 0) out vec4 outPosition;
 layout (location = 1) out vec4 outColor;
 layout (location = 2) out vec4 outNormal;
@@ -76,11 +74,6 @@ void main() {
 	int textureSet = getTextureSet(COLORMAP);
 	if (textureSet > -1) {
 		outColor = texture(samplers[material.samplerIndex[COLORMAP]], textureSet == 0 ? inUV0 : inUV1);
-	}
-
-	// TODO: discard on alphaMask == 1.0 here and depth-sort everything, unless requested by the material
-	if (material.alphaMask > 0.9 && outColor.a < material.alphaMaskCutoff && material.alphaMaskCutoff < 1.1) {
-		discard;
 	}
 	
 	// apply vertex colors if present
