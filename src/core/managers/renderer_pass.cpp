@@ -271,7 +271,7 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     info.pipelineLayout = EPipelineLayout::Scene;
     info.viewportId = EViewport::vpMain;
     info.vertexShader = "vs_quad.spv";
-    info.fragmentShader = "fs_alphaCompositing.spv";
+    info.fragmentShader = "fs_transparencyLayer.spv";
     info.colorAttachmentClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
     info.layoutInfo.validateColorAttachmentLayout = true;
     info.layoutInfo.transitionColorAttachmentLayout = true;

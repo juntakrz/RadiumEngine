@@ -150,7 +150,7 @@ float getShadow(vec3 fragmentPosition, int distanceIndex) {
 }
 
 void main() {
-	const float occlusionStrength = 1.0;
+	const float occlusionStrength = 1.0;	// TODO: modify by the material variable
 	const vec3 shadowColor = lighting.shadowColor.rgb + vec3(1.0);
 	vec3 f0 = vec3(0.04);
 
@@ -226,7 +226,6 @@ void main() {
 		}
 	}
 	
-	//vec3 shadow = shadowColor * getShadow(worldPos, relativeDistance);
 	vec3 shadow = shadowColor * shadowA;
 	shadow = clamp(shadow, 0.0, 1.0);
 	color *= shadow;

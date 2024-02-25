@@ -3,7 +3,8 @@
 #include "include/common.glsl"
 #include "include/fragment.glsl"
 
-#define MAX_TRANSPARENCY_LAYERS 4
+#define MAX_TRANSPARENCY_LAYERS     4
+#define MAX_TRANSPARENCY_THRESHOLD  0.75
 
 struct transparencyNode{
 	vec4 color;
@@ -52,13 +53,18 @@ void main() {
     }
 
     // Do transparency blending
-    vec4 color = vec4(0.0, 0.0, 0.0, 0.0);
+    vec4 color = vec4(0.0);
     for (int i = 0; i < count; ++i) {
         color = mix(color, fragmentNodes[i].color, fragmentNodes[i].color.a);
     }
 
     // Get opaque results and blend with the final transparent color
-    vec4 sampleColor = vec4(texture(samplers[material.samplerIndex[COLORMAP]], inUV).rgb, 1.0);
+    vec4 sampleColor = texelFetch(samplers[material.samplerIndex[COLORMAP]], ivec2(gl_FragCoord.xy), 0);
+
+    // Adjust final mix power when alpha is above threshold to deal with potential transparency errors
+    if (color.a > MAX_TRANSPARENCY_THRESHOLD) { 
+        color.a = 1.0;
+    }
 
     outColor = mix(sampleColor, color, color.a);
 }
