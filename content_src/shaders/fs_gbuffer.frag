@@ -119,11 +119,14 @@ void main() {
 	textureSet = getTextureSet(EMISMAP);
 	if (textureSet > -1) {
 		vec3 emissive = texture(samplers[material.samplerIndex[EMISMAP]], textureSet == 0 ? inUV0 : inUV1).rgb;
-		outEmissive = vec4(emissive, 1.0);
+		outEmissive.rgb = emissive;
 	}
 
 	// Brighten or darken emission by the glow color value
-	outEmissive += vec4(material.glowColor);
+	outEmissive.rgb += material.glowColor.rgb;
+
+	// Storing polygon facing to account for dual sided faces in a PBR pass
+	outEmissive.a = (gl_FrontFacing) ? 1.0 : 0.0;
 
 	// 6. Store velocity vector
 	outVelocity = getVelocity(inPrevWorldPos, inCurrentWorldPos);

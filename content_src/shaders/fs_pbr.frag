@@ -104,7 +104,7 @@ float filterPCF(vec3 shadowCoord, vec2 offset, uint distanceIndex) {
 	return 1.0;
 }
 
-float getShadow(vec3 fragmentPosition, int distanceIndex) {
+float getShadow(vec3 fragmentPosition, int distanceIndex, float facing) {
 	ivec2 texDim = textureSize(samplers[lighting.samplerIndex[SUNLIGHTINDEX]], 0);
 	float shadow = 0.0;
 	float scale = 1.0;
@@ -130,6 +130,11 @@ float getShadow(vec3 fragmentPosition, int distanceIndex) {
 	
 	if (shadowCoord.x < 0.0 || shadowCoord.x > 1.0 || shadowCoord.y < 0.0 || shadowCoord.y > 1.0) {
 		return 1.0;
+	}
+	
+	// Adjust for the polygon facing, if 0.0 - it was a back face and thus should have a slightly larger depth
+	if (facing < 0.5) {
+		shadowCoord.z += 0.0001;
 	}
 
 //	TODO: find a way to smooth shadows more based on the distance between shadow and fragment depths
@@ -161,7 +166,10 @@ void main() {
 	float metallic = texture(samplers[material.samplerIndex[PHYSMAP]], inUV0).r;
 	float perceptualRoughness = texture(samplers[material.samplerIndex[PHYSMAP]], inUV0).g;
 	float ao = texture(samplers[material.samplerIndex[PHYSMAP]], inUV0).b;
-	vec3 emissive = texture(samplers[material.samplerIndex[EMISMAP]], inUV0).rgb;
+	vec4 emissiveData = texture(samplers[material.samplerIndex[EMISMAP]], inUV0);
+
+	vec3 emissive = emissiveData.rgb;
+	float facing = emissiveData.a;
 
 	vec3 diffuseColor = baseColor.rgb * (vec3(1.0) - f0);
 	diffuseColor *= 1.0 - metallic;
@@ -214,12 +222,12 @@ void main() {
 	int distanceIndex;
 	for (distanceIndex = MAXCASCADES - 1; distanceIndex > -1; distanceIndex--) {
 		if (relativeDistance > cascadeDistances[distanceIndex]) { 
-			shadowA = getShadow(worldPos, distanceIndex);
+			shadowA = getShadow(worldPos, distanceIndex, facing);
 
 			// Smoothly interpolate shadow cascades
 			if (distanceIndex < MAXCASCADES - 1) {
 				float interpolation = interpolateCascades(relativeDistance, distanceIndex);
-				float shadowB = getShadow(worldPos, distanceIndex + 1);
+				float shadowB = getShadow(worldPos, distanceIndex + 1, facing);
 				shadowA = mix(shadowA, shadowB, interpolation);
 			}
 			break;

@@ -16,6 +16,11 @@ layout(location = 0) in vec2 inUV;
 
 layout (location = 0) out vec4 outColor;
 
+layout (set = 1, binding = 3) buffer transparencyLinkedListData {
+	uint nodeCount;
+	uint maxNodeCount;
+};
+
 layout (set = 1, binding = 4, r32ui) uniform coherent uimage2D headIndexImage; 
 
 // Transparency linked list buffer
@@ -66,5 +71,7 @@ void main() {
         color.a = 1.0;
     }
 
+    nodeCount = 0;
+    
     outColor = mix(sampleColor, color, color.a);
 }

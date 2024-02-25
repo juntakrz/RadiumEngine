@@ -191,8 +191,8 @@ TResult core::MRenderer::createSceneBuffers() {
     config::renderWidth * config::renderHeight * sizeof(RTransparencyLinkedListNode) * RE_MAXTRANSPARENTLAYERS,
     scene.transparencyLinkedListBuffer, nullptr);
 
-  createBuffer(EBufferType::CPU_STORAGE, sizeof(RTransparencyLinkedListData),
-    scene.transparencyLinkedListDataBuffer, nullptr);
+  createBuffer(EBufferType::DGPU_STORAGE, sizeof(RTransparencyLinkedListData),
+    scene.transparencyLinkedListDataBuffer, &scene.transparencyLinkedListData);
 
   RE_LOG(Log, "Creating an exposure/luminance buffer.");  // 16 * 16 * float32 color = 1024 bytes
   createBuffer(EBufferType::CPU_STORAGE, 1024, postprocess.exposureStorageBuffer, nullptr);
@@ -553,6 +553,10 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
+  textureInfo.samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  textureInfo.samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  textureInfo.samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+
   pNewTexture = core::resources.createTexture(&textureInfo);
 
   if (!pNewTexture) {
@@ -861,7 +865,6 @@ TResult core::MRenderer::setRendererDefaults() {
 
   scene.transparencyLinkedListData.nodeCount = 0u;
   scene.transparencyLinkedListData.maxNodeCount = config::renderWidth * config::renderHeight * RE_MAXTRANSPARENTLAYERS;
-  memcpy(scene.transparencyLinkedListDataBuffer.allocInfo.pMappedData, &scene.transparencyLinkedListData, sizeof(RTransparencyLinkedListData));
 
   return RE_OK;
 }
@@ -1076,8 +1079,8 @@ TResult core::MRenderer::initialize() {
   updateAspectRatio();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandPools();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createCoreCommandBuffers();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createSceneBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = setRendererDefaults();
+  if (chkResult <= RE_ERRORLIMIT) chkResult = createSceneBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSetLayouts();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createPipelineLayouts();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createViewports();

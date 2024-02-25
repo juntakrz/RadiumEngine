@@ -4,8 +4,7 @@
 #include "core/model/model.h"
 #include "core/managers/renderer.h"
 
-TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuffer& outBuffer, void* inData)
-{
+TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuffer& outBuffer, void* inData) {
   outBuffer.type = type;
   RBuffer stagingBuffer;
   VmaAllocationCreateInfo allocInfo{};

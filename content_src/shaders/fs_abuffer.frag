@@ -124,6 +124,10 @@ float filterPCF(vec3 shadowCoord, vec2 offset, uint distanceIndex) {
 	float shadowDepth = texture(arraySamplers[lighting.samplerIndex[SUNLIGHTINDEX]], vec3(shadowCoord.st + offset, distanceIndex)).r;
 	shadowDepth += shadowBias * float(distanceIndex + 1);
 
+	if (!gl_FrontFacing) {
+		shadowCoord.z += 0.0001;
+	}
+
 	if (shadowCoord.z > shadowDepth) {
 		return 0.25;
 	}
@@ -132,6 +136,8 @@ float filterPCF(vec3 shadowCoord, vec2 offset, uint distanceIndex) {
 }
 
 float getShadow(vec3 fragmentPosition, int distanceIndex) {
+	
+
 	ivec2 texDim = textureSize(samplers[lighting.samplerIndex[SUNLIGHTINDEX]], 0);
 	float shadow = 0.0;
 	float scale = 1.0;
@@ -186,27 +192,17 @@ vec3 getNormal(int textureSet) {
 	return normalize(TBN * tangentNormal) * material.bumpIntensity;
 }
 
-vec4 getColor() {
+vec4 getColor(vec4 baseColor) {
 	const float occlusionStrength = 1.0;	// TODO: modify by the material variable
 	const vec3 shadowColor = lighting.shadowColor.rgb + vec3(1.0);
-	vec4 baseColor = vec4(0.0);
 	vec3 emissiveColor = vec3(0.0);
 	vec3 f0 = vec3(0.04);
-
-	int textureSet = getTextureSet(COLORMAP);
-	if (textureSet > -1) {
-		baseColor = texture(samplers[material.samplerIndex[COLORMAP]], textureSet == 0 ? inUV0 : inUV1);
-	}
-
-	if (baseColor.a < MIN_TRANSPARENCY_THRESHOLD) {
-		return vec4(0.0);
-	}
 	
 	float perceptualRoughness = material.roughnessFactor;
 	float metallic = material.metallicFactor;
 
 	// Extract normal for this fragment
-	textureSet = getTextureSet(NORMALMAP);
+	int textureSet = getTextureSet(NORMALMAP);
 	vec3 normal = (textureSet > -1 && baseColor.a > MAX_TRANSPARENCY_THRESHOLD) ? getNormal(textureSet) : normalize(inNormal);
 
 	// Get metallic and roughness properties from the texture if available
@@ -315,17 +311,28 @@ vec4 getColor() {
 }
 
 void main() {
+	vec4 baseColor = vec4(0.0);
+
+	int textureSet = getTextureSet(COLORMAP);
+	if (textureSet > -1) {
+		baseColor = texture(samplers[material.samplerIndex[COLORMAP]], textureSet == 0 ? inUV0 : inUV1);
+	}
+
+	if (baseColor.a < MIN_TRANSPARENCY_THRESHOLD) {
+		discard;
+	}
+
 	// Increase the node count
     uint nodeIndex = atomicAdd(nodeCount, 1);
 
-    // Check if LinkedListSBO is full
+    // Check if a linked list is full
     if (nodeIndex < maxNodeCount)
     {
         // Exchange new head index and previous head index
         uint prevHeadIndex = imageAtomicExchange(headIndexImage, ivec2(gl_FragCoord.xy), nodeIndex);
 
         // Store node data
-        nodes[nodeIndex].color = getColor();
+        nodes[nodeIndex].color = getColor(baseColor);
         nodes[nodeIndex].depth = gl_FragCoord.z;
         nodes[nodeIndex].nextNodeIndex = prevHeadIndex;
     }

@@ -204,6 +204,9 @@ void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynam
 }
 
 void core::MRenderer::prepareFrameResources(VkCommandBuffer commandBuffer) {
+  /*scene.transparencyLinkedListData.nodeCount = 0u;
+  memcpy(scene.transparencyLinkedListDataBuffer.allocInfo.pMappedData, &scene.transparencyLinkedListData, sizeof(uint32_t));*/
+
   VkDeviceSize vbOffset = 0u;
   vkCmdBindVertexBuffers(commandBuffer, 0, 1, &scene.vertexBuffer.buffer, &vbOffset);
   vkCmdBindVertexBuffers(commandBuffer, 1, 1, &scene.instanceBuffers[renderView.frameInFlight].buffer, &vbOffset);
@@ -222,9 +225,6 @@ void core::MRenderer::prepareFrameResources(VkCommandBuffer commandBuffer) {
     &scene.transparencyLinkedListClearColor, 1u, &scene.transparencySubRange);
   
   vkCmdFillBuffer(commandBuffer, scene.transparencyLinkedListBuffer.buffer, 0, sizeof(uint32_t), 0);
-
-  scene.transparencyLinkedListData.nodeCount = 0u;
-  memcpy(scene.transparencyLinkedListDataBuffer.allocInfo.pMappedData, &scene.transparencyLinkedListData, sizeof(uint32_t));
 }
 
 void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uint32_t cascadeIndex) {
