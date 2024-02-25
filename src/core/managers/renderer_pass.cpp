@@ -211,7 +211,7 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
 
     createDynamicRenderingPass(EDynamicRenderingPass::OpaqueCullNone, &info);
 
-    // Blend pass without culling
+    // Blend pass without culling and depth writes
 
     //colorAttachmentCount = static_cast<uint32_t>(scene.pABufferTargets.size());
 
@@ -219,14 +219,8 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     info.pipelineInfo.enableBlending = VK_TRUE;
     info.pipelineInfo.enableDepthWrite = VK_FALSE;
     info.layoutInfo.transitionColorAttachmentLayout = true;
-    info.clearColorAttachments = false;
+    info.clearColorAttachments = true;
     info.colorAttachments.resize(0);
-
-    //info.colorAttachments.resize(colorAttachmentCount);
-    //for (uint8_t i = 0; i < colorAttachmentCount; ++i) {
-    //  info.colorAttachments[i] =
-    //  { scene.pABufferTargets[i], scene.pABufferTargets[i]->texture.view, scene.pABufferTargets[i]->texture.imageFormat };
-    //}
 
     createDynamicRenderingPass(EDynamicRenderingPass::BlendCullNone, &info);
 
@@ -271,13 +265,17 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
 
   // Alpha compositing pass, return the results of alpha buffer
   {
+    RTexture* pColorAttachment = core::resources.getTexture(RTGT_APBR);
+
     RDynamicRenderingInfo info{};
     info.pipelineLayout = EPipelineLayout::Scene;
     info.viewportId = EViewport::vpMain;
     info.vertexShader = "vs_quad.spv";
     info.fragmentShader = "fs_alphaCompositing.spv";
     info.colorAttachmentClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
+    info.layoutInfo.validateColorAttachmentLayout = true;
     info.layoutInfo.transitionColorAttachmentLayout = true;
+    info.colorAttachments = {{ pColorAttachment, pColorAttachment->texture.view, pColorAttachment->texture.imageFormat }};
 
     createDynamicRenderingPass(EDynamicRenderingPass::AlphaCompositing, &info);
   }

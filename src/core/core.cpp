@@ -66,8 +66,8 @@ void core::run() {
   modelConfigInfo.animationLoadMode = EAnimationLoadMode::ExtractToManager;
 
   core::world.loadModelFromFile("content/models/wc3guy/scene.gltf", "mdlGuy", &modelConfigInfo);
-  //core::world.loadModelFromFile("content/models/castle/scene.gltf", "mdlCastle");
-  //core::world.loadModelFromFile("content/models/tree/scene.gltf", "mdlTree");
+  core::world.loadModelFromFile("content/models/castle/scene.gltf", "mdlCastle");
+  core::world.loadModelFromFile("content/models/tree/scene.gltf", "mdlTree");
   core::world.loadModelFromFile("content/models/grass_02/scene.gltf", "mdlGrass");
   //
   
@@ -83,7 +83,7 @@ void core::run() {
   pPawn->setLocation(1.0f, -0.8f, 2.0f);
   pPawn->setScale(0.2f);
   pPawn->getModel()->setPrimitiveMaterial(0, 0, "RMat_Light0");
-  //pPawn->bindToRenderer();
+  pPawn->bindToRenderer();
 
   AStatic* pStatic = core::actors.createStatic("Skybox");
   pStatic->setModel(core::world.getModel(RMDL_SKYBOX));
@@ -120,31 +120,31 @@ void core::run() {
   pStatic->setScale(0.32f);
   pStatic->playAnimation("SwordAndShieldIdle", 1.1f, true, true);
 
-  //pStatic = core::actors.createStatic("StaticCastle");
-  //pStatic->setModel(core::world.getModel("mdlCastle"));
-  //pStatic->bindToRenderer();
-  //pStatic->setLocation(0.0f, 6.17f, 12.0f);
-  //pStatic->setRotation({-0.5f, -0.4f, 0.0f});
-  //pStatic->setScale(2.0f);
+  pStatic = core::actors.createStatic("StaticCastle");
+  pStatic->setModel(core::world.getModel("mdlCastle"));
+  pStatic->bindToRenderer();
+  pStatic->setLocation(0.0f, 6.17f, 12.0f);
+  pStatic->setRotation({-0.5f, -0.4f, 0.0f});
+  pStatic->setScale(2.0f);
 
-  //pStatic = core::actors.createStatic("StaticTree0");
-  //pStatic->setModel(core::world.getModel("mdlTree"));
-  //pStatic->bindToRenderer();
-  //pStatic->setLocation(1.0f, -1.35f, -0.8f);
-  //pStatic->setRotation({ 0.0f, 0.0f, 1.5f });
-  //pStatic->setScale({ 1.0f, 1.25f, 1.0f });
+  pStatic = core::actors.createStatic("StaticTree0");
+  pStatic->setModel(core::world.getModel("mdlTree"));
+  pStatic->bindToRenderer();
+  pStatic->setLocation(1.0f, -1.35f, -0.8f);
+  pStatic->setRotation({ 0.0f, 0.0f, 1.5f });
+  pStatic->setScale({ 1.0f, 1.25f, 1.0f });
 
   pStatic = core::actors.createStatic("StaticGrass0");
   pStatic->setModel(core::world.getModel("mdlGrass"));
   pStatic->bindToRenderer();
-  pStatic->setLocation(-0.5f, 0.0f, -1.0f);
+  pStatic->setLocation(-0.12f, -0.7f, -0.3f);
   pStatic->setRotation({ -1.707f, 0.0f, 0.0f });
   pStatic->setScale(0.4f);
 
   pStatic = core::actors.createStatic("StaticGrass1");
   pStatic->setModel(core::world.getModel("mdlGrass"));
   pStatic->bindToRenderer();
-  pStatic->setLocation(-0.5f, 0.0f, -0.5f);
+  pStatic->setLocation(0.3f, -0.68f, -0.4f);
   pStatic->setRotation({ -1.707f, 0.0f, 0.0f });
   pStatic->setScale(0.4f);
 

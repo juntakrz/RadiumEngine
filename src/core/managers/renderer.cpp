@@ -186,13 +186,16 @@ TResult core::MRenderer::createSceneBuffers() {
       scene.instanceBuffers[instanceBufferId], nullptr);
   }
 
-  RE_LOG(Log, "Allocating order independent transparency buffers.");
+  RE_LOG(Log, "Creating order independent transparency buffers.");
   createBuffer(EBufferType::DGPU_STORAGE,
     config::renderWidth * config::renderHeight * sizeof(RTransparencyLinkedListNode) * RE_MAXTRANSPARENTLAYERS,
-    scene.alphaLinkedListBuffer, nullptr);
+    scene.transparencyLinkedListBuffer, nullptr);
 
   createBuffer(EBufferType::CPU_STORAGE, sizeof(RTransparencyLinkedListData),
-    scene.alphaLinkedListDataBuffer, nullptr);
+    scene.transparencyLinkedListDataBuffer, nullptr);
+
+  RE_LOG(Log, "Creating an exposure/luminance buffer.");  // 16 * 16 * float32 color = 1024 bytes
+  createBuffer(EBufferType::CPU_STORAGE, 1024, postprocess.exposureStorageBuffer, nullptr);
 
   return RE_OK;
 }
@@ -216,8 +219,8 @@ void core::MRenderer::destroySceneBuffers() {
                      scene.instanceBuffers[instanceBufferId].allocation);
   }
 
-  vmaDestroyBuffer(memAlloc, scene.alphaLinkedListBuffer.buffer, scene.alphaLinkedListBuffer.allocation);
-  vmaDestroyBuffer(memAlloc, scene.alphaLinkedListDataBuffer.buffer, scene.alphaLinkedListDataBuffer.allocation);
+  vmaDestroyBuffer(memAlloc, scene.transparencyLinkedListBuffer.buffer, scene.transparencyLinkedListBuffer.allocation);
+  vmaDestroyBuffer(memAlloc, scene.transparencyLinkedListDataBuffer.buffer, scene.transparencyLinkedListDataBuffer.allocation);
 }
 
 core::MRenderer::RLightingData* core::MRenderer::getLightingData() {
@@ -507,7 +510,7 @@ TResult core::MRenderer::createImageTargets() {
   RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
 #endif
 
-  // Target for TAA, stores history
+  // Target for transparency linked list nodes
   rtName = RTGT_ABUFFER;
 
   textureInfo = RTextureInfo{};
@@ -530,6 +533,32 @@ TResult core::MRenderer::createImageTargets() {
   }
 
   scene.pTransparencyStorageTexture = pNewTexture;
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
+#endif
+
+  // Target for combining PBR output and A-Buffer
+  rtName = RTGT_APBR;
+
+  textureInfo = RTextureInfo{};
+  textureInfo.name = rtName;
+  textureInfo.width = config::renderWidth;
+  textureInfo.height = config::renderHeight;
+  textureInfo.format = core::vulkan::formatHDR16;
+  textureInfo.isCubemap = false;
+  textureInfo.layerCount = 1u;
+  textureInfo.mipLevels = 1u;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+
+  pNewTexture = core::resources.createTexture(&textureInfo);
+
+  if (!pNewTexture) {
+    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
+    return RE_CRITICAL;
+  }
 
 #ifndef NDEBUG
   RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
@@ -818,17 +847,21 @@ TResult core::MRenderer::setRendererDefaults() {
     postprocess.scissors[PPIndex].extent = {currentWidth, currentHeight};
   }
 
-  // Create compute shader storage buffer for retrieving exposure results
-  createBuffer(EBufferType::CPU_STORAGE, 1024, postprocess.exposureStorageBuffer, nullptr);
-
   // Calculate a Halton Sequence for TAA jittering
   system.haltonJitter.resize(core::vulkan::haltonSequenceCount);
   math::getHaltonJitter(system.haltonJitter, config::renderWidth, config::renderHeight);
 
   // Setup transparency linked list
-  scene.alphaLinkedListData.settings[0] = 0u;
-  scene.alphaLinkedListData.settings[1] = config::renderWidth * config::renderHeight * RE_MAXTRANSPARENTLAYERS;
-  memcpy(scene.alphaLinkedListDataBuffer.allocInfo.pMappedData, &scene.alphaLinkedListData, sizeof(RTransparencyLinkedListData));
+  scene.transparencySubRange.aspectMask = scene.pTransparencyStorageTexture->texture.aspectMask;
+  scene.transparencySubRange.baseArrayLayer = 0u;
+  scene.transparencySubRange.layerCount = 1u;
+  scene.transparencySubRange.baseMipLevel = 0u;
+  scene.transparencySubRange.levelCount = 1u;
+  scene.transparencyLinkedListClearColor.uint32[0] = 0xFFFFFFFF;
+
+  scene.transparencyLinkedListData.nodeCount = 0u;
+  scene.transparencyLinkedListData.maxNodeCount = config::renderWidth * config::renderHeight * RE_MAXTRANSPARENTLAYERS;
+  memcpy(scene.transparencyLinkedListDataBuffer.allocInfo.pMappedData, &scene.transparencyLinkedListData, sizeof(RTransparencyLinkedListData));
 
   return RE_OK;
 }

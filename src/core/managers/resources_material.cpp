@@ -76,6 +76,7 @@ void core::MResources::initialize() {
   materialInfo.textures.metalRoughness = RTGT_VELOCITYMAP;
   materialInfo.textures.occlusion = RTGT_PREVFRAME;
   materialInfo.textures.emissive = RTGT_PPTAA;
+  materialInfo.textures.extra0 = RTGT_APBR;
   materialInfo.alphaMode = EAlphaMode::Opaque;
   materialInfo.doubleSided = false;
   materialInfo.manageTextures = true;

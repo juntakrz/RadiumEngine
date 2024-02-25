@@ -60,7 +60,6 @@ class MRenderer {
     VkDescriptorSet descriptorSet;
     RMaterial* pSunShadow = nullptr;
     RMaterial* pGBuffer = nullptr;
-    RMaterial* pABuffer = nullptr;
     RMaterial* pGPBR = nullptr;
   } material;
 
@@ -79,10 +78,12 @@ class MRenderer {
 
     std::vector<RTexture*> pGBufferTargets;
     std::vector<RTexture*> pABufferTargets;
-    RBuffer alphaLinkedListBuffer;
-    RBuffer alphaLinkedListDataBuffer;
-    RTransparencyLinkedListData alphaLinkedListData;
+    RBuffer transparencyLinkedListBuffer;
+    RBuffer transparencyLinkedListDataBuffer;
+    RTransparencyLinkedListData transparencyLinkedListData;
     RTexture* pTransparencyStorageTexture = nullptr;
+    VkImageSubresourceRange transparencySubRange;
+    VkClearColorValue transparencyLinkedListClearColor;
 
     // Per frame in flight buffered camera/lighting descriptor sets
     std::vector<VkDescriptorSet> descriptorSets;
@@ -551,6 +552,8 @@ public:
 
   void renderEnvironmentMaps(VkCommandBuffer commandBuffer,
                              const uint32_t frameInterval = 1u);
+
+  void prepareFrameResources(VkCommandBuffer commandBuffer);
 
   void executeRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId,
                             RMaterial* pPushMaterial = nullptr, bool renderQuad = false);

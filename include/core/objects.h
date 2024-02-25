@@ -357,14 +357,15 @@ struct RTextureInfo {
 };
 
 struct RTransparencyLinkedListData {
-  uint32_t settings[2];       // x = current node index, y = maximum allowed nodes
+  uint32_t nodeCount;
+  uint32_t maxNodeCount;
 };
 
 // An OIT linked node
 struct RTransparencyLinkedListNode {
   glm::vec4 color;
   float depth;
-  uint32_t next;
+  uint32_t nextNodeIndex;
 };
 
 struct RViewport {

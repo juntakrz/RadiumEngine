@@ -3,36 +3,62 @@
 #include "include/common.glsl"
 #include "include/fragment.glsl"
 
-layout(location = 0) in vec2 inUV0;
+#define MAX_TRANSPARENCY_LAYERS 4
+
+struct transparencyNode{
+	vec4 color;
+	float depth;
+	uint nextNodeIndex;
+};
+
+layout(location = 0) in vec2 inUV;
 
 layout (location = 0) out vec4 outColor;
 
-// Scene bindings
-layout (set = 0, binding = 0) uniform UBOScene {
-	mat4 view;
-	mat4 projection;
-	vec3 camPos;
-} scene;
+layout (set = 1, binding = 4, r32ui) uniform coherent uimage2D headIndexImage; 
 
+// Transparency linked list buffer
+layout (set = 1, binding = 5) buffer transparencyLinkedListBuffer {
+	transparencyNode nodes[];
+};
 
 layout (set = 2, binding = 0) uniform sampler2D samplers[];
 layout (set = 2, binding = 0) uniform sampler2DArray arraySamplers[];
 
-void main() {
-	ivec2 bufferCoords = ivec2(gl_FragCoord.xy);
-    vec4 accum = texelFetch(samplers[material.samplerIndex[COLORMAP]], bufferCoords, 0);
-    float revealage = accum.a;
 
-    accum.a = texelFetch(samplers[material.samplerIndex[NORMALMAP]], bufferCoords, 0).r;
-    // suppress underflow
-    if (isinf(accum.a)) {
-        accum.a = max(max(accum.r, accum.g), accum.b);
+void main() {
+    transparencyNode fragmentNodes[MAX_TRANSPARENCY_LAYERS];
+    int count = 0;
+
+    uint nodeIndex = imageLoad(headIndexImage, ivec2(gl_FragCoord.xy)).r;
+
+    while (nodeIndex != 0xffffffff && count < MAX_TRANSPARENCY_LAYERS) {
+        fragmentNodes[count] = nodes[nodeIndex];
+        nodeIndex = fragmentNodes[count].nextNodeIndex;
+        ++count;
     }
-    // suppress overflow
-    if (any(isinf(accum.rgb))) {
-        accum = vec4(isinf(accum.a) ? 1.0 : accum.a);
+    
+    // Sort nodes by depth
+    for (uint i = 1; i < count; ++i) {
+        transparencyNode currentNode = fragmentNodes[i];
+        uint j = i;
+
+        while (j > 0 && currentNode.depth > fragmentNodes[j - 1].depth) {
+            fragmentNodes[j] = fragmentNodes[j - 1];
+            --j;
+        }
+
+        fragmentNodes[j] = currentNode;
     }
-    vec3 averageColor = accum.rgb / max(accum.a, 1e-4);
-    // dst' = (accum.rgb / accum.a) * (1 - revealage) + dst * revealage
-    outColor = vec4(averageColor, revealage);
+
+    // Do transparency blending
+    vec4 color = vec4(0.0, 0.0, 0.0, 0.0);
+    for (int i = 0; i < count; ++i) {
+        color = mix(color, fragmentNodes[i].color, fragmentNodes[i].color.a);
+    }
+
+    // Get opaque results and blend with the final transparent color
+    vec4 sampleColor = vec4(texture(samplers[material.samplerIndex[COLORMAP]], inUV).rgb, 1.0);
+
+    outColor = mix(sampleColor, color, color.a);
 }

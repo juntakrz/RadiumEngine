@@ -9,6 +9,6 @@ layout (location = 0) in vec2 inUV;
 layout (location = 0) out float outColor;
 
 void main() {
-	vec3 baseColor = texture(samplers[material.samplerIndex[COLORMAP]], inUV).rgb;
+	vec3 baseColor = texture(samplers[material.samplerIndex[EXTRAMAP0]], inUV).rgb;
 	outColor = dot(baseColor, RGB_TO_LUM);
 }

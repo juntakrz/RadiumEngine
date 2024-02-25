@@ -98,7 +98,7 @@ float filterPCF(vec3 shadowCoord, vec2 offset, uint distanceIndex) {
 	shadowDepth += shadowBias * float(distanceIndex + 1);
 
 	if (shadowCoord.z > shadowDepth) {
-		return 0.1;
+		return 0.25;
 	}
 			
 	return 1.0;
@@ -131,6 +131,12 @@ float getShadow(vec3 fragmentPosition, int distanceIndex) {
 	if (shadowCoord.x < 0.0 || shadowCoord.x > 1.0 || shadowCoord.y < 0.0 || shadowCoord.y > 1.0) {
 		return 1.0;
 	}
+
+//	TODO: find a way to smooth shadows more based on the distance between shadow and fragment depths
+//	float shadowDepth = texture(arraySamplers[lighting.samplerIndex[SUNLIGHTINDEX]], vec3(shadowCoord.st, distanceIndex)).r;
+//	float scale = (shadowCoord.z > shadowDepth) ? (shadowCoord.z - shadowDepth) * 2000.0 : 1.0;
+//	float dx = scale * (1.0 / float(texDim.x));
+//	float dy = scale * (1.0 / float(texDim.y));
 	
 	for (int x = -range; x <= range; x++) {
 		for (int y = -range; y <= range; y++) {

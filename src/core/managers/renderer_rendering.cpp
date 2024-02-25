@@ -203,6 +203,30 @@ void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynam
   }
 }
 
+void core::MRenderer::prepareFrameResources(VkCommandBuffer commandBuffer) {
+  VkDeviceSize vbOffset = 0u;
+  vkCmdBindVertexBuffers(commandBuffer, 0, 1, &scene.vertexBuffer.buffer, &vbOffset);
+  vkCmdBindVertexBuffers(commandBuffer, 1, 1, &scene.instanceBuffers[renderView.frameInFlight].buffer, &vbOffset);
+
+  vkCmdBindIndexBuffer(commandBuffer, scene.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+  uint32_t transformOffsets[3] = { 0u, 0u, 0u };
+  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+    getPipelineLayout(EPipelineLayout::Scene), 1, 1, &scene.transformDescriptorSet, 3, transformOffsets);
+
+  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+    getPipelineLayout(EPipelineLayout::Scene), 2, 1, &material.descriptorSet, 0, nullptr);
+
+  // Update transparency data
+  vkCmdClearColorImage(commandBuffer, scene.pTransparencyStorageTexture->texture.image, scene.pTransparencyStorageTexture->texture.imageLayout,
+    &scene.transparencyLinkedListClearColor, 1u, &scene.transparencySubRange);
+  
+  vkCmdFillBuffer(commandBuffer, scene.transparencyLinkedListBuffer.buffer, 0, sizeof(uint32_t), 0);
+
+  scene.transparencyLinkedListData.nodeCount = 0u;
+  memcpy(scene.transparencyLinkedListDataBuffer.allocInfo.pMappedData, &scene.transparencyLinkedListData, sizeof(uint32_t));
+}
+
 void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uint32_t cascadeIndex) {
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::Shadow);
   renderView.pCurrentPass = pRenderPass;
@@ -490,18 +514,8 @@ void core::MRenderer::renderFrame() {
     return;
   }
 
-  VkDeviceSize vbOffset = 0u;
-  vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &scene.vertexBuffer.buffer, &vbOffset);
-  vkCmdBindVertexBuffers(cmdBuffer, 1, 1, &scene.instanceBuffers[renderView.frameInFlight].buffer, &vbOffset);
-
-  vkCmdBindIndexBuffer(cmdBuffer, scene.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-  uint32_t transformOffsets[3] = { 0u, 0u, 0u };
-  vkCmdBindDescriptorSets( cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    getPipelineLayout(EPipelineLayout::Scene), 1, 1, &scene.transformDescriptorSet, 3, transformOffsets);
-
-  vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    getPipelineLayout(EPipelineLayout::Scene), 2, 1, &material.descriptorSet, 0, nullptr);
+  // Prepare and bind per frame resources
+  prepareFrameResources(cmdBuffer);
 
   /* 1. Environment generation */
 
@@ -534,7 +548,7 @@ void core::MRenderer::renderFrame() {
   // Additional front rendering passes
   executeRenderingPass(cmdBuffer, EDynamicRenderingPass::Skybox);
 
-  //executeRenderingPass(cmdBuffer, EDynamicRenderingPass::AlphaCompositing, material.pABuffer, true);
+  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::AlphaCompositing, material.pGPBR, true);
 
   /* 4. Postprocessing pass */
 

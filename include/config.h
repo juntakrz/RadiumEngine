@@ -33,10 +33,10 @@
 #define RTGT_GEMISSIVE          "RT2D_GEmissive"    // Emissive color output
 #define RTGT_ABUFFER            "RT2D_ABuffer"      // Forward+ alpha output
 #define RTGT_GPBR               "RT2D_GPBR"         // Render target for combined G-Buffer output
+#define RTGT_APBR               "RT2D_APBR"         // Combined output of G-Buffer PBR and A-Buffer
 
 // default materials
 #define RMAT_GBUFFER            "RMat_GBuffer"
-#define RMAT_ABUFFER            "RMat_ABuffer"
 #define RMAT_GPBR               "RMat_GPBR"
 #define RMAT_SHADOW             "RMat_Shadow"
 

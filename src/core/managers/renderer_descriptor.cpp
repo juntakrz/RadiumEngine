@@ -158,8 +158,9 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
   // 0 - Model transform matrices (offsets are stored by AEntity)
   // 1 - Per node transform matrices
   // 2 - Per model inverse bind matrices
-  // 3 - Transparency linked list node buffer
-  // 4 - Transparency linked list data buffer
+  // 3 - Transparency linked list data buffer
+  // 4 - Transparency linked list image
+  // 5 - Transparency linked list node buffer
   {
     system.descriptorSetLayouts.emplace(EDescriptorSetLayout::Model,
                                         VK_NULL_HANDLE);
@@ -173,7 +174,9 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
         VK_SHADER_STAGE_VERTEX_BIT, nullptr},
       {3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
-      {4, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1,
+      {4, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1,
+        VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+      {5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}
     };
 
@@ -398,32 +401,43 @@ TResult core::MRenderer::createDescriptorSets() {
     RE_LOG(Log, "Populating model transformation descriptor set.");
 #endif
 
+    // 0
     VkDescriptorBufferInfo rootMatrixBufferInfo{};
     rootMatrixBufferInfo.buffer = scene.rootTransformBuffer.buffer;
     rootMatrixBufferInfo.offset = 0;
     rootMatrixBufferInfo.range = VK_WHOLE_SIZE;  // root matrix
 
+    // 1
     VkDescriptorBufferInfo nodeMatrixBufferInfo{};
     nodeMatrixBufferInfo.buffer = scene.nodeTransformBuffer.buffer;
     nodeMatrixBufferInfo.offset = 0;
     nodeMatrixBufferInfo.range = VK_WHOLE_SIZE;
 
+    // 2
     VkDescriptorBufferInfo skinningMatricesBufferInfo{};
     skinningMatricesBufferInfo.buffer = scene.skinTransformBuffer.buffer;
     skinningMatricesBufferInfo.offset = 0;
     skinningMatricesBufferInfo.range = VK_WHOLE_SIZE;
 
-    VkDescriptorBufferInfo alphaLLBufferInfo{};
-    alphaLLBufferInfo.buffer = scene.alphaLinkedListBuffer.buffer;
-    alphaLLBufferInfo.offset = 0;
-    alphaLLBufferInfo.range = VK_WHOLE_SIZE;
+    // 3
+    VkDescriptorBufferInfo transparencyLLBufferDataInfo{};
+    transparencyLLBufferDataInfo.buffer = scene.transparencyLinkedListDataBuffer.buffer;
+    transparencyLLBufferDataInfo.offset = 0;
+    transparencyLLBufferDataInfo.range = VK_WHOLE_SIZE;
 
-    VkDescriptorBufferInfo alphaLLBufferDataInfo{};
-    alphaLLBufferDataInfo.buffer = scene.alphaLinkedListDataBuffer.buffer;
-    alphaLLBufferDataInfo.offset = 0;
-    alphaLLBufferDataInfo.range = VK_WHOLE_SIZE;
+    // 4
+    VkDescriptorImageInfo transparencyLLImageInfo{};
+    transparencyLLImageInfo.imageView = scene.pTransparencyStorageTexture->texture.view;
+    transparencyLLImageInfo.imageLayout = scene.pTransparencyStorageTexture->texture.imageLayout;
+    transparencyLLImageInfo.sampler = scene.pTransparencyStorageTexture->texture.sampler;
 
-    std::vector<VkWriteDescriptorSet> writeSets(5);
+    // 5
+    VkDescriptorBufferInfo transparencyLLBufferInfo{};
+    transparencyLLBufferInfo.buffer = scene.transparencyLinkedListBuffer.buffer;
+    transparencyLLBufferInfo.offset = 0;
+    transparencyLLBufferInfo.range = VK_WHOLE_SIZE;
+
+    std::vector<VkWriteDescriptorSet> writeSets(6);
     writeSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     writeSets[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
     writeSets[0].descriptorCount = 1;
@@ -450,14 +464,21 @@ TResult core::MRenderer::createDescriptorSets() {
     writeSets[3].descriptorCount = 1;
     writeSets[3].dstSet = scene.transformDescriptorSet;
     writeSets[3].dstBinding = 3;
-    writeSets[3].pBufferInfo = &alphaLLBufferInfo;
+    writeSets[3].pBufferInfo = &transparencyLLBufferDataInfo;
 
     writeSets[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeSets[4].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    writeSets[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     writeSets[4].descriptorCount = 1;
     writeSets[4].dstSet = scene.transformDescriptorSet;
     writeSets[4].dstBinding = 4;
-    writeSets[4].pBufferInfo = &alphaLLBufferDataInfo;
+    writeSets[4].pImageInfo = &transparencyLLImageInfo;
+
+    writeSets[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeSets[5].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    writeSets[5].descriptorCount = 1;
+    writeSets[5].dstSet = scene.transformDescriptorSet;
+    writeSets[5].dstBinding = 5;
+    writeSets[5].pBufferInfo = &transparencyLLBufferInfo;
 
     vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeSets.size()),
                            writeSets.data(), 0, nullptr);
