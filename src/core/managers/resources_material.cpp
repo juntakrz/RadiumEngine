@@ -11,7 +11,7 @@ void core::MResources::initialize() {
   RE_LOG(Log, "Initializing materials manager data.");
 
   RMaterial* pMaterial = nullptr;
-  m_sampler2DIndices.resize(config::scene::sampledImageBudget, nullptr);
+  m_samplerIndices.resize(config::scene::sampledImageBudget, nullptr);
 
   // create the "default" material
   RSamplerInfo samplerInfo{};
@@ -92,8 +92,8 @@ void core::MResources::initialize() {
 }
 
 uint32_t core::MResources::getFreeCombinedSamplerIndex() {
-  for (uint32_t i = 0; i < m_sampler2DIndices.size(); ++i) {
-    if (m_sampler2DIndices[i] == nullptr) return i;
+  for (uint32_t i = 0; i < m_samplerIndices.size(); ++i) {
+    if (m_samplerIndices[i] == nullptr) return i;
   }
 
   RE_LOG(Warning, "No more free sampler2D descriptor entries left.");
@@ -134,7 +134,7 @@ void core::MResources::updateMaterialDescriptorSet(RTexture* pTexture, EResource
 
       // Store index data
       pTexture->combinedSamplerIndex = index;
-      m_sampler2DIndices[index] = pTexture;
+      m_samplerIndices[index] = pTexture;
 
       return;
     }

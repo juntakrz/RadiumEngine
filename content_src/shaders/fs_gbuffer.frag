@@ -126,7 +126,7 @@ void main() {
 	outEmissive.rgb += material.glowColor.rgb;
 
 	// Storing polygon facing to account for dual sided faces in a PBR pass
-	outEmissive.a = (gl_FrontFacing) ? 1.0 : 0.0;
+	outEmissive.a = (gl_FrontFacing) ? 1.0 : 0.8;
 
 	// 6. Store velocity vector
 	outVelocity = getVelocity(inPrevWorldPos, inCurrentWorldPos);

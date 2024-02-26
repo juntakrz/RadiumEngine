@@ -21,7 +21,7 @@ class MResources {
   std::unordered_map<std::string, std::unique_ptr<RMaterial>> m_materials;
   std::unordered_map<std::string, RTexture> m_textures;
 
-  std::vector<RTexture*> m_sampler2DIndices;
+  std::vector<RTexture*> m_samplerIndices;
 
  private:
   MResources();

@@ -71,6 +71,7 @@ void main() {
         color.a = 1.0;
     }
 
+    // Reset transparency node count
     nodeCount = 0;
     
     outColor = mix(sampleColor, color, color.a);

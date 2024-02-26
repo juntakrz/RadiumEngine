@@ -61,6 +61,8 @@ class MRenderer {
     RMaterial* pSunShadow = nullptr;
     RMaterial* pGBuffer = nullptr;
     RMaterial* pGPBR = nullptr;
+
+    std::vector<VkSampler> samplers;
   } material;
 
   struct RSceneBuffers {
@@ -353,6 +355,9 @@ public:
   TResult generateSingleMipMap(VkCommandBuffer cmdBuffer, RTexture* pTexture,
                                uint32_t mipLevel, uint32_t layer = 0,
                                VkFilter filter = VK_FILTER_LINEAR);
+
+  TResult createDefaultSamplers();
+  VkSampler getSampler(RSamplerInfo* pInfo);
 
   VkCommandPool getCommandPool(ECmdType type);
   VkQueue getCommandQueue(ECmdType type);

@@ -558,14 +558,12 @@ void WModel::setTextureSamplers() {
 
   const tinygltf::Model& gltfModel = *staging.pInModel;
 
+  // Simplified sampler settings, minFilter and wrapT are ignored currently
   for (const auto& it : gltfModel.samplers) {
     m_textureSamplers.emplace_back();
     auto& sampler = m_textureSamplers.back();
-    sampler.minFilter = getVkFilter(it.minFilter);
-    sampler.magFilter = getVkFilter(it.magFilter);
-    sampler.addressModeU = getVkAddressMode(it.wrapS);
-    sampler.addressModeV = getVkAddressMode(it.wrapT);
-    sampler.addressModeW = sampler.addressModeV;
+    sampler.filter = getVkFilter(it.magFilter);
+    sampler.addressMode = getVkAddressMode(it.wrapS);
   }
 }
 

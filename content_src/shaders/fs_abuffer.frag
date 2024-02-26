@@ -205,6 +205,10 @@ vec4 getColor(vec4 baseColor) {
 	int textureSet = getTextureSet(NORMALMAP);
 	vec3 normal = (textureSet > -1 && baseColor.a > MAX_TRANSPARENCY_THRESHOLD) ? getNormal(textureSet) : normalize(inNormal);
 
+	if (!gl_FrontFacing) {
+		normal = -normal;
+	}
+
 	// Get metallic and roughness properties from the texture if available
 	textureSet = getTextureSet(PHYSMAP);
 	if (textureSet > -1) {

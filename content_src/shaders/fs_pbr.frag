@@ -132,8 +132,8 @@ float getShadow(vec3 fragmentPosition, int distanceIndex, float facing) {
 		return 1.0;
 	}
 	
-	// Adjust for the polygon facing, if 0.0 - it was a back face and thus should have a slightly larger depth
-	if (facing < 0.5) {
+	// Adjust for the polygon facing, if not 1.0 - it is a back face and thus should have a slightly larger depth
+	if (facing < 0.9) {
 		shadowCoord.z += 0.0001;
 	}
 
@@ -170,6 +170,11 @@ void main() {
 
 	vec3 emissive = emissiveData.rgb;
 	float facing = emissiveData.a;
+
+	// Account for back faces
+	if (facing < 0.9) {
+		normal = -normal;
+	}
 
 	vec3 diffuseColor = baseColor.rgb * (vec3(1.0) - f0);
 	diffuseColor *= 1.0 - metallic;

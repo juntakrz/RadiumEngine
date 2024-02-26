@@ -448,9 +448,7 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-  textureInfo.samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-  textureInfo.samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-  textureInfo.samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  textureInfo.samplerInfo.addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -478,9 +476,7 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-  textureInfo.samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-  textureInfo.samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-  textureInfo.samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  textureInfo.samplerInfo.addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -553,9 +549,7 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
-  textureInfo.samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-  textureInfo.samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-  textureInfo.samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  textureInfo.samplerInfo.addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -688,9 +682,7 @@ TResult core::MRenderer::createDepthTargets() {
   textureInfo.memoryFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
   textureInfo.vmaMemoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-  textureInfo.samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-  textureInfo.samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-  textureInfo.samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  textureInfo.samplerInfo.addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -765,7 +757,13 @@ TResult core::MRenderer::setRendererDefaults() {
     ? maxAfterBindStorageImages : config::scene::requestedStorageImageBudget;
 
   // Create default images
-  TResult chkResult = createImageTargets();
+  TResult chkResult = createDefaultSamplers();
+
+  if (chkResult != RE_OK) {
+    return chkResult;
+  }
+
+  chkResult = createImageTargets();
 
   if (chkResult != RE_OK) {
     return chkResult;
