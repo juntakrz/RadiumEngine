@@ -46,10 +46,6 @@ void core::MActors::updateLightingUBO(RLightingUBO* pLightingBuffer) {
   pLightingBuffer->lightCount = lightCount;
 }
 
-void core::MActors::initialize() {
-  //
-}
-
 ACamera* core::MActors::createCamera(const char* name,
                                      RCameraInfo* cameraSettings) {
   if (m_actors.cameras.try_emplace(name).second) {

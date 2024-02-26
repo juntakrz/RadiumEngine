@@ -62,12 +62,16 @@ float getMicrofacetDistribution(float roughness, float NdotH) {
 
 // Calculation of the lighting contribution from an optional Image Based Light source.
 // Precomputed Environment Maps are required uniform inputs
-vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, float NdotV, vec3 n, vec3 reflection) {
+vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, vec3 V, vec3 normal) {
+	float NdotV = clamp(abs(dot(normal, V)), 0.001, 1.0);
+	vec3 reflection = -normalize(reflect(V, normal));
+	reflection.y *= -1.0f;
+
 	float lod = (roughness * lighting.prefilteredCubeMipLevels);
 
 	// retrieve a scale and bias to F0
 	vec2 brdf = (texture(BRDFLUTMap, vec2(NdotV, 1.0 - roughness))).rg;
-	vec3 diffuseLight = tonemap(texture(irradianceMap, n).rgb);
+	vec3 diffuseLight = tonemap(texture(irradianceMap, normal).rgb);
 	vec3 specularLight = tonemap(textureLod(prefilteredMap, reflection, lod).rgb);
 
 	diffuseLight.r = pow(diffuseLight.r, 2.2);
@@ -154,6 +158,41 @@ float getShadow(vec3 fragmentPosition, int distanceIndex, float facing) {
 	return shadow / count;
 }
 
+vec3 getLight(uint index, vec3 worldPos, vec3 diffuseColor, vec3 specularColor, vec3 V, vec3 normal, float roughness) {
+	float alphaRoughness = roughness * roughness;
+
+	// For typical incident reflectance range (between 4% to 100%) set the grazing reflectance to 100% for typical fresnel effect.
+	// For very low reflectance range on highly diffuse objects (below 4%), incrementally reduce grazing reflecance to 0%.
+	float reflectance = max(max(specularColor.r, specularColor.g), specularColor.b);
+	float reflectance90 = clamp(reflectance * 25.0, 0.0, 1.0);
+	vec3 specularEnvironmentR0 = specularColor.rgb;
+	vec3 specularEnvironmentR90 = vec3(1.0, 1.0, 1.0) * reflectance90;
+
+	vec3 L = normalize(lighting.lightLocations[index].xyz - worldPos);
+	//vec3 L = normalize(lighting.lightLocations[index].xyz);	// Vector from surface point to light
+	vec3 H = normalize(L + V);								// Half vector between both l and v
+
+	float NdotL = clamp(dot(normal, L), 0.001, 1.0);
+	float NdotV = clamp(abs(dot(normal, V)), 0.001, 1.0);
+	float NdotH = clamp(dot(normal, H), 0.0, 1.0);
+	float LdotH = clamp(dot(L, H), 0.0, 1.0);
+	float VdotH = clamp(dot(V, H), 0.0, 1.0);
+
+	// Calculate the shading terms for the microfacet specular shading model
+	vec3 F = getFresnelReflectanceR(specularEnvironmentR0, specularEnvironmentR90, alphaRoughness, VdotH);
+	float G = getGeometricOcclusion(NdotL, NdotV, alphaRoughness);
+	float D = getMicrofacetDistribution(alphaRoughness, NdotH);
+
+	// Calculation of analytical lighting contribution
+	vec3 diffuseContrib = (1.0 - F) * getDiffuse(diffuseColor);
+	vec3 specContrib = F * G * D / (4.0 * NdotL * NdotV);
+
+	// Obtain final intensity as reflectance (BRDF) scaled by the energy of the light (cosine law)
+	vec3 lightColor = NdotL * lighting.lightColor[index].rgb * (diffuseContrib + specContrib) * lighting.lightColor[index].a;
+
+	return lightColor;
+}
+
 void main() {
 	const float occlusionStrength = 1.0;	// TODO: modify by the material variable
 	const vec3 shadowColor = lighting.shadowColor.rgb + vec3(1.0);
@@ -178,46 +217,17 @@ void main() {
 
 	vec3 diffuseColor = baseColor.rgb * (vec3(1.0) - f0);
 	diffuseColor *= 1.0 - metallic;
-		
-	float alphaRoughness = perceptualRoughness * perceptualRoughness;
 
-	vec3 specularColor = mix(f0, baseColor.rgb, metallic);
-
-	// Compute reflectance
-	float reflectance = max(max(specularColor.r, specularColor.g), specularColor.b);
-
-	// For typical incident reflectance range (between 4% to 100%) set the grazing reflectance to 100% for typical fresnel effect.
-	// For very low reflectance range on highly diffuse objects (below 4%), incrementally reduce grazing reflecance to 0%.
-	float reflectance90 = clamp(reflectance * 25.0, 0.0, 1.0);
-	vec3 specularEnvironmentR0 = specularColor.rgb;
-	vec3 specularEnvironmentR90 = vec3(1.0, 1.0, 1.0) * reflectance90;
+	vec3 specularColor = mix(f0, diffuseColor, metallic);
 
 	vec3 V = normalize(scene.camPos - worldPos);			// Vector from surface point to camera
-	vec3 L = normalize(lighting.lightLocations[0].xyz);		// Vector from surface point to light
-	vec3 H = normalize(L + V);								// Half vector between both l and v
-	vec3 reflection = -normalize(reflect(V, normal));
-	reflection.y *= -1.0f;
 
-	float NdotL = clamp(dot(normal, L), 0.001, 1.0);
-	float NdotV = clamp(abs(dot(normal, V)), 0.001, 1.0);
-	float NdotH = clamp(dot(normal, H), 0.0, 1.0);
-	float LdotH = clamp(dot(L, H), 0.0, 1.0);
-	float VdotH = clamp(dot(V, H), 0.0, 1.0);
+	vec3 color = getIBLContribution(diffuseColor, specularColor, perceptualRoughness, V, normal);
 
-	// Calculate the shading terms for the microfacet specular shading model
-	vec3 F = getFresnelReflectanceR(specularEnvironmentR0, specularEnvironmentR90, alphaRoughness, VdotH);
-	float G = getGeometricOcclusion(NdotL, NdotV, alphaRoughness);
-	float D = getMicrofacetDistribution(alphaRoughness, NdotH);
+	if (lighting.lightColor[0].a > 0.001) {
+		color += getLight(0, worldPos, diffuseColor, specularColor, V, normal, perceptualRoughness);
+	}
 
-	// Calculation of analytical lighting contribution
-	vec3 diffuseContrib = (1.0 - F) * getDiffuse(diffuseColor);
-	vec3 specContrib = F * G * D / (4.0 * NdotL * NdotV);
-
-	// Obtain final intensity as reflectance (BRDF) scaled by the energy of the light (cosine law)
-	vec3 color = NdotL * lighting.lightColor[0].rgb * (diffuseContrib + specContrib) * lighting.lightColor[0].a;
-
-	// Calculate lighting contribution from image based lighting source (IBL)
-	color += getIBLContribution(diffuseColor, specularColor, perceptualRoughness, NdotV, normal, reflection);
 	color = mix(color, color * ao, occlusionStrength);
 
 	// Calculate shadow and its color
@@ -242,6 +252,18 @@ void main() {
 	vec3 shadow = shadowColor * shadowA;
 	shadow = clamp(shadow, 0.0, 1.0);
 	color *= shadow;
+
+	// Process point lights within a reasonable fragment's distance to save performance
+	if (lighting.lightCount > 1) {
+		for (uint index = 1; index < lighting.lightCount; ++index) {
+			float lightDistance = length(lighting.lightLocations[index].xyz - worldPos);
+			float lightAttenuation = 1.0 / (lightDistance * lightDistance);
+			
+			if (lightAttenuation > 0.1) {
+				color += getLight(index, worldPos, diffuseColor, specularColor, V, normal, perceptualRoughness) * lightAttenuation;
+			}
+		}
+	}
 	
 	// Emissive colors are not affected by shadows as they are supposed to glow
 	color += emissive;

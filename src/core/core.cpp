@@ -77,11 +77,18 @@ void core::run() {
   materialInfo.glowColor = glm::vec4(3.5f, 2.4f, 1.0f, 0.0f);
   RMaterial* pNewMaterial = core::resources.createMaterial(&materialInfo);
 
-  core::actors.createPawn("sphere0");
-  APawn* pPawn = core::actors.getPawn("sphere0");
+  
+  APawn* pPawn = core::actors.createPawn("sphere0");
   pPawn->setModel(core::world.getModel("mdlSphere"));
   pPawn->setLocation(1.0f, -0.8f, 2.0f);
-  pPawn->setScale(0.2f);
+  pPawn->setScale(0.18f);
+  pPawn->getModel()->setPrimitiveMaterial(0, 0, "RMat_Light0");
+  pPawn->bindToRenderer();
+
+  pPawn = core::actors.createPawn("sphere1");
+  pPawn->setModel(core::world.getModel("mdlSphere"));
+  pPawn->setLocation(1.5f, 1.4f, 3.3f);
+  pPawn->setScale(0.1f);
   pPawn->getModel()->setPrimitiveMaterial(0, 0, "RMat_Light0");
   pPawn->bindToRenderer();
 
@@ -209,7 +216,6 @@ TResult core::create() {
 
   core::resources.initialize();
   core::world.initialize();
-  core::actors.initialize();
 
   core::renderer.renderInitFrame();
 
