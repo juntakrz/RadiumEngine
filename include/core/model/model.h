@@ -114,6 +114,7 @@ class WModel {
   uint32_t m_vertexCount = 0u;
   uint32_t m_indexCount = 0u;
   int32_t m_meshCount = 0;
+  uint32_t m_instanceCount = 0;   // Instances of this model bound to renderer
 
   std::vector<std::unique_ptr<WModel::Node>> m_pChildNodes;
 

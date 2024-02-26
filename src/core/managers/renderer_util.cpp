@@ -863,6 +863,12 @@ TResult core::MRenderer::createDefaultSamplers() {
   return RE_OK;
 }
 
+void core::MRenderer::destroySamplers() {
+  for (auto& it : material.samplers) {
+    vkDestroySampler(logicalDevice.device, it, nullptr);
+  }
+}
+
 VkSampler core::MRenderer::getSampler(RSamplerInfo* pInfo) {
   if (!pInfo) {
     return material.samplers[0];
@@ -1050,6 +1056,7 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
     instanceData.instanceBufferBlock.modelMatrixId = pEntity->getRootTransformBufferIndex();
     instanceData.instanceBufferBlock.nodeMatrixId = pEntity->getNodeTransformBufferIndex(pNode->index);
     instanceData.instanceBufferBlock.skinMatrixId = pEntity->getSkinTransformBufferIndex(pNode->skinIndex);
+    instanceData.instanceBufferBlock.materialId = primitive->pInitialMaterial->bufferIndex;
   }
 
   // TODO: implement indirect draw command properly

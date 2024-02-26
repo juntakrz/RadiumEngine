@@ -454,7 +454,7 @@ void WModel::createNode(WModel::Node* pParentNode,
           std::make_unique<WPrimitive>(&primitiveInfo));
       WPrimitive* pPrimitive = pMesh->pPrimitives.back().get();
       pPrimitive->setBoundingBoxExtent(posMin, posMax);
-      pPrimitive->pMaterial = core::resources.getMaterial(
+      pPrimitive->pInitialMaterial = core::resources.getMaterial(
           m_materialList[gltfPrimitive.material].c_str());
 
       // copy vertex and index data to local staging buffers and adjust offsets

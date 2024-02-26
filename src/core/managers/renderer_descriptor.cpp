@@ -128,15 +128,20 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
       VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT_EXT;
 
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
-        {0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      {0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
+        VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+      {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         config::scene::sampledImageBudget,
         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}
     };
 
+    const VkDescriptorBindingFlagsEXT bindingFlagsArray[2] = { 0, bindingFlags };
+
     VkDescriptorSetLayoutBindingFlagsCreateInfoEXT bindingFlagsCreateInfo{};
     bindingFlagsCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
     bindingFlagsCreateInfo.bindingCount = static_cast<uint32_t>(setLayoutBindings.size());;
-    bindingFlagsCreateInfo.pBindingFlags = &bindingFlags;
+    //bindingFlagsCreateInfo.pBindingFlags = &bindingFlags;
+    bindingFlagsCreateInfo.pBindingFlags = bindingFlagsArray;
 
     VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
     setLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -508,6 +513,27 @@ TResult core::MRenderer::createDescriptorSets() {
       RE_LOG(Error, "Failed to allocate descriptor set for extended material storage.");
       return RE_CRITICAL;
     };
+
+#ifndef NDEBUG
+    RE_LOG(Log, "Adding material block data buffer to material descriptor set.");
+#endif
+
+    VkDevice device = core::renderer.logicalDevice.device;
+
+    VkDescriptorBufferInfo materialDataBufferInfo{};
+    materialDataBufferInfo.buffer = material.buffer.buffer;
+    materialDataBufferInfo.offset = 0;
+    materialDataBufferInfo.range = VK_WHOLE_SIZE;
+
+    VkWriteDescriptorSet writeSet{};
+    writeSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeSet.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    writeSet.descriptorCount = 1;
+    writeSet.dstSet = material.descriptorSet;
+    writeSet.dstBinding = 0;
+    writeSet.pBufferInfo = &materialDataBufferInfo;
+
+    vkUpdateDescriptorSets(device, 1u, &writeSet, 0, nullptr);
   }
 
 #ifndef NDEBUG

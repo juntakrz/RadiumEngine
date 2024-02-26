@@ -186,6 +186,10 @@ TResult core::MRenderer::createSceneBuffers() {
       scene.instanceBuffers[instanceBufferId], nullptr);
   }
 
+  RE_LOG(Log, "Creating material storage buffer.");
+  createBuffer(EBufferType::CPU_STORAGE, sizeof(RSceneFragmentPCB) * (config::scene::sampledImageBudget / RE_MAXTEXTURES),
+    material.buffer, nullptr);
+
   RE_LOG(Log, "Creating order independent transparency buffers.");
   createBuffer(EBufferType::DGPU_STORAGE,
     config::renderWidth * config::renderHeight * sizeof(RTransparencyLinkedListNode) * RE_MAXTRANSPARENTLAYERS,
@@ -218,7 +222,8 @@ void core::MRenderer::destroySceneBuffers() {
     vmaDestroyBuffer(memAlloc, scene.instanceBuffers[instanceBufferId].buffer,
                      scene.instanceBuffers[instanceBufferId].allocation);
   }
-
+  
+  vmaDestroyBuffer(memAlloc, material.buffer.buffer, material.buffer.allocation);
   vmaDestroyBuffer(memAlloc, scene.transparencyLinkedListBuffer.buffer, scene.transparencyLinkedListBuffer.allocation);
   vmaDestroyBuffer(memAlloc, scene.transparencyLinkedListDataBuffer.buffer, scene.transparencyLinkedListDataBuffer.allocation);
 }
@@ -1110,6 +1115,7 @@ void core::MRenderer::deinitialize() {
   core::actors.destroyAllPawns();
   core::world.destroyAllModels();
   core::resources.destroyAllTextures();
+  destroySamplers();
   destroyDescriptorPool();
   destroyQueryPool();
   destroyUniformBuffers();

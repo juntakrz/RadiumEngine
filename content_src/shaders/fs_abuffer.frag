@@ -5,6 +5,7 @@
 
 #define MIN_TRANSPARENCY_THRESHOLD	0.05
 #define MAX_TRANSPARENCY_THRESHOLD	0.75
+#define MAX_LIGHTS					32
 
 struct transparencyNode{
 	vec4 color;
@@ -19,6 +20,9 @@ layout (location = 1) in vec3 inNormal;
 layout (location = 2) in vec2 inUV0;
 layout (location = 3) in vec2 inUV1;
 layout (location = 4) in vec4 inColor0;
+
+// Per Instance
+layout (location = 7) flat in uint inMaterialIndex;
 
 // Scene bindings
 layout (set = 0, binding = 0) uniform UBOScene {
@@ -89,12 +93,16 @@ float getMicrofacetDistribution(float roughness, float NdotH) {
 
 // Calculation of the lighting contribution from an optional Image Based Light source.
 // Precomputed Environment Maps are required uniform inputs
-vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, float NdotV, vec3 n, vec3 reflection) {
+vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, vec3 V, vec3 normal) {
+	float NdotV = clamp(abs(dot(normal, V)), 0.001, 1.0);
+	vec3 reflection = -normalize(reflect(V, normal));
+	reflection.y *= -1.0f;
+
 	float lod = (roughness * lighting.prefilteredCubeMipLevels);
 
 	// retrieve a scale and bias to F0
 	vec2 brdf = (texture(BRDFLUTMap, vec2(NdotV, 1.0 - roughness))).rg;
-	vec3 diffuseLight = tonemap(texture(irradianceMap, n).rgb);
+	vec3 diffuseLight = tonemap(texture(irradianceMap, normal).rgb);
 	vec3 specularLight = tonemap(textureLod(prefilteredMap, reflection, lod).rgb);
 
 	diffuseLight.r = pow(diffuseLight.r, 2.2);
@@ -177,7 +185,7 @@ float getShadow(vec3 fragmentPosition, int distanceIndex) {
 }
 
 vec3 getNormal(int textureSet) {
-	vec3 tangentNormal = vec3(vec2(texture(samplers[material.samplerIndex[NORMALMAP]], textureSet == 0 ? inUV0 : inUV1).rg * 2.0 - 1.0), 1.0);
+	vec3 tangentNormal = vec3(vec2(texture(samplers[materialBlocks[inMaterialIndex].samplerIndex[NORMALMAP]], textureSet == 0 ? inUV0 : inUV1).rg * 2.0 - 1.0), 1.0);
 
 	vec3 q1 = dFdx(inWorldPos);
 	vec3 q2 = dFdy(inWorldPos);
@@ -189,65 +197,22 @@ vec3 getNormal(int textureSet) {
 	vec3 B = -normalize(cross(N, T));
 	mat3 TBN = mat3(T, B, N);
 
-	return normalize(TBN * tangentNormal) * material.bumpIntensity;
+	return normalize(TBN * tangentNormal) * materialBlocks[inMaterialIndex].bumpIntensity;
 }
 
-vec4 getColor(vec4 baseColor) {
-	const float occlusionStrength = 1.0;	// TODO: modify by the material variable
-	const vec3 shadowColor = lighting.shadowColor.rgb + vec3(1.0);
-	vec3 emissiveColor = vec3(0.0);
-	vec3 f0 = vec3(0.04);
-	
-	float perceptualRoughness = material.roughnessFactor;
-	float metallic = material.metallicFactor;
-
-	// Extract normal for this fragment
-	int textureSet = getTextureSet(NORMALMAP);
-	vec3 normal = (textureSet > -1 && baseColor.a > MAX_TRANSPARENCY_THRESHOLD) ? getNormal(textureSet) : normalize(inNormal);
-
-	if (!gl_FrontFacing) {
-		normal = -normal;
-	}
-
-	// Get metallic and roughness properties from the texture if available
-	textureSet = getTextureSet(PHYSMAP);
-	if (textureSet > -1) {
-		// In texture roughness is stored in the 'g' channel, metallic is stored in the 'b' channel.
-		// This layout intentionally reserves the 'r' channel for (optional) ambient occlusion map data
-		vec4 physicalSample = texture(samplers[material.samplerIndex[PHYSMAP]], textureSet == 0 ? inUV0 : inUV1);
-		physicalSample.g = pow(physicalSample.g, 1.0 / 2.2);
-		physicalSample.b = pow(physicalSample.b, 1.0 / 2.2);
-		perceptualRoughness = physicalSample.g * perceptualRoughness;
-		metallic = physicalSample.b * metallic;
-	} else {
-		perceptualRoughness = clamp(perceptualRoughness, minRoughness, 1.0);
-		metallic = clamp(metallic, 0.0, 1.0);
-	}
-
-	// Apply vertex colors if present
-	vec3 diffuseColor = baseColor.rgb * inColor0.rgb;
-
-	diffuseColor *= vec3(1.0) - f0;
-	diffuseColor *= 1.0 - metallic;	
-
-	float alphaRoughness = perceptualRoughness * perceptualRoughness;
-
-	vec3 specularColor = mix(f0, baseColor.rgb, metallic);
-
-	// Compute reflectance
-	float reflectance = max(max(specularColor.r, specularColor.g), specularColor.b);
+vec3 getLight(uint index, vec3 worldPos, vec3 diffuseColor, vec3 specularColor, vec3 V, vec3 normal, float roughness) {
+	float alphaRoughness = roughness * roughness;
 
 	// For typical incident reflectance range (between 4% to 100%) set the grazing reflectance to 100% for typical fresnel effect.
 	// For very low reflectance range on highly diffuse objects (below 4%), incrementally reduce grazing reflecance to 0%.
+	float reflectance = max(max(specularColor.r, specularColor.g), specularColor.b);
 	float reflectance90 = clamp(reflectance * 25.0, 0.0, 1.0);
 	vec3 specularEnvironmentR0 = specularColor.rgb;
 	vec3 specularEnvironmentR90 = vec3(1.0, 1.0, 1.0) * reflectance90;
 
-	vec3 V = normalize(scene.camPos - inWorldPos);			// Vector from surface point to camera
-	vec3 L = normalize(lighting.lightLocations[0].xyz);		// Vector from surface point to light
+	vec3 L = normalize(lighting.lightLocations[index].xyz - worldPos);
+	//vec3 L = normalize(lighting.lightLocations[index].xyz);	// Vector from surface point to light
 	vec3 H = normalize(L + V);								// Half vector between both l and v
-	vec3 reflection = -normalize(reflect(V, normal));
-	reflection.y *= -1.0f;
 
 	float NdotL = clamp(dot(normal, L), 0.001, 1.0);
 	float NdotV = clamp(abs(dot(normal, V)), 0.001, 1.0);
@@ -265,26 +230,74 @@ vec4 getColor(vec4 baseColor) {
 	vec3 specContrib = F * G * D / (4.0 * NdotL * NdotV);
 
 	// Obtain final intensity as reflectance (BRDF) scaled by the energy of the light (cosine law)
-	vec3 color = NdotL * lighting.lightColor[0].rgb * (diffuseContrib + specContrib) * lighting.lightColor[0].a;
+	vec3 lightColor = NdotL * lighting.lightColor[index].rgb * (diffuseContrib + specContrib) * lighting.lightColor[index].a;
 
-	// Calculate lighting contribution from image based lighting source (IBL)
-	color += getIBLContribution(diffuseColor, specularColor, perceptualRoughness, NdotV, normal, reflection);
+	return lightColor;
+}
+
+vec4 getColor(vec4 baseColor) {
+	const float occlusionStrength = 1.0;	// TODO: modify by the material variable
+	const vec3 shadowColor = lighting.shadowColor.rgb + vec3(1.0);
+	vec3 emissiveColor = vec3(0.0);
+	vec3 f0 = vec3(0.04);
+	
+	float perceptualRoughness = materialBlocks[inMaterialIndex].roughnessFactor;
+	float metallic = materialBlocks[inMaterialIndex].metallicFactor;
+
+	// Extract normal for this fragment
+	int textureSet = getTextureSet(NORMALMAP, inMaterialIndex);
+	vec3 normal = (textureSet > -1 && baseColor.a > MAX_TRANSPARENCY_THRESHOLD) ? getNormal(textureSet) : normalize(inNormal);
+
+	if (!gl_FrontFacing) {
+		normal = -normal;
+	}
+
+	// Get metallic and roughness properties from the texture if available
+	textureSet = getTextureSet(PHYSMAP, inMaterialIndex);
+	if (textureSet > -1) {
+		// In texture roughness is stored in the 'g' channel, metallic is stored in the 'b' channel.
+		// This layout intentionally reserves the 'r' channel for (optional) ambient occlusion map data
+		vec4 physicalSample = texture(samplers[materialBlocks[inMaterialIndex].samplerIndex[PHYSMAP]], textureSet == 0 ? inUV0 : inUV1);
+		physicalSample.g = pow(physicalSample.g, 1.0 / 2.2);
+		physicalSample.b = pow(physicalSample.b, 1.0 / 2.2);
+		perceptualRoughness = physicalSample.g * perceptualRoughness;
+		metallic = physicalSample.b * metallic;
+	} else {
+		perceptualRoughness = clamp(perceptualRoughness, minRoughness, 1.0);
+		metallic = clamp(metallic, 0.0, 1.0);
+	}
+
+	// Apply vertex colors if present
+	vec3 diffuseColor = baseColor.rgb * inColor0.rgb;
+
+	diffuseColor *= vec3(1.0) - f0;
+	diffuseColor *= 1.0 - metallic;
+
+	vec3 specularColor = mix(f0, diffuseColor, metallic);
+
+	vec3 V = normalize(scene.camPos - inWorldPos);			// Vector from surface point to camera
+
+	vec3 color = getIBLContribution(diffuseColor, specularColor, perceptualRoughness, V, normal);
+
+	if (lighting.lightColor[0].a > 0.001) {
+		color += getLight(0, inWorldPos, diffuseColor, specularColor, V, normal, perceptualRoughness);
+	}
 	
 	// Get ambient occlusion from the texture if available
-	textureSet = getTextureSet(AOMAP);
+	textureSet = getTextureSet(AOMAP, inMaterialIndex);
 	if (textureSet > -1) {
-		float ao = texture(samplers[material.samplerIndex[AOMAP]], (textureSet == 0 ? inUV0 : inUV1)).r;
+		float ao = texture(samplers[materialBlocks[inMaterialIndex].samplerIndex[AOMAP]], (textureSet == 0 ? inUV0 : inUV1)).r;
 		color = mix(color, color * ao, occlusionStrength);
 	}
 
 	// Extract emissive color from the texture if available
-	textureSet = getTextureSet(EMISMAP);
+	textureSet = getTextureSet(EMISMAP, inMaterialIndex);
 	if (textureSet > -1) {
-		emissiveColor = texture(samplers[material.samplerIndex[EMISMAP]], textureSet == 0 ? inUV0 : inUV1).rgb;
+		emissiveColor = texture(samplers[materialBlocks[inMaterialIndex].samplerIndex[EMISMAP]], textureSet == 0 ? inUV0 : inUV1).rgb;
 	}
 
 	// Brighten or darken emission by the glow color value
-	emissiveColor += material.glowColor.rgb;
+	emissiveColor += materialBlocks[inMaterialIndex].glowColor.rgb;
 
 	// Calculate shadow and its color
 	float relativeDistance = length(scene.camPos - inWorldPos);
@@ -309,6 +322,21 @@ vec4 getColor(vec4 baseColor) {
 	shadow = clamp(shadow, 0.0, 1.0);
 	color *= shadow;
 
+	// Process point lights within a reasonable fragment's distance to save performance
+	if (lighting.lightCount > 1) {
+		// Limit number of lights per transparent object for Forward+ rendering
+		uint lightCount = (lighting.lightCount < MAX_LIGHTS) ? lighting.lightCount : MAX_LIGHTS;
+
+		for (uint index = 1; index < lightCount; ++index) {
+			float lightDistance = length(lighting.lightLocations[index].xyz - inWorldPos);
+			float lightAttenuation = 1.0 / (lightDistance * lightDistance);
+			
+			if (lightAttenuation > 0.1) {
+				color += getLight(index, inWorldPos, diffuseColor, specularColor, V, normal, perceptualRoughness) * lightAttenuation;
+			}
+		}
+	}
+
 	color += emissiveColor;
 
 	return vec4(color, baseColor.a);
@@ -317,9 +345,9 @@ vec4 getColor(vec4 baseColor) {
 void main() {
 	vec4 baseColor = vec4(0.0);
 
-	int textureSet = getTextureSet(COLORMAP);
+	int textureSet = getTextureSet(COLORMAP, inMaterialIndex);
 	if (textureSet > -1) {
-		baseColor = texture(samplers[material.samplerIndex[COLORMAP]], textureSet == 0 ? inUV0 : inUV1);
+		baseColor = texture(samplers[materialBlocks[inMaterialIndex].samplerIndex[COLORMAP]], textureSet == 0 ? inUV0 : inUV1);
 	}
 
 	if (baseColor.a < MIN_TRANSPARENCY_THRESHOLD) {

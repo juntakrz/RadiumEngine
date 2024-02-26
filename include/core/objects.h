@@ -265,7 +265,7 @@ struct RInstanceData {
   int32_t modelMatrixId = -1;
   int32_t nodeMatrixId = -1;
   int32_t skinMatrixId = -1;
-  float padding;
+  int32_t materialId = -1;
 };
 
 struct RLightInfo {
@@ -532,6 +532,7 @@ struct WModelConfigInfo {
 
 struct WPrimitiveInstanceData {
   uint32_t instanceIndex = 0;
+  uint32_t passFlags = 0;
   bool isVisible = true;
 
   RInstanceData instanceBufferBlock;

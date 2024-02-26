@@ -11,6 +11,7 @@ void core::MResources::initialize() {
   RE_LOG(Log, "Initializing materials manager data.");
 
   RMaterial* pMaterial = nullptr;
+  m_materialIndices.resize(config::scene::sampledImageBudget / RE_MAXTEXTURES, nullptr);
   m_samplerIndices.resize(config::scene::sampledImageBudget, nullptr);
 
   // create the "default" material
@@ -126,7 +127,7 @@ void core::MResources::updateMaterialDescriptorSet(RTexture* pTexture, EResource
       }
 
       writeSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-      writeSet.dstBinding = 0;
+      writeSet.dstBinding = 1;
       writeSet.dstArrayElement = index;
       writeSet.pImageInfo = &imageInfo;
 
@@ -250,7 +251,21 @@ RMaterial* core::MResources::createMaterial(
 
   RE_LOG(Log, "Creating material \"%s\".", newMat.name.c_str());
   m_materials.at(pDesc->name) = std::make_unique<RMaterial>(std::move(newMat));
-  return m_materials.at(pDesc->name).get();
+
+  RMaterial* pNewMaterial = m_materials.at(pDesc->name).get();
+
+  // Store material's data block in the buffer at an appropriate index
+  pNewMaterial->bufferIndex = getMaterialBufferIndex(pNewMaterial);
+
+  if (pNewMaterial->bufferIndex == -1) {
+    RE_LOG(Error, "Material buffer is out of free space.");
+  } else {
+    RSceneFragmentPCB* pMemAddress = (RSceneFragmentPCB*)core::renderer.getMaterialData()->buffer.allocInfo.pMappedData
+      + pNewMaterial->bufferIndex;
+    memcpy(pMemAddress, &pNewMaterial->pushConstantBlock, sizeof(RSceneFragmentPCB));
+  }
+
+  return pNewMaterial;
 }
 
 RMaterial* core::MResources::getMaterial(const char* name) noexcept {
@@ -268,6 +283,29 @@ RMaterial* core::MResources::getMaterial(const char* name) noexcept {
 
 uint32_t core::MResources::getMaterialCount() const noexcept {
   return static_cast<uint32_t>(m_materials.size());
+}
+
+uint32_t core::MResources::getMaterialBufferIndex(RMaterial* pMaterial) noexcept {
+  if (pMaterial->bufferIndex != -1) {
+    if (m_materialIndices[pMaterial->bufferIndex] != pMaterial) {
+      RE_LOG(Error, "Invalid material buffer index %d for '%s'. Possible data corruption.",
+        pMaterial->bufferIndex, pMaterial->name.c_str());
+    }
+
+    return pMaterial->bufferIndex;
+  }
+
+  uint32_t index = 0;
+  for (auto& it : m_materialIndices) {
+    if (it == nullptr) {
+      it = pMaterial;
+      return index;
+    }
+
+    ++index;
+  }
+
+  return -1;
 }
 
 TResult core::MResources::deleteMaterial(const char* name) noexcept {

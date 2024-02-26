@@ -16,7 +16,7 @@ void core::MRenderer::drawBoundEntities(VkCommandBuffer commandBuffer) {
     auto& primitives = pModel->getPrimitives();
 
     for (const auto& primitive : primitives) {
-      if (!checkPass(primitive->pMaterial->passFlags, renderView.pCurrentPass->passId)) continue;
+      if (!checkPass(primitive->pInitialMaterial->passFlags, renderView.pCurrentPass->passId)) continue;
 
       renderPrimitive(commandBuffer, primitive, pModel);
     }
@@ -26,15 +26,6 @@ void core::MRenderer::drawBoundEntities(VkCommandBuffer commandBuffer) {
 void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
                                       WPrimitive* pPrimitive,
                                       WModel* pModel) {
-  // bind material descriptor set only if material is different (binding 2)
-  if (renderView.pCurrentMaterial != pPrimitive->pMaterial) {
-    vkCmdPushConstants(cmdBuffer, renderView.pCurrentPass->layout,
-                        VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(RSceneVertexPCB), sizeof(RSceneFragmentPCB),
-                        &pPrimitive->pMaterial->pushConstantBlock);
-
-    renderView.pCurrentMaterial = pPrimitive->pMaterial;
-  }
-
   uint32_t instanceCount = static_cast<uint32_t>(pPrimitive->instanceData.size());
   int32_t vertexOffset = (int32_t)pModel->m_sceneVertexOffset + (int32_t)pPrimitive->vertexOffset;
   uint32_t indexOffset = pModel->m_sceneIndexOffset + pPrimitive->indexOffset;

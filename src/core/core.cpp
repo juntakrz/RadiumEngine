@@ -75,7 +75,12 @@ void core::run() {
   materialInfo = RMaterialInfo{};
   materialInfo.name = "RMat_Light0";
   materialInfo.glowColor = glm::vec4(3.5f, 2.4f, 1.0f, 0.0f);
-  RMaterial* pNewMaterial = core::resources.createMaterial(&materialInfo);
+  core::resources.createMaterial(&materialInfo);
+
+  materialInfo = RMaterialInfo{};
+  materialInfo.name = "RMat_Light1";
+  materialInfo.glowColor = glm::vec4(1.0f, 1.0f, 3.0f, 0.0f);
+  core::resources.createMaterial(&materialInfo);
 
   
   APawn* pPawn = core::actors.createPawn("sphere0");
@@ -89,8 +94,8 @@ void core::run() {
   pPawn->setModel(core::world.getModel("mdlSphere"));
   pPawn->setLocation(1.5f, 1.4f, 3.3f);
   pPawn->setScale(0.1f);
-  pPawn->getModel()->setPrimitiveMaterial(0, 0, "RMat_Light0");
   pPawn->bindToRenderer();
+  pPawn->setInstancePrimitiveMaterial(0, 0, "RMat_Light1");
 
   AStatic* pStatic = core::actors.createStatic("Skybox");
   pStatic->setModel(core::world.getModel(RMDL_SKYBOX));

@@ -57,6 +57,7 @@ class MRenderer {
   } lighting;
 
   struct RMaterialData {
+    RBuffer buffer;
     VkDescriptorSet descriptorSet;
     RMaterial* pSunShadow = nullptr;
     RMaterial* pGBuffer = nullptr;
@@ -357,6 +358,7 @@ public:
                                VkFilter filter = VK_FILTER_LINEAR);
 
   TResult createDefaultSamplers();
+  void destroySamplers();
   VkSampler getSampler(RSamplerInfo* pInfo);
 
   VkCommandPool getCommandPool(ECmdType type);

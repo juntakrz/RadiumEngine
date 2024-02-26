@@ -11,7 +11,7 @@ class WPrimitive {
   uint32_t vertexCount = 0u;
   uint32_t indexCount = 0u;
 
-  RMaterial* pMaterial = nullptr;
+  RMaterial* pInitialMaterial = nullptr;
   void* pOwnerNode = nullptr;
 
   std::vector<WPrimitiveInstanceData> instanceData;

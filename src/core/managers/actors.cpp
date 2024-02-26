@@ -230,6 +230,7 @@ APawn* core::MActors::createPawn(const char* name) {
   };
 
   m_actors.pawns.at(name) = std::make_unique<APawn>();
+  m_actors.pawns.at(name)->setName(name);
 
   // should probably add a reference to MRef here?
 

@@ -112,8 +112,6 @@ RTexture::~RTexture() {
     vkDestroyImageView(device, faceView, nullptr);
   }
 
-  vkDestroySampler(device, texture.sampler, nullptr);
-
   if (isKTX) {
     ktxVulkanTexture_Destruct(&texture, device, nullptr);
     return;

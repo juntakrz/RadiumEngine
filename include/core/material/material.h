@@ -7,6 +7,7 @@ struct RTexture;
 struct RMaterial {
   std::string name;
   uint32_t passFlags = EDynamicRenderingPass::Null;
+  uint32_t bufferIndex = -1;
   std::vector<RTexture*> pLinearTextures;
 
   RTexture* pBaseColor = nullptr;
