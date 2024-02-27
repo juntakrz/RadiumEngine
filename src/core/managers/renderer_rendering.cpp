@@ -620,5 +620,9 @@ void core::MRenderer::renderInitFrame() {
   // Generate BRDF LUT during the initial frame
   queueComputeJob(&environment.computeJobs.LUT);
 
+  RTexture* pNoiseTexture = core::resources.getTexture(RTGT_NOISEMAP);
+  core::resources.writeTexture(pNoiseTexture, system.randomOffsets.data(),
+    sizeof(glm::vec2) * system.randomOffsets.size());
+
   renderFrame();
 }

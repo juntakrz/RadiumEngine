@@ -201,6 +201,10 @@ TResult core::MRenderer::createSceneBuffers() {
   RE_LOG(Log, "Creating an exposure/luminance buffer.");  // 16 * 16 * float32 color = 1024 bytes
   createBuffer(EBufferType::CPU_STORAGE, 1024, postprocess.exposureStorageBuffer, nullptr);
 
+  RE_LOG(Log, "Creating a general storage buffer.");
+  createBuffer(EBufferType::DGPU_STORAGE, 32768, scene.generalBuffer, nullptr);
+  copyDataToBuffer(system.occlusionOffsets.data(), sizeof(glm::vec4) * RE_OCCLUSIONSAMPLES, &scene.generalBuffer, 0u);
+
   return RE_OK;
 }
 
@@ -226,6 +230,8 @@ void core::MRenderer::destroySceneBuffers() {
   vmaDestroyBuffer(memAlloc, material.buffer.buffer, material.buffer.allocation);
   vmaDestroyBuffer(memAlloc, scene.transparencyLinkedListBuffer.buffer, scene.transparencyLinkedListBuffer.allocation);
   vmaDestroyBuffer(memAlloc, scene.transparencyLinkedListDataBuffer.buffer, scene.transparencyLinkedListDataBuffer.allocation);
+
+  vmaDestroyBuffer(memAlloc, scene.generalBuffer.buffer, scene.generalBuffer.allocation);
 }
 
 core::MRenderer::RLightingData* core::MRenderer::getLightingData() {
@@ -567,6 +573,63 @@ TResult core::MRenderer::createImageTargets() {
   RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
 #endif
 
+  // Target for storing ambient occlusion results
+  rtName = RTGT_PPAO;
+
+  textureInfo = RTextureInfo{};
+  textureInfo.name = rtName;
+  textureInfo.width = config::renderWidth;
+  textureInfo.height = config::renderHeight;
+  textureInfo.format = VK_FORMAT_R8_UNORM;
+  textureInfo.isCubemap = false;
+  textureInfo.layerCount = 1u;
+  textureInfo.mipLevels = 1u;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+
+  textureInfo.samplerInfo.addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+
+  pNewTexture = core::resources.createTexture(&textureInfo);
+
+  if (!pNewTexture) {
+    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
+    return RE_CRITICAL;
+  }
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
+#endif
+
+  // Target for ambient occlusion noise vectors
+  rtName = RTGT_NOISEMAP;
+
+  textureInfo = RTextureInfo{};
+  textureInfo.name = rtName;
+  textureInfo.width = 4;
+  textureInfo.height = 4;
+  textureInfo.format = VK_FORMAT_R32G32_SFLOAT;
+  textureInfo.isCubemap = false;
+  textureInfo.layerCount = 1u;
+  textureInfo.mipLevels = 1u;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+
+  textureInfo.samplerInfo.filter = VK_FILTER_NEAREST;
+  textureInfo.samplerInfo.addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+
+  pNewTexture = core::resources.createTexture(&textureInfo);
+
+  if (!pNewTexture) {
+    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
+    return RE_CRITICAL;
+  }
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
+#endif
+
   // set swapchain subresource copy region
   swapchain.copyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   swapchain.copyRegion.srcSubresource.baseArrayLayer = 0;
@@ -857,6 +920,25 @@ TResult core::MRenderer::setRendererDefaults() {
   // Calculate a Halton Sequence for TAA jittering
   system.haltonJitter.resize(core::vulkan::haltonSequenceCount);
   math::getHaltonJitter(system.haltonJitter, config::renderWidth, config::renderHeight);
+
+  // Generate random positions for ambient occlusion sampling
+  system.occlusionOffsets.resize(RE_OCCLUSIONSAMPLES);
+  for (uint32_t i = 0; i < RE_OCCLUSIONSAMPLES; ++i) {
+    system.occlusionOffsets[i] =
+      glm::vec4(math::random(-1.0f, 1.0f), math::random(-1.0f, 1.0f), math::random(0.0f, 1.0f), 0.0f);
+
+    system.occlusionOffsets[i] = glm::normalize(system.occlusionOffsets[i]);
+    system.occlusionOffsets[i] *= math::random(0.0f, 1.0f);
+
+    float scale = (float)i / (float)RE_OCCLUSIONSAMPLES;
+    scale = std::lerp(0.1f, 1.0f, scale * scale);
+    system.occlusionOffsets[i] *= scale;
+  }
+
+  system.randomOffsets.resize(16);
+  for (uint32_t j = 0; j < 16; ++j) {
+    system.randomOffsets[j] = glm::vec2(math::random(-1.0f, 1.0f), math::random(-1.0f, 1.0f));
+  }
 
   // Setup transparency linked list
   scene.transparencySubRange.aspectMask = scene.pTransparencyStorageTexture->texture.aspectMask;

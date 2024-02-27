@@ -229,7 +229,8 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
 
   // PBR pass, processes the result of the G-Buffer
   {
-    RTexture* pColorAttachment = core::resources.getTexture(RTGT_GPBR);
+    //RTexture* pColorAttachment = core::resources.getTexture(RTGT_GPBR);
+    std::vector<RTexture*> pColorAttachments = { core::resources.getTexture(RTGT_GPBR), core::resources.getTexture(RTGT_PPAO) };
     RTexture* pDepthAttachment = core::resources.getTexture(RTGT_DEPTH);
 
     RDynamicRenderingInfo info{};
@@ -240,7 +241,12 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     info.colorAttachmentClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
     info.clearColorAttachments = true;
     info.layoutInfo.validateColorAttachmentLayout = true;
-    info.colorAttachments = {{ pColorAttachment, pColorAttachment->texture.view, pColorAttachment->texture.imageFormat }};
+    //info.colorAttachments = {{ pColorAttachment, pColorAttachment->texture.view, pColorAttachment->texture.imageFormat }};
+
+    info.colorAttachments.resize(pColorAttachments.size());
+    for (uint8_t i = 0; i < pColorAttachments.size(); ++i) {
+      info.colorAttachments[i] = { pColorAttachments[i], pColorAttachments[i]->texture.view, pColorAttachments[i]->texture.imageFormat};
+    }
 
     createDynamicRenderingPass(EDynamicRenderingPass::PBR, &info);
   }

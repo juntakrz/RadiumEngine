@@ -420,6 +420,27 @@ TResult core::MRenderer::copyImageToBuffer(VkCommandBuffer commandBuffer, RTextu
   return RE_OK;
 }
 
+void core::MRenderer::copyDataToBuffer(void* pData, VkDeviceSize dataSize, RBuffer* pDstBuffer, VkDeviceSize offset) {
+  switch (pDstBuffer->type) {
+    case EBufferType::DGPU_STORAGE: {
+      RBuffer stagingBuffer;
+
+      VkBufferCopy copyInfo{};
+      copyInfo.srcOffset = 0;
+      copyInfo.dstOffset = offset;
+      copyInfo.size = dataSize;
+
+      createBuffer(EBufferType::STAGING, dataSize, stagingBuffer, pData);
+      copyBuffer(stagingBuffer.buffer, pDstBuffer->buffer, &copyInfo);
+      vmaDestroyBuffer(memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
+
+      break;
+    }
+  }
+
+  // TODO: add other buffer types
+}
+
 // Runs in a dedicated thread
 void core::MRenderer::updateInstanceBuffer() {
   std::vector<RInstanceData> instanceData(scene.totalInstances);

@@ -3,9 +3,12 @@
 #include "include/common.glsl"
 #include "include/fragment.glsl"
 
+#define OCCLUSION_SAMPLES	64
+
 layout (location = 0) in vec2 inUV0;
 
 layout (location = 0) out vec4 outColor;
+layout (location = 1) out float outAO;
 
 // Scene bindings
 layout (set = 0, binding = 0) uniform UBOScene {
@@ -18,6 +21,11 @@ layout (set = 0, binding = 0) uniform UBOScene {
 layout (set = 0, binding = 2) uniform samplerCube prefilteredMap;
 layout (set = 0, binding = 3) uniform samplerCube irradianceMap;
 layout (set = 0, binding = 4) uniform sampler2D BRDFLUTMap;
+layout (set = 0, binding = 5) uniform sampler2D noiseMap;
+
+layout (set = 0, binding = 6) buffer OcclusionOffsets {
+	vec4 occlusionOffsets[OCCLUSION_SAMPLES];
+};
 
 const float shadowBias = 0.00001;
 
@@ -169,7 +177,6 @@ vec3 getLight(uint index, vec3 worldPos, vec3 diffuseColor, vec3 specularColor, 
 	vec3 specularEnvironmentR90 = vec3(1.0, 1.0, 1.0) * reflectance90;
 
 	vec3 L = normalize(lighting.lightLocations[index].xyz - worldPos);
-	//vec3 L = normalize(lighting.lightLocations[index].xyz);	// Vector from surface point to light
 	vec3 H = normalize(L + V);								// Half vector between both l and v
 
 	float NdotL = clamp(dot(normal, L), 0.001, 1.0);
@@ -199,7 +206,7 @@ void main() {
 	vec3 f0 = vec3(0.04);
 
 	// Retrieve G-buffer data
-	vec3 worldPos = texture(samplers[material.samplerIndex[POSITIONMAP]], inUV0).xyz;
+	vec3 worldPos = texelFetch(samplers[material.samplerIndex[POSITIONMAP]], ivec2(gl_FragCoord.xy), 0).xyz;
 	vec4 baseColor = texture(samplers[material.samplerIndex[COLORMAP]], inUV0);
 	vec3 normal = texture(samplers[material.samplerIndex[NORMALMAP]], inUV0).rgb;
 	float metallic = texture(samplers[material.samplerIndex[PHYSMAP]], inUV0).r;
@@ -269,4 +276,47 @@ void main() {
 	color += emissive;
 
 	outColor = vec4(color, baseColor.a);
+
+	if (baseColor.a < 0.01) {
+		outAO = 1.0;
+		return;
+	}
+
+	// Calculate occlusion value
+	float occlusion = 0.0;
+	const float occlusionRadius = 0.5;
+	const float occlusionBias = -0.025;
+
+	ivec2 posDim = textureSize(samplers[material.samplerIndex[POSITIONMAP]], 0); 
+	ivec2 noiseDim = textureSize(noiseMap, 0);
+	const vec2 noiseUV = vec2(float(posDim.x)/float(noiseDim.x), float(posDim.y)/(noiseDim.y)) * inUV0;  
+	vec3 randomVec = vec3(texture(noiseMap, noiseUV).rg, 0.0) * 2.0 - 1.0;
+	randomVec = -randomVec;
+
+	vec4 newPos = scene.view * vec4(worldPos, 1.0);
+
+	// Create TBN matrix
+	vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
+	vec3 bitangent = cross(tangent, normal);
+	mat3 TBN = mat3(tangent, bitangent, normal);
+
+	for(int i = 0; i < OCCLUSION_SAMPLES; i++) {		
+		vec3 samplePos = TBN * occlusionOffsets[i].xyz; 
+		samplePos = newPos.xyz + samplePos * occlusionRadius; 
+
+		vec4 sampleOffset = vec4(samplePos, 1.0);
+		sampleOffset = scene.projection * sampleOffset; 
+		sampleOffset.xyz /= sampleOffset.w; 
+		sampleOffset.xyz = sampleOffset.xyz * 0.5 + 0.5;
+		sampleOffset.y = 1.0 - sampleOffset.y;
+		
+		float sampleDepth = texture(samplers[material.samplerIndex[POSITIONMAP]], sampleOffset.xy).w; 
+
+		float rangeCheck = smoothstep(0.0, 1.0, occlusionRadius / abs(newPos.z - sampleDepth));
+		occlusion += (sampleDepth >= samplePos.z + occlusionBias ? 1.0 : 0.0) * rangeCheck;
+	}
+
+	occlusion /= float(OCCLUSION_SAMPLES);
+
+	outAO = occlusion;
 }

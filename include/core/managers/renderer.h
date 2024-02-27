@@ -73,6 +73,7 @@ class MRenderer {
     RBuffer rootTransformBuffer;
     RBuffer nodeTransformBuffer;
     RBuffer skinTransformBuffer;
+    RBuffer generalBuffer;
     uint32_t currentVertexOffset = 0u;
     uint32_t currentIndexOffset = 0u;
     size_t totalInstances = 0u;
@@ -140,6 +141,8 @@ class MRenderer {
     std::unordered_map<EComputePipeline, VkPipeline> computePipelines;
     std::vector<RViewport> viewports;
     std::vector<glm::vec2> haltonJitter;
+    std::vector<glm::vec4> occlusionOffsets;
+    std::vector<glm::vec2> randomOffsets;
 
     VkDescriptorPool descriptorPool;
     std::unordered_map<EDescriptorSetLayout, VkDescriptorSetLayout> descriptorSetLayouts;
@@ -148,6 +151,9 @@ class MRenderer {
     std::vector<VkDrawIndexedIndirectCommand> drawCommands;
 
     VkQueryPool queryPool;
+
+    bool asyncComputeSupport = false;
+    int32_t computeQueue = -1;
   } system;
 
   // current camera view data
@@ -430,6 +436,8 @@ public:
 
    TResult copyImageToBuffer(VkCommandBuffer commandBuffer, RTexture *pSrcImage, VkBuffer dstBuffer,
                              uint32_t width, uint32_t height, VkImageSubresourceLayers* subresource);
+
+   void copyDataToBuffer(void* pData, VkDeviceSize dataSize, RBuffer* pDstBuffer, VkDeviceSize offset = 0u);
 
    void updateInstanceBuffer();
 

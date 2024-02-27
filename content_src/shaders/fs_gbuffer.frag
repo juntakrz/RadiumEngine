@@ -72,12 +72,22 @@ void main() {
 	outEmissive = vec4(0.0);
 
 	// 1. Extract fragment position in world space and normalize it in relation to camera for maximum fp16 precision
-	outPosition = vec4(inWorldPos, 1.0);
+	float w = gl_FragCoord.z * 2.0 - 1.0;
+	float nearPlane = 0.001;
+	float farPlane = 1000.0;
+	w = (2.0 * nearPlane * farPlane) / (farPlane + nearPlane - w * (farPlane - nearPlane));
+
+	outPosition = vec4(inWorldPos, w);
 
 	// 2. Extract color / diffuse / albedo
 	int textureSet = getTextureSet(COLORMAP, inMaterialIndex);
 	if (textureSet > -1) {
 		outColor = texture(samplers[materialBlocks[inMaterialIndex].samplerIndex[COLORMAP]], textureSet == 0 ? inUV0 : inUV1);
+
+		// Objects that have a 1 bit alpha should be sent to opaque passes, as they don't need blending and are fine for G-Buffer
+		if (outColor.a < 0.01) {
+			discard;
+		}
 	}
 	
 	// apply vertex colors if present

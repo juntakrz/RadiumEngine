@@ -78,6 +78,7 @@ void core::MResources::initialize() {
   materialInfo.textures.occlusion = RTGT_PREVFRAME;
   materialInfo.textures.emissive = RTGT_PPTAA;
   materialInfo.textures.extra0 = RTGT_APBR;
+  materialInfo.textures.extra1 = RTGT_PPAO;
   materialInfo.alphaMode = EAlphaMode::Opaque;
   materialInfo.doubleSided = false;
   materialInfo.manageTextures = true;

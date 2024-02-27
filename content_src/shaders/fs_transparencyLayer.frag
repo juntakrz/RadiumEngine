@@ -73,6 +73,9 @@ void main() {
 
     // Reset transparency node count
     nodeCount = 0;
+
+	float occlusionColor = texture(samplers[material.samplerIndex[EXTRAMAP1]], inUV).r;
+	sampleColor.rgb *= occlusionColor;
     
     outColor = mix(sampleColor, color, color.a);
 }

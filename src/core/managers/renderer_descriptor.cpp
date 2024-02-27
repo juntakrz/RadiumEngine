@@ -87,6 +87,8 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
   // 2 - Environment filtered map
   // 3 - Environment irradiance map
   // 4 - Generated BRDF LUT map
+  // 5 - Ambient occlusion noise map
+  // 6 - General data storage
   {
     system.descriptorSetLayouts.emplace(EDescriptorSetLayout::Scene,
                                         VK_NULL_HANDLE);
@@ -102,6 +104,10 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
       {4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+      {5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
+        VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+      {6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
+        VK_SHADER_STAGE_ALL_GRAPHICS, nullptr}
     };
     VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
     setLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -118,6 +124,9 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
   }
 
   // MaterialEXT descriptor layout
+  // 0 - Material push block array
+  // 1 - Combined image samplers
+
   {
     system.descriptorSetLayouts.emplace(EDescriptorSetLayout::MaterialEXT, VK_NULL_HANDLE);
 
@@ -291,7 +300,7 @@ TResult core::MRenderer::createDescriptorSets() {
     RE_LOG(Log, "Populating renderer descriptor sets.");
 #endif
 
-    uint32_t descriptorCount = 5u;
+    uint32_t descriptorCount = 7u;
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
       // model*view*projection data for descriptor set
@@ -308,7 +317,7 @@ TResult core::MRenderer::createDescriptorSets() {
 
       std::vector<VkWriteDescriptorSet> writeDescriptorSets(descriptorCount);
 
-      // settings used for writing to MVP descriptor set
+      // Settings used for writing to MVP descriptor set
       writeDescriptorSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
       writeDescriptorSets[0].descriptorType =
           VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
@@ -321,7 +330,7 @@ TResult core::MRenderer::createDescriptorSets() {
       writeDescriptorSets[0].pTexelBufferView = nullptr;
       writeDescriptorSets[0].pNext = nullptr;
 
-      // settings used for writing to lighting descriptor set
+      // Settings used for writing to lighting descriptor set
       writeDescriptorSets[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
       writeDescriptorSets[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
       writeDescriptorSets[1].descriptorCount = 1;
@@ -329,14 +338,16 @@ TResult core::MRenderer::createDescriptorSets() {
       writeDescriptorSets[1].dstBinding = 1;
       writeDescriptorSets[1].pBufferInfo = &descriptorBufferInfoLighting;
 
-      // environment image data
+      // Environment image data
 
-      // environment maps are created with a layout for accepting data writes
+      // Environment maps are created with a layout for accepting data writes
       // however descriptor sets require info about their final state
-      VkDescriptorImageInfo imageDescriptors[3]{
+      VkDescriptorImageInfo imageDescriptors[4]{
           core::resources.getTexture(RTGT_ENVFILTER)->texture.imageInfo,
           core::resources.getTexture(RTGT_ENVIRRAD)->texture.imageInfo,
-          core::resources.getTexture(RTGT_BRDFMAP)->texture.imageInfo};
+          core::resources.getTexture(RTGT_BRDFMAP)->texture.imageInfo,
+          core::resources.getTexture(RTGT_NOISEMAP)->texture.imageInfo
+      };
 
       for (VkDescriptorImageInfo& imageInfo : imageDescriptors) {
         imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -368,6 +379,28 @@ TResult core::MRenderer::createDescriptorSets() {
       writeDescriptorSets[4].dstSet = scene.descriptorSets[i];
       writeDescriptorSets[4].dstBinding = 4;
       writeDescriptorSets[4].pImageInfo = &imageDescriptors[2];
+
+      // RTGT_NOISEMAP
+      writeDescriptorSets[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writeDescriptorSets[5].descriptorType =
+        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      writeDescriptorSets[5].descriptorCount = 1;
+      writeDescriptorSets[5].dstSet = scene.descriptorSets[i];
+      writeDescriptorSets[5].dstBinding = 5;
+      writeDescriptorSets[5].pImageInfo = &imageDescriptors[3];
+
+      // General storage buffer for various static / not often changed data
+      VkDescriptorBufferInfo generalBufferInfo{};
+      generalBufferInfo.buffer = scene.generalBuffer.buffer;
+      generalBufferInfo.offset = 0;
+      generalBufferInfo.range = VK_WHOLE_SIZE;
+
+      writeDescriptorSets[6].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writeDescriptorSets[6].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+      writeDescriptorSets[6].descriptorCount = 1;
+      writeDescriptorSets[6].dstSet = scene.descriptorSets[i];
+      writeDescriptorSets[6].dstBinding = 6;
+      writeDescriptorSets[6].pBufferInfo = &generalBufferInfo;
 
       vkUpdateDescriptorSets(logicalDevice.device, descriptorCount,
                              writeDescriptorSets.data(), 0, nullptr);

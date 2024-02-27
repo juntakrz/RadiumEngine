@@ -9,19 +9,22 @@
 #define RE_MAXLIGHTS            32u             // Includes directional light, always at index 0
 #define RE_MAXSHADOWCASTERS     4u
 #define RE_MAXTRANSPARENTLAYERS 4u
+#define RE_OCCLUSIONSAMPLES     64u
 
 // render targets
 #define RTGT_PRESENT            "RT2D_Present"      // Final swapchain target
-#define RTGT_PPTAA              "RT2D_TAA"          // PBR + velocity and history images
 #define RTGT_DEPTH              "RT2D_Depth"        // Active camera depth render target
 #define RTGT_SHADOW             "RT2D_Shadow"       // Shadow render target (depth)
 #define RTGT_ENVSRC             "RT2D_EnvSrc"       // Source texture for environment cubemaps
-#define RTGT_PPBLOOM            "RT2D_PPBloom"      // Post processing target
+#define RTGT_PPTAA              "RT2D_TAA"          // PBR + velocity and history images
+#define RTGT_PPBLOOM            "RT2D_PPBloom"      // Post processing bloom target
+#define RTGT_PPAO               "RT2D_PPAO"         // Post processing ambient occlusion target
 
 #define RTGT_ENV                "RTCube_Env"
 #define RTGT_ENVFILTER          "RTCube_EnvSkybox"
 #define RTGT_ENVIRRAD           "RTCube_EnvIrrad"
 #define RTGT_BRDFMAP            "RT2D_EnvBRDF"
+#define RTGT_NOISEMAP           "RT2D_NoiseMap"
 #define RTGT_EXPOSUREMAP        "RT2D_Exposure"
 #define RTGT_VELOCITYMAP        "RT2D_Velocity"
 #define RTGT_PREVFRAME          "RT2D_PrevFrame"

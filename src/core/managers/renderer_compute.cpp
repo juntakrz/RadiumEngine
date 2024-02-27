@@ -214,14 +214,16 @@ void core::MRenderer::executeComputeJobImmediate(RComputeJobInfo* pInfo, const b
 
       updateComputeImageSet(&pInfo->pImageAttachments, &pInfo->pSamplerAttachments, pInfo->useExtraImageViews, pInfo->useExtraSamplerViews);
 
-      VkCommandBuffer cmdBuffer = createCommandBuffer(ECmdType::Compute, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
-      executeComputeImage(cmdBuffer, pInfo->pipeline);
+      VkCommandBuffer computeBuffer = createCommandBuffer(ECmdType::Compute, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
+      executeComputeImage(computeBuffer, pInfo->pipeline);
 
       VkMemoryBarrier2 memoryBarrier{};
       memoryBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
       memoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
       memoryBarrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
-      memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
+      //memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
+      //memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+      memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
       memoryBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
 
       VkDependencyInfo computeDependency{};
@@ -229,9 +231,9 @@ void core::MRenderer::executeComputeJobImmediate(RComputeJobInfo* pInfo, const b
       computeDependency.memoryBarrierCount = 1u;
       computeDependency.pMemoryBarriers = &memoryBarrier;
 
-      vkCmdPipelineBarrier2(cmdBuffer, &computeDependency);
+      vkCmdPipelineBarrier2(computeBuffer, &computeDependency);
 
-      flushCommandBuffer(cmdBuffer, ECmdType::Compute, true);
+      flushCommandBuffer(computeBuffer, ECmdType::Compute, true);
 
       if (pInfo->transtionToShaderReadOnly) {
         for (auto& image : pInfo->pImageAttachments) {
