@@ -246,8 +246,17 @@ RMaterial* core::MResources::createMaterial(
       }
     }
 
-    // all glTF materials are featured in shadow prepass by default
-    newMat.passFlags |= EDynamicRenderingPass::Shadow;
+    // Check material for a single bit alpha and reassign it to OpaqueCullNone pass
+    if ((newMat.passFlags & EDynamicRenderingPass::BlendCullNone)
+      && (newMat.pBaseColor->texture.imageFormat == VK_FORMAT_BC1_RGBA_SRGB_BLOCK
+        || newMat.pBaseColor->texture.imageFormat == VK_FORMAT_BC1_RGBA_UNORM_BLOCK)) {
+      newMat.passFlags ^= EDynamicRenderingPass::BlendCullNone;
+      newMat.passFlags |= EDynamicRenderingPass::DiscardCullNone;
+    }
+
+    // All glTF materials are featured in shadow prepass by default, discard materials have their dedicated shadow pass
+    newMat.passFlags |= (newMat.passFlags & EDynamicRenderingPass::DiscardCullNone)
+      ? EDynamicRenderingPass::ShadowDiscard : EDynamicRenderingPass::Shadow;
   }
 
   RE_LOG(Log, "Creating material \"%s\".", newMat.name.c_str());

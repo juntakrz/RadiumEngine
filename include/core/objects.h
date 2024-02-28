@@ -87,19 +87,21 @@ enum class EDescriptorSetLayout {
 enum EDynamicRenderingPass : uint32_t {
   Null                = 0,
   Shadow              = 0b1,
-  EnvSkybox           = 0b10,
-  OpaqueCullBack      = 0b100,
-  OpaqueCullNone      = 0b1000,
-  MaskCullBack        = 0b10000,
-  BlendCullNone       = 0b100000,
-  Skybox              = 0b1000000,
-  AlphaCompositing    = 0b10000000,
-  PBR                 = 0b100000000,
-  PPDownsample        = 0b1000000000,
-  PPUpsample          = 0b10000000000,
-  PPGetExposure       = 0b100000000000,
-  PPTAA               = 0b1000000000000,
-  Present             = 0b10000000000000
+  ShadowDiscard       = 0b10,
+  EnvSkybox           = 0b100,
+  OpaqueCullBack      = 0b1000,
+  OpaqueCullNone      = 0b10000,
+  DiscardCullNone     = 0b100000,
+  MaskCullBack        = 0b1000000,
+  BlendCullNone       = 0b10000000,
+  Skybox              = 0b100000000,
+  AlphaCompositing    = 0b1000000000,
+  PBR                 = 0b10000000000,
+  PPDownsample        = 0b100000000000,
+  PPUpsample          = 0b1000000000000,
+  PPGetExposure       = 0b10000000000000,
+  PPTAA               = 0b100000000000000,
+  Present             = 0b1000000000000000
 };
 
 enum class ELightType {

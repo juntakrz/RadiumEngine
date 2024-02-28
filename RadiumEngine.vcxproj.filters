@@ -328,6 +328,7 @@
     <None Include="content_src\shaders\fs_ppTAA.frag" />
     <None Include="content_src\shaders\fs_abuffer.frag" />
     <None Include="content_src\shaders\fs_transparencyLayer.frag" />
+    <None Include="content_src\shaders\fs_gbufferDiscard.frag" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="lib\glfw3.lib" />

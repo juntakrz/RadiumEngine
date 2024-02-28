@@ -70,7 +70,7 @@ void core::run() {
   core::world.loadModelFromFile("content/models/tree/scene.gltf", "mdlTree");
   core::world.loadModelFromFile("content/models/grass_02/scene.gltf", "mdlGrass");
   //
-  
+
   // create entities
   materialInfo = RMaterialInfo{};
   materialInfo.name = "RMat_Light0";

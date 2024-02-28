@@ -83,6 +83,11 @@ void main() {
 	int textureSet = getTextureSet(COLORMAP, inMaterialIndex);
 	if (textureSet > -1) {
 		outColor = texture(samplers[materialBlocks[inMaterialIndex].samplerIndex[COLORMAP]], textureSet == 0 ? inUV0 : inUV1);
+
+		// Objects that have a 1 bit alpha should be sent to opaque passes, as they don't need blending and are fine for G-Buffer
+		if (outColor.a < 0.8) {
+			discard;
+		}
 	}
 	
 	// apply vertex colors if present

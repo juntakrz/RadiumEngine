@@ -157,6 +157,7 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
 
   // Shadow pass
   {
+    // Main shadow pass (vertex shader only)
     RTexture* pDepthAttachment = core::resources.getTexture(RTGT_SHADOW);
 
     RDynamicRenderingInfo info{};
@@ -164,7 +165,6 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     info.viewportId = EViewport::vpShadow;
     info.vertexShader = "vs_shadowPass.spv";
     //info.geometryShader = "gs_shadowPass.spv";    // Seems to be slower than using separate depth passes
-    info.fragmentShader = "fs_shadowPass.spv";
     info.pipelineInfo.enableBlending = VK_FALSE;
     info.pipelineInfo.cullMode = VK_CULL_MODE_BACK_BIT;
     info.pipelineInfo.depthBias.enable = VK_TRUE;
@@ -172,6 +172,12 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     info.depthAttachment = { pDepthAttachment, pDepthAttachment->texture.view, pDepthAttachment->texture.imageFormat };
 
     createDynamicRenderingPass(EDynamicRenderingPass::Shadow, &info);
+
+    // Discard shadow pass
+    info.fragmentShader = "fs_shadowPass.spv";
+    info.pipelineInfo.cullMode = VK_CULL_MODE_NONE;
+
+    createDynamicRenderingPass(EDynamicRenderingPass::ShadowDiscard, &info);
   }
 
   // G-Buffer passes
@@ -210,6 +216,11 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     info.pipelineInfo.cullMode = VK_CULL_MODE_NONE;
 
     createDynamicRenderingPass(EDynamicRenderingPass::OpaqueCullNone, &info);
+
+    // Discard pass without culling
+    info.fragmentShader = "fs_gbufferDiscard.spv";
+
+    createDynamicRenderingPass(EDynamicRenderingPass::DiscardCullNone, &info);
 
     // Blend pass without culling and depth writes
 

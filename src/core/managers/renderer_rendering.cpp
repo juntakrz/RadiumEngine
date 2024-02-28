@@ -8,15 +8,19 @@
 #include "core/material/texture.h"
 #include "core/managers/renderer.h"
 
-void core::MRenderer::drawBoundEntities(VkCommandBuffer commandBuffer) {
+void core::MRenderer::drawBoundEntities(VkCommandBuffer commandBuffer, EDynamicRenderingPass passOverride) {
   // go through bound models and generate draw calls for each
   renderView.refresh();
+
+  if (passOverride == EDynamicRenderingPass::Null) {
+    passOverride = renderView.pCurrentPass->passId;
+  }
 
   for (WModel* pModel : scene.pModelReferences) {
     auto& primitives = pModel->getPrimitives();
 
     for (const auto& primitive : primitives) {
-      if (!checkPass(primitive->pInitialMaterial->passFlags, renderView.pCurrentPass->passId)) continue;
+      if (!checkPass(primitive->pInitialMaterial->passFlags, passOverride)) continue;
 
       renderPrimitive(commandBuffer, primitive, pModel);
     }
@@ -249,9 +253,10 @@ void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uin
   setViewport(commandBuffer, renderView.pCurrentPass->viewportId);
   renderView.currentViewportId = renderView.pCurrentPass->viewportId;
 
-  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->pipeline);
-
   const uint32_t dynamicOffset = config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
+
+  // Normal shadow pass
+  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->pipeline);
 
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->layout, 0,
     1, &renderView.pCurrentSet, 1, &dynamicOffset);
@@ -260,6 +265,12 @@ void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uin
                      sizeof(RSceneVertexPCB), &scene.vertexPushBlock);
 
   drawBoundEntities(commandBuffer);
+
+  // Discard shadow pass
+  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+    getDynamicRenderingPass(EDynamicRenderingPass::ShadowDiscard)->pipeline);
+
+  drawBoundEntities(commandBuffer, EDynamicRenderingPass::ShadowDiscard);
 
   vkCmdEndRendering(commandBuffer);
 
@@ -531,6 +542,7 @@ void core::MRenderer::renderFrame() {
   // G-Buffer passes
   executeRenderingPass(cmdBuffer, EDynamicRenderingPass::OpaqueCullBack);
   executeRenderingPass(cmdBuffer, EDynamicRenderingPass::OpaqueCullNone);
+  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::DiscardCullNone);
   executeRenderingPass(cmdBuffer, EDynamicRenderingPass::BlendCullNone);
 
   // Deferred rendering pass using G-Buffer collected data
