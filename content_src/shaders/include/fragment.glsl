@@ -1,3 +1,7 @@
+#define AO_NONE		0
+#define AO_SSAO		1
+#define AO_HBAO		2
+
 struct MaterialData {
 	int textureSets;			// bitwise texture sets
 	float metallicFactor;	
@@ -23,6 +27,7 @@ layout (std430, set = 0, binding = 1) uniform UBOLighting {
 	float gamma;
 	float prefilteredCubeMipLevels;
 	float scaleIBLAmbient;
+	uint aoMode;
 } lighting;
 
 layout (set = 2, binding = 0) buffer materialBlock {

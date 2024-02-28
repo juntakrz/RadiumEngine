@@ -33,6 +33,12 @@ enum EAnimationLoadMode {
   ExtractToStorageOnly
 };
 
+enum class EAOMode {
+  None,
+  SSAO,
+  HBAO
+};
+
 enum class EBufferType {  // VkBuffer creation mode
   NONE,
   STAGING,            // CPU staging buffer
@@ -461,6 +467,7 @@ struct RLightingUBO {
   float gamma = 2.2f;
   float prefilteredCubeMipLevels;
   float scaleIBLAmbient = 1.0f;
+  uint32_t aoMode = (uint32_t)EAOMode::None;
 };
 
 // Push constant block used by the scene fragment shader

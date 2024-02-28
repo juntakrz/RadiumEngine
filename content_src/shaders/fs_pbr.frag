@@ -28,6 +28,7 @@ layout (set = 0, binding = 6) buffer OcclusionOffsets {
 } occlusionData;
 
 const float shadowBias = 0.00001;
+const float occlusionIntensity = 2.25;
 const float occlusionRadius = 1.5;
 const float occlusionBias = 0.025;
 const float occlusionDistance = 6.0;
@@ -204,26 +205,105 @@ vec3 getLight(uint index, vec3 worldPos, vec3 diffuseColor, vec3 specularColor, 
 	return lightColor;
 }
 
-//vec3 fetchViewPos(vec2 UV) {
-//  float viewDepth = textureLod(texLinearDepth, UV, 0).x;
-//  return vec3((UV * control.projInfo.xy + control.projInfo.zw) * viewDepth), viewDepth);
-//}
-
+// SCREEN SPACE AMBIENT OCCLUSION
 vec3 getRandomVector() {
 	ivec2 posDim = textureSize(samplers[material.samplerIndex[POSITIONMAP]], 0); 
 	ivec2 noiseDim = textureSize(noiseMap, 0);
 	const vec2 noiseUV = vec2(float(posDim.x)/float(noiseDim.x), float(posDim.y)/(noiseDim.y)) * inUV0;  
-	vec3 randomVector = vec3(texture(noiseMap, noiseUV).rg, 0.0) * 2.0 - 1.0;
-	randomVector.z = -randomVector.z;
+	vec3 randomVector = vec3(texture(noiseMap, noiseUV).rgb) * 2.0 - 1.0;
 
-	return randomVector;
+	return normalize(randomVector);
 }
 
-float getOcclusion(vec3 worldPos, vec3 normal) {
+// HBAO
+vec3 minDiff(vec3 P, vec3 Pr, vec3 Pl) {
+  vec3 V1 = Pr - P;
+  vec3 V2 = P - Pl;
+  return (dot(V1,V1) < dot(V2,V2)) ? V1 : V2;
+}
+
+vec3 getViewPos(vec2 UV) {
+	float viewDepth = textureLod(samplers[material.samplerIndex[POSITIONMAP]], UV, 0).w;
+	const vec2 A = vec2(2.0 / scene.projection[0][0], 2.0 / scene.projection[1][1]);
+	const vec2 B = vec2(-1.0 / scene.projection[0][0], -1.0 / scene.projection[1][1]);
+	vec3 viewPos = vec3((UV * A + B) * viewDepth, viewDepth);
+	viewPos.y = -viewPos.y;
+
+	return viewPos;
+}
+
+vec3 getViewNormal(vec2 UV, vec3 viewPos, ivec2 texDim) {
+	vec2 offsetDelta = vec2(1.0 / float(texDim.x), 1.0 / float(texDim.y));
+	vec3 Pr = getViewPos(UV + vec2(offsetDelta.x, 0.0));
+	vec3 Pl = getViewPos(UV + vec2(-offsetDelta.x, 0.0));
+	vec3 Pt = getViewPos(UV + vec2(0.0, offsetDelta.y));
+	vec3 Pb = getViewPos(UV + vec2(0.0, -offsetDelta.y));
+
+	return normalize(cross(minDiff(viewPos, Pr, Pl), minDiff(viewPos, Pt, Pb)));
+}
+
+vec2 rotateDirection(vec2 direction, vec2 cosSin) {
+  return vec2(direction.x * cosSin.x - direction.y * cosSin.y,
+              direction.x * cosSin.y + direction.y * cosSin.x);
+}
+
+float getHBAOPass(vec3 P, vec3 N, vec3 S) {
+  vec3 V = S - P;
+  float VdotV = dot(V, V);
+  float NdotV = dot(N, V) * 1.0 / sqrt(VdotV);
+
+  return clamp(NdotV - (occlusionBias * 4.0), 0.0, 1.0) * clamp((-0.25 * VdotV + 1.0), 0.0, 1.0);
+}
+
+float getHBAO(vec2 UV) {
+	const int stepCount = 4;
+	const int directionCount = 8;
+	const ivec2 texDim = textureSize(samplers[material.samplerIndex[POSITIONMAP]], 0);
+	const vec2 fTexStep = vec2(1.0 / texDim);
+
+	vec3 viewPos = getViewPos(UV);
+	vec3 viewNormal = getViewNormal(UV, viewPos, texDim);
+	vec4 randomVector = vec4(getRandomVector(), 1.0);
+	float radius = occlusionRadius * (float(texDim.y) * 0.25) / viewPos.z;
+
+	// Divide by NUM_STEPS+1 so that the farthest samples are not fully attenuated
+	float stepSizePixels = radius / (stepCount + 1.0);
+
+	const float alpha = 2.0 * M_PI / directionCount;
+	float occlusion = 0.0;
+
+	for (float directionIndex = 0; directionIndex < directionCount; directionIndex++) {
+		float angle = alpha * directionIndex;
+
+		// Compute normalized 2D direction
+		vec2 direction = rotateDirection(vec2(cos(angle), sin(angle)), randomVector.xy);
+
+		// Jitter starting sample within the first step
+		float rayPixels = (randomVector.z * stepSizePixels + 1.0);
+
+		for (float stepIndex = 0; stepIndex < stepCount; stepIndex++) {
+			vec2 offset = round(rayPixels * direction) * fTexStep;
+			vec2 snappedUV = UV + offset;
+			vec3 S = getViewPos(snappedUV);
+	  
+			rayPixels += stepSizePixels;
+
+			occlusion += getHBAOPass(viewPos, viewNormal, S);
+		}
+	}
+
+	occlusion *= 1.0 / (directionCount * stepCount);
+	return clamp(1.0 - occlusion * occlusionIntensity, 0.0, 1.0);
+}
+
+// SSAO
+
+float getSSAO(vec3 worldPos, vec3 normal) {
 	float occlusion = 0.0;
 
 	vec4 newPos = scene.view * vec4(worldPos, 1.0);
 	vec3 randomVector = getRandomVector();
+	randomVector.z = -randomVector.z;
 
 	// Create TBN matrix
 	vec3 tangent = normalize(randomVector - normal * dot(randomVector, normal));
@@ -334,12 +414,21 @@ void main() {
 	outColor = vec4(color, baseColor.a);
 
 	// Calculate SSAO (ignore emissive materials as they shouldn't self shadow)
-	if (baseColor.a < 0.01 || length(emissive.rgb) > 1.0 || worldPos.w > occlusionDistance) {
+	if (lighting.aoMode == AO_NONE || baseColor.a < 0.01 || length(emissive.rgb) > 1.0 || worldPos.w > occlusionDistance) {
 		outAO = 1.0;
 		return;
 	}
 
-	outAO = getOcclusion(worldPos.xyz, normal);
+	switch (lighting.aoMode) {
+		case AO_HBAO: {
+			outAO = getHBAO(inUV0);
+			break;
+		}
+		default: {
+			outAO = getSSAO(worldPos.xyz, normal);
+			break;
+		}
+	}
 
 	// Ambient occlusion smooth falloff, starts at occlusionDistance - 2.0
 	float aoFactor = clamp((worldPos.w - occlusionDistance + 2.0) * 0.5, 0.0, 1.0);

@@ -71,6 +71,7 @@ extern float pitchLimit;                        // camera pitch limit
 extern uint32_t shadowResolution;
 extern uint32_t shadowCascades;
 extern float maxAnisotropy;
+extern uint32_t ambientOcclusionMode;
 
 // scene buffer values
 namespace scene {

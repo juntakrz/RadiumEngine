@@ -634,7 +634,7 @@ void core::MRenderer::renderInitFrame() {
 
   RTexture* pNoiseTexture = core::resources.getTexture(RTGT_NOISEMAP);
   core::resources.writeTexture(pNoiseTexture, system.randomOffsets.data(),
-    sizeof(glm::vec2) * system.randomOffsets.size());
+    sizeof(glm::vec4) * system.randomOffsets.size());
 
   renderFrame();
 }

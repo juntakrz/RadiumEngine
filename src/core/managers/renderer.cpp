@@ -608,7 +608,7 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.name = rtName;
   textureInfo.width = 4;
   textureInfo.height = 4;
-  textureInfo.format = VK_FORMAT_R32G32_SFLOAT;
+  textureInfo.format = VK_FORMAT_R32G32B32A32_SFLOAT;
   textureInfo.isCubemap = false;
   textureInfo.layerCount = 1u;
   textureInfo.mipLevels = 1u;
@@ -937,7 +937,7 @@ TResult core::MRenderer::setRendererDefaults() {
 
   system.randomOffsets.resize(16);
   for (uint32_t j = 0; j < 16; ++j) {
-    system.randomOffsets[j] = glm::vec2(math::random(-1.0f, 1.0f), math::random(-1.0f, 1.0f));
+    system.randomOffsets[j] = glm::vec4(math::random(-1.0f, 1.0f), math::random(-1.0f, 1.0f), math::random(0.0f, 1.0f), 0.0f);
   }
 
   // Setup transparency linked list
@@ -1224,6 +1224,8 @@ core::MRenderer::REnvironmentData* core::MRenderer::getEnvironmentData() {
 
 void core::MRenderer::updateLightingUBO(const int32_t frameIndex) {
   core::actors.updateLightingUBO(&lighting.data);
+
+  lighting.data.aoMode = config::ambientOcclusionMode;
 
   memcpy(lighting.buffers[frameIndex].allocInfo.pMappedData, &lighting.data,
          sizeof(RLightingUBO));

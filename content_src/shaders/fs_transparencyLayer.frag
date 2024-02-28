@@ -36,7 +36,7 @@ const float occlusionBias = 0.25;
 
 vec3 getOcclusion(vec3 color) {
     float occlusionFactor = 0.0;
-    const vec2 texelSize = 1.0 / vec2(textureSize(samplers[material.samplerIndex[EXTRAMAP1]], 0));
+    const vec2 texelSize = 1.0 / vec2(textureSize(samplers[material.samplerIndex[EXTRAMAP1]], 0)) * 2.0;
     const int range = 2;
     int count = 0;
 
@@ -99,7 +99,9 @@ void main() {
     nodeCount = 0;
 
     // Apply ambient occlusion
-    sampleColor.rgb = getOcclusion(sampleColor.rgb);
+    if (lighting.aoMode != AO_NONE) {
+        sampleColor.rgb = getOcclusion(sampleColor.rgb);
+    }
     
     outColor = mix(sampleColor, color, color.a);
 }

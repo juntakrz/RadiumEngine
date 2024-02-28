@@ -142,7 +142,7 @@ class MRenderer {
     std::vector<RViewport> viewports;
     std::vector<glm::vec2> haltonJitter;
     std::vector<glm::vec4> occlusionOffsets;
-    std::vector<glm::vec2> randomOffsets;
+    std::vector<glm::vec4> randomOffsets;
 
     VkDescriptorPool descriptorPool;
     std::unordered_map<EDescriptorSetLayout, VkDescriptorSetLayout> descriptorSetLayouts;
