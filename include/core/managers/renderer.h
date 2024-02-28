@@ -311,7 +311,7 @@ class MRenderer {
  private:
   // create single layer render target for fragment shader output, uses swapchain resolution unless defined
   RTexture* createFragmentRenderTarget(const char* name, VkFormat format, uint32_t width = 0, uint32_t height = 0,
-    VkSamplerAddressMode addressMode = VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT);
+    VkSamplerAddressMode addressMode = VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
   TResult createViewports();
   void setViewport(VkCommandBuffer commandBuffer, EViewport index);

@@ -222,10 +222,10 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
 
     return RE_OK;
   }
-  case (uint8_t)EBufferType::DGPU_STORAGE: {
-    bufferCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+  case (uint8_t)EBufferType::DGPU_UNIFORM: {
+    bufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
     bufferCreateInfo.size = size;
-    bufferCreateInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+    bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     bufferCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();
     bufferCreateInfo.queueFamilyIndexCount =
       static_cast<uint32_t>(queueFamilyIndices.size());
@@ -237,7 +237,42 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
       &outBuffer.buffer, &outBuffer.allocation,
       &outBuffer.allocInfo) != VK_SUCCESS) {
-      RE_LOG(Error, "Failed to create DGPU_VERTEX buffer.");
+      RE_LOG(Error, "Failed to create DGPU_UNIFORM buffer.");
+      return RE_ERROR;
+    };
+
+    if (inData) {
+      VkBufferCopy copyInfo{};
+      copyInfo.srcOffset = 0;
+      copyInfo.dstOffset = 0;
+      copyInfo.size = size;
+
+      createBuffer(EBufferType::STAGING, size, stagingBuffer, inData);
+      copyBuffer(stagingBuffer.buffer, outBuffer.buffer, &copyInfo);
+      vmaDestroyBuffer(memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
+    }
+
+    bdaInfo.buffer = outBuffer.buffer;
+    outBuffer.deviceAddress = vkGetBufferDeviceAddress(logicalDevice.device, &bdaInfo);
+
+    return RE_OK;
+  }
+  case (uint8_t)EBufferType::DGPU_STORAGE: {
+    bufferCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+    bufferCreateInfo.size = size;
+    bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    bufferCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();
+    bufferCreateInfo.queueFamilyIndexCount =
+      static_cast<uint32_t>(queueFamilyIndices.size());
+
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    allocInfo.flags = NULL;
+    allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
+      &outBuffer.buffer, &outBuffer.allocation,
+      &outBuffer.allocInfo) != VK_SUCCESS) {
+      RE_LOG(Error, "Failed to create DGPU_STORAGE buffer.");
       return RE_ERROR;
     };
 
@@ -273,7 +308,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
       &outBuffer.buffer, &outBuffer.allocation,
       &outBuffer.allocInfo) != VK_SUCCESS) {
-      RE_LOG(Error, "Failed to create DGPU_VERTEX buffer.");
+      RE_LOG(Error, "Failed to create DGPU_SAMPLER buffer.");
       return RE_ERROR;
     };
 
@@ -309,7 +344,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
       &outBuffer.buffer, &outBuffer.allocation,
       &outBuffer.allocInfo) != VK_SUCCESS) {
-      RE_LOG(Error, "Failed to create DGPU_VERTEX buffer.");
+      RE_LOG(Error, "Failed to create DGPU_RESOURCE buffer.");
       return RE_ERROR;
     };
 

@@ -42,6 +42,7 @@ enum class EBufferType {  // VkBuffer creation mode
   CPU_STORAGE,        // Storage buffer for CPU to write and read data from
   DGPU_VERTEX,        // Dedicated GPU vertex buffer
   DGPU_INDEX,         // Dedicated GPU index buffer
+  DGPU_UNIFORM,
   DGPU_STORAGE,       // Dedicated GPU storage buffer
   DGPU_SAMPLER,       // Dedicated GPU storage buffer for sampler descriptors
   DGPU_RESOURCE,      // Dedicated GPU storage buffer for resource descriptors

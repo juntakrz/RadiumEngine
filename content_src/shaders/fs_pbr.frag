@@ -3,7 +3,7 @@
 #include "include/common.glsl"
 #include "include/fragment.glsl"
 
-#define OCCLUSION_SAMPLES	64
+#define OCCLUSION_SAMPLES	16
 
 layout (location = 0) in vec2 inUV0;
 
@@ -25,9 +25,13 @@ layout (set = 0, binding = 5) uniform sampler2D noiseMap;
 
 layout (set = 0, binding = 6) buffer OcclusionOffsets {
 	vec4 occlusionOffsets[OCCLUSION_SAMPLES];
-};
+} occlusionData;
 
 const float shadowBias = 0.00001;
+const float occlusionRadius = 0.6;
+const float occlusionBias = -0.025;
+const float occlusionDistance = 6.0;
+const float occlusionColor = 0.25;
 
 vec3 tonemap(vec3 v) {
 	vec3 color = tonemapACESApprox(v);
@@ -200,13 +204,48 @@ vec3 getLight(uint index, vec3 worldPos, vec3 diffuseColor, vec3 specularColor, 
 	return lightColor;
 }
 
+float getOcclusion(vec3 worldPos, vec3 normal) {
+	float occlusion = 0.0;
+
+	ivec2 posDim = textureSize(samplers[material.samplerIndex[POSITIONMAP]], 0); 
+	ivec2 noiseDim = textureSize(noiseMap, 0);
+	const vec2 noiseUV = vec2(float(posDim.x)/float(noiseDim.x), float(posDim.y)/(noiseDim.y)) * inUV0;  
+	vec3 randomVec = vec3(texture(noiseMap, noiseUV).rg, 0.0) * 2.0 - 1.0;
+	randomVec = -randomVec;
+
+	vec4 newPos = scene.view * vec4(worldPos, 1.0);
+
+	// Create TBN matrix
+	vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
+	vec3 bitangent = cross(tangent, normal);
+	mat3 TBN = mat3(tangent, bitangent, normal);
+
+	for(int i = 0; i < OCCLUSION_SAMPLES; i++) {		
+		vec3 samplePos = TBN * occlusionData.occlusionOffsets[i].xyz; 
+		samplePos = newPos.xyz + samplePos * occlusionRadius; 
+
+		vec4 sampleOffset = vec4(samplePos, 1.0);
+		sampleOffset = scene.projection * sampleOffset; 
+		sampleOffset.xyz /= sampleOffset.w; 
+		sampleOffset.xyz = sampleOffset.xyz * 0.5 + 0.5;
+		sampleOffset.y = 1.0 - sampleOffset.y;
+		
+		float sampleDepth = texture(samplers[material.samplerIndex[POSITIONMAP]], sampleOffset.xy).w; 
+
+		float rangeCheck = smoothstep(0.0, 1.0, occlusionRadius / abs(newPos.z - sampleDepth));
+		occlusion += (sampleDepth > samplePos.z + occlusionBias ? 1.0 : occlusionColor) * rangeCheck;
+	}
+
+	return occlusion /= float(OCCLUSION_SAMPLES);
+}
+
 void main() {
 	const float occlusionStrength = 1.0;	// TODO: modify by the material variable
 	const vec3 shadowColor = lighting.shadowColor.rgb + vec3(1.0);
 	vec3 f0 = vec3(0.04);
 
 	// Retrieve G-buffer data
-	vec3 worldPos = texelFetch(samplers[material.samplerIndex[POSITIONMAP]], ivec2(gl_FragCoord.xy), 0).xyz;
+	vec4 worldPos = texelFetch(samplers[material.samplerIndex[POSITIONMAP]], ivec2(gl_FragCoord.xy), 0);
 	vec4 baseColor = texture(samplers[material.samplerIndex[COLORMAP]], inUV0);
 	vec3 normal = texture(samplers[material.samplerIndex[NORMALMAP]], inUV0).rgb;
 	float metallic = texture(samplers[material.samplerIndex[PHYSMAP]], inUV0).r;
@@ -227,29 +266,29 @@ void main() {
 
 	vec3 specularColor = mix(f0, diffuseColor, metallic);
 
-	vec3 V = normalize(scene.camPos - worldPos);			// Vector from surface point to camera
+	vec3 V = normalize(scene.camPos - worldPos.xyz);			// Vector from surface point to camera
 
 	vec3 color = getIBLContribution(diffuseColor, specularColor, perceptualRoughness, V, normal);
 
 	if (lighting.lightColor[0].a > 0.001) {
-		color += getLight(0, worldPos, diffuseColor, specularColor, V, normal, perceptualRoughness);
+		color += getLight(0, worldPos.xyz, diffuseColor, specularColor, V, normal, perceptualRoughness);
 	}
 
 	color = mix(color, color * ao, occlusionStrength);
 
 	// Calculate shadow and its color
-	float relativeDistance = length(scene.camPos - worldPos);
+	float relativeDistance = length(scene.camPos - worldPos.xyz);
 	float shadowA = 0.0f;
 
 	int distanceIndex;
 	for (distanceIndex = MAXCASCADES - 1; distanceIndex > -1; distanceIndex--) {
 		if (relativeDistance > cascadeDistances[distanceIndex]) { 
-			shadowA = getShadow(worldPos, distanceIndex, facing);
+			shadowA = getShadow(worldPos.xyz, distanceIndex, facing);
 
 			// Smoothly interpolate shadow cascades
 			if (distanceIndex < MAXCASCADES - 1) {
 				float interpolation = interpolateCascades(relativeDistance, distanceIndex);
-				float shadowB = getShadow(worldPos, distanceIndex + 1, facing);
+				float shadowB = getShadow(worldPos.xyz, distanceIndex + 1, facing);
 				shadowA = mix(shadowA, shadowB, interpolation);
 			}
 			break;
@@ -263,11 +302,11 @@ void main() {
 	// Process point lights within a reasonable fragment's distance to save performance
 	if (lighting.lightCount > 1) {
 		for (uint index = 1; index < lighting.lightCount; ++index) {
-			float lightDistance = length(lighting.lightLocations[index].xyz - worldPos);
+			float lightDistance = length(lighting.lightLocations[index].xyz - worldPos.xyz);
 			float lightAttenuation = 1.0 / (lightDistance * lightDistance);
 			
 			if (lightAttenuation > 0.1) {
-				color += getLight(index, worldPos, diffuseColor, specularColor, V, normal, perceptualRoughness) * lightAttenuation;
+				color += getLight(index, worldPos.xyz, diffuseColor, specularColor, V, normal, perceptualRoughness) * lightAttenuation;
 			}
 		}
 	}
@@ -277,46 +316,13 @@ void main() {
 
 	outColor = vec4(color, baseColor.a);
 
-	if (baseColor.a < 0.01) {
+	// Calculate SSAO (ignore emissive materials as they shouldn't self shadow)
+	if (baseColor.a < 0.01 || length(emissive.rgb) > 1.0 || worldPos.w > occlusionDistance) {
 		outAO = 1.0;
 		return;
 	}
 
-	// Calculate occlusion value
-	float occlusion = 0.0;
-	const float occlusionRadius = 0.5;
-	const float occlusionBias = -0.025;
-
-	ivec2 posDim = textureSize(samplers[material.samplerIndex[POSITIONMAP]], 0); 
-	ivec2 noiseDim = textureSize(noiseMap, 0);
-	const vec2 noiseUV = vec2(float(posDim.x)/float(noiseDim.x), float(posDim.y)/(noiseDim.y)) * inUV0;  
-	vec3 randomVec = vec3(texture(noiseMap, noiseUV).rg, 0.0) * 2.0 - 1.0;
-	randomVec = -randomVec;
-
-	vec4 newPos = scene.view * vec4(worldPos, 1.0);
-
-	// Create TBN matrix
-	vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
-	vec3 bitangent = cross(tangent, normal);
-	mat3 TBN = mat3(tangent, bitangent, normal);
-
-	for(int i = 0; i < OCCLUSION_SAMPLES; i++) {		
-		vec3 samplePos = TBN * occlusionOffsets[i].xyz; 
-		samplePos = newPos.xyz + samplePos * occlusionRadius; 
-
-		vec4 sampleOffset = vec4(samplePos, 1.0);
-		sampleOffset = scene.projection * sampleOffset; 
-		sampleOffset.xyz /= sampleOffset.w; 
-		sampleOffset.xyz = sampleOffset.xyz * 0.5 + 0.5;
-		sampleOffset.y = 1.0 - sampleOffset.y;
-		
-		float sampleDepth = texture(samplers[material.samplerIndex[POSITIONMAP]], sampleOffset.xy).w; 
-
-		float rangeCheck = smoothstep(0.0, 1.0, occlusionRadius / abs(newPos.z - sampleDepth));
-		occlusion += (sampleDepth >= samplePos.z + occlusionBias ? 1.0 : 0.0) * rangeCheck;
-	}
-
-	occlusion /= float(OCCLUSION_SAMPLES);
-
-	outAO = occlusion;
+	outAO = getOcclusion(worldPos.xyz, normal);
+	float mixAO = clamp(worldPos.w - occlusionDistance + 1.0, 0.0, 1.0);
+	outAO = mix(outAO, 1.0, mixAO);
 }

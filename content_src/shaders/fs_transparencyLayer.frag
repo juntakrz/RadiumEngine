@@ -63,7 +63,7 @@ void main() {
         color = mix(color, fragmentNodes[i].color, fragmentNodes[i].color.a);
     }
 
-    // Get opaque results and blend with the final transparent color
+    // Get opaque PBR + Forward /Skybox results and blend with the final transparent color
     vec4 sampleColor = texelFetch(samplers[material.samplerIndex[COLORMAP]], ivec2(gl_FragCoord.xy), 0);
 
     // Adjust final mix power when alpha is above threshold to deal with potential transparency errors
@@ -74,8 +74,22 @@ void main() {
     // Reset transparency node count
     nodeCount = 0;
 
-	float occlusionColor = texture(samplers[material.samplerIndex[EXTRAMAP1]], inUV).r;
-	sampleColor.rgb *= occlusionColor;
+    float occlusionColor = 0.0;
+    const vec2 texelSize = 1.0 / vec2(textureSize(samplers[material.samplerIndex[EXTRAMAP1]], 0));
+    const int range = 2;
+    count = 0;
+
+    for (int x = -range; x < range + 1; x++) {
+        for (int y = -range; y < range + 1; y++) {
+            const vec2 offset = vec2(texelSize.x * x, texelSize.y * y);
+            float sampledOcclusion = texture(samplers[material.samplerIndex[EXTRAMAP1]], inUV + offset).r;
+            occlusionColor += sampledOcclusion;
+            count++;
+        }
+    }
+
+    occlusionColor /= float(count);
+    sampleColor.rgb *= occlusionColor;
     
     outColor = mix(sampleColor, color, color.a);
 }

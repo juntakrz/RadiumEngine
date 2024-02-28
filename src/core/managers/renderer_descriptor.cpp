@@ -107,7 +107,7 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
       {5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
       {6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
-        VK_SHADER_STAGE_ALL_GRAPHICS, nullptr}
+        VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}
     };
     VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
     setLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
