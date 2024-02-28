@@ -26,6 +26,15 @@ void ACamera::setOrthographic(float horizontal, float vertical, float nearZ,
   m_projectionType = ECameraProjection::Orthogtaphic;
 }
 
+glm::vec2 ACamera::getNearAndFarPlane() {
+  switch (m_projectionType) {
+    case ECameraProjection::Perspective:
+      return { m_viewData.perspectiveData.z, m_viewData.perspectiveData.w };
+    case ECameraProjection::Orthogtaphic:
+      return { m_viewData.orthographicData.z, m_viewData.orthographicData.w };
+  }
+}
+
 glm::mat4& ACamera::getView() {
   return m_view = glm::lookAt(
              m_transformationData.translation,

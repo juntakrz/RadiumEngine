@@ -31,6 +31,26 @@ layout (set = 1, binding = 5) buffer transparencyLinkedListBuffer {
 layout (set = 2, binding = 0) uniform sampler2D samplers[];
 layout (set = 2, binding = 0) uniform sampler2DArray arraySamplers[];
 
+vec3 getOcclusion(vec3 color) {
+    float occlusionFactor = 0.0;
+    const vec2 texelSize = 1.0 / vec2(textureSize(samplers[material.samplerIndex[EXTRAMAP1]], 0));
+    const int range = 2;
+    int count = 0;
+
+    for (int x = -range; x < range + 1; x++) {
+        for (int y = -range; y < range + 1; y++) {
+            const vec2 offset = vec2(texelSize.x * x, texelSize.y * y);
+            float sampledOcclusion = texture(samplers[material.samplerIndex[EXTRAMAP1]], inUV + offset).r;
+            occlusionFactor += sampledOcclusion;
+            count++;
+        }
+    }
+
+    occlusionFactor /= float(count);
+
+    vec3 occludedColor = color * occlusionFactor * 0.25;
+    return mix(occludedColor, color, occlusionFactor);
+}
 
 void main() {
     transparencyNode fragmentNodes[MAX_TRANSPARENCY_LAYERS];
@@ -74,22 +94,8 @@ void main() {
     // Reset transparency node count
     nodeCount = 0;
 
-    float occlusionColor = 0.0;
-    const vec2 texelSize = 1.0 / vec2(textureSize(samplers[material.samplerIndex[EXTRAMAP1]], 0));
-    const int range = 2;
-    count = 0;
-
-    for (int x = -range; x < range + 1; x++) {
-        for (int y = -range; y < range + 1; y++) {
-            const vec2 offset = vec2(texelSize.x * x, texelSize.y * y);
-            float sampledOcclusion = texture(samplers[material.samplerIndex[EXTRAMAP1]], inUV + offset).r;
-            occlusionColor += sampledOcclusion;
-            count++;
-        }
-    }
-
-    occlusionColor /= float(count);
-    sampleColor.rgb *= occlusionColor;
+    // Apply ambient occlusion
+    sampleColor.rgb = getOcclusion(sampleColor.rgb);
     
     outColor = mix(sampleColor, color, color.a);
 }

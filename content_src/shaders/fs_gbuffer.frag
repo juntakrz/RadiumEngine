@@ -27,6 +27,8 @@ layout (set = 0, binding = 0) uniform UBOScene {
 	mat4 view;
 	mat4 projection;
 	vec3 camPos;
+	vec2 haltonJitter;
+	vec2 planeData;			// x = near plane, y = far plane
 } scene;
 
 const float minRoughness = 0.04;
@@ -71,11 +73,9 @@ void main() {
 	outPhysical = vec4(0.0);
 	outEmissive = vec4(0.0);
 
-	// 1. Extract fragment position in world space and normalize it in relation to camera for maximum fp16 precision
+	// 1. Extract fragment position in world space
 	float w = gl_FragCoord.z * 2.0 - 1.0;
-	float nearPlane = 0.001;
-	float farPlane = 1000.0;
-	w = (2.0 * nearPlane * farPlane) / (farPlane + nearPlane - w * (farPlane - nearPlane));
+	w = (2.0 * scene.planeData.x * scene.planeData.y) / (scene.planeData.y + scene.planeData.x - w * (scene.planeData.y - scene.planeData.x));
 
 	outPosition = vec4(inWorldPos, w);
 

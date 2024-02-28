@@ -28,10 +28,10 @@ layout (set = 0, binding = 6) buffer OcclusionOffsets {
 } occlusionData;
 
 const float shadowBias = 0.00001;
-const float occlusionRadius = 0.6;
-const float occlusionBias = -0.025;
+const float occlusionRadius = 1.5;
+const float occlusionBias = 0.025;
 const float occlusionDistance = 6.0;
-const float occlusionColor = 0.25;
+const float occlusionColor = 0.01;
 
 vec3 tonemap(vec3 v) {
 	vec3 color = tonemapACESApprox(v);
@@ -211,7 +211,7 @@ float getOcclusion(vec3 worldPos, vec3 normal) {
 	ivec2 noiseDim = textureSize(noiseMap, 0);
 	const vec2 noiseUV = vec2(float(posDim.x)/float(noiseDim.x), float(posDim.y)/(noiseDim.y)) * inUV0;  
 	vec3 randomVec = vec3(texture(noiseMap, noiseUV).rg, 0.0) * 2.0 - 1.0;
-	randomVec = -randomVec;
+	randomVec.z = -randomVec.z;
 
 	vec4 newPos = scene.view * vec4(worldPos, 1.0);
 
@@ -231,9 +231,14 @@ float getOcclusion(vec3 worldPos, vec3 normal) {
 		sampleOffset.y = 1.0 - sampleOffset.y;
 		
 		float sampleDepth = texture(samplers[material.samplerIndex[POSITIONMAP]], sampleOffset.xy).w; 
+		
+		if (sampleDepth < 0.0001) {
+			occlusion += 1.0;
+			continue;
+		}
 
 		float rangeCheck = smoothstep(0.0, 1.0, occlusionRadius / abs(newPos.z - sampleDepth));
-		occlusion += (sampleDepth > samplePos.z + occlusionBias ? 1.0 : occlusionColor) * rangeCheck;
+		occlusion += (sampleDepth > samplePos.z - occlusionBias ? 1.0 : occlusionColor) * rangeCheck;
 	}
 
 	return occlusion /= float(OCCLUSION_SAMPLES);
