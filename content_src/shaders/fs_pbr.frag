@@ -110,7 +110,7 @@ float interpolateCascades(float dist, int cascadeIndex) {
 }
 
 float filterPCF(vec3 shadowCoord, vec2 offset, uint distanceIndex) {
-	float shadowDepth = texture(arraySamplers[lighting.samplerIndex[SUNLIGHTINDEX]], vec3(shadowCoord.st + offset, distanceIndex)).r;
+	float shadowDepth = textureLod(arraySamplers[lighting.samplerIndex[SUNLIGHTINDEX]], vec3(shadowCoord.st + offset, distanceIndex), 0).r;
 	shadowDepth += shadowBias * float(distanceIndex + 1);
 
 	if (shadowCoord.z > shadowDepth) {
@@ -204,19 +204,29 @@ vec3 getLight(uint index, vec3 worldPos, vec3 diffuseColor, vec3 specularColor, 
 	return lightColor;
 }
 
-float getOcclusion(vec3 worldPos, vec3 normal) {
-	float occlusion = 0.0;
+//vec3 fetchViewPos(vec2 UV) {
+//  float viewDepth = textureLod(texLinearDepth, UV, 0).x;
+//  return vec3((UV * control.projInfo.xy + control.projInfo.zw) * viewDepth), viewDepth);
+//}
 
+vec3 getRandomVector() {
 	ivec2 posDim = textureSize(samplers[material.samplerIndex[POSITIONMAP]], 0); 
 	ivec2 noiseDim = textureSize(noiseMap, 0);
 	const vec2 noiseUV = vec2(float(posDim.x)/float(noiseDim.x), float(posDim.y)/(noiseDim.y)) * inUV0;  
-	vec3 randomVec = vec3(texture(noiseMap, noiseUV).rg, 0.0) * 2.0 - 1.0;
-	randomVec.z = -randomVec.z;
+	vec3 randomVector = vec3(texture(noiseMap, noiseUV).rg, 0.0) * 2.0 - 1.0;
+	randomVector.z = -randomVector.z;
+
+	return randomVector;
+}
+
+float getOcclusion(vec3 worldPos, vec3 normal) {
+	float occlusion = 0.0;
 
 	vec4 newPos = scene.view * vec4(worldPos, 1.0);
+	vec3 randomVector = getRandomVector();
 
 	// Create TBN matrix
-	vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
+	vec3 tangent = normalize(randomVector - normal * dot(randomVector, normal));
 	vec3 bitangent = cross(tangent, normal);
 	mat3 TBN = mat3(tangent, bitangent, normal);
 
@@ -230,7 +240,7 @@ float getOcclusion(vec3 worldPos, vec3 normal) {
 		sampleOffset.xyz = sampleOffset.xyz * 0.5 + 0.5;
 		sampleOffset.y = 1.0 - sampleOffset.y;
 		
-		float sampleDepth = texture(samplers[material.samplerIndex[POSITIONMAP]], sampleOffset.xy).w; 
+		float sampleDepth = textureLod(samplers[material.samplerIndex[POSITIONMAP]], sampleOffset.xy, 0).w; 
 		
 		if (sampleDepth < 0.0001) {
 			occlusion += 1.0;
@@ -250,13 +260,15 @@ void main() {
 	vec3 f0 = vec3(0.04);
 
 	// Retrieve G-buffer data
-	vec4 worldPos = texelFetch(samplers[material.samplerIndex[POSITIONMAP]], ivec2(gl_FragCoord.xy), 0);
-	vec4 baseColor = texture(samplers[material.samplerIndex[COLORMAP]], inUV0);
-	vec3 normal = texture(samplers[material.samplerIndex[NORMALMAP]], inUV0).rgb;
-	float metallic = texture(samplers[material.samplerIndex[PHYSMAP]], inUV0).r;
-	float perceptualRoughness = texture(samplers[material.samplerIndex[PHYSMAP]], inUV0).g;
-	float ao = texture(samplers[material.samplerIndex[PHYSMAP]], inUV0).b;
-	vec4 emissiveData = texture(samplers[material.samplerIndex[EMISMAP]], inUV0);
+	vec4 worldPos = textureLod(samplers[material.samplerIndex[POSITIONMAP]], inUV0, 0);
+	vec4 baseColor = textureLod(samplers[material.samplerIndex[COLORMAP]], inUV0, 0);
+	vec3 normal = textureLod(samplers[material.samplerIndex[NORMALMAP]], inUV0, 0).rgb;
+	vec3 physMap = textureLod(samplers[material.samplerIndex[PHYSMAP]], inUV0, 0).rgb;
+	vec4 emissiveData = textureLod(samplers[material.samplerIndex[EMISMAP]], inUV0, 0);
+
+	float metallic = physMap.r;
+	float perceptualRoughness = physMap.g;
+	float ao = physMap.b;
 
 	vec3 emissive = emissiveData.rgb;
 	float facing = emissiveData.a;
@@ -328,6 +340,8 @@ void main() {
 	}
 
 	outAO = getOcclusion(worldPos.xyz, normal);
-	float mixAO = clamp(worldPos.w - occlusionDistance + 1.0, 0.0, 1.0);
-	outAO = mix(outAO, 1.0, mixAO);
+
+	// Ambient occlusion smooth falloff, starts at occlusionDistance - 2.0
+	float aoFactor = clamp((worldPos.w - occlusionDistance + 2.0) * 0.5, 0.0, 1.0);
+	outAO = mix(outAO, 1.0, aoFactor);
 }

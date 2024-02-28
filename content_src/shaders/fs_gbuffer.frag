@@ -28,7 +28,7 @@ layout (set = 0, binding = 0) uniform UBOScene {
 	mat4 projection;
 	vec3 camPos;
 	vec2 haltonJitter;
-	vec2 planeData;			// x = near plane, y = far plane
+	vec2 clipData;			// x = near plane, y = far plane
 } scene;
 
 const float minRoughness = 0.04;
@@ -73,11 +73,11 @@ void main() {
 	outPhysical = vec4(0.0);
 	outEmissive = vec4(0.0);
 
-	// 1. Extract fragment position in world space
-	float w = gl_FragCoord.z * 2.0 - 1.0;
-	w = (2.0 * scene.planeData.x * scene.planeData.y) / (scene.planeData.y + scene.planeData.x - w * (scene.planeData.y - scene.planeData.x));
+	// 1. Extract fragment position in world space as well as its linear depth
+	float depth = gl_FragCoord.z * 2.0 - 1.0;
+	depth = (2.0 * scene.clipData.x * scene.clipData.y) / (scene.clipData.y + scene.clipData.x - depth * (scene.clipData.y - scene.clipData.x));
 
-	outPosition = vec4(inWorldPos, w);
+	outPosition = vec4(inWorldPos, depth);
 
 	// 2. Extract color / diffuse / albedo
 	int textureSet = getTextureSet(COLORMAP, inMaterialIndex);

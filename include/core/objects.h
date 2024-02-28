@@ -498,7 +498,7 @@ struct RSceneUBO {
   alignas(16) glm::mat4 projection = glm::mat4(1.0f);
   alignas(16) glm::vec3 cameraPosition = glm::vec3(0.0f);
   alignas(16) glm::vec2 haltonJitter = glm::vec2(0.0f);
-  glm::vec2 planeData = glm::vec2(0.0f);
+  glm::vec2 clipData = glm::vec2(0.0f);
 };
 
 struct RSkinUBO {
