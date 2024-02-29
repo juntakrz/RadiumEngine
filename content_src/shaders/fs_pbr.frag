@@ -226,6 +226,12 @@ vec3 minDiff(vec3 P, vec3 Pr, vec3 Pl) {
 
 vec3 getViewPos(vec2 UV) {
 	float viewDepth = textureLod(samplers[material.samplerIndex[POSITIONMAP]], UV, 0).w;
+
+	// Fix for a zero G-Buffer depth producing incorrect AO results
+	if (viewDepth < 0.0001) {
+		viewDepth = FLT_MAX;
+	}
+
 	const vec2 A = vec2(2.0 / scene.projection[0][0], 2.0 / scene.projection[1][1]);
 	const vec2 B = vec2(-1.0 / scene.projection[0][0], -1.0 / scene.projection[1][1]);
 	vec3 viewPos = vec3((UV * A + B) * viewDepth, viewDepth);
@@ -420,7 +426,7 @@ void main() {
 
 	// Calculate SSAO (ignore emissive materials as they shouldn't self shadow)
 	if (lighting.aoMode == AO_NONE || baseColor.a < 0.01 || length(emissive.rgb) > 1.0 || worldPos.w > occlusionDistance) {
-		outAO = vec2(1.0, scene.planeData.y);
+		outAO = vec2(1.0, FLT_MAX);
 		return;
 	}
 
