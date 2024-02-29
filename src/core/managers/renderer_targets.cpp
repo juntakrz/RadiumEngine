@@ -151,7 +151,8 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.mipLevels = math::getMipLevels(core::vulkan::envIrradianceExtent >> 4);
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-  textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+    | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -206,7 +207,8 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.mipLevels = 1u;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-  textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT
+    | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
   textureInfo.samplerInfo.addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 
@@ -226,6 +228,7 @@ TResult core::MRenderer::createImageTargets() {
 
   textureInfo.name = rtName;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -251,7 +254,7 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.mipLevels = 1u;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-  textureInfo.usageFlags = VK_IMAGE_USAGE_STORAGE_BIT;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -493,8 +496,7 @@ TResult core::MRenderer::createDepthTargets() {
   textureInfo.layerCount = config::shadowCascades;
   textureInfo.extraViews = true;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-  textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
-    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
   textureInfo.memoryFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
   textureInfo.vmaMemoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;

@@ -578,7 +578,7 @@ public:
 
   void executeAOBlurPass(VkCommandBuffer commandBuffer);
 
-  void executePostProcesssTAAPass(VkCommandBuffer commandBuffer);
+  void executePostProcessTAAPass(VkCommandBuffer commandBuffer);
   void executePostProcessSamplingPass(VkCommandBuffer commandBuffer, const uint32_t imageViewIndex, const bool upsample);
   void executePostProcessGetExposurePass(VkCommandBuffer commandBuffer);
   void executePostProcessPass(VkCommandBuffer commandBuffer);

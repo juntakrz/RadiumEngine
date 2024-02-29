@@ -355,7 +355,7 @@ void core::MRenderer::executeAOBlurPass(VkCommandBuffer commandBuffer) {
   }
 }
 
-void core::MRenderer::executePostProcesssTAAPass(VkCommandBuffer commandBuffer) {
+void core::MRenderer::executePostProcessTAAPass(VkCommandBuffer commandBuffer) {
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::PPTAA);
   renderView.pCurrentPass = pRenderPass;
 
@@ -472,7 +472,7 @@ void core::MRenderer::executePostProcessGetExposurePass(VkCommandBuffer commandB
 void core::MRenderer::executePostProcessPass(VkCommandBuffer commandBuffer) {
   const uint8_t levelCount = postprocess.pBloomTexture->texture.levelCount;
   
-  executePostProcesssTAAPass(commandBuffer);
+  executePostProcessTAAPass(commandBuffer);
   executePostProcessGetExposurePass(commandBuffer);
 
   for (uint8_t downsampleIndex = 0; downsampleIndex < levelCount; ++downsampleIndex) {
