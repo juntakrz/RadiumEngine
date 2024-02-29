@@ -12,7 +12,7 @@ void core::MInput::setDefaultInputs() {
   m_inputBinds["moveRight"] = GLFW_KEY_D;
   m_inputBinds["moveUp"] = GLFW_KEY_LEFT_SHIFT;
   m_inputBinds["moveDown"] = GLFW_KEY_LEFT_CONTROL;
-  m_inputBinds["mouseMode"] = GLFW_KEY_SPACE;
+  m_inputBinds["controlMode"] = GLFW_KEY_SPACE;
   m_inputBinds["devKey"] = GLFW_KEY_GRAVE_ACCENT;
   m_inputBinds["F1"] = GLFW_KEY_F1;
   m_inputBinds["F2"] = GLFW_KEY_F2;

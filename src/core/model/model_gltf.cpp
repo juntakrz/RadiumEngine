@@ -93,13 +93,9 @@ TResult WModel::createModel(const char* name, const tinygltf::Model* pInModel,
 
       // set joint count for every instance of a skin
       if (pNode->pSkin) {
-        size_t jointCount =
-            std::min((uint32_t)pNode->pSkin->joints.size(), RE_MAXJOINTS);
-        pNode->pMesh->uniformBlock.jointCount = (float)jointCount;
-
-        if (pNode->pMesh->uniformBlock.jointMatrices.empty() && jointCount) {
-          pNode->pMesh->uniformBlock.jointMatrices.resize(jointCount);
-        }
+        float jointCount =
+            (float)std::min((uint32_t)pNode->pSkin->joints.size(), RE_MAXJOINTS);
+        pNode->pMesh->stagingTransformBlock.jointCount = jointCount;
       }
     }
   }
@@ -115,7 +111,11 @@ TResult WModel::createModel(const char* name, const tinygltf::Model* pInModel,
 
   resetUniformBlockData();
 
-  return createStagingBuffers();
+  createStagingBuffers();
+
+  uploadToSceneBuffer();
+
+  return RE_OK;
 }
 
 void WModel::createNode(WModel::Node* pParentNode,
@@ -454,7 +454,7 @@ void WModel::createNode(WModel::Node* pParentNode,
           std::make_unique<WPrimitive>(&primitiveInfo));
       WPrimitive* pPrimitive = pMesh->pPrimitives.back().get();
       pPrimitive->setBoundingBoxExtent(posMin, posMax);
-      pPrimitive->pMaterial = core::resources.getMaterial(
+      pPrimitive->pInitialMaterial = core::resources.getMaterial(
           m_materialList[gltfPrimitive.material].c_str());
 
       // copy vertex and index data to local staging buffers and adjust offsets
@@ -558,14 +558,12 @@ void WModel::setTextureSamplers() {
 
   const tinygltf::Model& gltfModel = *staging.pInModel;
 
+  // Simplified sampler settings, minFilter and wrapT are ignored currently
   for (const auto& it : gltfModel.samplers) {
     m_textureSamplers.emplace_back();
     auto& sampler = m_textureSamplers.back();
-    sampler.minFilter = getVkFilter(it.minFilter);
-    sampler.magFilter = getVkFilter(it.magFilter);
-    sampler.addressModeU = getVkAddressMode(it.wrapS);
-    sampler.addressModeV = getVkAddressMode(it.wrapT);
-    sampler.addressModeW = sampler.addressModeV;
+    sampler.filter = getVkFilter(it.magFilter);
+    sampler.addressMode = getVkAddressMode(it.wrapS);
   }
 }
 
@@ -857,6 +855,7 @@ void WModel::loadSkins() {
              accessor.count * sizeof(glm::mat4));
     }
 
+    pSkin->stagingTransformBlock.jointMatrices.resize(pSkin->joints.size());
     ++index;
   }
 }

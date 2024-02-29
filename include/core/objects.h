@@ -33,17 +33,25 @@ enum EAnimationLoadMode {
   ExtractToStorageOnly
 };
 
+enum class EAOMode {
+  None,
+  SSAO,
+  HBAO
+};
+
 enum class EBufferType {  // VkBuffer creation mode
   NONE,
   STAGING,            // CPU staging buffer
-  CPU_UNIFORM,        // uniform buffer for GPU programs
-  CPU_VERTEX,         // vertex buffer for the iGPU (UNUSED)
-  CPU_INDEX,          // index buffer for the iGPU (UNUSED)
-  DGPU_VERTEX,        // dedicated GPU vertex buffer
-  DGPU_INDEX,         // dedicated GPU index buffer
-  DGPU_STORAGE,       // dedicated GPU storage buffer
-  DGPU_SAMPLER,       // dedicated GPU storage buffer for sampler descriptors
-  DGPU_RESOURCE,      // dedicated GPU storage buffer for resource descriptors
+  CPU_UNIFORM,        // Uniform buffer for GPU programs
+  CPU_VERTEX,         // Vertex buffer for the iGPU (UNUSED)
+  CPU_INDEX,          // Index buffer for the iGPU (UNUSED)
+  CPU_STORAGE,        // Storage buffer for CPU to write and read data from
+  DGPU_VERTEX,        // Dedicated GPU vertex buffer
+  DGPU_INDEX,         // Dedicated GPU index buffer
+  DGPU_UNIFORM,
+  DGPU_STORAGE,       // Dedicated GPU storage buffer
+  DGPU_SAMPLER,       // Dedicated GPU storage buffer for sampler descriptors
+  DGPU_RESOURCE,      // Dedicated GPU storage buffer for resource descriptors
 };
 
 enum class ECameraProjection {
@@ -65,16 +73,18 @@ enum class EComputeJob {
 enum class EComputePipeline {
   Null,
   ImageLUT,
-  ImageMipMap16f,
   ImageEnvIrradiance,
   ImageEnvFilter
 };
 
+enum class EControlMode {
+  Cursor,
+  MouseLook
+};
+
 enum class EDescriptorSetLayout {
   Scene,
-  Material,
   MaterialEXT,
-  PBRInput,
   Model,
   ComputeImage,
   Dummy
@@ -83,14 +93,22 @@ enum class EDescriptorSetLayout {
 enum EDynamicRenderingPass : uint32_t {
   Null                = 0,
   Shadow              = 0b1,
-  EnvSkybox           = 0b10,
-  OpaqueCullBack      = 0b100,
-  OpaqueCullNone      = 0b1000,
-  MaskCullBack        = 0b10000,
-  BlendCullNone       = 0b100000,
-  Skybox              = 0b1000000,
-  PBR                 = 0b10000000,
-  Present             = 0b100000000
+  ShadowDiscard       = 0b10,
+  EnvSkybox           = 0b100,
+  OpaqueCullBack      = 0b1000,
+  OpaqueCullNone      = 0b10000,
+  DiscardCullNone     = 0b100000,
+  MaskCullBack        = 0b1000000,
+  BlendCullNone       = 0b10000000,
+  Skybox              = 0b100000000,
+  AlphaCompositing    = 0b1000000000,
+  PBR                 = 0b10000000000,
+  PPBlur              = 0b100000000000,
+  PPDownsample        = 0b1000000000000,
+  PPUpsample          = 0b10000000000000,
+  PPGetExposure       = 0b100000000000000,
+  PPTAA               = 0b1000000000000000,
+  Present             = 0b10000000000000000
 };
 
 enum class ELightType {
@@ -112,13 +130,6 @@ enum class EPrimitiveType {
   Sphere,
   Cube,
   Custom
-};
-
-enum class ERenderPass {
-  Null,
-  Shadow,
-  Deferred,
-  Present
 };
 
 enum class EResourceType {
@@ -193,6 +204,8 @@ struct RDynamicRenderingInfo {
 
   struct {
     VkBool32 enableBlending = VK_FALSE;
+    VkBool32 enableDepthWrite = VK_TRUE;
+    VkBool32 enableDepthTest = VK_TRUE;
     VkPrimitiveTopology primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     VkPolygonMode polygonMode = VK_POLYGON_MODE_FILL;
     VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT;
@@ -229,10 +242,6 @@ struct RDynamicRenderingPass {
 
 struct REntityBindInfo {
   AEntity* pEntity = nullptr;
-  uint32_t vertexOffset = 0u;
-  uint32_t indexOffset = 0u;
-  uint32_t vertexCount = 0u;
-  uint32_t indexCount = 0u;
 };
 
 struct RFramebuffer {
@@ -247,6 +256,8 @@ struct RGraphicsPipelineInfo {
   std::string geometryShader;
   VkPipelineRenderingCreateInfo* pDynamicPipelineInfo = nullptr;
   VkBool32 enableBlending = VK_FALSE;
+  VkBool32 enableDepthWrite = VK_TRUE;
+  VkBool32 enableDepthTest = VK_TRUE;
   VkPrimitiveTopology primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
   VkPolygonMode polygonMode = VK_POLYGON_MODE_FILL;
   VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT;
@@ -257,6 +268,14 @@ struct RGraphicsPipelineInfo {
     float slopeFactor = 0.0f;
     float clamp = 0.0f;
   } depthBias;
+};
+
+// References into three transform buffers
+struct RInstanceData {
+  int32_t modelMatrixId = -1;
+  int32_t nodeMatrixId = -1;
+  int32_t skinMatrixId = -1;
+  int32_t materialId = -1;
 };
 
 struct RLightInfo {
@@ -282,7 +301,9 @@ struct RMaterialInfo {
     std::string metalRoughness = "";
     std::string occlusion = "";
     std::string emissive = "";
-    std::string extra = "";
+    std::string extra0 = "";
+    std::string extra1 = "";
+    std::string extra2 = "";
   } textures;
 
   struct {
@@ -291,13 +312,15 @@ struct RMaterialInfo {
     int8_t metalRoughness = 0;
     int8_t occlusion = 0;
     int8_t emissive = 0;
-    int8_t extra = 0;
+    int8_t extra0 = 0;
+    int8_t extra1 = 0;
+    int8_t extra2 = 0;
   } texCoordSets;
 
   float metallicFactor = 0.0f;
   float roughnessFactor = 1.0f;
   float bumpIntensity = 1.0f;
-  float emissiveIntensity = 0.0f;
+  glm::vec4 glowColor = glm::vec4(0.0f);
 
   // if 'Null' - pipeline is determined using material properties
   uint32_t passFlags = EDynamicRenderingPass::Null;
@@ -317,11 +340,8 @@ struct RPrimitiveInfo {
 
 // stored by WModel, used to create a valid sampler for a specific texture
 struct RSamplerInfo {
-  VkFilter minFilter = VK_FILTER_LINEAR;
-  VkFilter magFilter = VK_FILTER_LINEAR;
-  VkSamplerAddressMode addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-  VkSamplerAddressMode addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-  VkSamplerAddressMode addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  VkFilter filter = VK_FILTER_LINEAR;
+  VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 };
 
 // used by createTexture()
@@ -340,6 +360,19 @@ struct RTextureInfo {
   bool extraViews = false;  // Create views into layers and mip levels
   VkMemoryPropertyFlags memoryFlags = NULL;
   VmaMemoryUsage vmaMemoryUsage = VMA_MEMORY_USAGE_AUTO;
+  RSamplerInfo samplerInfo = RSamplerInfo{};
+};
+
+struct RTransparencyLinkedListData {
+  uint32_t nodeCount;
+  uint32_t maxNodeCount;
+};
+
+// An OIT linked node
+struct RTransparencyLinkedListNode {
+  glm::vec4 color;
+  float depth;
+  uint32_t nextNodeIndex;
 };
 
 struct RViewport {
@@ -356,7 +389,7 @@ struct RVertex {
   glm::vec4 weight;  // WEIGHT
   glm::vec4 color;   // COLOR      aligned to 96 bytes per vertex on device
 
-  static VkVertexInputBindingDescription getBindingDesc();
+  static std::vector<VkVertexInputBindingDescription> getBindingDescs();
   static std::vector<VkVertexInputAttributeDescription> getAttributeDescs();
 };
 
@@ -428,28 +461,27 @@ struct RLightingUBO {
   glm::mat4 lightOrthoMatrix;                 // default orthogonal projection matrix for light views
   uint32_t samplerArrayIndex[RE_MAXSHADOWCASTERS];
   uint32_t lightCount = 0;
+  glm::vec4 shadowColor = {0.0f, 0.0f, 0.0f, 1.0f};
+  float averageLuminance = 0.5f;
+  float bloomIntensity = 1.0f;
   float exposure = 4.5f;
   float gamma = 2.2f;
   float prefilteredCubeMipLevels;
   float scaleIBLAmbient = 1.0f;
+  uint32_t aoMode = (uint32_t)EAOMode::None;
 };
 
 // Push constant block used by the scene fragment shader
-// (72 bytes, 88 bytes total of 128 Vulkan spec)
+// (64 bytes, 80 bytes total of 128 Vulkan spec)
 struct RSceneFragmentPCB {
-  int32_t baseColorTextureSet;
-  int32_t normalTextureSet;
-  int32_t metallicRoughnessTextureSet;
-  int32_t occlusionTextureSet;            // 16
-  int32_t emissiveTextureSet;
-  int32_t extraTextureSet;
+  int32_t textureSets = 0;                // Each 2 bits store a UV index 0, 1 or none
   float metallicFactor;
-  float roughnessFactor;                  // 32
+  float roughnessFactor;
   float alphaMode;
   float alphaCutoff;
   float bumpIntensity;
-  float emissiveIntensity;                // 48
-  uint32_t samplerIndex[RE_MAXTEXTURES];  // 72
+  uint32_t samplerIndex[RE_MAXTEXTURES];
+  glm::vec4 glowColor;
 };
 
 // Push constant block used by the scene vertex shader
@@ -459,10 +491,13 @@ struct RSceneVertexPCB {
   float padding[3];
 };
 
-struct RMeshUBO {
+struct RModelUBO {
+  glm::mat4 modelMatrix = glm::mat4(1.0f);
+};
+
+struct RNodeUBO {
   glm::mat4 nodeMatrix = glm::mat4(1.0f);
   float jointCount = 0.0f;
-  std::vector<glm::mat4> jointMatrices;
 };
 
 // camera and view matrix UBO for vertex shader
@@ -470,11 +505,16 @@ struct RSceneUBO {
   alignas(16) glm::mat4 view = glm::mat4(1.0f);
   alignas(16) glm::mat4 projection = glm::mat4(1.0f);
   alignas(16) glm::vec3 cameraPosition = glm::vec3(0.0f);
-  VkDeviceAddress vertexBufferAddress = 0u;
+  alignas(16) glm::vec2 haltonJitter = glm::vec2(0.0f);
+  glm::vec2 clipData = glm::vec2(0.0f);
+};
+
+struct RSkinUBO {
+  std::vector<glm::mat4> jointMatrices;
 };
 
 struct WAnimationInfo {
-  class WModel* pModel;
+  class AEntity* pEntity;
   std::string animationName;
   float startTime = 0.0f;
   float endTime = std::numeric_limits<float>::max();
@@ -500,4 +540,12 @@ struct WModelConfigInfo {
   float framerate = 15.0f;
   // speed up extracted animations while sampling, will apply to all
   float speed = 1.0f;
+};
+
+struct WPrimitiveInstanceData {
+  uint32_t instanceIndex = 0;
+  uint32_t passFlags = 0;
+  bool isVisible = true;
+
+  RInstanceData instanceBufferBlock;
 };

@@ -11,7 +11,8 @@ void core::MResources::initialize() {
   RE_LOG(Log, "Initializing materials manager data.");
 
   RMaterial* pMaterial = nullptr;
-  m_sampler2DIndices.resize(config::scene::sampledImageBudget, nullptr);
+  m_materialIndices.resize(config::scene::sampledImageBudget / RE_MAXTEXTURES, nullptr);
+  m_samplerIndices.resize(config::scene::sampledImageBudget, nullptr);
 
   // create the "default" material
   RSamplerInfo samplerInfo{};
@@ -23,19 +24,11 @@ void core::MResources::initialize() {
   loadTexture(RE_BLACKTEXTURE, &samplerInfo);
   loadTexture(RE_WHITETEXTURE, &samplerInfo);
 
-  // create default material
+  // Create default material
   RMaterialInfo materialInfo{};
   materialInfo.name = "default";
   materialInfo.passFlags = EDynamicRenderingPass::OpaqueCullBack;
   materialInfo.textures.baseColor = RE_DEFAULTTEXTURE;
-  materialInfo.textures.normal = "default/default_normal.ktx2";
-  materialInfo.textures.metalRoughness =
-      "default/default_metallicRoughness.ktx2";
-  materialInfo.textures.occlusion = "default/default_occlusion.ktx2";
-  materialInfo.texCoordSets.baseColor = 0;
-  materialInfo.texCoordSets.normal = 0;
-  materialInfo.texCoordSets.metalRoughness = 0;
-  materialInfo.texCoordSets.occlusion = 0;
 
   createMaterial(&materialInfo);
 
@@ -75,11 +68,17 @@ void core::MResources::initialize() {
 
   core::renderer.getMaterialData()->pGBuffer = pMaterial;
 
-  // create present material that takes combined output of all render passes as
+  // Create present material that takes combined output of all render passes as
   // a shader read only attachment
   materialInfo = RMaterialInfo{};
-  materialInfo.name = RMAT_GPBR;
+  materialInfo.name = RMAT_MAIN;
   materialInfo.textures.baseColor = RTGT_GPBR;
+  materialInfo.textures.normal = RTGT_PPBLOOM;
+  materialInfo.textures.metalRoughness = RTGT_VELOCITYMAP;
+  materialInfo.textures.occlusion = RTGT_PREVFRAME;
+  materialInfo.textures.emissive = RTGT_PPTAA;
+  materialInfo.textures.extra0 = RTGT_APBR;
+  materialInfo.textures.extra1 = RTGT_PPAO;
   materialInfo.alphaMode = EAlphaMode::Opaque;
   materialInfo.doubleSided = false;
   materialInfo.manageTextures = true;
@@ -92,11 +91,30 @@ void core::MResources::initialize() {
   }
 
   core::renderer.getMaterialData()->pGPBR = pMaterial;
+
+  // Create present material that takes combined output of all render passes as
+  // a shader read only attachment
+  materialInfo = RMaterialInfo{};
+  materialInfo.name = RMAT_BLUR;
+  materialInfo.textures.baseColor = RTGT_PPBLUR;
+  materialInfo.textures.occlusion = RTGT_PPAO;
+  materialInfo.alphaMode = EAlphaMode::Opaque;
+  materialInfo.doubleSided = false;
+  materialInfo.manageTextures = true;
+  materialInfo.passFlags = EDynamicRenderingPass::PPBlur;
+
+  if (!(pMaterial = createMaterial(&materialInfo))) {
+    RE_LOG(Critical, "Failed to create Vulkan present material.");
+
+    return;
+  }
+
+  core::renderer.getMaterialData()->pBlur = pMaterial;
 }
 
 uint32_t core::MResources::getFreeCombinedSamplerIndex() {
-  for (uint32_t i = 0; i < m_sampler2DIndices.size(); ++i) {
-    if (m_sampler2DIndices[i] == nullptr) return i;
+  for (uint32_t i = 0; i < m_samplerIndices.size(); ++i) {
+    if (m_samplerIndices[i] == nullptr) return i;
   }
 
   RE_LOG(Warning, "No more free sampler2D descriptor entries left.");
@@ -129,7 +147,7 @@ void core::MResources::updateMaterialDescriptorSet(RTexture* pTexture, EResource
       }
 
       writeSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-      writeSet.dstBinding = 0;
+      writeSet.dstBinding = 1;
       writeSet.dstArrayElement = index;
       writeSet.pImageInfo = &imageInfo;
 
@@ -137,7 +155,7 @@ void core::MResources::updateMaterialDescriptorSet(RTexture* pTexture, EResource
 
       // Store index data
       pTexture->combinedSamplerIndex = index;
-      m_sampler2DIndices[index] = pTexture;
+      m_samplerIndices[index] = pTexture;
 
       return;
     }
@@ -157,6 +175,12 @@ RMaterial* core::MResources::createMaterial(
     return m_materials.at(pDesc->name).get();
   }
 
+  // Storing index 0 as 0b10 and 1 as 0b11 to save precious push block space
+  // and for a reliable bitwise retrieval in the shader
+  auto fGetTextureIndex = [](const int8_t textureSet, const int8_t textureIndex) {
+    return (textureSet + 2) << (textureIndex * 2);
+  };
+
   RMaterial newMat;
   newMat.name = pDesc->name;
 
@@ -165,29 +189,35 @@ RMaterial* core::MResources::createMaterial(
   newMat.pMetalRoughness = assignTexture(pDesc->textures.metalRoughness.c_str());
   newMat.pOcclusion = assignTexture(pDesc->textures.occlusion.c_str());
   newMat.pEmissive = assignTexture(pDesc->textures.emissive.c_str());
-  newMat.pExtra = assignTexture(pDesc->textures.extra.c_str());
+  newMat.pExtra0 = assignTexture(pDesc->textures.extra0.c_str());
+  newMat.pExtra1 = assignTexture(pDesc->textures.extra1.c_str());
+  newMat.pExtra2 = assignTexture(pDesc->textures.extra2.c_str());
 
   newMat.pushConstantBlock.metallicFactor = pDesc->metallicFactor;
   newMat.pushConstantBlock.roughnessFactor = pDesc->roughnessFactor;
   newMat.pushConstantBlock.alphaMode = static_cast<float>(pDesc->alphaMode);
   newMat.pushConstantBlock.alphaCutoff = pDesc->alphaCutoff;
   newMat.pushConstantBlock.bumpIntensity = pDesc->bumpIntensity;
-  newMat.pushConstantBlock.emissiveIntensity = pDesc->emissiveIntensity;
+  newMat.pushConstantBlock.glowColor = pDesc->glowColor;
 
   // disable reading from texture in shader if no texture is available
-  newMat.pushConstantBlock.baseColorTextureSet = newMat.pBaseColor ? pDesc->texCoordSets.baseColor : -1;
-  newMat.pushConstantBlock.normalTextureSet = newMat.pNormal ? pDesc->texCoordSets.normal : -1;
-  newMat.pushConstantBlock.metallicRoughnessTextureSet = newMat.pMetalRoughness ? pDesc->texCoordSets.metalRoughness : -1;
-  newMat.pushConstantBlock.occlusionTextureSet = newMat.pOcclusion ? pDesc->texCoordSets.occlusion : -1;
-  newMat.pushConstantBlock.emissiveTextureSet = newMat.pEmissive ? pDesc->texCoordSets.emissive : -1;
-  newMat.pushConstantBlock.extraTextureSet = newMat.pExtra ? pDesc->texCoordSets.extra : -1;
+  newMat.pushConstantBlock.textureSets |= newMat.pBaseColor ? fGetTextureIndex(pDesc->texCoordSets.baseColor, 0) : 0;
+  newMat.pushConstantBlock.textureSets |= newMat.pNormal ? fGetTextureIndex(pDesc->texCoordSets.normal, 1) : 0;
+  newMat.pushConstantBlock.textureSets |= newMat.pMetalRoughness ? fGetTextureIndex(pDesc->texCoordSets.metalRoughness, 2) : 0;
+  newMat.pushConstantBlock.textureSets |= newMat.pOcclusion ? fGetTextureIndex(pDesc->texCoordSets.occlusion, 3) : 0;
+  newMat.pushConstantBlock.textureSets |= newMat.pEmissive ? fGetTextureIndex(pDesc->texCoordSets.emissive, 4) : 0;
+  newMat.pushConstantBlock.textureSets |= newMat.pExtra0 ? fGetTextureIndex(pDesc->texCoordSets.extra0, 5) : 0;
+  newMat.pushConstantBlock.textureSets |= newMat.pExtra1 ? fGetTextureIndex(pDesc->texCoordSets.extra1, 6) : 0;
+  newMat.pushConstantBlock.textureSets |= newMat.pExtra2 ? fGetTextureIndex(pDesc->texCoordSets.extra2, 7) : 0;
 
   newMat.pushConstantBlock.samplerIndex[0] = newMat.pBaseColor ? newMat.pBaseColor->combinedSamplerIndex : 0;
   newMat.pushConstantBlock.samplerIndex[1] = newMat.pNormal ? newMat.pNormal->combinedSamplerIndex : 0;
   newMat.pushConstantBlock.samplerIndex[2] = newMat.pMetalRoughness ? newMat.pMetalRoughness->combinedSamplerIndex : 0;
   newMat.pushConstantBlock.samplerIndex[3] = newMat.pOcclusion ? newMat.pOcclusion->combinedSamplerIndex : 0;
   newMat.pushConstantBlock.samplerIndex[4] = newMat.pEmissive ? newMat.pEmissive->combinedSamplerIndex : 0;
-  newMat.pushConstantBlock.samplerIndex[5] = newMat.pExtra ? newMat.pExtra->combinedSamplerIndex : 0;
+  newMat.pushConstantBlock.samplerIndex[5] = newMat.pExtra0 ? newMat.pExtra0->combinedSamplerIndex : 0;
+  newMat.pushConstantBlock.samplerIndex[6] = newMat.pExtra1 ? newMat.pExtra1->combinedSamplerIndex : 0;
+  newMat.pushConstantBlock.samplerIndex[7] = newMat.pExtra2 ? newMat.pExtra2->combinedSamplerIndex : 0;
 
   // store total number of textures the material has
   if (newMat.pBaseColor) {
@@ -205,8 +235,14 @@ RMaterial* core::MResources::createMaterial(
   if (newMat.pEmissive) {
     newMat.pLinearTextures.emplace_back(newMat.pEmissive);
   }
-  if (newMat.pExtra) {
-    newMat.pLinearTextures.emplace_back(newMat.pExtra);
+  if (newMat.pExtra0) {
+    newMat.pLinearTextures.emplace_back(newMat.pExtra0);
+  }
+  if (newMat.pExtra1) {
+    newMat.pLinearTextures.emplace_back(newMat.pExtra1);
+  }
+  if (newMat.pExtra2) {
+    newMat.pLinearTextures.emplace_back(newMat.pExtra2);
   }
 
   newMat.passFlags = pDesc->passFlags;
@@ -229,13 +265,36 @@ RMaterial* core::MResources::createMaterial(
       }
     }
 
-    // all glTF materials are featured in shadow prepass by default
-    newMat.passFlags |= EDynamicRenderingPass::Shadow;
+    // Check material for a single bit alpha and reassign it to OpaqueCullNone pass
+    if ((newMat.passFlags & EDynamicRenderingPass::BlendCullNone)
+      && (newMat.pBaseColor->texture.imageFormat == VK_FORMAT_BC1_RGBA_SRGB_BLOCK
+        || newMat.pBaseColor->texture.imageFormat == VK_FORMAT_BC1_RGBA_UNORM_BLOCK)) {
+      newMat.passFlags ^= EDynamicRenderingPass::BlendCullNone;
+      newMat.passFlags |= EDynamicRenderingPass::DiscardCullNone;
+    }
+
+    // All glTF materials are featured in shadow prepass by default, discard materials have their dedicated shadow pass
+    newMat.passFlags |= (newMat.passFlags & EDynamicRenderingPass::DiscardCullNone)
+      ? EDynamicRenderingPass::ShadowDiscard : EDynamicRenderingPass::Shadow;
   }
 
   RE_LOG(Log, "Creating material \"%s\".", newMat.name.c_str());
   m_materials.at(pDesc->name) = std::make_unique<RMaterial>(std::move(newMat));
-  return m_materials.at(pDesc->name).get();
+
+  RMaterial* pNewMaterial = m_materials.at(pDesc->name).get();
+
+  // Store material's data block in the buffer at an appropriate index
+  pNewMaterial->bufferIndex = getMaterialBufferIndex(pNewMaterial);
+
+  if (pNewMaterial->bufferIndex == -1) {
+    RE_LOG(Error, "Material buffer is out of free space.");
+  } else {
+    RSceneFragmentPCB* pMemAddress = (RSceneFragmentPCB*)core::renderer.getMaterialData()->buffer.allocInfo.pMappedData
+      + pNewMaterial->bufferIndex;
+    memcpy(pMemAddress, &pNewMaterial->pushConstantBlock, sizeof(RSceneFragmentPCB));
+  }
+
+  return pNewMaterial;
 }
 
 RMaterial* core::MResources::getMaterial(const char* name) noexcept {
@@ -253,6 +312,29 @@ RMaterial* core::MResources::getMaterial(const char* name) noexcept {
 
 uint32_t core::MResources::getMaterialCount() const noexcept {
   return static_cast<uint32_t>(m_materials.size());
+}
+
+uint32_t core::MResources::getMaterialBufferIndex(RMaterial* pMaterial) noexcept {
+  if (pMaterial->bufferIndex != -1) {
+    if (m_materialIndices[pMaterial->bufferIndex] != pMaterial) {
+      RE_LOG(Error, "Invalid material buffer index %d for '%s'. Possible data corruption.",
+        pMaterial->bufferIndex, pMaterial->name.c_str());
+    }
+
+    return pMaterial->bufferIndex;
+  }
+
+  uint32_t index = 0;
+  for (auto& it : m_materialIndices) {
+    if (it == nullptr) {
+      it = pMaterial;
+      return index;
+    }
+
+    ++index;
+  }
+
+  return -1;
 }
 
 TResult core::MResources::deleteMaterial(const char* name) noexcept {

@@ -41,11 +41,9 @@ class MActors {
     static MActors _sInstance;
     return _sInstance;
   }
-
+    
   MActors(const MActors&) = delete;
   MActors& operator=(const MActors&) = delete;
-
-  void initialize();
 
   // CAMERA
 

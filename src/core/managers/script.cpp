@@ -213,7 +213,7 @@ void core::MScript::jsonParseLights(const json* pLightData) noexcept {
   for (int32_t i = 0; i < lightNames.size(); ++i) {
     ALight* pNewLight = core::actors.createLight(lightNames[i].c_str(), &lightInfo[i]);
 
-    if (pNewLight->isShadowCaster()) {
+    if (pNewLight->isShadowCaster() && pNewLight->getLightType() == ELightType::Directional) {
       core::renderer.setSunCamera(pNewLight);
       core::actors.setSunLight(pNewLight);
     }

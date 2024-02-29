@@ -175,7 +175,7 @@ TResult core::MWorld::createModel(EPrimitiveType type, std::string name,
       core::resources.createMaterial(&defaultMaterialInfo);
 
   for (auto& primitive : pModel->getPrimitives()) {
-    primitive->pMaterial = pDefaultMaterial;
+    primitive->pInitialMaterial = pDefaultMaterial;
   }
 
   // calculate bounding box extent for the whole mesh based on created primitives
@@ -190,7 +190,10 @@ TResult core::MWorld::createModel(EPrimitiveType type, std::string name,
     }
   }*/
 
-  return pModel->createStagingBuffers();
+  pModel->createStagingBuffers();
+  pModel->uploadToSceneBuffer();
+
+  return RE_OK;
 }
 
 WModel* core::MWorld::getModel(const char* name) {

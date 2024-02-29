@@ -79,10 +79,10 @@ void WModel::sortPrimitivesByMaterial() {
 
   for (const auto& primitive : m_pLinearPrimitives) {
     wasPlaced = false;
-    primitiveMaterial = primitive->pMaterial;
+    primitiveMaterial = primitive->pInitialMaterial;
 
     for (auto& vector : vectors) {
-      if (vector[0]->pMaterial == primitiveMaterial) {
+      if (vector[0]->pInitialMaterial == primitiveMaterial) {
         vector.emplace_back(primitive);
         wasPlaced = true;
         break;
@@ -143,48 +143,8 @@ std::vector<WModel::Node*>& WModel::getAllNodes() noexcept {
   return m_pLinearNodes;
 }
 
-void WModel::updateNodeTransformBuffer(int32_t nodeIndex,
-                                       uint32_t bufferOffset) noexcept {
-  WModel::Node* pNode = getNode(nodeIndex);
-
-  if (!pNode || !pNode->pMesh) {
-    RE_LOG(Error,
-           "Failed to update node transformation buffer for model '%s'. Node "
-           "'%d' does not exist or has no mesh.",
-           m_name.c_str(), nodeIndex);
-    return;
-  }
-
-  if (!pNode->isRequestingTransformBufferUpdate) return;
-
-  int8_t* pMemAddress =
-      static_cast<int8_t*>(core::renderer.getSceneBuffers()
-                                 ->nodeTransformBuffer.allocInfo.pMappedData) +
-      bufferOffset;
-
-  // copy node transform data for vertex shader (node matrix and joint count)
-  memcpy(pMemAddress, &pNode->pMesh->uniformBlock,
-         sizeof(glm::mat4) + sizeof(float));
-
-  pNode->isRequestingTransformBufferUpdate = false;
-}
-
-void WModel::updateSkinTransformBuffer() noexcept {
-  for (auto& pSkin : m_pSkins) {
-    int8_t* pMemAddress =
-        static_cast<int8_t*>(core::renderer.getSceneBuffers()
-                                  ->skinTransformBuffer.allocInfo.pMappedData) +
-        pSkin->bufferOffset;
-
-    WModel::Node* pNode = getNodeBySkinIndex(pSkin->index);
-
-    memcpy(pMemAddress, pNode->pMesh->uniformBlock.jointMatrices.data(),
-           sizeof(glm::mat4) * pNode->pMesh->uniformBlock.jointMatrices.size());
-  }
-}
-
 void WModel::resetUniformBlockData() {
-  for (auto& pNode : getAllNodes()) {
+  /*for (auto& pNode : getAllNodes()) {
     this;
     if (pNode->pMesh) {
       pNode->pMesh->uniformBlock.nodeMatrix = glm::mat4(1.0f);
@@ -195,7 +155,11 @@ void WModel::resetUniformBlockData() {
         }
       }
     }
-  }
+  }*/
+}
+
+void WModel::uploadToSceneBuffer() {
+  core::renderer.uploadModelToSceneBuffer(this);
 }
 
 WPrimitive* WModel::getPrimitive(const int32_t meshIndex,
@@ -246,25 +210,13 @@ void WModel::setPrimitiveMaterial(const int32_t meshIndex,
     return;
   }
 
-  pPrimitive->pMaterial = pMaterial;
+  pPrimitive->pInitialMaterial = pMaterial;
 }
 
-void WModel::setSceneBindingData(size_t vertexOffset, size_t indexOffset) {
-  m_sceneVertexOffset = vertexOffset;
-  m_sceneIndexOffset = indexOffset;
-  m_isBoundToScene = true;
-}
-
-void WModel::clearSceneBindingData() {
-  m_sceneVertexOffset = 0u;
-  m_sceneIndexOffset = 0u;
-  m_isBoundToScene = false;
-}
-
-void WModel::bindAnimation(const std::string& name) {
+bool WModel::bindAnimation(const std::string& name) {
   for (const auto& boundAnimation : m_boundAnimations) {
     if (boundAnimation == name) {
-      return;
+      return true;
     }
   }
 
@@ -274,7 +226,7 @@ void WModel::bindAnimation(const std::string& name) {
     RE_LOG(Error,
            "Failed to bind animation '%s' to model '%s'. Animation not found.",
            name.c_str(), m_name.c_str());
-    return;
+    return false;
   }
 
   if (!pAnimation->validateModel(this)) {
@@ -282,54 +234,11 @@ void WModel::bindAnimation(const std::string& name) {
            "Failed to bind animation '%s' to model '%s'. Model has an "
            "incompatible node structure.",
            name.c_str(), m_name.c_str());
-    return;
+    return false;
   }
 
   m_boundAnimations.emplace_back(name);
-}
-
-void WModel::playAnimation(const std::string& name, const float speed,
-                           const bool loop, const bool isReversed) {
-  for (const auto& boundAnimation : m_boundAnimations) {
-    if (boundAnimation == name) {
-      WAnimationInfo animationInfo;
-      animationInfo.animationName = name;
-      animationInfo.pModel = this;
-      animationInfo.speed = speed;
-      animationInfo.loop = loop;
-
-      if (isReversed) {
-        const float endTime = animationInfo.endTime;
-        animationInfo.endTime = animationInfo.startTime;
-        animationInfo.startTime = endTime;
-      }
-
-      m_playingAnimations[name] =
-          core::animations.addAnimationToQueue(&animationInfo);
-
-      return;
-    }
-  }
-
-  RE_LOG(Error, "Can't play animation '%s' as it was not bound to model '%s'.",
-         name.c_str(), m_name.c_str());
-}
-
-void WModel::playAnimation(const WAnimationInfo* pAnimationInfo) {
-  if (!pAnimationInfo) {
-    RE_LOG(Error, "Failed to play animation for '%s', no data was provided.",
-           m_name.c_str());
-    return;
-  }
-
-  for (const auto& boundAnimation : m_boundAnimations) {
-    if (boundAnimation == pAnimationInfo->animationName) {
-      m_playingAnimations[pAnimationInfo->animationName] =
-          core::animations.addAnimationToQueue(pAnimationInfo);
-
-      return;
-    }
-  }
+  return true;
 }
 
 TResult WModel::clean() {

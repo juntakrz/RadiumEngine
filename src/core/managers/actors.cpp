@@ -46,10 +46,6 @@ void core::MActors::updateLightingUBO(RLightingUBO* pLightingBuffer) {
   pLightingBuffer->lightCount = lightCount;
 }
 
-void core::MActors::initialize() {
-  //
-}
-
 ACamera* core::MActors::createCamera(const char* name,
                                      RCameraInfo* cameraSettings) {
   if (m_actors.cameras.try_emplace(name).second) {
@@ -143,7 +139,7 @@ ALight* core::MActors::createLight(const char* name, RLightInfo* pInfo) {
 
     if (pInfo->isShadowCaster) {
       pNewLight->setAsShadowCaster(true);
-      pNewLight->setOrthographic(1.0f, 1.0f, 0.001f, 100.0f);
+      pNewLight->setOrthographic(2.0f, 2.0f, 0.001f, 1000.0f);
 
       // get free camera offset index into the dynamic buffer
       uint32_t index = 0;
@@ -234,6 +230,7 @@ APawn* core::MActors::createPawn(const char* name) {
   };
 
   m_actors.pawns.at(name) = std::make_unique<APawn>();
+  m_actors.pawns.at(name)->setName(name);
 
   // should probably add a reference to MRef here?
 

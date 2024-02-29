@@ -58,35 +58,6 @@ TResult core::MRenderer::createPipelineLayouts() {
   }
 
 #ifndef NDEBUG
-  RE_LOG(Log, "Creating pipeline layout for \"PBR\".");
-#endif
-
-  layoutType = EPipelineLayout::PBR;
-  system.layouts.emplace(layoutType, VK_NULL_HANDLE);
-
-  descriptorSetLayouts.clear();
-  descriptorSetLayouts = {
-      getDescriptorSetLayout(EDescriptorSetLayout::Scene),    // 0
-      getDescriptorSetLayout(EDescriptorSetLayout::Model),    // 1
-      getDescriptorSetLayout(EDescriptorSetLayout::PBRInput)  // 2
-  };
-
-  layoutInfo = VkPipelineLayoutCreateInfo{};
-  layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-  layoutInfo.setLayoutCount =
-      static_cast<uint32_t>(descriptorSetLayouts.size());
-  layoutInfo.pSetLayouts = descriptorSetLayouts.data();
-  layoutInfo.pushConstantRangeCount = 0;
-  layoutInfo.pPushConstantRanges = VK_NULL_HANDLE;
-
-  if (vkCreatePipelineLayout(logicalDevice.device, &layoutInfo, nullptr,
-                             &getPipelineLayout(layoutType)) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create \"PBR\" pipeline layout.");
-
-    return RE_CRITICAL;
-  }
-
-#ifndef NDEBUG
   RE_LOG(Log, "Creating pipeline layout for \"Environment\".");
 #endif
 
@@ -186,36 +157,6 @@ TResult core::MRenderer::createComputePipelines() {
             nullptr,
             &getComputePipeline(EComputePipeline::ImageLUT)) != VK_SUCCESS) {
       RE_LOG(Critical, "Failed to create Compute Image 'BRDF LUT' pipeline.");
-
-      return RE_CRITICAL;
-    }
-
-    vkDestroyShaderModule(logicalDevice.device, shaderStage.module, nullptr);
-  }
-
-  //
-  // Compute Image pipeline for mipmapping R16G16B16A16_SFLOAT image
-  //
-  {
-    VkPipelineShaderStageCreateInfo shaderStage =
-        loadShader("cs_mipmap16f.spv", VK_SHADER_STAGE_COMPUTE_BIT);
-    computePipelineInfo.stage = shaderStage;
-
-    VkPipelineRenderingCreateInfo pipelineRenderingInfo{};
-    pipelineRenderingInfo.sType =
-        VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
-    pipelineRenderingInfo.colorAttachmentCount = 1;
-    pipelineRenderingInfo.pColorAttachmentFormats = &core::vulkan::formatHDR16;
-    pipelineRenderingInfo.viewMask = 0;
-
-    system.computePipelines.emplace(EComputePipeline::ImageMipMap16f,
-      VK_NULL_HANDLE);
-
-    if (vkCreateComputePipelines(
-            logicalDevice.device, VK_NULL_HANDLE, 1, &computePipelineInfo,
-            nullptr, &getComputePipeline(EComputePipeline::ImageMipMap16f)) !=
-        VK_SUCCESS) {
-      RE_LOG(Critical, "Failed to create Compute Image 'MipMap16f' pipeline.");
 
       return RE_CRITICAL;
     }
@@ -347,8 +288,8 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
   VkPipelineDepthStencilStateCreateInfo depthStencilInfo{};
   depthStencilInfo.sType =
       VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-  depthStencilInfo.depthTestEnable = VK_TRUE;
-  depthStencilInfo.depthWriteEnable = VK_TRUE;
+  depthStencilInfo.depthTestEnable = pipelineInfo->enableDepthTest;
+  depthStencilInfo.depthWriteEnable = pipelineInfo->enableDepthWrite;
   depthStencilInfo.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
   depthStencilInfo.front = depthStencilInfo.back;
   depthStencilInfo.back.compareOp = VK_COMPARE_OP_ALWAYS;
@@ -365,7 +306,7 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
   colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
   colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
   colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-  colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+  colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
   colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
   colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
@@ -388,14 +329,14 @@ TResult core::MRenderer::createGraphicsPipeline(RGraphicsPipelineInfo* pipelineI
   colorBlendInfo.blendConstants[2] = 0.0f;
   colorBlendInfo.blendConstants[3] = 0.0f;
 
-  VkVertexInputBindingDescription vertexBindingDesc = RVertex::getBindingDesc();
+  const auto& vertexBindingDescs = RVertex::getBindingDescs();
   const auto& attributeDescs = RVertex::getAttributeDescs();
 
   VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
   vertexInputInfo.sType =
       VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-  vertexInputInfo.pVertexBindingDescriptions = &vertexBindingDesc;
-  vertexInputInfo.vertexBindingDescriptionCount = 1;
+  vertexInputInfo.pVertexBindingDescriptions = vertexBindingDescs.data();
+  vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(vertexBindingDescs.size());
   vertexInputInfo.pVertexAttributeDescriptions = attributeDescs.data();
   vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescs.size());
 

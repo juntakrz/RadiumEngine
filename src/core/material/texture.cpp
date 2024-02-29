@@ -45,7 +45,7 @@ TResult RTexture::createImageViews(const bool createExtraViews, const bool creat
 
         for (uint8_t layerIndex = 0; layerIndex < texture.layerCount;  ++layerIndex) {
           for (uint8_t mipIndex = 0; mipIndex < texture.levelCount; ++mipIndex) {
-            VkDescriptorImageInfo& info = texture.extraViews[layerIndex + mipIndex * layerIndex];
+            VkDescriptorImageInfo& info = texture.extraViews[mipIndex + texture.levelCount * layerIndex];
 
             info.imageView =
               core::renderer.createImageView(texture.image, texture.imageFormat, layerIndex, 1u, mipIndex, 1u, false, texture.aspectMask);
@@ -66,39 +66,19 @@ TResult RTexture::createImageViews(const bool createExtraViews, const bool creat
   return RE_OK;
 }
 
-TResult RTexture::createSampler(
+TResult RTexture::setSampler(
     RSamplerInfo* pSamplerInfo) {
   if (!pSamplerInfo) {
-    RE_LOG(Warning, "Sampler info is missing, skipping sampler creation.");
-    return RE_WARNING;
+    RE_LOG(Warning, "Sampler info is missing, using the default linear / repeat sampler.");
+    texture.sampler = core::renderer.getSampler(nullptr);
   }
 
-  // adapt to cubemap
-  if (texture.layerCount == 6) {
-    pSamplerInfo->addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    pSamplerInfo->addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    pSamplerInfo->addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  // adapt sampler info to cubemap
+  if (isCubemap && texture.layerCount == 6) {
+    pSamplerInfo->addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
   }
 
-  VkSamplerCreateInfo createInfo{};
-  createInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-  createInfo.minFilter = pSamplerInfo->minFilter;
-  createInfo.magFilter = pSamplerInfo->magFilter;
-  createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-  createInfo.addressModeU = pSamplerInfo->addressModeU;
-  createInfo.addressModeV = pSamplerInfo->addressModeV;
-  createInfo.addressModeW = pSamplerInfo->addressModeW;
-  createInfo.anisotropyEnable = VK_TRUE;
-  createInfo.maxAnisotropy = 16.0f;
-  createInfo.compareOp = VK_COMPARE_OP_NEVER;
-  createInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-  createInfo.maxLod = (float)texture.levelCount;
-
-  if (vkCreateSampler(core::renderer.logicalDevice.device, &createInfo, nullptr,
-                      &texture.sampler) != VK_SUCCESS) {
-    RE_LOG(Error, "Failed to create sampler for texture \"%s\"", name.c_str());
-    return RE_ERROR;
-  };
+  texture.sampler = core::renderer.getSampler(pSamplerInfo);
 
   return RE_OK;
 }
@@ -131,8 +111,6 @@ RTexture::~RTexture() {
   for (auto& faceView : texture.cubemapFaceViews) {
     vkDestroyImageView(device, faceView, nullptr);
   }
-
-  vkDestroySampler(device, texture.sampler, nullptr);
 
   if (isKTX) {
     ktxVulkanTexture_Destruct(&texture, device, nullptr);

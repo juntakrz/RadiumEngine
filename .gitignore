@@ -7,3 +7,4 @@ content/animations/*
 *.exe
 !content/textures/default
 *.cap
+RadiumEngine/*

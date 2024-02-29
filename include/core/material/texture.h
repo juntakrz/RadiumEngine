@@ -19,7 +19,7 @@ struct RTexture {
   uint32_t combinedSamplerIndex = -1;
 
   TResult createImageViews(const bool createExtraViews = false, const bool createCubemapFaceViews = false);
-  TResult createSampler(RSamplerInfo *pSamplerInfo);
+  TResult setSampler(RSamplerInfo *pSamplerInfo);
   TResult createDescriptor();
 
   ~RTexture();
