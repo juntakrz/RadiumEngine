@@ -1,0 +1,325 @@
+#version 460
+#extension GL_EXT_nonuniform_qualifier : require
+
+#include "include/common.glsl"
+
+#define MAX_UNIQUE_PRIMITIVES 16384
+
+#define PASS_SHADOW				1
+#define PASS_DISCARDSHADOW		2
+#define PASS_ENVSKYBOX			4
+#define PASS_OPAQUECULLBACK		8
+#define PASS_OPAQUECULLNONE		16
+#define PASS_DISCARDCULLNONE	32
+//#define PASS_MASKCULLNONE		64			// Unused currently
+#define PASS_BLENDCULLNONE		128
+#define PASS_SKYBOX				256
+
+#define IDP_SHADOW				0
+#define IDP_DISCARDSHADOW		1
+#define IDP_ENVSKYBOX			2
+#define IDP_OPAQUECULLBACK		3
+#define IDP_OPAQUECULLNONE		4
+#define IDP_DISCARDCULLNONE		5
+#define IDP_BLENDCULLNONE		6
+#define IDP_SKYBOX				7
+#define PASS_COUNT				8
+
+#define FRUSTUM_REVERSE_BIAS	-1.0
+#define DEPTH_BIAS				0.0001
+
+// Sample 9 depth values around each vertex and use the maximum one for culling
+//#define HIGH_VISIBILITY_BIAS
+
+// If an instance is occluded - do a single sample from the lower mip level to check again
+#define MIP_VISIBILITY_BIAS
+
+struct ModelTransformBlock {
+	mat4 matrix;
+	mat4 prevMatrix;
+};
+
+struct NodeTransformBlock {
+	mat4 matrix;
+	float jointCount;
+	mat4 prevMatrix;
+	float padding[12];
+};
+
+struct UBOScene {
+	mat4 view;
+	mat4 projection;
+	mat4 prevView;
+	vec3 camPos;
+	vec2 haltonJitter;
+	vec2 clipData;			// x = near plane, y = far plane
+	float padding[8];
+};
+
+struct PrimitiveDataEntry {
+	uint instanceCount;
+};
+
+struct InstanceDataEntry {
+	vec4 AABBMin;
+	vec4 AABBMax;
+	uint modelMatrixId;
+	uint nodeMatrixId;
+	uint skinMatrixId;
+	uint renderPassFlags;
+	uint primitiveUId;
+	bool isVisible;
+};
+
+layout (local_size_x = 32) in;
+
+layout (set = 0, binding = 1) uniform sampler2D samplers[];
+
+layout (set = 1, binding = 0) buffer readonly SceneDataBuffer {
+	UBOScene sceneData[];
+};
+
+layout (set = 1, binding = 1) buffer readonly UBOMesh0 {
+	ModelTransformBlock block[];
+} model;
+
+layout (set = 1, binding = 2) buffer readonly UBOMesh1 {
+	NodeTransformBlock block[];
+} node;
+
+layout (set = 1, binding = 3) buffer readonly InstanceDataBuffer {
+	InstanceDataEntry inInstanceData[];
+};
+
+layout (std430, set = 1, binding = 4) buffer writeonly coherent OutDrawCountBuffer {
+	uint passDrawCount[PASS_COUNT];
+	uint passInstanceCount[PASS_COUNT];
+	uint primitiveInstanceCount[MAX_UNIQUE_PRIMITIVES];
+	uint instanceVisibility[];
+} outDrawCountBuffer;
+
+layout (push_constant) uniform PushBlock {
+	uint imageIndex;
+	uint samplerIndex;
+	uint bufferIndex;
+	uint padding;
+    ivec4 intValues;	// x - total number of instances, y - max primitiveUId, z - camera buffer block index, w - max depth mip level
+	vec4 floatValues;
+} pushBlock;
+
+const uint passIds[PASS_COUNT] = uint[PASS_COUNT](
+	PASS_SHADOW, PASS_DISCARDSHADOW, PASS_ENVSKYBOX, PASS_OPAQUECULLBACK,
+	PASS_OPAQUECULLNONE, PASS_DISCARDCULLNONE, PASS_BLENDCULLNONE, PASS_SKYBOX
+);
+
+const uint alwaysVisiblePassIds[2] = uint[2](PASS_ENVSKYBOX, PASS_SKYBOX);
+
+bool isBoxInFrustum(vec4 boxMin, vec4 boxMax, mat4 transform, inout vec4 AABB[8]) {
+	// Construct a bounding box
+	vec4 boxCorners[8];
+	boxCorners[0] = vec4(boxMin.x, boxMax.y, boxMax.z, 1.0);		//		0		1
+	boxCorners[1] = vec4(boxMax.x, boxMax.y, boxMax.z, 1.0);		//	2		3
+	boxCorners[2] = vec4(boxMin.x, boxMax.y, boxMin.z, 1.0);
+	boxCorners[3] = vec4(boxMax.x, boxMax.y, boxMin.z, 1.0);		//		4		5
+	boxCorners[4] = vec4(boxMin.x, boxMin.y, boxMax.z, 1.0);		//	6		7
+	boxCorners[5] = vec4(boxMax.x, boxMin.y, boxMax.z, 1.0);
+	boxCorners[6] = vec4(boxMin.x, boxMin.y, boxMin.z, 1.0);
+	boxCorners[7] = vec4(boxMax.x, boxMin.y, boxMin.z, 1.0);
+
+	vec4 minVertex = vec4(FLT_MAX);
+	vec4 maxVertex = vec4(-FLT_MAX);
+
+	// Output an axis aligned bounding box
+	for (int i = 0; i < 8; i++) {
+		AABB[i] = transform * boxCorners[i];
+	}
+
+	// Check if at least a single vertex is in frustum
+	for (int j = 0; j < 8; j++) {
+		if (AABB[j].w == 0.0) {
+			return true;
+		}
+
+		if ((AABB[j].x > -AABB[j].w && AABB[j].x < AABB[j].w)
+			|| (AABB[j].y > -AABB[j].w && AABB[j].y < AABB[j].w)
+			|| (AABB[j].z > FRUSTUM_REVERSE_BIAS && AABB[j].z < AABB[j].w)) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool isBoxOccluded(in vec4 AABB[8]) {
+	vec2 depthPyramidSize = textureSize(samplers[pushBlock.samplerIndex], 0);
+	vec2 minUV = vec2(1.1);
+	vec2 maxUV = vec2(-0.1);
+
+	// Convert clip space AABB to UV space and get min/max coordinates
+	for (int i = 0; i < 8; i++) {
+		// Bounding box has passed the frustum culling, so it's visible
+		// However if at least one vertex is behind the camera - the camera is "inside" the box
+		// so the instance should be rendered regardless of occlusion
+		if (AABB[i].z < 0.01 && AABB[i].w < 0.01) return true;
+
+		AABB[i].xyz /= AABB[i].w;
+
+		AABB[i].x = clamp((AABB[i].x + 1.0) * 0.5, 0.0, 1.0);
+		AABB[i].y = clamp((1.0 - ((AABB[i].y + 1.0) * 0.5)), 0.0, 1.0);
+
+		minUV = min(minUV, AABB[i].xy);
+		maxUV = max(maxUV, AABB[i].xy);
+	}
+
+	// Calculate resulting visible box size
+	vec2 boxSize = maxUV - minUV;
+	vec2 boxScreenSize = boxSize * depthPyramidSize;
+
+	float depthSize = (boxScreenSize.x > boxScreenSize.y) ? depthPyramidSize.x : depthPyramidSize.y;
+	float maxBoxSideSize = (boxScreenSize.x, boxScreenSize.y);
+	float sizeRatio = depthSize / maxBoxSideSize;
+	const int maxMipLevel = pushBlock.intValues.w;
+	int sampleMipLevel = maxMipLevel;
+
+	while (sizeRatio >= 1.0 && sampleMipLevel > 0) {
+		depthSize *= 0.5;
+		sizeRatio = depthSize / maxBoxSideSize;
+		--sampleMipLevel;
+	}
+
+#ifdef HIGH_VISIBILITY_BIAS
+	// Bias the result towards visibility by testing each bounding box vertex depth
+	// against maximum available depth for any one of them
+	float sampledDepth = -0.1;
+
+	for (int j = 0; j < 8; j++) {
+		sampledDepth = max(sampledDepth, textureLod(samplers[pushBlock.samplerIndex], AABB[j].xy, sampleMipLevel).r);
+	}
+
+	for (int k = 0; k < 8; k++) {
+		if (AABB[k].z <= sampledDepth) {
+			return true;
+		}
+#ifdef MIP_VISIBILITY_BIAS
+		else { 
+			if (sampleMipLevel < maxMipLevel) {
+				sampledDepth = textureLod(samplers[pushBlock.samplerIndex], AABB[j].xy, sampleMipLevel + 1).r;
+
+				if (AABB[k].z <= sampledDepth + DEPTH_BIAS) {
+					return true;
+				}
+			}
+		}
+#endif
+	}
+#else
+	// Cull without any bias, at least one bounding box vertex must not be obscured
+	for (int j = 0; j < 8; j++) {
+		float sampledDepth = textureLod(samplers[pushBlock.samplerIndex], AABB[j].xy, sampleMipLevel).r;
+
+		if (AABB[j].z <= sampledDepth) {
+			return true;
+		}
+#ifdef MIP_VISIBILITY_BIAS
+		else { 
+			if (sampleMipLevel < maxMipLevel) {
+				sampledDepth = textureLod(samplers[pushBlock.samplerIndex], AABB[j].xy, sampleMipLevel + 1).r;
+
+				if (AABB[j].z <= sampledDepth + DEPTH_BIAS) {
+					return true;
+				}
+			}
+		}
+#endif
+	}
+#endif
+
+	return false;
+}
+
+bool isAlwaysVisiblePass(uint renderPassFlags) {
+	uint result = 0;
+	for (uint i = 0; i < 2; i++) {
+		result = renderPassFlags & alwaysVisiblePassIds[i];
+
+		if (result != 0) return true;
+	}
+
+	return false;
+}
+
+void checkRenderPass(uint renderPassFlags, bool isDrawCountOutput) {
+	uint result = 0;
+
+	for (uint i = 0; i < PASS_COUNT; i++) {
+		result = renderPassFlags & passIds[i];
+
+		if (result != 0) {
+			(isDrawCountOutput == true)
+				? atomicAdd(outDrawCountBuffer.passDrawCount[i], 1)
+				: atomicAdd(outDrawCountBuffer.passInstanceCount[i], 1);
+		}
+	}
+}
+
+void main() {
+	// If an invocation index is larger than a 'total number of instances - 1' then there's no need to proceed
+	const int totalInstanceCount = pushBlock.intValues.x;
+
+	if (gl_GlobalInvocationID.x > totalInstanceCount - 1) return;
+
+	const uint instanceId = gl_GlobalInvocationID.x;
+	const uint primitiveUId = inInstanceData[instanceId].primitiveUId;
+
+	outDrawCountBuffer.primitiveInstanceCount[primitiveUId] = 0;
+	outDrawCountBuffer.instanceVisibility[instanceId] = 0;
+
+	if (instanceId == 0) {
+		for (int i = 0; i < PASS_COUNT; i++) {
+			outDrawCountBuffer.passDrawCount[i] = 0;
+			outDrawCountBuffer.passInstanceCount[i] = 0;
+		}
+	}
+
+	memoryBarrier();
+	barrier();
+
+	// Precalculate occlusion related values
+	const int cameraBlockIndex = pushBlock.intValues.z;
+
+	mat4 transform = sceneData[cameraBlockIndex].projection * sceneData[cameraBlockIndex].view
+		* model.block[inInstanceData[instanceId].modelMatrixId].matrix * node.block[inInstanceData[instanceId].nodeMatrixId].matrix;
+
+	vec4 boxMin = inInstanceData[instanceId].AABBMin;
+	vec4 boxMax = inInstanceData[instanceId].AABBMax;
+
+	// Instances belonging to special, non-culled passes are always visible
+	bool isVisible = isAlwaysVisiblePass(inInstanceData[instanceId].renderPassFlags);
+
+	// If an instance isn't always visible - perform culling
+	if (!isVisible) {
+		vec4 AABB[8];
+
+		isVisible = isBoxInFrustum(boxMin, boxMax, transform, AABB);
+
+		// If an instance is inside the camera frustum, but the camera isn't inside its bounding box
+		// perform final occlusion culling
+		if (isVisible) {
+			isVisible = isBoxOccluded(AABB);
+		}
+	}
+
+	int instanceIndex = -1;
+
+	// Write the result of culling (instance visibility, counts per pass etc)
+	if (isVisible) {
+		instanceIndex = int(atomicAdd(outDrawCountBuffer.primitiveInstanceCount[primitiveUId], 1));
+		checkRenderPass(inInstanceData[instanceId].renderPassFlags, false);
+
+		outDrawCountBuffer.instanceVisibility[instanceId] = 1;
+
+		if (instanceIndex == 0) {
+			checkRenderPass(inInstanceData[instanceId].renderPassFlags, true);
+		}
+	}
+}

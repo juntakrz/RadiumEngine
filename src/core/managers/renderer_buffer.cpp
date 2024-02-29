@@ -2,6 +2,8 @@
 #include "core/core.h"
 #include "core/material/texture.h"
 #include "core/model/model.h"
+#include "core/world/actors/entity.h"
+#include "core/managers/actors.h"
 #include "core/managers/renderer.h"
 
 TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuffer& outBuffer, void* inData) {
@@ -29,7 +31,8 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
       static_cast<uint32_t>(queueFamilyIndices.size());
 
     allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
+      | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
     if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo, &outBuffer.buffer,
       &outBuffer.allocation, &outBuffer.allocInfo) != VK_SUCCESS) {
@@ -38,20 +41,13 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     }
 
     if (inData) {
-      void* pData = nullptr;
-      if (vmaMapMemory(memAlloc, outBuffer.allocation, &pData) != VK_SUCCESS) {
-        RE_LOG(Error, "Failed to map memory for staging buffer data.");
-        return RE_ERROR;
-      };
-      memcpy(pData, inData, size);
-      vmaUnmapMemory(memAlloc, outBuffer.allocation);
-      outBuffer.allocInfo.pUserData = pData;
+      memcpy(outBuffer.allocInfo.pMappedData, inData, size);
     }
 
     return RE_OK;
   }
   case (uint8_t)EBufferType::CPU_UNIFORM: {
-    bufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    bufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     bufferCreateInfo.size = size;
     bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
@@ -138,8 +134,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
       static_cast<uint32_t>(queueFamilyIndices.size());
 
     allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT |
-      VMA_ALLOCATION_CREATE_MAPPED_BIT;
+    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
     if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
       &outBuffer.buffer, &outBuffer.allocation,
@@ -158,8 +153,37 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     return RE_OK;
   }
 
+  case (uint8_t)EBufferType::CPU_INDIRECT: {
+    bufferCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+      | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+    bufferCreateInfo.size = size;
+    bufferCreateInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+    bufferCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();
+    bufferCreateInfo.queueFamilyIndexCount =
+      static_cast<uint32_t>(queueFamilyIndices.size());
+
+    allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
+    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
+      &outBuffer.buffer, &outBuffer.allocation,
+      &outBuffer.allocInfo) != VK_SUCCESS) {
+      RE_LOG(Error, "Failed to create CPU_INDIRECT buffer.");
+      return RE_ERROR;
+    };
+
+    if (inData) {
+      memcpy(outBuffer.allocInfo.pMappedData, inData, size);
+    }
+
+    bdaInfo.buffer = outBuffer.buffer;
+    outBuffer.deviceAddress = vkGetBufferDeviceAddress(logicalDevice.device, &bdaInfo);
+
+    return RE_OK;
+  }
+
   case (uint8_t)EBufferType::DGPU_VERTEX: {
-    bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     bufferCreateInfo.size = size;
     bufferCreateInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
     bufferCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();
@@ -292,6 +316,42 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
 
     return RE_OK;
   }
+  case (uint8_t)EBufferType::DGPU_INDIRECT: {
+    bufferCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+      | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+    bufferCreateInfo.size = size;
+    bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    bufferCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();
+    bufferCreateInfo.queueFamilyIndexCount =
+      static_cast<uint32_t>(queueFamilyIndices.size());
+
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    allocInfo.flags = NULL;
+    allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
+      &outBuffer.buffer, &outBuffer.allocation,
+      &outBuffer.allocInfo) != VK_SUCCESS) {
+      RE_LOG(Error, "Failed to create DGPU_INDIRECT buffer.");
+      return RE_ERROR;
+    };
+
+    if (inData) {
+      VkBufferCopy copyInfo{};
+      copyInfo.srcOffset = 0;
+      copyInfo.dstOffset = 0;
+      copyInfo.size = size;
+
+      createBuffer(EBufferType::STAGING, size, stagingBuffer, inData);
+      copyBuffer(stagingBuffer.buffer, outBuffer.buffer, &copyInfo);
+      vmaDestroyBuffer(memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
+    }
+
+    bdaInfo.buffer = outBuffer.buffer;
+    outBuffer.deviceAddress = vkGetBufferDeviceAddress(logicalDevice.device, &bdaInfo);
+
+    return RE_OK;
+  }
   case (uint8_t)EBufferType::DGPU_SAMPLER: {
     bufferCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
       | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT;
@@ -405,19 +465,22 @@ TResult core::MRenderer::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
     cmdBufferId);
 }
 
-TResult core::MRenderer::copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
+TResult core::MRenderer::copyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, RTexture* pDstImage,
   uint32_t width, uint32_t height,
   uint32_t layerCount) {
-  if (!srcBuffer || !dstImage) {
+  if (!srcBuffer || !pDstImage) {
     RE_LOG(Error, "copyBufferToImage received nullptr as an argument.");
     return RE_ERROR;
   }
 
-  VkCommandBuffer cmdBuffer = createCommandBuffer(
-    ECmdType::Transfer, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
+  const bool noCommandBufferProvided = (commandBuffer == VK_NULL_HANDLE) ? true : false;
+
+  if (noCommandBufferProvided) {
+    commandBuffer = createCommandBuffer(ECmdType::Transfer, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
+  }
 
   VkBufferImageCopy imageCopy{};
-  imageCopy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  imageCopy.imageSubresource.aspectMask = pDstImage->texture.aspectMask;
   imageCopy.imageSubresource.mipLevel = 0;
   imageCopy.imageSubresource.baseArrayLayer = 0;
   imageCopy.imageSubresource.layerCount = layerCount;
@@ -427,10 +490,12 @@ TResult core::MRenderer::copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
   imageCopy.bufferRowLength = 0;
   imageCopy.bufferImageHeight = 0;
 
-  vkCmdCopyBufferToImage(cmdBuffer, srcBuffer, dstImage,
-    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+  vkCmdCopyBufferToImage(commandBuffer, srcBuffer, pDstImage->texture.image,
+    pDstImage->texture.imageLayout, 1, &imageCopy);
 
-  flushCommandBuffer(cmdBuffer, ECmdType::Transfer);
+  if (noCommandBufferProvided) {
+    flushCommandBuffer(commandBuffer, ECmdType::Transfer);
+  }
 
   return RE_OK;
 }
@@ -477,22 +542,66 @@ void core::MRenderer::copyDataToBuffer(void* pData, VkDeviceSize dataSize, RBuff
 }
 
 // Runs in a dedicated thread
-void core::MRenderer::updateInstanceBuffer() {
-  std::vector<RInstanceData> instanceData(scene.totalInstances);
+void core::MRenderer::updateIndirectDrawBuffers() {
+  const uint32_t bufferIndex = (renderView.frameInFlight + 1) % MAX_FRAMES_IN_FLIGHT;
 
-  uint32_t index = 0u;
-  for (auto& model : scene.pModelReferences) {
-    for (auto& primitive : model->m_pLinearPrimitives) {
-      for (auto& instanceDataEntry : primitive->instanceData) {
-        if (instanceDataEntry.isVisible) {
-          instanceData[index] = instanceDataEntry.instanceBufferBlock;
-          instanceDataEntry.instanceIndex = index;
-          index++;
+  uint32_t instanceIndex = 0u;
+
+  const uint32_t totalIndirectDrawPasses = (uint32_t)EIndirectPassIndex::Count;
+  uint32_t currentDrawOffsets[totalIndirectDrawPasses];
+
+  // Input buffer, should use current frame as its being generated several frames ahead
+  const RDrawIndirectInfo* pInfo = (RDrawIndirectInfo*)scene.drawCountBuffers[renderView.frameInFlight].allocInfo.pMappedData;
+
+  // Pointer math arrays for output buffers
+  RInstanceData* instanceEntries =
+    (RInstanceData*)scene.instanceDataBuffers[bufferIndex].allocInfo.pMappedData;
+  VkDrawIndexedIndirectCommand* drawCommands =
+    (VkDrawIndexedIndirectCommand*)scene.drawIndirectBuffers[bufferIndex].allocInfo.pMappedData;
+
+  // Precalculate offsets
+  scene.drawOffsets[bufferIndex][0] = 0;
+
+  for (uint32_t passOffsetIndex = 1; passOffsetIndex < totalIndirectDrawPasses; ++passOffsetIndex) {
+    scene.drawOffsets[bufferIndex][passOffsetIndex] =
+      scene.drawOffsets[bufferIndex][passOffsetIndex - 1] + pInfo->drawCounts[passOffsetIndex - 1];
+  }
+
+  // Copy offsets for tracking, not error checked later on, so the shader code and related math must be correct
+  // or draw commands and instance data entries won't be properly laid out
+  memcpy(scene.drawCounts[bufferIndex], pInfo->drawCounts, sizeof(uint32_t) * totalIndirectDrawPasses);
+  memcpy(currentDrawOffsets, scene.drawOffsets[bufferIndex], sizeof(uint32_t) * totalIndirectDrawPasses);
+
+  for (auto& pModel : scene.pModelReferences) {
+    for (auto& pPrimitive : pModel->m_pLinearPrimitives) {
+      if (pInfo->primitiveInstanceCount[pPrimitive->bindingUID] == 0) continue;
+
+      const uint32_t renderPassFlags = pPrimitive->pInitialMaterial->passFlags;
+
+      VkDrawIndexedIndirectCommand newDrawCommand{
+      .indexCount = pPrimitive->indexCount,
+      .instanceCount = pInfo->primitiveInstanceCount[pPrimitive->bindingUID],
+      .firstIndex = pModel->m_sceneIndexOffset + pPrimitive->indexOffset,
+      .vertexOffset = static_cast<int32_t>(pModel->m_sceneVertexOffset + pPrimitive->vertexOffset),
+      .firstInstance = instanceIndex,
+      };
+
+      // Iterate through all render passes this primitive belongs to and write draw command buffer
+      for (uint32_t passIndex = 0; passIndex < helper::indirectPassCount; ++passIndex) {
+        if (checkPass(renderPassFlags, helper::indirectPassList[passIndex])) {
+          drawCommands[currentDrawOffsets[passIndex]] = newDrawCommand;
+          ++currentDrawOffsets[passIndex];
         }
+      }
+
+      for (auto& instanceDataEntry : pPrimitive->instanceData) {
+        if (pInfo->instanceVisibility[instanceDataEntry.instanceUID] == 0) continue;
+
+        instanceEntries[instanceIndex] = instanceDataEntry.instanceBufferBlock;
+        ++instanceIndex;
       }
     }
   }
 
-  memcpy(scene.instanceBuffers[renderView.frameInFlight].allocInfo.pMappedData,
-         instanceData.data(), sizeof(RInstanceData) * instanceData.size());
+  sync.isInstanceDataReady = true;
 }

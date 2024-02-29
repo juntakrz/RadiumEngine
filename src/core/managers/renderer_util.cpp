@@ -26,6 +26,7 @@ RTexture* core::MRenderer::createFragmentRenderTarget(const char* name, VkFormat
   textureInfo.width = width;
   textureInfo.height = height;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  //textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSFER_SRC_BIT
     | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -118,10 +119,10 @@ void core::MRenderer::setResourceName(VkDevice device, VkObjectType objectType,
 }
 
 TResult core::MRenderer::getDepthStencilFormat(VkFormat desiredFormat, VkFormat& outFormat) {
-  std::vector<VkFormat> depthFormats = {
+  std::vector<VkFormat> depthStencilFormats = {
       VK_FORMAT_D32_SFLOAT_S8_UINT,
       VK_FORMAT_D24_UNORM_S8_UINT,
-      VK_FORMAT_D16_UNORM_S8_UINT
+      VK_FORMAT_D16_UNORM_S8_UINT,
   };
 
   VkFormatProperties formatProps;
@@ -137,7 +138,7 @@ TResult core::MRenderer::getDepthStencilFormat(VkFormat desiredFormat, VkFormat&
          "Trying to use the nearest compatible format.",
          desiredFormat);
 
-  for (auto& format : depthFormats) {
+  for (auto& format : depthStencilFormats) {
     VkFormatProperties formatProps;
     vkGetPhysicalDeviceFormatProperties(physicalDevice.device, format, &formatProps);
     if (formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
@@ -263,15 +264,15 @@ std::vector<VkExtensionProperties> core::MRenderer::getInstanceExtensions(const 
 }
 
 TResult core::MRenderer::createQueryPool() {
-  VkQueryPoolCreateInfo poolCreate{};
-  poolCreate.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
-  poolCreate.queryType = VK_QUERY_TYPE_OCCLUSION;
-  poolCreate.queryCount = config::scene::nodeBudget;    // TODO: Node budget is quite large, but find a more valid number
-  
-  if (vkCreateQueryPool(logicalDevice.device, &poolCreate, nullptr, &system.queryPool) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create query pool.");
-    return RE_CRITICAL;
-  }
+  //VkQueryPoolCreateInfo poolCreate{};
+  //poolCreate.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+  //poolCreate.queryType = VK_QUERY_TYPE_OCCLUSION;
+  //poolCreate.queryCount = config::scene::nodeBudget;    // TODO: Node budget is quite large, but find a more valid number
+  //
+  //if (vkCreateQueryPool(logicalDevice.device, &poolCreate, nullptr, &system.queryPool) != VK_SUCCESS) {
+  //  RE_LOG(Critical, "Failed to create query pool.");
+  //  return RE_CRITICAL;
+  //}
 
   return RE_OK;
 }
@@ -325,35 +326,39 @@ void core::MRenderer::updateExposureLevel() {
 
 // PUBLIC
 
-TResult core::MRenderer::copyImage(VkCommandBuffer cmdBuffer, VkImage srcImage,
-                                   VkImage dstImage,
-                                   VkImageLayout srcImageLayout,
-                                   VkImageLayout dstImageLayout,
-                                   VkImageCopy& copyRegion) {
-  VkImageSubresourceRange srcRange{};
-  srcRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  srcRange.baseArrayLayer = 0;
-  srcRange.layerCount = 1;
-  srcRange.baseMipLevel = 0;
-  srcRange.levelCount = 1;
+TResult core::MRenderer::copyImage(VkCommandBuffer cmdBuffer, RTexture* pSrcTexture,
+                                   RTexture* pDstTexture, VkImageCopy& copyRegion) {
+  VkImageSubresourceRange srcRange{
+    .aspectMask = pSrcTexture->texture.aspectMask,
+    .baseMipLevel = copyRegion.srcSubresource.mipLevel,
+    .levelCount = 1,
+    .baseArrayLayer = copyRegion.srcSubresource.baseArrayLayer,
+    .layerCount = copyRegion.srcSubresource.layerCount
+  };
 
-  VkImageSubresourceRange dstRange = srcRange;
+  VkImageSubresourceRange dstRange {
+    .aspectMask = pDstTexture->texture.aspectMask,
+    .baseMipLevel = copyRegion.dstSubresource.mipLevel,
+    .levelCount = 1,
+    .baseArrayLayer = copyRegion.dstSubresource.baseArrayLayer,
+    .layerCount = copyRegion.dstSubresource.layerCount
+  };
 
-  setImageLayout(cmdBuffer, srcImage, srcImageLayout,
-                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, srcRange);
+  setImageLayout(cmdBuffer, pSrcTexture->texture.image, pSrcTexture->texture.imageLayout,
+                 VK_IMAGE_LAYOUT_GENERAL, srcRange);
 
-  setImageLayout(cmdBuffer, dstImage, dstImageLayout,
-                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dstRange);
+  setImageLayout(cmdBuffer, pDstTexture->texture.image, pDstTexture->texture.imageLayout,
+    VK_IMAGE_LAYOUT_GENERAL, dstRange);
 
-  vkCmdCopyImage(cmdBuffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                 dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
+  vkCmdCopyImage(cmdBuffer, pSrcTexture->texture.image, VK_IMAGE_LAYOUT_GENERAL,
+                 pDstTexture->texture.image, VK_IMAGE_LAYOUT_GENERAL, 1,
                  &copyRegion);
 
-  setImageLayout(cmdBuffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                 srcImageLayout, srcRange);
+  setImageLayout(cmdBuffer, pSrcTexture->texture.image, VK_IMAGE_LAYOUT_GENERAL,
+                 pSrcTexture->texture.imageLayout, srcRange);
 
-  setImageLayout(cmdBuffer, dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                 dstImageLayout, dstRange);
+  setImageLayout(cmdBuffer, pDstTexture->texture.image, VK_IMAGE_LAYOUT_GENERAL,
+                 pDstTexture->texture.imageLayout, dstRange);
 
   return RE_OK;
 }
@@ -361,11 +366,12 @@ TResult core::MRenderer::copyImage(VkCommandBuffer cmdBuffer, VkImage srcImage,
 void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer,
                                      RTexture* pTexture,
                                      VkImageLayout newLayout,
-                                     VkImageSubresourceRange subresourceRange) {
-  if (pTexture->texture.imageLayout == newLayout) return;
+                                     VkImageSubresourceRange subresourceRange,
+                                     const bool force) {
+  if (pTexture->texture.imageLayout == newLayout && !force) return;
 
   setImageLayout(cmdBuffer, pTexture->texture.image,
-                 pTexture->texture.imageLayout, newLayout, subresourceRange);
+                 pTexture->texture.imageLayout, newLayout, subresourceRange, force);
   
   pTexture->texture.imageLayout = newLayout;
   pTexture->texture.imageInfo.imageLayout = newLayout;
@@ -374,10 +380,13 @@ void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer,
 void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
                                      VkImageLayout oldLayout,
                                      VkImageLayout newLayout,
-                                     VkImageSubresourceRange subresourceRange) {
-  if (newLayout == oldLayout) {
+                                     VkImageSubresourceRange subresourceRange,
+                                     const bool force) {
+  if (newLayout == oldLayout && !force) {
 #ifndef NDEBUG
+#ifdef _VERBOSEDEBUG
     RE_LOG(Warning, "Trying to convert texture to the same image layout.");
+#endif
 #endif
     return;
   }
@@ -526,14 +535,18 @@ void core::MRenderer::convertRenderTargets(VkCommandBuffer cmdBuffer,
                                 ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
                                 : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
+  if (!system.enableLayoutTransitions) {
+    newLayout = VK_IMAGE_LAYOUT_GENERAL;
+  }
+
   VkImageSubresourceRange range{};
-  range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   range.baseArrayLayer = 0;
   range.baseMipLevel = 0;
 
   for (int8_t i = 0; i < pInTextures->size(); ++i) {
     if (newLayout == pInTextures->at(i)->texture.imageLayout) continue;
 
+    range.aspectMask = pInTextures->at(i)->texture.aspectMask;
     range.layerCount = pInTextures->at(i)->texture.layerCount;
     range.levelCount = pInTextures->at(i)->texture.levelCount;
 
@@ -562,11 +575,18 @@ TResult core::MRenderer::generateMipMaps(VkCommandBuffer cmdBuffer, RTexture* pT
   range.baseMipLevel = 0;
   range.levelCount = pTexture->texture.levelCount;
 
-  if (pTexture->texture.imageFormat != VK_FORMAT_D32_SFLOAT_S8_UINT &&
-      pTexture->texture.imageFormat != VK_FORMAT_D24_UNORM_S8_UINT) {
-    range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  } else {
-    range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+  switch (pTexture->texture.imageFormat) {
+    case VK_FORMAT_D32_SFLOAT_S8_UINT:
+    case VK_FORMAT_D24_UNORM_S8_UINT:
+    case VK_FORMAT_D16_UNORM_S8_UINT:
+      range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+      break;
+    case VK_FORMAT_D32_SFLOAT:
+      range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+      break;
+    default:
+      range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+      break;
   }
 
   // transition texture to DST layout if needed
@@ -631,6 +651,7 @@ TResult core::MRenderer::generateMipMaps(VkCommandBuffer cmdBuffer, RTexture* pT
       
       imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
       imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      //imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
       imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
       imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
@@ -649,12 +670,14 @@ TResult core::MRenderer::generateMipMaps(VkCommandBuffer cmdBuffer, RTexture* pT
   }
 
   pTexture->texture.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  //pTexture->texture.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
   pTexture->texture.imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  //pTexture->texture.imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
   return RE_OK;
 }
 
-
+// TODO: this method is broken and has issues with outdated code, needs fixing
 TResult core::MRenderer::generateSingleMipMap(VkCommandBuffer cmdBuffer,
                                               RTexture* pTexture,
                                               uint32_t mipLevel, uint32_t layer,
@@ -673,25 +696,6 @@ TResult core::MRenderer::generateSingleMipMap(VkCommandBuffer cmdBuffer,
   }
 
   VkPipelineStageFlags srcStageMask = 0;
-
-  switch (pTexture->texture.imageInfo.imageLayout) {
-    case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL: {
-      srcStageMask = VK_ACCESS_SHADER_READ_BIT;
-      break;
-    }
-    case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL: {
-      srcStageMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-      break;
-    }
-    default: {
-      RE_LOG(Error,
-             "Unsupported layout for mip map generation for texture '%s'. "
-             "Skipping.",
-             pTexture->name.c_str());
-      return RE_ERROR;
-    }
-  }
-
   const int32_t mipWidth = pTexture->texture.width / (1 << (mipLevel - 1));
   const int32_t mipHeight = pTexture->texture.height / (1 << (mipLevel - 1));
 
@@ -710,19 +714,26 @@ TResult core::MRenderer::generateSingleMipMap(VkCommandBuffer cmdBuffer,
 
   switch (pTexture->texture.imageLayout) {
     case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL: {
+      srcStageMask = VK_ACCESS_TRANSFER_WRITE_BIT;
       barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
       break;
     }
     case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL: {
+      srcStageMask = VK_ACCESS_SHADER_READ_BIT;
       barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+      break;
+    }
+    case VK_IMAGE_LAYOUT_GENERAL: {
+      srcStageMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+      barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
       break;
     }
     default: {
       RE_LOG(
           Error,
           "Invalid input texture layout when trying to generate a mip map for "
-          "'%s'. Layout must be either VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or "
-          "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL.",
+          "'%s'. Layout must be either VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, "
+          "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL or VK_IMAGE_LAYOUT_GENERAL.",
           pTexture->name.c_str());
 
       return RE_ERROR;
@@ -1029,13 +1040,18 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
     return -1;
   }
 
-  // check if model is already bound, it shouldn't have valid offsets stored
+  // Check if model is already bound, it shouldn't have valid offsets stored
   if (pEntity->getRendererBindingIndex() > -1) {
     RE_LOG(Error, "Entity is already bound.");
     return -1;
   }
 
-  // add model to rendering queue, store its offsets
+  // Create staging buffers to upload data to the related GPU storage buffers
+  RBuffer stagingInstanceBuffer;
+
+  createBuffer(EBufferType::STAGING, sizeof(WInstanceDataEntry), stagingInstanceBuffer, nullptr);
+
+  // Add model to rendering queue, store its offsets
   REntityBindInfo bindInfo{};
   bindInfo.pEntity = pEntity;
 
@@ -1054,28 +1070,50 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
   for (auto& primitive : pModel->m_pLinearPrimitives) {
     WModel::Node* pNode = reinterpret_cast<WModel::Node*>(primitive->pOwnerNode);
 
+    // Give primitive a unique index if it was not bound to renderer and write the default indirect draw data for it
+    if (primitive->instanceData.empty()) {
+      primitive->bindingUID = getNewPrimitiveUID();
+    }
+
     auto& instanceData = primitive->instanceData.emplace_back();
-    instanceData.instanceIndex = scene.currentInstanceUID++;
     instanceData.isVisible = true;
+    instanceData.pParentEntity = pEntity;
     instanceData.instanceBufferBlock.modelMatrixId = pEntity->getRootTransformBufferIndex();
     instanceData.instanceBufferBlock.nodeMatrixId = pEntity->getNodeTransformBufferIndex(pNode->index);
     instanceData.instanceBufferBlock.skinMatrixId = pEntity->getSkinTransformBufferIndex(pNode->skinIndex);
     instanceData.instanceBufferBlock.materialId = primitive->pInitialMaterial->bufferIndex;
+
+    // Store unique instance index
+    instanceData.instanceUID = scene.nextInstanceUID++;
+    scene.maxInstanceUID = std::max(scene.nextInstanceUID, scene.maxInstanceUID);
+
+    // Store an offset to this primitive's instance data in the GPU storage buffer for instance data
+    instanceData.instanceDataBufferOffset = sizeof(WInstanceDataEntry) * instanceData.instanceUID;
+
+    // Store data in a source compute culling buffer
+    WInstanceDataEntry bufferDataEntry;
+    bufferDataEntry.min = glm::vec4(primitive->extent.min, 1.0f);
+    bufferDataEntry.max = glm::vec4(primitive->extent.max, 1.0f);
+    bufferDataEntry.modelMatrixId = instanceData.instanceBufferBlock.modelMatrixId;
+    bufferDataEntry.nodeMatrixId = instanceData.instanceBufferBlock.nodeMatrixId;
+    bufferDataEntry.skinMatrixId = instanceData.instanceBufferBlock.skinMatrixId;
+    bufferDataEntry.passFlags = primitive->pInitialMaterial->passFlags;
+    bufferDataEntry.primitiveUID = primitive->bindingUID;
+
+    memcpy(stagingInstanceBuffer.allocInfo.pMappedData, &bufferDataEntry, sizeof(WInstanceDataEntry));
+
+    VkBufferCopy bufferCopyRegion{};
+    bufferCopyRegion.srcOffset = 0u;
+    bufferCopyRegion.size = sizeof(WInstanceDataEntry);
+    bufferCopyRegion.dstOffset = instanceData.instanceDataBufferOffset;
+
+    copyBuffer(stagingInstanceBuffer.buffer, scene.sourceDataBuffer.buffer, &bufferCopyRegion);
   }
-
-  // TODO: implement indirect draw command properly
-  /*VkDrawIndexedIndirectCommand drawCommand{};
-  drawCommand.firstInstance = 0;
-  drawCommand.instanceCount = 1;
-  drawCommand.vertexOffset = scene.currentVertexOffset;
-  drawCommand.firstIndex = scene.currentIndexOffset;
-  drawCommand.indexCount = pModel->m_indexCount;
-
-  system.drawCommands.emplace_back(drawCommand);*/
-  // TODO
 
   pEntity->setRendererBindingIndex(
       static_cast<int32_t>(system.bindings.size() - 1));
+
+  vmaDestroyBuffer(memAlloc, stagingInstanceBuffer.buffer, stagingInstanceBuffer.allocation);
 
 #ifndef NDEBUG
   RE_LOG(Log, "Bound model \"%s\" to graphics pipeline.", pModel->getName());
@@ -1130,21 +1168,39 @@ void core::MRenderer::uploadModelToSceneBuffer(WModel* pModel) {
   scene.currentIndexOffset += pModel->m_indexCount;
 }
 
-void core::MRenderer::setCamera(const char* name) {
-  view.pActiveCamera = core::actors.getCamera(name);
-
-  if (!view.pActiveCamera) {
-    RE_LOG(Error, "Failed to set camera '%s' - not found.", name);
-  }
+uint32_t core::MRenderer::getNewPrimitiveUID() {
+  uint32_t freeID = scene.nextPrimitiveUID++;
+  scene.maxPrimitiveUID = std::max(scene.nextPrimitiveUID, scene.maxPrimitiveUID);
+  return freeID;
 }
 
-void core::MRenderer::setCamera(ACamera* pCamera) {
-  if (pCamera != nullptr) {
-    view.pActiveCamera = pCamera;
+
+void core::MRenderer::setCamera(const char* name, const bool setAsPrimary) {
+  ACamera* pCamera = core::actors.getCamera(name);
+
+  if (!pCamera) {
+    RE_LOG(Error, "Failed to set camera '%s' - not found.", name);
     return;
   }
 
-  RE_LOG(Error, "Failed to set camera, received nullptr.");
+  view.pActiveCamera = pCamera;
+
+  if (setAsPrimary) {
+    view.pPrimaryCamera = pCamera;
+  }
+}
+
+void core::MRenderer::setCamera(ACamera* pCamera, const bool setAsPrimary) {
+  if (!pCamera) {
+    RE_LOG(Error, "Failed to set camera, received nullptr.");
+    return;
+  }
+
+  view.pActiveCamera = pCamera;
+
+  if (setAsPrimary) {
+    view.pPrimaryCamera = pCamera;
+  }
 }
 
 void core::MRenderer::setSunCamera(const char* name) {

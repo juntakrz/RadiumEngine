@@ -1,0 +1,79 @@
+#version 460
+#extension GL_EXT_nonuniform_qualifier : require
+
+#include "include/common.glsl"
+
+#define MIPMAP_DEPTH	0
+#define MIPMAP_RGBA32	1
+
+layout(local_size_x = 16, local_size_y = 16) in;
+layout(set = 0, binding = 0, r32f) uniform writeonly image2D imagesR32[];
+layout(set = 0, binding = 0, rgba16f) uniform writeonly image2D imagesRGBA16[];
+layout(set = 0, binding = 1) uniform sampler2D samplers[];
+
+layout (push_constant) uniform PushBlock {
+	uint imageIndex;
+	uint samplerIndex;
+	uint bufferIndex;
+	uint padding;
+    ivec4 intValues;	// x - total mip levels, y - mipmapping mode
+	vec4 floatValues;
+} pushBlock;
+
+void generateMipMaps(ivec2 sourceSize, int totalMipLevels, int mode) {
+	ivec2 sourcePosition = ivec2(gl_GlobalInvocationID.xy);
+	int mipLevel = (mode == MIPMAP_DEPTH) ? 0 : 1;
+
+	for (; mipLevel < totalMipLevels; mipLevel++) {
+		int divisor = 1 << mipLevel;
+		vec2 offset = 1.0 / vec2(sourceSize / divisor);
+
+		// Using small worker offset - let freed up workers take part instead of loading select few with the most calculations
+		if ((sourcePosition.x - mipLevel) % divisor != 0 && sourcePosition.y % divisor != 0) return;
+
+		ivec2 adjustedPosition = ivec2(sourcePosition.x - mipLevel, sourcePosition.y);
+		vec2 UV = adjustedPosition / vec2(sourceSize);	
+
+		switch (mode) {
+			case MIPMAP_DEPTH: {			
+				// Get the maximum depth of the 4 surrounding samples
+				uint currentSamplerIndex = (mipLevel == 0) ? pushBlock.samplerIndex : pushBlock.samplerIndex + 1;
+				uint currentMipLevel = (mipLevel == 0) ? 0 : mipLevel - 1;
+
+				float color = max(textureLod(samplers[currentSamplerIndex], UV, currentMipLevel).r,
+					textureLod(samplers[currentSamplerIndex], UV + vec2(offset.x, 0.0), currentMipLevel).r);
+				color = max(color, textureLod(samplers[currentSamplerIndex], UV + vec2(0.0, offset.y), currentMipLevel).r);
+				color = max(color, textureLod(samplers[currentSamplerIndex], UV + offset, currentMipLevel).r);
+
+				// Index 0 per image is "all mips view", if more views are present - index 1 is mip 0, index 2 is mip 1 etc.
+				imageStore(imagesR32[(pushBlock.imageIndex + 1) + mipLevel], adjustedPosition / divisor, vec4(color, 0.0, 0.0, 1.0));
+
+				memoryBarrier();
+				barrier();
+
+				break;
+			}
+
+			case MIPMAP_RGBA32: {		
+				// Average the 4 surrounding samples (possibly not needed for linear filtering?)
+				vec4 color = textureLod(samplers[pushBlock.samplerIndex], UV, 0) + textureLod(samplers[pushBlock.samplerIndex], UV + vec2(offset.x, 0.0), 0);
+				color += textureLod(samplers[pushBlock.samplerIndex], UV + vec2(0.0, offset.y), 0) + textureLod(samplers[pushBlock.samplerIndex], UV + offset, 0);
+				color *= 0.25;
+
+				imageStore(imagesR32[pushBlock.imageIndex + 1 + mipLevel], sourcePosition / divisor, color);
+				break;
+			}
+		}
+	}
+}
+
+void main() {
+	ivec2 sourcePosition = ivec2(gl_GlobalInvocationID.xy);
+	ivec2 sourceSize = textureSize(samplers[pushBlock.samplerIndex], 0);
+
+	if (sourcePosition.x >= sourceSize.x || sourcePosition.y >= sourceSize.y) {
+			return;
+	}
+
+	generateMipMaps(sourceSize, pushBlock.intValues.x, pushBlock.intValues.y);
+}

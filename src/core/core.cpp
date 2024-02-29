@@ -119,16 +119,16 @@ void core::run() {
   pStatic = core::actors.createStatic("Static02");
   pStatic->setModel(core::world.getModel("mdlGuy"));
   pStatic->bindToRenderer();
-  pStatic->setLocation(2.5f, -1.38f, 2.1f);
-  pStatic->setRotation({ 0.0f, 1.0f, 0.0f }, glm::radians(180.0f));
+  pStatic->setLocation(1.0f, -1.1f, 0.4f);
+  pStatic->setRotation({ 0.0f, 1.0f, 0.0f }, glm::radians(-150.0f));
   pStatic->setScale(0.32f);
   pStatic->playAnimation("SwordAndShieldIdle");
 
   pStatic = core::actors.createStatic("Static03");
   pStatic->setModel(core::world.getModel("mdlGuy"));
   pStatic->bindToRenderer();
-  pStatic->setLocation(1.0f, -1.1f, 0.4f);
-  pStatic->setRotation({ 0.0f, 1.0f, 0.0f }, glm::radians(-150.0f));
+  pStatic->setLocation(2.5f, -1.38f, 2.1f);
+  pStatic->setRotation({ 0.0f, 1.0f, 0.0f }, glm::radians(180.0f));
   pStatic->setScale(0.32f);
   pStatic->playAnimation("SwordAndShieldIdle", 1.1f, true, true);
 
@@ -222,7 +222,7 @@ TResult core::create() {
   core::resources.initialize();
   core::world.initialize();
 
-  core::renderer.renderInitFrame();
+  core::renderer.renderInitializationFrame();
 
   core::input.initialize(core::window.getWindow());
   core::player.initialize();

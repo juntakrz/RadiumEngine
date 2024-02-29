@@ -9,8 +9,11 @@ layout(set = 0, binding = 1) uniform samplerCube samplers[];
 
 layout (push_constant) uniform PushBlock {
 	uint imageIndex;
-	uint imageCount;
+	uint samplerIndex;
+	uint bufferIndex;
+	uint padding;
     ivec4 intValues;	// x - total mip levels, y - current face, z - num samples
+	vec4 floatValues;
 } pushBlock;
 
 const uint sourceSize = 512;
@@ -27,7 +30,7 @@ void prefilterCubemap(ivec3 srcPosition, ivec2 cubemapSize, int mipLevel, float 
 	float totalWeight = 0.0;
 	float envMapDimension = float(cubemapSize.x);
 
-	for(uint i = 0u; i < totalSamples; i++) {
+	for(uint i = 0; i < totalSamples; i++) {
 		vec2 Xi = hammersley2D(i, totalSamples);
 		vec3 H = importanceSampleGGX(Xi, roughness, N);
 		vec3 L = 2.0 * dot(V, H) * H - V;
@@ -48,12 +51,12 @@ void prefilterCubemap(ivec3 srcPosition, ivec2 cubemapSize, int mipLevel, float 
 
 			// Biased (+1.0) mip level for better result
 			float samplerMipLevel = roughness == 0.0 ? 0.0 : max(0.5 * log2(omegaS / omegaP) + 1.0, 0.0f);
-			color += textureLod(samplers[0], L, samplerMipLevel).rgb * dotNL;
+			color += textureLod(samplers[pushBlock.samplerIndex], L, samplerMipLevel).rgb * dotNL;
 			totalWeight += dotNL;
 		}
 	}
 	
-	imageStore(images[mipLevel], ivec3(srcPosition.xy / divisor, srcPosition.z), vec4(color / totalWeight, 1.0));
+	imageStore(images[pushBlock.imageIndex + mipLevel], ivec3(srcPosition.xy / divisor, srcPosition.z), vec4(color / totalWeight, 1.0));
 }
 
 void main() {

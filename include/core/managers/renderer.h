@@ -23,14 +23,37 @@ class MRenderer {
     std::vector<VkCommandBuffer> buffersGraphics;
     std::vector<VkCommandBuffer> buffersCompute;
     std::vector<VkCommandBuffer> buffersTransfer;
+
+    std::vector<VkDrawIndexedIndirectCommand> indirectCommands;
+    std::vector<RBuffer> indirectCommandBuffers;
+    VkDeviceSize indirectCommandOffset = 0u;
   } command;
 
   struct {
     VkDescriptorSet imageDescriptorSet;
-    VkExtent3D imageExtent;
-    RComputeImagePCB imagePCB;
+    VkDescriptorSet bufferDescriptorSet;
+    uint32_t maxBoundDescriptorSets = 0u;
 
-    std::vector<RComputeJobInfo> jobs;
+    // Used to track and modify relative indices when executing jobs
+    uint32_t freeImageIndex = 0;
+    uint32_t freeSamplerIndex = 0;
+    uint32_t freeBufferIndex = 0;
+
+    std::vector<RComputeJobInfo> queuedJobs;
+
+    struct {
+      RComputeJobInfo LUT;
+      RComputeJobInfo irradiance;
+      RComputeJobInfo prefiltered;
+    } environmentJobInfo;
+
+    struct {
+      RComputeJobInfo culling;
+    } sceneJobInfo;
+
+    struct {
+      RComputeJobInfo mipmapping;
+    } imageJobInfo;
   } compute;
 
   struct REnvironmentData {
@@ -39,12 +62,6 @@ class MRenderer {
     int32_t genInterval = 2;
     RTexture* pTargetCubemap = nullptr;
     std::array<glm::vec3, 6> cameraTransformVectors;
-
-    struct {
-      RComputeJobInfo LUT;
-      RComputeJobInfo irradiance;
-      RComputeJobInfo prefiltered;
-    } computeJobs;
 
     struct {
       uint32_t layer = 0;     // cubemap layer
@@ -69,20 +86,32 @@ class MRenderer {
 
   struct RSceneBuffers {
     RBuffer vertexBuffer;
-    std::vector<RBuffer> instanceBuffers;
     RBuffer indexBuffer;
-    RBuffer rootTransformBuffer;
+    RBuffer modelTransformBuffer;
     RBuffer nodeTransformBuffer;
     RBuffer skinTransformBuffer;
     RBuffer generalBuffer;
     uint32_t currentVertexOffset = 0u;
     uint32_t currentIndexOffset = 0u;
     size_t totalInstances = 0u;
-    uint32_t currentInstanceUID = 0;
     VkDescriptorSet transformDescriptorSet;
 
+    // Indirect draw data
+    RBuffer sourceDataBuffer;                         // Contains all bound primitive instance data, changes when new entity is bound/unbound
+    std::vector<RBuffer> instanceDataBuffers;
+    std::vector<RBuffer> drawIndirectBuffers;
+    std::vector<RBuffer> drawCountBuffers;
+    uint32_t drawCounts[MAX_FRAMES_IN_FLIGHT][(uint32_t)EIndirectPassIndex::Count];
+    uint32_t drawOffsets[MAX_FRAMES_IN_FLIGHT][(uint32_t)EIndirectPassIndex::Count];     // Draw counts and command offsets for each render pass
+    uint32_t nextPrimitiveUID = 0;                    // Earliest free primitive UID
+    uint32_t maxPrimitiveUID = 0;                     // Latest primitive UID / max limit for searching primitives by UID
+    uint32_t nextInstanceUID = 0;
+    uint32_t maxInstanceUID = 0;
+
+    std::vector<RTexture*> pDepthTargets;
+    std::vector<RTexture*> pPreviousDepthTargets;
     std::vector<RTexture*> pGBufferTargets;
-    std::vector<RTexture*> pABufferTargets;
+
     RBuffer transparencyLinkedListBuffer;
     RBuffer transparencyLinkedListDataBuffer;
     RTransparencyLinkedListData transparencyLinkedListData;
@@ -99,6 +128,8 @@ class MRenderer {
     RSceneUBO sceneBufferObject;
 
     std::unordered_set<WModel*> pModelReferences;
+
+    std::vector<RInstanceData> instanceData;
   } scene;
 
   struct RPostProcessData {
@@ -131,8 +162,12 @@ class MRenderer {
     std::vector<VkSemaphore> semImgAvailable;
     std::vector<VkSemaphore> semRenderFinished;
     std::vector<VkFence> fenceInFlight;
+    std::vector<VkFence> fenceUpdateBuffers;
     RAsync asyncUpdateEntities;
-    RAsync asyncUpdateInstanceBuffers;
+    RAsync asyncUpdateIndirectDrawBuffers;
+
+    std::condition_variable cvInstanceDataReady;
+    bool isInstanceDataReady = false;
   } sync;
 
   // render system data - passes, pipelines, mesh data to render
@@ -148,10 +183,13 @@ class MRenderer {
     VkDescriptorPool descriptorPool;
     std::unordered_map<EDescriptorSetLayout, VkDescriptorSetLayout> descriptorSetLayouts;
 
-    std::vector<REntityBindInfo> bindings;  // entities rendered during the current frame
-    std::vector<VkDrawIndexedIndirectCommand> drawCommands;
+    std::vector<REntityBindInfo> bindings;  // entities that are bound and will be rendered
 
     VkQueryPool queryPool;
+
+    // NVidia GPUs seem to be using general layouts for everything on the driver level
+    // so transitioning pipeline barriers may slow down performance in most cases
+    bool enableLayoutTransitions = false;
 
     bool asyncComputeSupport = false;
     int32_t computeQueue = -1;
@@ -161,6 +199,7 @@ class MRenderer {
   struct {
     RCameraInfo cameraSettings;
     ACamera* pActiveCamera = nullptr;
+    ACamera* pPrimaryCamera = nullptr;
     ACamera* pSunCamera = nullptr;
   } view;
 
@@ -212,9 +251,6 @@ class MRenderer {
   TResult createSceneBuffers();
   void destroySceneBuffers();
 
-  TResult createUniformBuffers();
-  void destroyUniformBuffers();
-
   TResult createImageTargets();
   TResult createGBufferRenderTargets();
   TResult createDepthTargets();
@@ -256,6 +292,7 @@ class MRenderer {
   RSceneBuffers* getSceneBuffers();
   RSceneUBO* getSceneUBO();
   REnvironmentData* getEnvironmentData();
+  bool isLayoutTransitionEnabled();
 
   void updateLightingUBO(const int32_t frameIndex);
 
@@ -340,17 +377,20 @@ class MRenderer {
   void updateExposureLevel();
 
 public:
-  TResult copyImage(VkCommandBuffer cmdBuffer, VkImage srcImage,
-                    VkImage dstImage, VkImageLayout srcImageLayout,
-                    VkImageLayout dstImageLayout, VkImageCopy& copyRegion);
+  TResult copyImage(VkCommandBuffer cmdBuffer, RTexture* pSrcTexture,
+                    RTexture* pDstTexture, VkImageCopy& copyRegion);
 
+  // Transition image to the desired layout, will not execute if an image is already transitioned unless forced
   void setImageLayout(VkCommandBuffer cmdBuffer, RTexture* pTexture,
                       VkImageLayout newLayout,
-                      VkImageSubresourceRange subresourceRange);
+                      VkImageSubresourceRange subresourceRange,
+                      const bool force = false);
 
+  // Transition image to the desired layout, will not execute if an image is already transitioned unless forced
   void setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
                       VkImageLayout oldLayout, VkImageLayout newLayout,
-                      VkImageSubresourceRange subresourceRange);
+                      VkImageSubresourceRange subresourceRange,
+                      const bool force = false);
 
   void convertRenderTargets(VkCommandBuffer cmdBuffer,
                             std::vector<RTexture*>* pInTextures,
@@ -399,9 +439,11 @@ public:
 
   void uploadModelToSceneBuffer(WModel* pModel);
 
+  uint32_t getNewPrimitiveUID();
+
   // set camera from create cameras by name
-  void setCamera(const char* name);
-  void setCamera(ACamera* pCamera);
+  void setCamera(const char* name, const bool setAsPrimary = false);
+  void setCamera(ACamera* pCamera, const bool setAsPrimary = false);
 
   void setSunCamera(const char* name);
   void setSunCamera(ACamera* pCamera);
@@ -433,14 +475,15 @@ public:
      VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
 
    // expects 'optimal layout' image as a source
-   TResult copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage, uint32_t width, uint32_t height, uint32_t layerCount);
+   TResult copyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, RTexture* pDstImage,
+                             uint32_t width, uint32_t height, uint32_t layerCount);
 
    TResult copyImageToBuffer(VkCommandBuffer commandBuffer, RTexture *pSrcImage, VkBuffer dstBuffer,
                              uint32_t width, uint32_t height, VkImageSubresourceLayers* subresource);
 
    void copyDataToBuffer(void* pData, VkDeviceSize dataSize, RBuffer* pDstBuffer, VkDeviceSize offset = 0u);
 
-   void updateInstanceBuffer();
+   void updateIndirectDrawBuffers();
 
   //
   // ***PHYSICAL DEVICE
@@ -545,16 +588,13 @@ public:
   // ***COMPUTE
   //
  private:
-  void updateComputeImageSet(std::vector<RTexture*>* pInImages, std::vector<RTexture*>* pInSamplers = nullptr,
-                             const bool useExtraImageViews = false, const bool useExtraSamplerViews = false);
-  void executeComputeImage(VkCommandBuffer commandBuffer, EComputePipeline pipeline);
-
-  void generateBRDFMap();
+  void updateComputeDescriptorSets(RComputeJobInfo* pJobInfo);
+  void executeComputeJob(VkCommandBuffer commandBuffer, RComputeJobInfo* pJobInfo);
 
  public:
   void queueComputeJob(RComputeJobInfo* pInfo);
-  void executeComputeJobImmediate(RComputeJobInfo* pInfo);
-  void executeQueuedComputeJobs();
+  void preprocessQueuedComputeJobs(VkCommandBuffer commandBuffer);
+  void executeQueuedComputeJobs(VkCommandBuffer commandBuffer);
 
   //
   // ***RENDERING
@@ -562,14 +602,13 @@ public:
 
  private:
   // Draw bound entities using specific pipeline
-  void drawBoundEntities(VkCommandBuffer commandBuffer, EDynamicRenderingPass passOverride = EDynamicRenderingPass::Null);
-
-  void renderPrimitive(VkCommandBuffer cmdBuffer, WPrimitive* pPrimitive, WModel* pModel);
+  void drawBoundEntitiesIndirect(VkCommandBuffer commandBuffer, EDynamicRenderingPass passOverride = EDynamicRenderingPass::Null);
 
   void renderEnvironmentMaps(VkCommandBuffer commandBuffer,
                              const uint32_t frameInterval = 1u);
 
   void prepareFrameResources(VkCommandBuffer commandBuffer);
+  void prepareFrameComputeJobs();
 
   void executeRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId,
                             RMaterial* pPushMaterial = nullptr, bool renderQuad = false);
@@ -587,7 +626,7 @@ public:
 
  public:
   void renderFrame();
-  void renderInitFrame();
+  void renderInitializationFrame();
 };
 
 }  // namespace core

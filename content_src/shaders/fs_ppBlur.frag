@@ -19,7 +19,7 @@ const float occlusionBias = 0.25;
 const float blurSharpness = 10.0;
 
 float blurFunctionAO(int imageIndex, vec2 UV, float r, float centerDepth, inout float weightTotal) {
-  vec2 cd = texture(samplers[material.samplerIndex[imageIndex]], UV).rg;
+  vec2 cd = textureLod(samplers[material.samplerIndex[imageIndex]], UV, 0).rg;
   float c = cd.x;
   float d = cd.y;
   
@@ -34,7 +34,7 @@ float blurFunctionAO(int imageIndex, vec2 UV, float r, float centerDepth, inout 
 }
 
 float blurAO(int imageIndex) {
-    vec2 colorAndDepth = texture(samplers[material.samplerIndex[imageIndex]], inUV).rg;
+    vec2 colorAndDepth = textureLod(samplers[material.samplerIndex[imageIndex]], inUV, 0).rg;
     const vec2 texelSize = 1.0 / vec2(textureSize(samplers[material.samplerIndex[imageIndex]], 0));
     float centerColor = colorAndDepth.x;
     float centerDepth = colorAndDepth.y;

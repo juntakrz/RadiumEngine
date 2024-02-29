@@ -8,37 +8,25 @@
 #include "core/material/texture.h"
 #include "core/managers/renderer.h"
 
-void core::MRenderer::drawBoundEntities(VkCommandBuffer commandBuffer, EDynamicRenderingPass passOverride) {
+void core::MRenderer::drawBoundEntitiesIndirect(VkCommandBuffer commandBuffer, EDynamicRenderingPass passOverride) {
   // go through bound models and generate draw calls for each
   renderView.refresh();
+  command.indirectCommands.clear();
 
   if (passOverride == EDynamicRenderingPass::Null) {
     passOverride = renderView.pCurrentPass->passId;
   }
 
-  for (WModel* pModel : scene.pModelReferences) {
-    auto& primitives = pModel->getPrimitives();
+  const uint32_t bufferIndex = renderView.frameInFlight;
 
-    for (const auto& primitive : primitives) {
-      if (!checkPass(primitive->pInitialMaterial->passFlags, passOverride)) continue;
+  int32_t passId = helper::indirectPassFlagToIndex(passOverride);
 
-      renderPrimitive(commandBuffer, primitive, pModel);
-    }
-  }
-}
+  if (passId == -1) return;
 
-void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
-                                      WPrimitive* pPrimitive,
-                                      WModel* pModel) {
-  uint32_t instanceCount = static_cast<uint32_t>(pPrimitive->instanceData.size());
-  int32_t vertexOffset = (int32_t)pModel->m_sceneVertexOffset + (int32_t)pPrimitive->vertexOffset;
-  uint32_t indexOffset = pModel->m_sceneIndexOffset + pPrimitive->indexOffset;
+  VkDeviceSize drawOffset = static_cast<VkDeviceSize>(scene.drawOffsets[bufferIndex][passId] * sizeof(VkDrawIndexedIndirectCommand));
 
-  VkDeviceSize instanceOffset = sizeof(RInstanceData) * pPrimitive->instanceData[0].instanceIndex;
-  vkCmdBindVertexBuffers(cmdBuffer, 1, 1, &scene.instanceBuffers[renderView.frameInFlight].buffer, &instanceOffset);
-
-  // TODO: implement draw indirect
-  vkCmdDrawIndexed(cmdBuffer, pPrimitive->indexCount, instanceCount, indexOffset, vertexOffset, 0);
+  vkCmdDrawIndexedIndirect(commandBuffer, scene.drawIndirectBuffers[bufferIndex].buffer,
+    drawOffset, scene.drawCounts[bufferIndex][passId], sizeof(VkDrawIndexedIndirectCommand));
 }
 
 void core::MRenderer::renderEnvironmentMaps(
@@ -54,20 +42,20 @@ void core::MRenderer::renderEnvironmentMaps(
   // Irradiance map is processed, compute prefiltered map one layer per frame
   } else if (environment.tracking.layer > 11) {
     // Cubemap face index
-    environment.computeJobs.prefiltered.intValues.y = environment.tracking.layer - 12;
+    compute.environmentJobInfo.prefiltered.pushBlock.intValues.y = environment.tracking.layer - 12;
     // Total samples
-    environment.computeJobs.prefiltered.intValues.z = 128;
+    compute.environmentJobInfo.prefiltered.pushBlock.intValues.z = 128;
 
-    queueComputeJob(&environment.computeJobs.prefiltered);
+    queueComputeJob(&compute.environmentJobInfo.prefiltered);
     environment.tracking.layer++;
     return;
 
   // All 6 faces are rendered, compute irradiance map one layer per frame
   } else if (environment.tracking.layer > 5) {
     // Cubemap face index
-    environment.computeJobs.irradiance.intValues.y = environment.tracking.layer - 6;
+    compute.environmentJobInfo.irradiance.pushBlock.intValues.y = environment.tracking.layer - 6;
 
-    queueComputeJob(&environment.computeJobs.irradiance);
+    queueComputeJob(&compute.environmentJobInfo.irradiance);
     environment.tracking.layer++;
     return;
   }
@@ -82,7 +70,9 @@ void core::MRenderer::renderEnvironmentMaps(
 
   // start rendering an appropriate camera view / layer
   environment.subresourceRange.baseArrayLayer = environment.tracking.layer;
-  setImageLayout(commandBuffer, environment.pTargetCubemap, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, environment.subresourceRange);
+
+  VkImageLayout targetLayout = (system.enableLayoutTransitions) ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+  setImageLayout(commandBuffer, environment.pTargetCubemap, targetLayout, environment.subresourceRange);
 
   VkRenderingAttachmentInfo overrideAttachment = pRenderPass->renderingInfo.pColorAttachments[0];
   overrideAttachment.imageView = environment.pTargetCubemap->texture.cubemapFaceViews[environment.tracking.layer];
@@ -105,46 +95,128 @@ void core::MRenderer::renderEnvironmentMaps(
       &scene.descriptorSets[renderView.frameInFlight], 1,
       &dynamicOffset);
 
-  drawBoundEntities(commandBuffer);
+  drawBoundEntitiesIndirect(commandBuffer);
 
   vkCmdEndRendering(commandBuffer);
 
-  setImageLayout(commandBuffer, environment.pTargetCubemap, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, environment.subresourceRange);
+  if (system.enableLayoutTransitions) {
+    setImageLayout(commandBuffer, environment.pTargetCubemap, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, environment.subresourceRange);
+  }
 
   // increase layer count to write to the next cubemap face
   environment.tracking.layer++;
+}
+
+void core::MRenderer::prepareFrameResources(VkCommandBuffer commandBuffer) {
+  command.indirectCommandOffset = 0u;
+
+  // Wait for instance data thread to finish its work before proceeding with the new frame
+  {
+    std::mutex mtx;
+    std::unique_lock<std::mutex> lock(mtx);
+    sync.cvInstanceDataReady.wait(lock, [this]() { return sync.isInstanceDataReady; });
+    sync.isInstanceDataReady = false;
+
+    const uint32_t bufferIndex = (renderView.frameInFlight + 1) % MAX_FRAMES_IN_FLIGHT;
+
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+    if (vkGetFenceStatus(logicalDevice.device, sync.fenceUpdateBuffers[bufferIndex]) != VK_SUCCESS) {
+      vkQueueSubmit(logicalDevice.queues.graphics, 1, &submitInfo, sync.fenceUpdateBuffers[bufferIndex]);
+    }
+  }
+
+  VkDeviceSize vertexBufferOffsets[] = { 0u, 0u };
+  VkBuffer vertexBuffers[] = { scene.vertexBuffer.buffer, scene.instanceDataBuffers[renderView.frameInFlight].buffer };
+
+  vkCmdBindVertexBuffers(commandBuffer, 0, 2, vertexBuffers, vertexBufferOffsets);
+  vkCmdBindIndexBuffer(commandBuffer, scene.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+  uint32_t transformOffsets[3] = { 0u, 0u, 0u };
+  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+    getPipelineLayout(EPipelineLayout::Scene), 1, 1, &scene.transformDescriptorSet, 3, transformOffsets);
+
+  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+    getPipelineLayout(EPipelineLayout::Scene), 2, 1, &material.descriptorSet, 0, nullptr);
+
+  // Update transparency data
+  vkCmdClearColorImage(commandBuffer, scene.pTransparencyStorageTexture->texture.image, scene.pTransparencyStorageTexture->texture.imageLayout,
+    &scene.transparencyLinkedListClearColor, 1u, &scene.transparencySubRange);
+
+  vkCmdFillBuffer(commandBuffer, scene.transparencyLinkedListBuffer.buffer, 0, sizeof(uint32_t), 0);
+}
+
+void core::MRenderer::prepareFrameComputeJobs() {
+  const uint8_t previousFrameInFlight = (renderView.frameInFlight + MAX_FRAMES_IN_FLIGHT - 1) % MAX_FRAMES_IN_FLIGHT;
+  const uint8_t nextFrameInFlight = (renderView.frameInFlight + 1) % MAX_FRAMES_IN_FLIGHT;
+
+  // Mip map previous frame's depth
+  RComputeJobInfo& depthMipmappingJob = compute.imageJobInfo.mipmapping;
+  depthMipmappingJob.width = config::renderWidth / 16;
+  depthMipmappingJob.height = config::renderHeight / 16;
+
+  // Samplers and images have their indexes separate in the shader, each starting with 0, so both are at [0] in this case
+  depthMipmappingJob.pSamplerAttachments = {scene.pDepthTargets[previousFrameInFlight], scene.pPreviousDepthTargets[previousFrameInFlight]};
+  depthMipmappingJob.pImageAttachments = {scene.pPreviousDepthTargets[previousFrameInFlight]};
+
+  // Number of target mip maps
+  depthMipmappingJob.pushBlock.intValues.x = scene.pPreviousDepthTargets[previousFrameInFlight]->texture.levelCount;
+
+  // Type of mipmapping: from D32 to R32
+  depthMipmappingJob.pushBlock.intValues.y = 0;
+
+  RComputeJobInfo& cullingJob = compute.sceneJobInfo.culling;
+  cullingJob.width = static_cast<uint32_t>(scene.totalInstances) / 32 + 1;
+  cullingJob.pSamplerAttachments = {scene.pPreviousDepthTargets[nextFrameInFlight]};
+  cullingJob.pBufferAttachments[0] = &scene.sceneBuffers[previousFrameInFlight];
+  cullingJob.pBufferAttachments[4] = &scene.drawCountBuffers[previousFrameInFlight];
+  cullingJob.pushBlock.intValues.x = static_cast<int32_t>(scene.totalInstances);
+  cullingJob.pushBlock.intValues.y = static_cast<int32_t>(scene.nextPrimitiveUID);
+  cullingJob.pushBlock.intValues.z = static_cast<int32_t>(view.pPrimaryCamera->getViewBufferIndex()); // index for retrieving camera matrices
+  cullingJob.pushBlock.intValues.w = static_cast<int32_t>(scene.pPreviousDepthTargets[previousFrameInFlight]->texture.levelCount - 1);
+
+  queueComputeJob(&depthMipmappingJob);
+  queueComputeJob(&cullingJob);
 }
 
 void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId,
                                            RMaterial* pPushMaterial, bool renderQuad) {
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(passId);
   renderView.pCurrentPass = pRenderPass;
-  VkRenderingInfo* pRenderingInfo = &renderView.pCurrentPass->renderingInfo;
+
+  VkRenderingInfo overrideInfo = renderView.pCurrentPass->renderingInfo;
+  VkRenderingAttachmentInfo overrideDepthAttachment;
+
+  if (overrideInfo.pDepthAttachment) {
+    overrideDepthAttachment = *overrideInfo.pDepthAttachment;
+    overrideDepthAttachment.imageView = scene.pDepthTargets[renderView.frameInFlight]->texture.view;
+
+    overrideInfo.pDepthAttachment = &overrideDepthAttachment;
+  }
 
   // Transition images to correct layouts for rendering if required
+  VkImageLayout targetLayout = (system.enableLayoutTransitions)
+    ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+
   if (pRenderPass->validateColorAttachmentLayout) {
     VkImageSubresourceRange subRange{};
-    subRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     subRange.baseArrayLayer = 0u;
     subRange.baseMipLevel = 0u;
 
     for (uint8_t i = 0; i < pRenderPass->colorAttachmentCount; ++i) {
       RTexture* pImage = pRenderPass->pImageReferences[i];
+      subRange.aspectMask = pImage->texture.aspectMask;
       subRange.layerCount = pImage->texture.layerCount;
       subRange.levelCount = pImage->texture.levelCount;
 
-      setImageLayout(commandBuffer, pImage, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
+      // Some pipeline barriers are required before transparency stages regardless if layouts are being transitioned
+      setImageLayout(commandBuffer, pImage, targetLayout, subRange,
+        (!system.enableLayoutTransitions && passId & EDynamicRenderingPass::DiscardCullNone));
     }
   }
 
-  if (pRenderPass->validateDepthAttachmentLayout) {
-    VkImageSubresourceRange subRange{};
-    subRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-    subRange.baseArrayLayer = 0u;
-    subRange.baseMipLevel = 0u;
-  }
-
-  vkCmdBeginRendering(commandBuffer, pRenderingInfo);
+  vkCmdBeginRendering(commandBuffer, &overrideInfo);
 
   setViewport(commandBuffer, renderView.pCurrentPass->viewportId);
   renderView.currentViewportId = renderView.pCurrentPass->viewportId;
@@ -167,7 +239,7 @@ void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynam
       break;
     }
     case false: {
-      drawBoundEntities(commandBuffer);
+      drawBoundEntitiesIndirect(commandBuffer);
       break;
     }
   }
@@ -175,51 +247,20 @@ void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynam
   vkCmdEndRendering(commandBuffer);
 
   // Transition image layouts after rendering to the requested layout if required
-  if (pRenderPass->transitionColorAttachmentLayout) {
+  if (pRenderPass->transitionColorAttachmentLayout && system.enableLayoutTransitions) {
     VkImageSubresourceRange subRange{};
-    subRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     subRange.baseArrayLayer = 0u;
     subRange.baseMipLevel = 0u;
 
     for (uint8_t j = 0; j < pRenderPass->colorAttachmentCount; ++j) {
       RTexture* pImage = pRenderPass->pImageReferences[j];
+      subRange.aspectMask = pImage->texture.aspectMask;
       subRange.layerCount = pImage->texture.layerCount;
       subRange.levelCount = pImage->texture.levelCount;
 
       setImageLayout(commandBuffer, pImage, pRenderPass->colorAttachmentsOutLayout, subRange);
     }
   }
-  // TODO:
-  if (pRenderPass->transitionDepthAttachmentLayout) {
-    VkImageSubresourceRange subRange{};
-    subRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-    subRange.baseArrayLayer = 0u;
-    subRange.baseMipLevel = 0u;
-  }
-}
-
-void core::MRenderer::prepareFrameResources(VkCommandBuffer commandBuffer) {
-  /*scene.transparencyLinkedListData.nodeCount = 0u;
-  memcpy(scene.transparencyLinkedListDataBuffer.allocInfo.pMappedData, &scene.transparencyLinkedListData, sizeof(uint32_t));*/
-
-  VkDeviceSize vbOffset = 0u;
-  vkCmdBindVertexBuffers(commandBuffer, 0, 1, &scene.vertexBuffer.buffer, &vbOffset);
-  vkCmdBindVertexBuffers(commandBuffer, 1, 1, &scene.instanceBuffers[renderView.frameInFlight].buffer, &vbOffset);
-
-  vkCmdBindIndexBuffer(commandBuffer, scene.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-  uint32_t transformOffsets[3] = { 0u, 0u, 0u };
-  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    getPipelineLayout(EPipelineLayout::Scene), 1, 1, &scene.transformDescriptorSet, 3, transformOffsets);
-
-  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    getPipelineLayout(EPipelineLayout::Scene), 2, 1, &material.descriptorSet, 0, nullptr);
-
-  // Update transparency data
-  vkCmdClearColorImage(commandBuffer, scene.pTransparencyStorageTexture->texture.image, scene.pTransparencyStorageTexture->texture.imageLayout,
-    &scene.transparencyLinkedListClearColor, 1u, &scene.transparencySubRange);
-  
-  vkCmdFillBuffer(commandBuffer, scene.transparencyLinkedListBuffer.buffer, 0, sizeof(uint32_t), 0);
 }
 
 void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uint32_t cascadeIndex) {
@@ -232,19 +273,6 @@ void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uin
   VkRenderingInfo overrideInfo{};
   overrideInfo = pRenderPass->renderingInfo;
   overrideInfo.pDepthAttachment = &overrideAttachment;
-
-  if (cascadeIndex == 0u) {
-    RTexture* pShadowTexture = pRenderPass->pImageReferences[0];
-
-    VkImageSubresourceRange subRange{};
-    subRange.aspectMask = pShadowTexture->texture.aspectMask;
-    subRange.baseArrayLayer = 0u;
-    subRange.layerCount = pShadowTexture->texture.layerCount;
-    subRange.baseMipLevel = 0u;
-    subRange.levelCount = pShadowTexture->texture.levelCount;
-
-    setImageLayout(commandBuffer, pShadowTexture, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, subRange);
-  }
 
   scene.vertexPushBlock.cascadeIndex = cascadeIndex;
 
@@ -264,28 +292,15 @@ void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uin
   vkCmdPushConstants(commandBuffer, renderView.pCurrentPass->layout, VK_SHADER_STAGE_VERTEX_BIT, 0u,
                      sizeof(RSceneVertexPCB), &scene.vertexPushBlock);
 
-  drawBoundEntities(commandBuffer);
+  drawBoundEntitiesIndirect(commandBuffer);
 
   // Discard shadow pass
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
     getDynamicRenderingPass(EDynamicRenderingPass::ShadowDiscard)->pipeline);
 
-  drawBoundEntities(commandBuffer, EDynamicRenderingPass::ShadowDiscard);
+  drawBoundEntitiesIndirect(commandBuffer, EDynamicRenderingPass::ShadowDiscard);
 
   vkCmdEndRendering(commandBuffer);
-
-  if (cascadeIndex == config::shadowCascades - 1) {
-    RTexture* pShadowTexture = pRenderPass->pImageReferences[0];
-
-    VkImageSubresourceRange subRange{};
-    subRange.aspectMask = pShadowTexture->texture.aspectMask;
-    subRange.baseArrayLayer = 0u;
-    subRange.layerCount = pShadowTexture->texture.layerCount;
-    subRange.baseMipLevel = 0u;
-    subRange.levelCount = pShadowTexture->texture.levelCount;
-
-    setImageLayout(commandBuffer, pShadowTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subRange);
-  }
 }
 
 void core::MRenderer::executeAOBlurPass(VkCommandBuffer commandBuffer) {
@@ -296,23 +311,14 @@ void core::MRenderer::executeAOBlurPass(VkCommandBuffer commandBuffer) {
   for (uint8_t pass = 0; pass < 2; ++pass) {
     VkRenderingAttachmentInfo overrideAttachment = pRenderPass->renderingInfo.pColorAttachments[0];
 
-    VkImageSubresourceRange subRange;
-    subRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    subRange.baseArrayLayer = 0u;
-    subRange.layerCount = 1u;
-    subRange.baseMipLevel = 0u;
-    subRange.levelCount = 1u;
-
     switch (pass) {
       case 0: {
-        setImageLayout(commandBuffer, pRenderPass->pImageReferences[0], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
         overrideAttachment.imageView = pRenderPass->pImageReferences[0]->texture.view;
 
         break;
       }
       default: {
         RTexture* pAOTexture = material.pBlur->pOcclusion;
-        setImageLayout(commandBuffer, pAOTexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
         overrideAttachment.imageView = pAOTexture->texture.view;
 
         break;
@@ -338,20 +344,6 @@ void core::MRenderer::executeAOBlurPass(VkCommandBuffer commandBuffer) {
     vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 
     vkCmdEndRendering(commandBuffer);
-
-    switch (pass) {
-    case 0: {
-      setImageLayout(commandBuffer, pRenderPass->pImageReferences[0], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subRange);
-
-      break;
-    }
-    default: {
-      RTexture* pAOTexture = material.pBlur->pOcclusion;
-      setImageLayout(commandBuffer, pAOTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subRange);
-
-      break;
-    }
-    }
   }
 }
 
@@ -368,7 +360,9 @@ void core::MRenderer::executePostProcessTAAPass(VkCommandBuffer commandBuffer) {
   subRange.baseMipLevel = 0u;
   subRange.levelCount = 1u;
   
-  setImageLayout(commandBuffer, pTAATexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
+  VkImageLayout targetLayout = (system.enableLayoutTransitions)
+    ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+  setImageLayout(commandBuffer, pTAATexture, targetLayout, subRange);
 
   vkCmdBeginRendering(commandBuffer, &pRenderPass->renderingInfo);
 
@@ -384,19 +378,23 @@ void core::MRenderer::executePostProcessTAAPass(VkCommandBuffer commandBuffer) {
 
   vkCmdEndRendering(commandBuffer);
 
-  setImageLayout(commandBuffer, pTAATexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subRange);
+  if (system.enableLayoutTransitions) {
+    setImageLayout(commandBuffer, pTAATexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subRange);
+  }
 
-  copyImage(commandBuffer, postprocess.pTAATexture->texture.image, postprocess.pPreviousFrameTexture->texture.image,
-    postprocess.pTAATexture->texture.imageLayout, postprocess.pPreviousFrameTexture->texture.imageLayout, postprocess.previousFrameCopy);
+  copyImage(commandBuffer, postprocess.pTAATexture, postprocess.pPreviousFrameTexture,
+            postprocess.previousFrameCopy);
 }
 
 void core::MRenderer::executePostProcessSamplingPass(VkCommandBuffer commandBuffer, const uint32_t imageViewIndex,
                                                      const bool upsample) {
-  // Store a shader coordinate into either PBR texture or downsampling texture and its mip level
+  // Store a mip level index into either PBR texture or downsampling texture sets
   material.pGPBR->pushConstantBlock.textureSets = imageViewIndex;
   postprocess.bloomSubRange.baseMipLevel = imageViewIndex;
 
-  setImageLayout(commandBuffer, postprocess.pBloomTexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, postprocess.bloomSubRange);
+  VkImageLayout targetLayout = (system.enableLayoutTransitions)
+    ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+  setImageLayout(commandBuffer, postprocess.pBloomTexture, targetLayout, postprocess.bloomSubRange);
 
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass((upsample) ? EDynamicRenderingPass::PPUpsample : EDynamicRenderingPass::PPDownsample);
   renderView.pCurrentPass = pRenderPass;
@@ -422,7 +420,10 @@ void core::MRenderer::executePostProcessSamplingPass(VkCommandBuffer commandBuff
 
   vkCmdEndRendering(commandBuffer);
 
-  setImageLayout(commandBuffer, postprocess.pBloomTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, postprocess.bloomSubRange);
+  // Synchronization pipeline barrier is still required for every mip level of the bloom pass
+  (system.enableLayoutTransitions)
+    ? setImageLayout(commandBuffer, postprocess.pBloomTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, postprocess.bloomSubRange)
+    : setImageLayout(commandBuffer, postprocess.pBloomTexture, VK_IMAGE_LAYOUT_GENERAL, postprocess.bloomSubRange, true);
 }
 
 void core::MRenderer::executePostProcessGetExposurePass(VkCommandBuffer commandBuffer) {
@@ -436,7 +437,9 @@ void core::MRenderer::executePostProcessGetExposurePass(VkCommandBuffer commandB
   subRange.baseMipLevel = 0u;
   subRange.levelCount = postprocess.pExposureTexture->texture.levelCount;
 
-  setImageLayout(commandBuffer, postprocess.pExposureTexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
+  if (system.enableLayoutTransitions) {
+    setImageLayout(commandBuffer, postprocess.pExposureTexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
+  }
 
   VkRenderingInfo overrideInfo{};
   overrideInfo = pRenderPass->renderingInfo;
@@ -529,9 +532,9 @@ void core::MRenderer::executePresentPass(VkCommandBuffer commandBuffer) {
 void core::MRenderer::renderFrame() {
   TResult chkResult = RE_OK;
 
-  vkWaitForFences(logicalDevice.device, 1,
-    &sync.fenceInFlight[renderView.frameInFlight], VK_TRUE,
-    UINT64_MAX);
+  const VkFence fences[] = { sync.fenceInFlight[renderView.frameInFlight], sync.fenceUpdateBuffers[renderView.frameInFlight] };
+  const uint32_t fenceCount = 2;
+  vkWaitForFences(logicalDevice.device, fenceCount, fences, VK_TRUE, UINT64_MAX);
 
   VkResult APIResult =
     vkAcquireNextImageKHR(logicalDevice.device, swapChain, UINT64_MAX,
@@ -551,25 +554,26 @@ void core::MRenderer::renderFrame() {
     return;
   }
 
-  // get new delta time between frames
+  // Get new delta time between frames
   core::time.tickTimer();
 
-  // reset fences if we will do any work this frame e.g. no swap chain
-  // recreation
-  vkResetFences(logicalDevice.device, 1,
-    &sync.fenceInFlight[renderView.frameInFlight]);
+  // Reset fences if we will do any work this frame e.g. no swap chain recreation
+  vkResetFences(logicalDevice.device, fenceCount, fences);
 
   vkResetCommandBuffer(command.buffersGraphics[renderView.frameInFlight], NULL);
 
-  executeQueuedComputeJobs();
-
-  VkCommandBuffer cmdBuffer = command.buffersGraphics[renderView.frameInFlight];
+  prepareFrameComputeJobs();
+  executeQueuedComputeJobs(command.buffersCompute[renderView.frameInFlight]);
 
   // Update lighting UBO if required
   updateLightingUBO(renderView.frameInFlight);
 
+  //std::this_thread::sleep_for(std::chrono::milliseconds(30));
+
   // Use this frame's scene descriptor set
   renderView.pCurrentSet = scene.descriptorSets[renderView.frameInFlight];
+
+  VkCommandBuffer commandBuffer = command.buffersGraphics[renderView.frameInFlight];
 
   VkCommandBufferBeginInfo beginInfo{};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -577,18 +581,17 @@ void core::MRenderer::renderFrame() {
   beginInfo.flags = 0;
 
   // Start recording vulkan command buffer
-  if (vkBeginCommandBuffer(cmdBuffer, &beginInfo) != VK_SUCCESS) {
+  if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
     RE_LOG(Error, "Failure when trying to record command buffer.");
     return;
   }
 
   // Prepare and bind per frame resources
-  prepareFrameResources(cmdBuffer);
+  prepareFrameResources(commandBuffer);
 
   /* 1. Environment generation */
-
-  if (renderView.generateEnvironmentMaps) {
-    renderEnvironmentMaps(cmdBuffer, environment.genInterval);
+  if (renderView.generateEnvironmentMaps && renderView.framesRendered > MAX_FRAMES_IN_FLIGHT) {
+    renderEnvironmentMaps(commandBuffer, environment.genInterval);
   }
 
   /* 2. Cascaded shadows */
@@ -597,49 +600,50 @@ void core::MRenderer::renderFrame() {
   updateSceneUBO(renderView.frameInFlight);
 
   for (uint8_t cascadeIndex = 0; cascadeIndex < config::shadowCascades; ++cascadeIndex) {
-    executeShadowPass(cmdBuffer, cascadeIndex);
+    executeShadowPass(commandBuffer, cascadeIndex);
   }
 
   /* 3. Main scene */
-
-  setCamera(RCAM_MAIN);
+  setCamera(view.pPrimaryCamera);
   updateSceneUBO(renderView.frameInFlight);
 
   // G-Buffer passes
-  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::OpaqueCullBack);
-  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::OpaqueCullNone);
-  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::DiscardCullNone);
-  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::BlendCullNone);
+  executeRenderingPass(commandBuffer, EDynamicRenderingPass::OpaqueCullBack);
+  executeRenderingPass(commandBuffer, EDynamicRenderingPass::OpaqueCullNone);
+  executeRenderingPass(commandBuffer, EDynamicRenderingPass::DiscardCullNone);
+  executeRenderingPass(commandBuffer, EDynamicRenderingPass::BlendCullNone);
+
+  // Synchronize instance processing thread since all instances are submitted queue
+  sync.asyncUpdateIndirectDrawBuffers.update();
 
   // Deferred rendering pass using G-Buffer collected data
-  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::PBR, material.pGBuffer, true);
+  executeRenderingPass(commandBuffer, EDynamicRenderingPass::PBR, material.pGBuffer, true);
 
   // Additional front rendering passes
-  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::Skybox);
+  executeRenderingPass(commandBuffer, EDynamicRenderingPass::Skybox);
 
-  executeAOBlurPass(cmdBuffer);
+  executeAOBlurPass(commandBuffer);
 
-  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::AlphaCompositing, material.pGPBR, true);
+  executeRenderingPass(commandBuffer, EDynamicRenderingPass::AlphaCompositing, material.pGPBR, true);
 
   /* 4. Postprocessing pass */
 
   // Includes exposure, bloom and TAA passes
-  executePostProcessPass(cmdBuffer);
+  executePostProcessPass(commandBuffer);
 
   /* 5. Final presentation pass */
 
-  executePresentPass(cmdBuffer);
+  executePresentPass(commandBuffer);
 
   // End writing commands and prepare to submit buffer to rendering queue
-  if (vkEndCommandBuffer(cmdBuffer) != VK_SUCCESS) {
+  if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to end writing to command buffer.");
   }
 
   // Wait until image to write color data to is acquired
   VkSemaphore waitSems[] = {sync.semImgAvailable[renderView.frameInFlight]};
   VkSemaphore signalSems[] = {sync.semRenderFinished[renderView.frameInFlight]};
-  VkPipelineStageFlags waitStages[] = {
-      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+  VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
   VkSubmitInfo submitInfo{};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -672,6 +676,11 @@ void core::MRenderer::renderFrame() {
 
   APIResult = vkQueuePresentKHR(logicalDevice.queues.present, &presentInfo);
 
+  sync.asyncUpdateEntities.update();
+
+  renderView.frameInFlight = ++renderView.frameInFlight % MAX_FRAMES_IN_FLIGHT;
+  ++renderView.framesRendered;
+
   if (APIResult == VK_ERROR_OUT_OF_DATE_KHR || APIResult == VK_SUBOPTIMAL_KHR ||
       framebufferResized) {
     RE_LOG(Warning, "Recreating swap chain, reason: %d", APIResult);
@@ -686,19 +695,13 @@ void core::MRenderer::renderFrame() {
 
     return;
   }
-
-  // Synchronize CPU threads
-  sync.asyncUpdateEntities.update();
-  sync.asyncUpdateInstanceBuffers.update();
-
-  renderView.frameInFlight = ++renderView.frameInFlight % MAX_FRAMES_IN_FLIGHT;
-  ++renderView.framesRendered;
 }
 
-void core::MRenderer::renderInitFrame() {
-  // Generate BRDF LUT during the initial frame
-  queueComputeJob(&environment.computeJobs.LUT);
+void core::MRenderer::renderInitializationFrame() {
+  // Generate BRDF lookup table during the initial frame
+  queueComputeJob(&compute.environmentJobInfo.LUT);
 
+  // Write ambient occlusion noise/jitter map
   RTexture* pNoiseTexture = core::resources.getTexture(RTGT_NOISEMAP);
   core::resources.writeTexture(pNoiseTexture, system.randomOffsets.data(),
     sizeof(glm::vec4) * system.randomOffsets.size());

@@ -9,8 +9,8 @@ class ACamera : public ABase {
 
   struct {
     glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f);
-    glm::vec4 perspectiveData;
-    glm::vec4 orthographicData;
+    glm::vec4 perspectiveData;      // FOV, aspect, near, far
+    glm::vec4 orthographicData;     // horizontal, vertical, near, far
     bool anchorFocusPoint = false;
     bool ignorePitchLimit = false;
   } m_viewData;
@@ -30,8 +30,8 @@ class ACamera : public ABase {
   uint32_t m_viewBufferIndex = -1;
 
  private:
-   // uses pitch limit set in config.h
-   template<typename T>
+  // uses pitch limit set in config.h
+  template<typename T>
   T clampCameraPitch(T pitch) {
     return pitch < -config::pitchLimit  ? -config::pitchLimit
            : pitch > config::pitchLimit ? config::pitchLimit
@@ -50,10 +50,13 @@ class ACamera : public ABase {
   void setOrthographic(float horizontal, float vertical, float nearZ,
                        float farZ) noexcept;
 
+  float getNearPlane();
+  float getFarPlane();
   glm::vec2 getNearAndFarPlane();
 
-  // get view matrix for current camera position and rotation
-  glm::mat4& getView();
+  // If 'update' is set to false - will retrieve currently stored view matrix
+  // instead of calculating a new one
+  glm::mat4& getView(const bool update = true);
   glm::mat4& getProjection();
   const glm::mat4& getProjectionView();
 
@@ -74,11 +77,16 @@ class ACamera : public ABase {
 
   virtual void rotate(const glm::vec3& vector, float angle) noexcept override;
 
-  virtual void setIgnorePitchLimit(const bool newValue);
+  void setIgnorePitchLimit(const bool newValue);
 
-  virtual void setFOV(float FOV) noexcept;
-  virtual void setAspectRatio(float ratio) noexcept;
+  void setFOV(float FOV) noexcept;
+  float getFOV() noexcept;
 
-  virtual void setViewBufferIndex(const uint32_t newIndex);
-  virtual const uint32_t getViewBufferIndex();
+  void setAspectRatio(float ratio) noexcept;
+  float getAspectRatio() noexcept;
+
+  void setViewBufferIndex(const uint32_t newIndex);
+  const uint32_t getViewBufferIndex();
+
+  bool isBoundingBoxInFrustum(const class WPrimitive* pPrimitive, const glm::mat4& projectionViewMatrix, const glm::mat4& modelMatrix);
 };

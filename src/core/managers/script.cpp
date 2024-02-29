@@ -146,7 +146,7 @@ void core::MScript::jsonParseCameras(const json* pCameraData) noexcept {
   }
 
   if (activatedCamera != "") {
-    core::renderer.setCamera(activatedCamera.c_str());
+    core::renderer.setCamera(activatedCamera.c_str(), true);
 
     // TODO: make this a separate thing in a map config
     core::player.controlActor(core::renderer.getCamera());

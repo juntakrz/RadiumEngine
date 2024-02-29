@@ -24,13 +24,6 @@ layout (location = 4) in vec4 inColor0;
 // Per Instance
 layout (location = 7) flat in uint inMaterialIndex;
 
-// Scene bindings
-layout (set = 0, binding = 0) uniform UBOScene {
-	mat4 view;
-	mat4 projection;
-	vec3 camPos;
-} scene;
-
 // Environment bindings
 layout (set = 0, binding = 2) uniform samplerCube prefilteredMap;
 layout (set = 0, binding = 3) uniform samplerCube irradianceMap;
@@ -275,7 +268,7 @@ vec4 getColor(vec4 baseColor) {
 
 	vec3 specularColor = mix(f0, diffuseColor, metallic);
 
-	vec3 V = normalize(scene.camPos - inWorldPos);			// Vector from surface point to camera
+	vec3 V = normalize(scene.cameraPos - inWorldPos);			// Vector from surface point to camera
 
 	vec3 color = getIBLContribution(diffuseColor, specularColor, perceptualRoughness, V, normal);
 
@@ -300,7 +293,7 @@ vec4 getColor(vec4 baseColor) {
 	emissiveColor += materialBlocks[inMaterialIndex].glowColor.rgb;
 
 	// Calculate shadow and its color
-	float relativeDistance = length(scene.camPos - inWorldPos);
+	float relativeDistance = length(scene.cameraPos - inWorldPos);
 	float shadowA = 0.0f;
 
 	int distanceIndex;

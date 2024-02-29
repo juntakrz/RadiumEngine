@@ -13,6 +13,15 @@ struct MaterialData {
 	vec4 glowColor;
 };
 
+layout(binding = 0) uniform UBOView {
+	mat4 view;
+	mat4 projection;
+	mat4 prevView;
+	vec3 cameraPos;
+	vec2 haltonJitter;
+	vec2 clipData;			// x = near plane, y = far plane
+} scene;
+
 layout (std430, set = 0, binding = 1) uniform UBOLighting {
 	vec4 lightLocations[MAXLIGHTS];
     vec4 lightColor[MAXLIGHTS];

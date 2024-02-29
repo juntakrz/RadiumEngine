@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "util/util.h"
 #include "config.h"
+#include "core/objects.h"
 #include "core/core.h"
 
 namespace util {
@@ -150,8 +151,10 @@ std::wstring toWString(const char* string) {
 
   return newWStr;
 }
+
 const VkDeviceSize getVulkanAlignedSize(VkDeviceSize originalSize,
                                         VkDeviceSize minAlignment) {
   return (originalSize + minAlignment - 1) & ~(minAlignment - 1);
 }
+
 }  // namespace util

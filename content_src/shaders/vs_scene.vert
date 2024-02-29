@@ -65,7 +65,7 @@ void main() {
 	outColor0 = inColor0;
 
 	// Storing unjittered vertex values for the velocity vector calculation
-	outPrevMVPPos = scene.projection * scene.view * outPrevMVPPos;
+	outPrevMVPPos = scene.projection * scene.prevView * outPrevMVPPos;
 	outCurrentMVPPos = scene.projection * scene.view * vec4(outWorldPos, 1.0);
 
 	outMaterialIndex = inInstanceIndices.w;

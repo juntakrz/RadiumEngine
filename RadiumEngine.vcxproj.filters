@@ -333,6 +333,8 @@
     <None Include="content_src\shaders\fs_transparencyLayer.frag" />
     <None Include="content_src\shaders\fs_gbufferDiscard.frag" />
     <None Include="content_src\shaders\fs_ppBlur.frag" />
+    <None Include="content_src\shaders\cs_culling.comp" />
+    <None Include="content_src\shaders\cs_mipmap.comp" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="lib\glfw3.lib" />

@@ -46,10 +46,12 @@ enum class EBufferType {  // VkBuffer creation mode
   CPU_VERTEX,         // Vertex buffer for the iGPU (UNUSED)
   CPU_INDEX,          // Index buffer for the iGPU (UNUSED)
   CPU_STORAGE,        // Storage buffer for CPU to write and read data from
+  CPU_INDIRECT,
   DGPU_VERTEX,        // Dedicated GPU vertex buffer
   DGPU_INDEX,         // Dedicated GPU index buffer
   DGPU_UNIFORM,
   DGPU_STORAGE,       // Dedicated GPU storage buffer
+  DGPU_INDIRECT,
   DGPU_SAMPLER,       // Dedicated GPU storage buffer for sampler descriptors
   DGPU_RESOURCE,      // Dedicated GPU storage buffer for resource descriptors
 };
@@ -66,15 +68,13 @@ enum class ECmdType {
   Present
 };
 
-enum class EComputeJob {
-  Image
-};
-
 enum class EComputePipeline {
   Null,
-  ImageLUT,
-  ImageEnvIrradiance,
-  ImageEnvFilter
+  LUT,
+  EnvIrradiance,
+  EnvFilter,
+  MipMap,
+  Culling
 };
 
 enum class EControlMode {
@@ -87,6 +87,7 @@ enum class EDescriptorSetLayout {
   MaterialEXT,
   Model,
   ComputeImage,
+  ComputeBuffer,
   Dummy
 };
 
@@ -111,6 +112,18 @@ enum EDynamicRenderingPass : uint32_t {
   Present             = 0b10000000000000000
 };
 
+enum class EIndirectPassIndex : uint32_t {
+  Shadow = 0,
+  ShadowDiscard,
+  EnvSkybox,
+  OpaqueCullBack,
+  OpaqueCullNone,
+  DiscardCullNone,
+  BlendCullNone,
+  Skybox,
+  Count
+};
+
 enum class ELightType {
   Directional,
   Point
@@ -121,7 +134,7 @@ enum class EPipelineLayout {
   PBR,
   Environment,
   Shadow,
-  ComputeImage
+  Compute
 };
 
 enum class EPrimitiveType {
@@ -157,17 +170,26 @@ struct RCameraInfo {
   float farZ = config::viewDistance;
 };
 
+struct RComputePCB {
+  uint32_t imageIndex;
+  uint32_t samplerIndex;
+  uint32_t bufferIndex;
+  uint32_t padding;
+  glm::ivec4 intValues = glm::ivec4(0);
+  glm::vec4 floatValues = glm::vec4(0.0f);
+};
+
 struct RComputeJobInfo {
-  EComputeJob jobType;
   EComputePipeline pipeline;
   std::vector<struct RTexture*> pImageAttachments;
   std::vector<struct RTexture*> pSamplerAttachments;
+  std::vector<struct RBuffer*> pBufferAttachments;
   uint32_t width, height, depth = 1;
-  bool transtionToShaderReadOnly;
+  bool transtionToShaderReadOnly = false;
   bool useExtraImageViews = false;
   bool useExtraSamplerViews = false;
-  glm::ivec4 intValues = glm::ivec4(0);
-  glm::vec4 floatValues = glm::vec4(0.0f);
+  
+  RComputePCB pushBlock;
 };
 
 struct RDynamicAttachmentInfo {
@@ -360,6 +382,7 @@ struct RTextureInfo {
   bool extraViews = false;  // Create views into layers and mip levels
   VkMemoryPropertyFlags memoryFlags = NULL;
   VmaMemoryUsage vmaMemoryUsage = VMA_MEMORY_USAGE_AUTO;
+  VkImageAspectFlags imageAspectOverride = NULL;  // Override image aspect only if it can't be determined from the layout
   RSamplerInfo samplerInfo = RSamplerInfo{};
 };
 
@@ -429,6 +452,9 @@ struct RVkPhysicalDevice {
   VkPhysicalDeviceMemoryProperties memProperties;
   RVkQueueFamilyIndices queueFamilyIndices;
   RVkSwapChainInfo swapChainInfo;
+
+  bool isMultiDrawIndirectCapable = false;
+
   bool bIsValid = false;
 };
 
@@ -443,17 +469,19 @@ struct RVulkanTexture : public ktxVulkanTexture {
 };
 
 //
-// uniform buffer objects and push contant blocks
+// Buffer objects and push contant blocks
 // 
 
-struct RComputeImagePCB {
-  uint32_t imageIndex;
-  uint32_t imageCount = 0;
-  glm::ivec4 intValues = glm::ivec4(0);
-  glm::vec4 floatValues = glm::vec4(0.0f);
+// Information written by the compute culling job
+// A number of draws to do at each corresponding pass
+struct RDrawIndirectInfo {
+  uint32_t drawCounts[(uint32_t)EIndirectPassIndex::Count];
+  uint32_t instanceCounts[(uint32_t)EIndirectPassIndex::Count];
+  uint32_t primitiveInstanceCount[config::scene::uniquePrimitiveBudget];
+  VkBool32 instanceVisibility[config::scene::nodeBudget];
 };
 
-// lighting data uniform buffer object
+// Lighting data uniform buffer object
 struct RLightingUBO {
   glm::vec4 lightLocations[RE_MAXLIGHTS];     // w is unused
   glm::vec4 lightColors[RE_MAXLIGHTS];        // alpha is intensity
@@ -496,6 +524,7 @@ struct RModelUBO {
 };
 
 struct RNodeUBO {
+  glm::mat4 prevNodeMatrix = glm::mat4(1.0f);
   glm::mat4 nodeMatrix = glm::mat4(1.0f);
   float jointCount = 0.0f;
 };
@@ -504,6 +533,7 @@ struct RNodeUBO {
 struct RSceneUBO {
   alignas(16) glm::mat4 view = glm::mat4(1.0f);
   alignas(16) glm::mat4 projection = glm::mat4(1.0f);
+  alignas(16) glm::mat4 prevView = glm::mat4(1.0f);
   alignas(16) glm::vec3 cameraPosition = glm::vec3(0.0f);
   alignas(16) glm::vec2 haltonJitter = glm::vec2(0.0f);
   glm::vec2 clipData = glm::vec2(0.0f);
@@ -531,6 +561,22 @@ struct WAttachmentInfo {
   bool attachToForwardVector = false;
 };
 
+// Data structure used by the compute culling pass
+struct WInstanceDataEntry {
+  glm::vec4 min = glm::vec4(0.0f);
+  glm::vec4 max = glm::vec4(0.0f);
+  uint32_t modelMatrixId = -1;
+  uint32_t nodeMatrixId = -1;
+  uint32_t skinMatrixId = -1;
+  uint32_t passFlags = EDynamicRenderingPass::Null;
+  uint32_t primitiveUID = -1;
+  bool isVisible = true;
+};
+
+struct WPrimitiveDataEntry {
+  uint32_t instanceCount = -1;
+};
+
 struct WModelConfigInfo {
   // see EAnimationLoadMode definition for information
   EAnimationLoadMode animationLoadMode = EAnimationLoadMode::OnDemand;
@@ -543,9 +589,29 @@ struct WModelConfigInfo {
 };
 
 struct WPrimitiveInstanceData {
-  uint32_t instanceIndex = 0;
-  uint32_t passFlags = 0;
   bool isVisible = true;
+  AEntity* pParentEntity = nullptr;
+  uint32_t instanceUID = -1;
+  uint32_t instanceDataBufferOffset = -1;
 
   RInstanceData instanceBufferBlock;
+};
+
+// Helper structures
+
+namespace helper {
+  const EDynamicRenderingPass indirectPassList[] = {
+    EDynamicRenderingPass::Shadow,
+    EDynamicRenderingPass::ShadowDiscard,
+    EDynamicRenderingPass::EnvSkybox,
+    EDynamicRenderingPass::OpaqueCullBack,
+    EDynamicRenderingPass::OpaqueCullNone,
+    EDynamicRenderingPass::DiscardCullNone,
+    EDynamicRenderingPass::BlendCullNone,
+    EDynamicRenderingPass::Skybox,
+  };
+
+  const uint32_t indirectPassCount = (uint32_t)EIndirectPassIndex::Count;
+
+  uint32_t indirectPassFlagToIndex(uint32_t passFlag);
 };

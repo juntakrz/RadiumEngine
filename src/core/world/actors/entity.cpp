@@ -36,22 +36,24 @@ void AEntity::updateTransformBuffers() noexcept {
   }
 
   for (auto& node : m_animatedNodes) {
-    if (!node.requiresTransformBufferBlockUpdate) continue;
+    if (!node.requiresTransformBufferBlockUpdate && !node.isJustCreated) continue;
 
-    int8_t* pNodeMemoryAddress =
+    int8_t* pPreviousNodeMemoryAddress =
       static_cast<int8_t*>(core::renderer.getSceneBuffers()
         ->nodeTransformBuffer.allocInfo.pMappedData) + node.nodeTransformBufferOffset;
 
-    // Adjust by a single transform matrix plus GPU aligned float
-    int8_t* pPreviousNodeMemoryAddress = pNodeMemoryAddress + (sizeof(glm::mat4) + 16);
+    int8_t* pNodeMemoryAddress = pPreviousNodeMemoryAddress + (sizeof(glm::mat4));
 
     // Store previous frame node transformation matrix
-    memcpy(pPreviousNodeMemoryAddress, pNodeMemoryAddress, sizeof(glm::mat4));
+    (node.isJustCreated)
+      ? memcpy(pPreviousNodeMemoryAddress, &node.transformBufferBlock.nodeMatrix, sizeof(glm::mat4))
+      : memcpy(pPreviousNodeMemoryAddress, pNodeMemoryAddress, sizeof(glm::mat4));
 
     // Copy node transform data for vertex shader (node matrix and joint count)
-    memcpy(pNodeMemoryAddress, &node.transformBufferBlock,
+    memcpy(pNodeMemoryAddress, &node.transformBufferBlock.nodeMatrix,
       sizeof(glm::mat4) + sizeof(float));
 
+    node.isJustCreated = false;
     node.requiresTransformBufferBlockUpdate = false;
   }
 }
@@ -105,7 +107,7 @@ WModel* AEntity::getModel() { return m_pModel; }
 void AEntity::updateModel() {
   if (m_pModel && m_bindIndex != -1) {
     glm::mat4* pMemAddress = static_cast<glm::mat4*>(core::renderer.getSceneBuffers()
-                             ->rootTransformBuffer.allocInfo.pMappedData) + m_rootTransformBufferIndex * 2;
+                             ->modelTransformBuffer.allocInfo.pMappedData) + m_rootTransformBufferIndex * 2;
     glm::mat4* pPreviousDataAddress = pMemAddress + 1;
 
     // Copy previous frame transform
@@ -246,6 +248,22 @@ void AEntity::setInstancePrimitiveMaterial(const int32_t meshIndex, const int32_
   }
 
   pPrimitive->instanceData[m_instanceIndex].instanceBufferBlock.materialId = pMaterial->bufferIndex;
+
+  // Update instance data buffer
+  const uint32_t newMaterialId = pPrimitive->instanceData[m_instanceIndex].instanceBufferBlock.materialId;
+  
+  RBuffer stagingBuffer;
+  core::renderer.createBuffer(EBufferType::STAGING, sizeof(uint32_t), stagingBuffer, (void*)&newMaterialId);
+
+  VkBufferCopy copyRegion;
+  copyRegion.srcOffset = 0;
+  copyRegion.size = sizeof(uint32_t);
+  copyRegion.dstOffset = sizeof(WPrimitiveDataEntry) * config::scene::uniquePrimitiveBudget
+    + pPrimitive->instanceData[m_instanceIndex].instanceDataBufferOffset + sizeof(glm::vec4) * 2 + sizeof(uint32_t) * 3;
+
+  core::renderer.copyBuffer(&stagingBuffer, &core::renderer.getSceneBuffers()->sourceDataBuffer, &copyRegion);
+
+  vmaDestroyBuffer(core::renderer.memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
 }
 
 void AEntity::playAnimation(const std::string& name, const float speed,
