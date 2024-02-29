@@ -162,6 +162,9 @@
     <ClCompile Include="src\core\managers\renderer_compute.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\core\managers\renderer_targets.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\pch.h">
@@ -326,6 +329,10 @@
     <None Include="content_src\shaders\fs_ppGetExposure.frag" />
     <None Include="content_src\shaders\include\vertex.glsl" />
     <None Include="content_src\shaders\fs_ppTAA.frag" />
+    <None Include="content_src\shaders\fs_abuffer.frag" />
+    <None Include="content_src\shaders\fs_transparencyLayer.frag" />
+    <None Include="content_src\shaders\fs_gbufferDiscard.frag" />
+    <None Include="content_src\shaders\fs_ppBlur.frag" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="lib\glfw3.lib" />

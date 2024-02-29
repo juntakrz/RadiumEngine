@@ -21,7 +21,7 @@ class MRenderer {
     VkCommandPool poolCompute;
     VkCommandPool poolTransfer;
     std::vector<VkCommandBuffer> buffersGraphics;
-    std::vector<VkCommandBuffer> buffersCompute;  // TODO: not implemented yet
+    std::vector<VkCommandBuffer> buffersCompute;
     std::vector<VkCommandBuffer> buffersTransfer;
   } command;
 
@@ -57,10 +57,14 @@ class MRenderer {
   } lighting;
 
   struct RMaterialData {
+    RBuffer buffer;
     VkDescriptorSet descriptorSet;
     RMaterial* pSunShadow = nullptr;
     RMaterial* pGBuffer = nullptr;
     RMaterial* pGPBR = nullptr;
+    RMaterial* pBlur = nullptr;
+
+    std::vector<VkSampler> samplers;
   } material;
 
   struct RSceneBuffers {
@@ -70,6 +74,7 @@ class MRenderer {
     RBuffer rootTransformBuffer;
     RBuffer nodeTransformBuffer;
     RBuffer skinTransformBuffer;
+    RBuffer generalBuffer;
     uint32_t currentVertexOffset = 0u;
     uint32_t currentIndexOffset = 0u;
     size_t totalInstances = 0u;
@@ -77,6 +82,13 @@ class MRenderer {
     VkDescriptorSet transformDescriptorSet;
 
     std::vector<RTexture*> pGBufferTargets;
+    std::vector<RTexture*> pABufferTargets;
+    RBuffer transparencyLinkedListBuffer;
+    RBuffer transparencyLinkedListDataBuffer;
+    RTransparencyLinkedListData transparencyLinkedListData;
+    RTexture* pTransparencyStorageTexture = nullptr;
+    VkImageSubresourceRange transparencySubRange;
+    VkClearColorValue transparencyLinkedListClearColor;
 
     // Per frame in flight buffered camera/lighting descriptor sets
     std::vector<VkDescriptorSet> descriptorSets;
@@ -130,6 +142,8 @@ class MRenderer {
     std::unordered_map<EComputePipeline, VkPipeline> computePipelines;
     std::vector<RViewport> viewports;
     std::vector<glm::vec2> haltonJitter;
+    std::vector<glm::vec4> occlusionOffsets;
+    std::vector<glm::vec4> randomOffsets;
 
     VkDescriptorPool descriptorPool;
     std::unordered_map<EDescriptorSetLayout, VkDescriptorSetLayout> descriptorSetLayouts;
@@ -138,6 +152,9 @@ class MRenderer {
     std::vector<VkDrawIndexedIndirectCommand> drawCommands;
 
     VkQueryPool queryPool;
+
+    bool asyncComputeSupport = false;
+    int32_t computeQueue = -1;
   } system;
 
   // current camera view data
@@ -295,7 +312,7 @@ class MRenderer {
  private:
   // create single layer render target for fragment shader output, uses swapchain resolution unless defined
   RTexture* createFragmentRenderTarget(const char* name, VkFormat format, uint32_t width = 0, uint32_t height = 0,
-    VkSamplerAddressMode addressMode = VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT);
+    VkSamplerAddressMode addressMode = VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
   TResult createViewports();
   void setViewport(VkCommandBuffer commandBuffer, EViewport index);
@@ -347,6 +364,10 @@ public:
                                uint32_t mipLevel, uint32_t layer = 0,
                                VkFilter filter = VK_FILTER_LINEAR);
 
+  TResult createDefaultSamplers();
+  void destroySamplers();
+  VkSampler getSampler(RSamplerInfo* pInfo);
+
   VkCommandPool getCommandPool(ECmdType type);
   VkQueue getCommandQueue(ECmdType type);
 
@@ -356,7 +377,7 @@ public:
                                       bool begin);
 
   // begins command buffer in a "one time submit" mode
-  void beginCommandBuffer(VkCommandBuffer cmdBuffer);
+  void beginCommandBuffer(VkCommandBuffer cmdBuffer, bool oneTimeSubmit = true);
 
   // end writing to the buffer and submit commands to specific queue,
   // optionally free the buffer and/or use fence
@@ -416,6 +437,8 @@ public:
 
    TResult copyImageToBuffer(VkCommandBuffer commandBuffer, RTexture *pSrcImage, VkBuffer dstBuffer,
                              uint32_t width, uint32_t height, VkImageSubresourceLayers* subresource);
+
+   void copyDataToBuffer(void* pData, VkDeviceSize dataSize, RBuffer* pDstBuffer, VkDeviceSize offset = 0u);
 
    void updateInstanceBuffer();
 
@@ -530,7 +553,7 @@ public:
 
  public:
   void queueComputeJob(RComputeJobInfo* pInfo);
-  void executeComputeJobImmediate(RComputeJobInfo* pInfo, const bool beginBuffer);
+  void executeComputeJobImmediate(RComputeJobInfo* pInfo);
   void executeQueuedComputeJobs();
 
   //
@@ -539,19 +562,23 @@ public:
 
  private:
   // Draw bound entities using specific pipeline
-  void drawBoundEntities(VkCommandBuffer commandBuffer);
+  void drawBoundEntities(VkCommandBuffer commandBuffer, EDynamicRenderingPass passOverride = EDynamicRenderingPass::Null);
 
   void renderPrimitive(VkCommandBuffer cmdBuffer, WPrimitive* pPrimitive, WModel* pModel);
 
   void renderEnvironmentMaps(VkCommandBuffer commandBuffer,
                              const uint32_t frameInterval = 1u);
 
+  void prepareFrameResources(VkCommandBuffer commandBuffer);
+
   void executeRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId,
                             RMaterial* pPushMaterial = nullptr, bool renderQuad = false);
 
   void executeShadowPass(VkCommandBuffer commandBuffer, const uint32_t cascadeIndex);
 
-  void executePostProcesssTAAPass(VkCommandBuffer commandBuffer);
+  void executeAOBlurPass(VkCommandBuffer commandBuffer);
+
+  void executePostProcessTAAPass(VkCommandBuffer commandBuffer);
   void executePostProcessSamplingPass(VkCommandBuffer commandBuffer, const uint32_t imageViewIndex, const bool upsample);
   void executePostProcessGetExposurePass(VkCommandBuffer commandBuffer);
   void executePostProcessPass(VkCommandBuffer commandBuffer);

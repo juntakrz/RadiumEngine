@@ -21,7 +21,8 @@ class MResources {
   std::unordered_map<std::string, std::unique_ptr<RMaterial>> m_materials;
   std::unordered_map<std::string, RTexture> m_textures;
 
-  std::vector<RTexture*> m_sampler2DIndices;
+  std::vector<RMaterial*> m_materialIndices;
+  std::vector<RTexture*> m_samplerIndices;
 
  private:
   MResources();
@@ -43,6 +44,7 @@ class MResources {
 
   RMaterial* getMaterial(const char* name) noexcept;
   uint32_t getMaterialCount() const noexcept;
+  uint32_t getMaterialBufferIndex(RMaterial* pMaterial) noexcept;
   TResult deleteMaterial(const char* name) noexcept;
 
   std::vector<RTexture*>* getMaterialTextures(const char* name) noexcept;

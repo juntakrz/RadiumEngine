@@ -27,11 +27,10 @@ RTexture* core::MRenderer::createFragmentRenderTarget(const char* name, VkFormat
   textureInfo.height = height;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-  textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSFER_SRC_BIT
+    | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
-  textureInfo.samplerInfo.addressModeU = addressMode;
-  textureInfo.samplerInfo.addressModeV = addressMode;
-  textureInfo.samplerInfo.addressModeW = addressMode;
+  textureInfo.samplerInfo.addressMode = addressMode;
 
   RTexture* pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -801,6 +800,95 @@ TResult core::MRenderer::generateSingleMipMap(VkCommandBuffer cmdBuffer,
   return RE_OK;
 }
 
+TResult core::MRenderer::createDefaultSamplers() {
+  // 0. Linear / Repeat
+  material.samplers.emplace_back();
+
+  VkSamplerCreateInfo createInfo{};
+  createInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+  createInfo.minFilter = VK_FILTER_LINEAR;
+  createInfo.magFilter = VK_FILTER_LINEAR;
+  createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+  createInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  createInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  createInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  createInfo.anisotropyEnable = VK_TRUE;
+  createInfo.maxAnisotropy = config::maxAnisotropy;
+  createInfo.compareOp = VK_COMPARE_OP_NEVER;
+  createInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+  createInfo.maxLod = 16.0f;
+
+  if (vkCreateSampler(core::renderer.logicalDevice.device, &createInfo, nullptr,
+    &material.samplers.back()) != VK_SUCCESS) {
+    return RE_ERROR;
+  };
+
+  // 1. Linear / Clamp to edge
+  material.samplers.emplace_back();
+
+  createInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  createInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  createInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+
+  if (vkCreateSampler(core::renderer.logicalDevice.device, &createInfo, nullptr,
+    &material.samplers.back()) != VK_SUCCESS) {
+    return RE_ERROR;
+  };
+
+  // 2. Nearest / Repeat
+  material.samplers.emplace_back();
+
+  createInfo.minFilter = VK_FILTER_NEAREST;
+  createInfo.magFilter = VK_FILTER_NEAREST;
+  createInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  createInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  createInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+
+  if (vkCreateSampler(core::renderer.logicalDevice.device, &createInfo, nullptr,
+    &material.samplers.back()) != VK_SUCCESS) {
+    return RE_ERROR;
+  };
+
+  // 3. Nearest / Clamp to edge
+  material.samplers.emplace_back();
+
+  createInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  createInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  createInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+
+  if (vkCreateSampler(core::renderer.logicalDevice.device, &createInfo, nullptr,
+    &material.samplers.back()) != VK_SUCCESS) {
+    return RE_ERROR;
+  };
+
+  return RE_OK;
+}
+
+void core::MRenderer::destroySamplers() {
+  for (auto& it : material.samplers) {
+    vkDestroySampler(logicalDevice.device, it, nullptr);
+  }
+}
+
+VkSampler core::MRenderer::getSampler(RSamplerInfo* pInfo) {
+  if (!pInfo) {
+    return material.samplers[0];
+  }
+
+  if ((pInfo->addressMode == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE) && (pInfo->filter = VK_FILTER_LINEAR)) {
+    return material.samplers[1];
+  }
+  else if ((pInfo->addressMode == VK_SAMPLER_ADDRESS_MODE_REPEAT) && (pInfo->filter = VK_FILTER_NEAREST)) {
+    return material.samplers[2];
+  }
+  else if ((pInfo->addressMode == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE) && (pInfo->filter = VK_FILTER_NEAREST)) {
+    return material.samplers[3];
+  }
+
+  // Return default repeat / linear sampler
+  return material.samplers[0];
+}
+
 VkCommandPool core::MRenderer::getCommandPool(ECmdType type) {
   switch (type) {
     case ECmdType::Graphics:
@@ -849,10 +937,13 @@ VkCommandBuffer core::MRenderer::createCommandBuffer(ECmdType type, VkCommandBuf
   return newCommandBuffer;
 }
 
-void core::MRenderer::beginCommandBuffer(VkCommandBuffer cmdBuffer) {
+void core::MRenderer::beginCommandBuffer(VkCommandBuffer cmdBuffer, bool oneTimeSubmit) {
   VkCommandBufferBeginInfo beginInfo{};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+  if (oneTimeSubmit) {
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+  }
 
   vkBeginCommandBuffer(cmdBuffer, &beginInfo);
 }
@@ -969,6 +1060,7 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
     instanceData.instanceBufferBlock.modelMatrixId = pEntity->getRootTransformBufferIndex();
     instanceData.instanceBufferBlock.nodeMatrixId = pEntity->getNodeTransformBufferIndex(pNode->index);
     instanceData.instanceBufferBlock.skinMatrixId = pEntity->getSkinTransformBufferIndex(pNode->skinIndex);
+    instanceData.instanceBufferBlock.materialId = primitive->pInitialMaterial->bufferIndex;
   }
 
   // TODO: implement indirect draw command properly

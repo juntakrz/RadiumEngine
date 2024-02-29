@@ -70,7 +70,7 @@ TResult core::MResources::loadTexture(const std::string& filePath,
   ktxTexture_Destroy(pKTXTexture);
   ktxVulkanDeviceInfo_Destruct(deviceInfo);
 
-  if (pNewTexture->createSampler(pSamplerInfo) != RE_OK) {
+  if (pNewTexture->setSampler(pSamplerInfo) != RE_OK) {
     revert(filePath.c_str());
     return RE_ERROR;
   }
@@ -265,7 +265,7 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
   newTexture->texture.layerCount = createInfo.arrayLayers;
   newTexture->texture.aspectMask = subRange.aspectMask;
 
-  if (newTexture->createSampler(&pInfo->samplerInfo) != RE_OK) {
+  if (newTexture->setSampler(&pInfo->samplerInfo) != RE_OK) {
     revert(pInfo->name.c_str());
     return nullptr;
   }

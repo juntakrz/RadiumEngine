@@ -38,16 +38,21 @@ class AEntity : public ABase {
   EActorType m_typeId = EActorType::Entity;
 
   WModel* m_pModel = nullptr;
-  // renderer bind index
+  
+  // Renderer bind index
   int32_t m_bindIndex = -1;
-  // root transform buffer bind index and offset
+
+  // Model instance index, must be bound to renderer to get a valid one
+  uint32_t m_instanceIndex = -1;
+
+  // Root transform buffer bind index and offset
   uint32_t m_rootTransformBufferIndex = -1;
   uint32_t m_rootTransformBufferOffset = -1;
 
   std::vector<AnimatedSkinBinding> m_animatedSkins;
   std::vector<AnimatedNodeBinding> m_animatedNodes;
 
-  // currently active animations (name / index in update queue)
+  // Currently active animations (name / index in update queue)
   std::unordered_map<std::string, int32_t> m_playingAnimations;
 
   AnimatedSkinBinding* getAnimatedSkinBinding(const int32_t skinIndex);
@@ -71,6 +76,9 @@ class AEntity : public ABase {
   uint32_t getNodeTransformBufferOffset(int32_t nodeIndex);
   uint32_t getSkinTransformBufferIndex(int32_t skinIndex);
   uint32_t getSkinTransformBufferOffset(int32_t skinIndex);
+
+  void setInstancePrimitiveMaterial(const int32_t meshIndex,
+    const int32_t primitiveIndex, const char* material);
 
   // simplified version of playAnimation
   void playAnimation(const std::string& name, const float speed = 1.0f,

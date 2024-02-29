@@ -4,7 +4,7 @@
     "C_Main": {
       "name": "C_Main",
       "translation": [ 0.0, 0.0, -2.0 ],
-      "rotation": [ 0.0, 0.0, 0.0 ],
+      "rotation": [ 0.0, 0.18, 0.0 ],
 	  "upVector": [ 0.0, 1.0, 0.0 ],
 	  "mode": {
         "view": "perspective",

@@ -127,8 +127,7 @@ void AEntity::bindToRenderer() {
   }
 
   // Register actor's root transform matrix
-  bool isNew = core::animations.getOrRegisterActorOffsetIndex(
-      this, m_rootTransformBufferIndex);
+  bool isNew = core::animations.getOrRegisterActorOffsetIndex(this, m_rootTransformBufferIndex);
   m_rootTransformBufferOffset = sizeof(glm::mat4) * m_rootTransformBufferIndex;
 
   if (!isNew) {
@@ -152,6 +151,10 @@ void AEntity::bindToRenderer() {
   }
 
   m_bindIndex = (int32_t)core::renderer.bindEntity(this);
+
+  // Increase the number of times this model is bound to renderer and store the latest 0-based instance index
+  m_pModel->m_instanceCount++;
+  m_instanceIndex = m_pModel->m_instanceCount - 1;
 }
 
 void AEntity::unbindFromRenderer() {
@@ -213,6 +216,36 @@ uint32_t AEntity::getSkinTransformBufferOffset(int32_t skinIndex) {
   }
 
   return 0;
+}
+
+void AEntity::setInstancePrimitiveMaterial(const int32_t meshIndex, const int32_t primitiveIndex, const char* material) {
+  if (m_instanceIndex == -1) {
+    RE_LOG(Error, "Unable to set instance material. An actor '%s' must be bound to renderer first to receive a valid instance index.",
+      m_name.c_str());
+    return;
+  }
+
+  WPrimitive* pPrimitive = m_pModel->getPrimitive(meshIndex, primitiveIndex);
+
+  if (!pPrimitive) {
+    RE_LOG(Error,
+      "Failed to set material '%s' for mesh %d, primitive %d of model "
+      "'%s'. Couldn't get the required primitive.",
+      material, meshIndex, primitiveIndex, m_name.c_str());
+    return;
+  }
+
+  RMaterial* pMaterial = core::resources.getMaterial(material);
+
+  if (!pMaterial) {
+    RE_LOG(
+      Error,
+      "Failed to get material '%s' for mesh %d, primitive %d of model '%s'.",
+      material, meshIndex, primitiveIndex, m_name.c_str());
+    return;
+  }
+
+  pPrimitive->instanceData[m_instanceIndex].instanceBufferBlock.materialId = pMaterial->bufferIndex;
 }
 
 void AEntity::playAnimation(const std::string& name, const float speed,

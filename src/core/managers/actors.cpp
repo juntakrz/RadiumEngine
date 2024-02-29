@@ -46,10 +46,6 @@ void core::MActors::updateLightingUBO(RLightingUBO* pLightingBuffer) {
   pLightingBuffer->lightCount = lightCount;
 }
 
-void core::MActors::initialize() {
-  //
-}
-
 ACamera* core::MActors::createCamera(const char* name,
                                      RCameraInfo* cameraSettings) {
   if (m_actors.cameras.try_emplace(name).second) {
@@ -234,6 +230,7 @@ APawn* core::MActors::createPawn(const char* name) {
   };
 
   m_actors.pawns.at(name) = std::make_unique<APawn>();
+  m_actors.pawns.at(name)->setName(name);
 
   // should probably add a reference to MRef here?
 

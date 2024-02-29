@@ -13,6 +13,8 @@ bool config::bDevMode = false;
 float config::pitchLimit = glm::radians(88.0f);
 uint32_t config::shadowResolution = 4096u;
 uint32_t config::shadowCascades = 4u;
+float config::maxAnisotropy = 16.0f;
+uint32_t config::ambientOcclusionMode = (uint32_t)EAOMode::HBAO;
 
 float config::getAspectRatio() { return renderWidth / (float)renderHeight; }
 
