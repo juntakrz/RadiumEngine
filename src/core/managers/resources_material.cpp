@@ -71,7 +71,7 @@ void core::MResources::initialize() {
   // Create present material that takes combined output of all render passes as
   // a shader read only attachment
   materialInfo = RMaterialInfo{};
-  materialInfo.name = RMAT_GPBR;
+  materialInfo.name = RMAT_MAIN;
   materialInfo.textures.baseColor = RTGT_GPBR;
   materialInfo.textures.normal = RTGT_PPBLOOM;
   materialInfo.textures.metalRoughness = RTGT_VELOCITYMAP;
@@ -91,6 +91,25 @@ void core::MResources::initialize() {
   }
 
   core::renderer.getMaterialData()->pGPBR = pMaterial;
+
+  // Create present material that takes combined output of all render passes as
+  // a shader read only attachment
+  materialInfo = RMaterialInfo{};
+  materialInfo.name = RMAT_BLUR;
+  materialInfo.textures.baseColor = RTGT_PPBLUR;
+  materialInfo.textures.occlusion = RTGT_PPAO;
+  materialInfo.alphaMode = EAlphaMode::Opaque;
+  materialInfo.doubleSided = false;
+  materialInfo.manageTextures = true;
+  materialInfo.passFlags = EDynamicRenderingPass::PPBlur;
+
+  if (!(pMaterial = createMaterial(&materialInfo))) {
+    RE_LOG(Critical, "Failed to create Vulkan present material.");
+
+    return;
+  }
+
+  core::renderer.getMaterialData()->pBlur = pMaterial;
 }
 
 uint32_t core::MResources::getFreeCombinedSamplerIndex() {

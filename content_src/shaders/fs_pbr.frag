@@ -8,13 +8,15 @@
 layout (location = 0) in vec2 inUV0;
 
 layout (location = 0) out vec4 outColor;
-layout (location = 1) out float outAO;
+layout (location = 1) out vec2 outAO;
 
 // Scene bindings
 layout (set = 0, binding = 0) uniform UBOScene {
 	mat4 view;
 	mat4 projection;
 	vec3 camPos;
+	vec2 haltonJitter;
+	vec2 planeData;
 } scene;
 
 // environment bindings
@@ -28,8 +30,8 @@ layout (set = 0, binding = 6) buffer OcclusionOffsets {
 } occlusionData;
 
 const float shadowBias = 0.00001;
-const float occlusionIntensity = 2.25;
-const float occlusionRadius = 1.5;
+const float occlusionIntensity = 2.6;
+const float occlusionRadius = 2.0;
 const float occlusionBias = 0.025;
 const float occlusionDistance = 6.0;
 const float occlusionColor = 0.01;
@@ -210,9 +212,9 @@ vec3 getRandomVector() {
 	ivec2 posDim = textureSize(samplers[material.samplerIndex[POSITIONMAP]], 0); 
 	ivec2 noiseDim = textureSize(noiseMap, 0);
 	const vec2 noiseUV = vec2(float(posDim.x)/float(noiseDim.x), float(posDim.y)/(noiseDim.y)) * inUV0;  
-	vec3 randomVector = vec3(texture(noiseMap, noiseUV).rgb) * 2.0 - 1.0;
+	vec3 randomVector = vec3(textureLod(noiseMap, noiseUV, 0).rgb);
 
-	return normalize(randomVector);
+	return randomVector;
 }
 
 // HBAO
@@ -256,8 +258,8 @@ float getHBAOPass(vec3 P, vec3 N, vec3 S) {
 }
 
 float getHBAO(vec2 UV) {
-	const int stepCount = 4;
-	const int directionCount = 8;
+	const int stepCount = int(sqrt(OCCLUSION_SAMPLES));
+	const int directionCount = stepCount * 2;
 	const ivec2 texDim = textureSize(samplers[material.samplerIndex[POSITIONMAP]], 0);
 	const vec2 fTexStep = vec2(1.0 / texDim);
 
@@ -415,22 +417,22 @@ void main() {
 
 	// Calculate SSAO (ignore emissive materials as they shouldn't self shadow)
 	if (lighting.aoMode == AO_NONE || baseColor.a < 0.01 || length(emissive.rgb) > 1.0 || worldPos.w > occlusionDistance) {
-		outAO = 1.0;
+		outAO = vec2(1.0, scene.planeData.y);
 		return;
 	}
 
 	switch (lighting.aoMode) {
 		case AO_HBAO: {
-			outAO = getHBAO(inUV0);
+			outAO = vec2(getHBAO(inUV0), worldPos.w);
 			break;
 		}
 		default: {
-			outAO = getSSAO(worldPos.xyz, normal);
+			outAO = vec2(getSSAO(worldPos.xyz, normal), 0.0);
 			break;
 		}
 	}
 
 	// Ambient occlusion smooth falloff, starts at occlusionDistance - 2.0
 	float aoFactor = clamp((worldPos.w - occlusionDistance + 2.0) * 0.5, 0.0, 1.0);
-	outAO = mix(outAO, 1.0, aoFactor);
+	outAO.r = mix(outAO.r, 1.0, aoFactor);
 }

@@ -21,7 +21,7 @@ class MRenderer {
     VkCommandPool poolCompute;
     VkCommandPool poolTransfer;
     std::vector<VkCommandBuffer> buffersGraphics;
-    std::vector<VkCommandBuffer> buffersCompute;  // TODO: not implemented yet
+    std::vector<VkCommandBuffer> buffersCompute;
     std::vector<VkCommandBuffer> buffersTransfer;
   } command;
 
@@ -62,6 +62,7 @@ class MRenderer {
     RMaterial* pSunShadow = nullptr;
     RMaterial* pGBuffer = nullptr;
     RMaterial* pGPBR = nullptr;
+    RMaterial* pBlur = nullptr;
 
     std::vector<VkSampler> samplers;
   } material;
@@ -376,7 +377,7 @@ public:
                                       bool begin);
 
   // begins command buffer in a "one time submit" mode
-  void beginCommandBuffer(VkCommandBuffer cmdBuffer);
+  void beginCommandBuffer(VkCommandBuffer cmdBuffer, bool oneTimeSubmit = true);
 
   // end writing to the buffer and submit commands to specific queue,
   // optionally free the buffer and/or use fence
@@ -552,7 +553,7 @@ public:
 
  public:
   void queueComputeJob(RComputeJobInfo* pInfo);
-  void executeComputeJobImmediate(RComputeJobInfo* pInfo, const bool beginBuffer);
+  void executeComputeJobImmediate(RComputeJobInfo* pInfo);
   void executeQueuedComputeJobs();
 
   //
@@ -574,6 +575,8 @@ public:
                             RMaterial* pPushMaterial = nullptr, bool renderQuad = false);
 
   void executeShadowPass(VkCommandBuffer commandBuffer, const uint32_t cascadeIndex);
+
+  void executeAOBlurPass(VkCommandBuffer commandBuffer);
 
   void executePostProcesssTAAPass(VkCommandBuffer commandBuffer);
   void executePostProcessSamplingPass(VkCommandBuffer commandBuffer, const uint32_t imageViewIndex, const bool upsample);

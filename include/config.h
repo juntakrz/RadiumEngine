@@ -19,6 +19,7 @@
 #define RTGT_PPTAA              "RT2D_TAA"          // PBR + velocity and history images
 #define RTGT_PPBLOOM            "RT2D_PPBloom"      // Post processing bloom target
 #define RTGT_PPAO               "RT2D_PPAO"         // Post processing ambient occlusion target
+#define RTGT_PPBLUR             "RT2D_PPBlur"      // Post processing intermediate blur targets
 
 #define RTGT_ENV                "RTCube_Env"
 #define RTGT_ENVFILTER          "RTCube_EnvSkybox"
@@ -40,8 +41,9 @@
 
 // default materials
 #define RMAT_GBUFFER            "RMat_GBuffer"
-#define RMAT_GPBR               "RMat_GPBR"
+#define RMAT_MAIN               "RMat_Main"
 #define RMAT_SHADOW             "RMat_Shadow"
+#define RMAT_BLUR               "RMat_Blur"
 
 // default models
 #define RMDL_SKYBOX             "RMdl_SkyBox"       // default cube skybox using cubemap

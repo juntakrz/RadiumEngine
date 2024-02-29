@@ -34,16 +34,35 @@ layout (set = 2, binding = 0) uniform sampler2DArray arraySamplers[];
 // The higher the value - the higher the mix of ambient occlusion
 const float occlusionBias = 0.25;
 
+vec3 gaussianBlur(vec3 color) {
+    float occlusionFactor = 0.0;
+    const vec2 texelSize = 1.0 / vec2(textureSize(samplers[material.samplerIndex[EXTRAMAP1]], 0));
+    const float blurRadius = 2.0;
+    float w0 = 0.5135 / pow(blurRadius, 0.96);
+    float radiusSquared = blurRadius * blurRadius;
+
+    for (float x = -blurRadius; x <= blurRadius; x++) {
+        vec2 offset = vec2(x * texelSize.x, 0.0);
+        float w = w0 * exp((-x * x) / (2.0 * radiusSquared));
+        occlusionFactor +=  texture(samplers[material.samplerIndex[EXTRAMAP1]], inUV + offset).r * w;
+    }
+
+    vec3 occludedColor = color * occlusionFactor;
+    occlusionFactor = clamp(occlusionFactor - occlusionBias, 0.0, 1.0);
+    return mix(occludedColor, color, occlusionFactor);
+}
+
+
 vec3 getOcclusion(vec3 color) {
     float occlusionFactor = 0.0;
-    const vec2 texelSize = 1.0 / vec2(textureSize(samplers[material.samplerIndex[EXTRAMAP1]], 0)) * 2.0;
+    const vec2 texelSize = 1.0 / vec2(textureSize(samplers[material.samplerIndex[EXTRAMAP1]], 0));
     const int range = 2;
     int count = 0;
 
     for (int x = -range; x < range + 1; x++) {
         for (int y = -range; y < range + 1; y++) {
             const vec2 offset = vec2(texelSize.x * x, texelSize.y * y);
-            float sampledOcclusion = textureLod(samplers[material.samplerIndex[EXTRAMAP1]], inUV + offset, 0).r;
+            float sampledOcclusion = texture(samplers[material.samplerIndex[EXTRAMAP1]], inUV + offset).r;
             occlusionFactor += sampledOcclusion;
             count++;
         }
@@ -100,7 +119,10 @@ void main() {
 
     // Apply ambient occlusion
     if (lighting.aoMode != AO_NONE) {
-        sampleColor.rgb = getOcclusion(sampleColor.rgb);
+        float occlusionFactor = texture(samplers[material.samplerIndex[EXTRAMAP1]], inUV).r;
+        vec3 occludedColor = sampleColor.rgb * occlusionFactor;
+        occlusionFactor = clamp(occlusionFactor - occlusionBias, 0.0, 1.0);
+        sampleColor.rgb = mix(occludedColor, sampleColor.rgb, occlusionFactor);
     }
     
     outColor = mix(sampleColor, color, color.a);

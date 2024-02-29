@@ -288,6 +288,73 @@ void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uin
   }
 }
 
+void core::MRenderer::executeAOBlurPass(VkCommandBuffer commandBuffer) {
+  RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::PPBlur);
+  renderView.pCurrentPass = pRenderPass;
+
+  // AO blur uses two passes - horizontal and vertical
+  for (uint8_t pass = 0; pass < 2; ++pass) {
+    VkRenderingAttachmentInfo overrideAttachment = pRenderPass->renderingInfo.pColorAttachments[0];
+
+    VkImageSubresourceRange subRange;
+    subRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    subRange.baseArrayLayer = 0u;
+    subRange.layerCount = 1u;
+    subRange.baseMipLevel = 0u;
+    subRange.levelCount = 1u;
+
+    switch (pass) {
+      case 0: {
+        setImageLayout(commandBuffer, pRenderPass->pImageReferences[0], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
+        overrideAttachment.imageView = pRenderPass->pImageReferences[0]->texture.view;
+
+        break;
+      }
+      default: {
+        RTexture* pAOTexture = material.pBlur->pOcclusion;
+        setImageLayout(commandBuffer, pAOTexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
+        overrideAttachment.imageView = pAOTexture->texture.view;
+
+        break;
+      }
+    }
+
+    VkRenderingInfo overrideInfo = pRenderPass->renderingInfo;
+    overrideInfo.pColorAttachments = &overrideAttachment;
+
+    vkCmdBeginRendering(commandBuffer, &overrideInfo);
+
+    setViewport(commandBuffer, pRenderPass->viewportId);
+    renderView.currentViewportId = renderView.pCurrentPass->viewportId;
+
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderView.pCurrentPass->pipeline);
+
+    // Used by internal shader operations to determine which type of processing to perform
+    material.pBlur->pushConstantBlock.textureSets = pass;
+
+    vkCmdPushConstants(commandBuffer, renderView.pCurrentPass->layout, VK_SHADER_STAGE_FRAGMENT_BIT,
+      sizeof(RSceneVertexPCB), sizeof(RSceneFragmentPCB), &material.pBlur->pushConstantBlock);
+
+    vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+
+    vkCmdEndRendering(commandBuffer);
+
+    switch (pass) {
+    case 0: {
+      setImageLayout(commandBuffer, pRenderPass->pImageReferences[0], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subRange);
+
+      break;
+    }
+    default: {
+      RTexture* pAOTexture = material.pBlur->pOcclusion;
+      setImageLayout(commandBuffer, pAOTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subRange);
+
+      break;
+    }
+    }
+  }
+}
+
 void core::MRenderer::executePostProcesssTAAPass(VkCommandBuffer commandBuffer) {
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::PPTAA);
   renderView.pCurrentPass = pRenderPass;
@@ -337,8 +404,7 @@ void core::MRenderer::executePostProcessSamplingPass(VkCommandBuffer commandBuff
   VkRenderingAttachmentInfo overrideAttachment = pRenderPass->renderingInfo.pColorAttachments[0];
   overrideAttachment.imageView = pRenderPass->pImageReferences[0]->texture.extraViews[imageViewIndex].imageView;
 
-  VkRenderingInfo overrideInfo{};
-  overrideInfo = pRenderPass->renderingInfo;
+  VkRenderingInfo overrideInfo = pRenderPass->renderingInfo;
   overrideInfo.pColorAttachments = &overrideAttachment;
   overrideInfo.renderArea = postprocess.scissors[imageViewIndex];
 
@@ -551,6 +617,8 @@ void core::MRenderer::renderFrame() {
   // Additional front rendering passes
   executeRenderingPass(cmdBuffer, EDynamicRenderingPass::Skybox);
 
+  executeAOBlurPass(cmdBuffer);
+
   executeRenderingPass(cmdBuffer, EDynamicRenderingPass::AlphaCompositing, material.pGPBR, true);
 
   /* 4. Postprocessing pass */
@@ -589,7 +657,6 @@ void core::MRenderer::renderFrame() {
                     sync.fenceInFlight[renderView.frameInFlight]) !=
       VK_SUCCESS) {
     RE_LOG(Error, "Failed to submit data to graphics queue.");
-    ;
   }
 
   VkSwapchainKHR swapChains[] = {swapChain};

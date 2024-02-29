@@ -103,11 +103,12 @@ enum EDynamicRenderingPass : uint32_t {
   Skybox              = 0b100000000,
   AlphaCompositing    = 0b1000000000,
   PBR                 = 0b10000000000,
-  PPDownsample        = 0b100000000000,
-  PPUpsample          = 0b1000000000000,
-  PPGetExposure       = 0b10000000000000,
-  PPTAA               = 0b100000000000000,
-  Present             = 0b1000000000000000
+  PPBlur              = 0b100000000000,
+  PPDownsample        = 0b1000000000000,
+  PPUpsample          = 0b10000000000000,
+  PPGetExposure       = 0b100000000000000,
+  PPTAA               = 0b1000000000000000,
+  Present             = 0b10000000000000000
 };
 
 enum class ELightType {
