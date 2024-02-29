@@ -30,7 +30,7 @@ layout (set = 0, binding = 6) buffer OcclusionOffsets {
 } occlusionData;
 
 const float shadowBias = 0.00001;
-const float occlusionIntensity = 2.6;
+const float occlusionIntensity = 2.55;
 const float occlusionRadius = 2.0;
 const float occlusionBias = 0.025;
 const float occlusionDistance = 6.0;
@@ -299,22 +299,22 @@ float getHBAO(vec2 UV) {
 }
 
 // SSAO
-
 float getSSAO(vec3 worldPos, vec3 normal) {
 	float occlusion = 0.0;
 
 	vec4 newPos = scene.view * vec4(worldPos, 1.0);
 	vec3 randomVector = getRandomVector();
-	randomVector.z = -randomVector.z;
 
 	// Create TBN matrix
 	vec3 tangent = normalize(randomVector - normal * dot(randomVector, normal));
 	vec3 bitangent = cross(tangent, normal);
 	mat3 TBN = mat3(tangent, bitangent, normal);
 
+	float aoOcclusionRadius = occlusionRadius * 0.5;
+
 	for(int i = 0; i < OCCLUSION_SAMPLES; i++) {		
 		vec3 samplePos = TBN * occlusionData.occlusionOffsets[i].xyz; 
-		samplePos = newPos.xyz + samplePos * occlusionRadius; 
+		samplePos = newPos.xyz + samplePos * aoOcclusionRadius; 
 
 		vec4 sampleOffset = vec4(samplePos, 1.0);
 		sampleOffset = scene.projection * sampleOffset; 
@@ -329,11 +329,14 @@ float getSSAO(vec3 worldPos, vec3 normal) {
 			continue;
 		}
 
-		float rangeCheck = smoothstep(0.0, 1.0, occlusionRadius / abs(newPos.z - sampleDepth));
+		float rangeCheck = smoothstep(0.0, 1.0, aoOcclusionRadius / abs(newPos.z - sampleDepth));
 		occlusion += (sampleDepth > samplePos.z - occlusionBias ? 1.0 : occlusionColor) * rangeCheck;
 	}
 
-	return occlusion /= float(OCCLUSION_SAMPLES);
+	occlusion /= float(OCCLUSION_SAMPLES);
+
+	// Trying to keep SSAO intensity in line with HBAO
+	return clamp(occlusion * (1.0 / occlusionIntensity), 0.0, 1.0);
 }
 
 void main() {
@@ -427,7 +430,7 @@ void main() {
 			break;
 		}
 		default: {
-			outAO = vec2(getSSAO(worldPos.xyz, normal), 0.0);
+			outAO = vec2(getSSAO(worldPos.xyz, normal), worldPos.w);
 			break;
 		}
 	}
