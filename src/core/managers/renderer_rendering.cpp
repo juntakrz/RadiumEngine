@@ -228,6 +228,14 @@ void core::MRenderer::prepareFrameResources(VkCommandBuffer commandBuffer) {
     &scene.transparencyLinkedListClearColor, 1u, &scene.transparencySubRange);
   
   vkCmdFillBuffer(commandBuffer, scene.transparencyLinkedListBuffer.buffer, 0, sizeof(uint32_t), 0);
+
+  // Wait for instance data thread to be ready before drawing any mesh
+  {
+    std::mutex mtx;
+    std::unique_lock<std::mutex> lock(mtx);
+    sync.cvInstanceDataReady.wait(lock, [this]() { return sync.isInstanceDataReady; });
+    sync.isInstanceDataReady = false;
+  }
 }
 
 void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uint32_t cascadeIndex) {
@@ -599,13 +607,6 @@ void core::MRenderer::renderFrame() {
   if (renderView.generateEnvironmentMaps) {
     renderEnvironmentMaps(cmdBuffer, environment.genInterval);
   }
-  
-  {
-    std::mutex mtx;
-    std::unique_lock<std::mutex> lock(mtx);
-    sync.cvInstanceDataReady.wait(lock, [this]() { return sync.isInstanceDataReady; });
-    sync.isInstanceDataReady = false;
-  }
 
   /* 2. Cascaded shadows */
 
@@ -627,6 +628,7 @@ void core::MRenderer::renderFrame() {
   executeRenderingPass(cmdBuffer, EDynamicRenderingPass::DiscardCullNone);
   executeRenderingPass(cmdBuffer, EDynamicRenderingPass::BlendCullNone);
 
+  // Synchronize instance processing thread since all instances are submitted queue
   sync.asyncUpdateInstanceBuffers.update();
 
   // Deferred rendering pass using G-Buffer collected data
@@ -706,7 +708,6 @@ void core::MRenderer::renderFrame() {
 
   // Synchronize CPU threads
   sync.asyncUpdateEntities.update();
-  //sync.asyncUpdateInstanceBuffers.update();
 
   renderView.frameInFlight = ++renderView.frameInFlight % MAX_FRAMES_IN_FLIGHT;
   ++renderView.framesRendered;

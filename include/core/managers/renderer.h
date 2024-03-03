@@ -99,6 +99,8 @@ class MRenderer {
     RSceneUBO sceneBufferObject;
 
     std::unordered_set<WModel*> pModelReferences;
+
+    std::vector<RInstanceData> instanceData;
   } scene;
 
   struct RPostProcessData {

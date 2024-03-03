@@ -480,7 +480,10 @@ void core::MRenderer::copyDataToBuffer(void* pData, VkDeviceSize dataSize, RBuff
 
 // Runs in a dedicated thread
 void core::MRenderer::updateInstanceBuffer() {
-  std::vector<RInstanceData> instanceData(scene.totalInstances);
+  if (scene.instanceData.size() != scene.totalInstances) {
+    scene.instanceData.resize(scene.totalInstances);
+  }
+
   uint32_t index = 0u;
   uint32_t bufferIndex = (renderView.frameInFlight + 1) % MAX_FRAMES_IN_FLIGHT;
 
@@ -494,13 +497,15 @@ void core::MRenderer::updateInstanceBuffer() {
       uint32_t primitiveInstanceIndex = 0u;
 
       for (auto& instanceDataEntry : primitive->instanceData) {
+        bool isVisible = true;
+
         if (!(primitive->pInitialMaterial->passFlags & EDynamicRenderingPass::EnvSkybox)) {
-          instanceDataEntry.isVisible = pCamera->isBoundingBoxInFrustum(
+          isVisible = pCamera->isBoundingBoxInFrustum(
             primitive, projectionViewMatrix, instanceDataEntry.pParentEntity->getRootTransformationMatrix());
         }
 
-        if (instanceDataEntry.isVisible) {
-          instanceData[index] = instanceDataEntry.instanceBufferBlock;
+        if (isVisible && instanceDataEntry.isVisible) {
+          scene.instanceData[index] = instanceDataEntry.instanceBufferBlock;
           instanceDataEntry.instanceIndex[bufferIndex] = index;
 
           primitive->instanceInfo[bufferIndex].visibleInstanceCount++;
@@ -508,17 +513,16 @@ void core::MRenderer::updateInstanceBuffer() {
           if (primitive->instanceInfo[bufferIndex].firstVisibleInstance == -1) {
             primitive->instanceInfo[bufferIndex].firstVisibleInstance = primitiveInstanceIndex;
           }
-
-          ++index;
         }
 
         ++primitiveInstanceIndex;
+        ++index;
       }
     }
   }
 
   memcpy(scene.instanceBuffers[bufferIndex].allocInfo.pMappedData,
-    instanceData.data(), sizeof(RInstanceData) * index);
+    scene.instanceData.data(), sizeof(RInstanceData) * index);
 
   sync.isInstanceDataReady = true;
 }
