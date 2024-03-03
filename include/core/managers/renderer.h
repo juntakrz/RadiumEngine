@@ -133,6 +133,9 @@ class MRenderer {
     std::vector<VkFence> fenceInFlight;
     RAsync asyncUpdateEntities;
     RAsync asyncUpdateInstanceBuffers;
+
+    std::condition_variable cvInstanceDataReady;
+    bool isInstanceDataReady = false;
   } sync;
 
   // render system data - passes, pipelines, mesh data to render

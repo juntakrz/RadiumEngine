@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "util/util.h"
+#include "core/world/actors/camera.h"
 #include "core/objects.h"
 
 std::set<int32_t> RVkQueueFamilyIndices::getAsSet() const {

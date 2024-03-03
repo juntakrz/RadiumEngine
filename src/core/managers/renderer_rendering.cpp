@@ -30,11 +30,19 @@ void core::MRenderer::drawBoundEntities(VkCommandBuffer commandBuffer, EDynamicR
 void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
                                       WPrimitive* pPrimitive,
                                       WModel* pModel) {
-  uint32_t instanceCount = static_cast<uint32_t>(pPrimitive->instanceData.size());
+  const uint32_t instanceCount = pPrimitive->instanceInfo[renderView.frameInFlight].visibleInstanceCount;
+
+  if (instanceCount == 0) return;
+
+  const uint32_t firstVisibleInstance = pPrimitive->instanceInfo[renderView.frameInFlight].firstVisibleInstance;
+  const uint32_t instanceIndex = pPrimitive->instanceData[firstVisibleInstance].instanceIndex[renderView.frameInFlight];
+
   int32_t vertexOffset = (int32_t)pModel->m_sceneVertexOffset + (int32_t)pPrimitive->vertexOffset;
   uint32_t indexOffset = pModel->m_sceneIndexOffset + pPrimitive->indexOffset;
 
-  VkDeviceSize instanceOffset = sizeof(RInstanceData) * pPrimitive->instanceData[0].instanceIndex;
+  //VkDeviceSize instanceOffset = sizeof(RInstanceData) * pPrimitive->instanceData[pPrimitive->instanceInfo[renderView.frameInFlight]
+    //.firstVisibleInstance].instanceIndex[renderView.frameInFlight];
+  VkDeviceSize instanceOffset = sizeof(RInstanceData) * instanceIndex;
   vkCmdBindVertexBuffers(cmdBuffer, 1, 1, &scene.instanceBuffers[renderView.frameInFlight].buffer, &instanceOffset);
 
   // TODO: implement draw indirect
@@ -562,6 +570,7 @@ void core::MRenderer::renderFrame() {
   vkResetCommandBuffer(command.buffersGraphics[renderView.frameInFlight], NULL);
 
   executeQueuedComputeJobs();
+  //std::this_thread::sleep_for(std::chrono::milliseconds(30));
 
   VkCommandBuffer cmdBuffer = command.buffersGraphics[renderView.frameInFlight];
 
@@ -590,6 +599,13 @@ void core::MRenderer::renderFrame() {
   if (renderView.generateEnvironmentMaps) {
     renderEnvironmentMaps(cmdBuffer, environment.genInterval);
   }
+  
+  {
+    std::mutex mtx;
+    std::unique_lock<std::mutex> lock(mtx);
+    sync.cvInstanceDataReady.wait(lock, [this]() { return sync.isInstanceDataReady; });
+    sync.isInstanceDataReady = false;
+  }
 
   /* 2. Cascaded shadows */
 
@@ -610,6 +626,8 @@ void core::MRenderer::renderFrame() {
   executeRenderingPass(cmdBuffer, EDynamicRenderingPass::OpaqueCullNone);
   executeRenderingPass(cmdBuffer, EDynamicRenderingPass::DiscardCullNone);
   executeRenderingPass(cmdBuffer, EDynamicRenderingPass::BlendCullNone);
+
+  sync.asyncUpdateInstanceBuffers.update();
 
   // Deferred rendering pass using G-Buffer collected data
   executeRenderingPass(cmdBuffer, EDynamicRenderingPass::PBR, material.pGBuffer, true);
@@ -638,8 +656,7 @@ void core::MRenderer::renderFrame() {
   // Wait until image to write color data to is acquired
   VkSemaphore waitSems[] = {sync.semImgAvailable[renderView.frameInFlight]};
   VkSemaphore signalSems[] = {sync.semRenderFinished[renderView.frameInFlight]};
-  VkPipelineStageFlags waitStages[] = {
-      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+  VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
   VkSubmitInfo submitInfo{};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -689,7 +706,7 @@ void core::MRenderer::renderFrame() {
 
   // Synchronize CPU threads
   sync.asyncUpdateEntities.update();
-  sync.asyncUpdateInstanceBuffers.update();
+  //sync.asyncUpdateInstanceBuffers.update();
 
   renderView.frameInFlight = ++renderView.frameInFlight % MAX_FRAMES_IN_FLIGHT;
   ++renderView.framesRendered;

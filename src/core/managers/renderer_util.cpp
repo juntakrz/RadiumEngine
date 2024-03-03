@@ -1055,8 +1055,9 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
     WModel::Node* pNode = reinterpret_cast<WModel::Node*>(primitive->pOwnerNode);
 
     auto& instanceData = primitive->instanceData.emplace_back();
-    instanceData.instanceIndex = scene.currentInstanceUID++;
+    instanceData.instanceIndex.resize(MAX_FRAMES_IN_FLIGHT);
     instanceData.isVisible = true;
+    instanceData.pParentEntity = pEntity;
     instanceData.instanceBufferBlock.modelMatrixId = pEntity->getRootTransformBufferIndex();
     instanceData.instanceBufferBlock.nodeMatrixId = pEntity->getNodeTransformBufferIndex(pNode->index);
     instanceData.instanceBufferBlock.skinMatrixId = pEntity->getSkinTransformBufferIndex(pNode->skinIndex);

@@ -6,6 +6,11 @@
 
 class WPrimitive {
  public:
+  struct WPrimitiveInstanceInfo {
+     uint32_t firstVisibleInstance = -1;
+     uint32_t visibleInstanceCount = 0;
+  };
+
   uint32_t vertexOffset = 0u;    // initial vertex location in owning model
   uint32_t indexOffset = 0u;     // initial index location in owning model
   uint32_t vertexCount = 0u;
@@ -13,12 +18,14 @@ class WPrimitive {
 
   RMaterial* pInitialMaterial = nullptr;
   void* pOwnerNode = nullptr;
-
+  
+  std::vector<WPrimitiveInstanceInfo> instanceInfo;
   std::vector<WPrimitiveInstanceData> instanceData;
 
   struct {
     glm::vec3 min = glm::vec3(0.0f);
     glm::vec3 max = glm::vec3(0.0f);
+    glm::vec4 boxCorners[8];
     bool isValid = false;
   } extent;
 
@@ -39,9 +46,6 @@ class WPrimitive {
   void generateCube(int32_t divisions, bool invertNormals,
                     std::vector<RVertex>& outVertices,
                     std::vector<uint32_t>& outIndices) noexcept;
-
-  void generateBoundingBox(std::vector<RVertex>& outVertices,
-                           std::vector<uint32_t>& outIndices) noexcept;
 
 
   void setBoundingBoxExtent(const glm::vec3& min, const glm::vec3& max);

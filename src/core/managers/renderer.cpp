@@ -606,14 +606,14 @@ TResult core::MRenderer::createSyncObjects() {
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
     if (vkCreateSemaphore(logicalDevice.device, &semInfo, nullptr,
                           &sync.semImgAvailable[i]) != VK_SUCCESS) {
-      RE_LOG(Critical, "failed to create 'image available' semaphore.");
+      RE_LOG(Critical, "Failed to create 'image available' semaphore.");
 
       return RE_CRITICAL;
     }
 
     if (vkCreateSemaphore(logicalDevice.device, &semInfo, nullptr,
                           &sync.semRenderFinished[i]) != VK_SUCCESS) {
-      RE_LOG(Critical, "failed to create 'render finished' semaphore.");
+      RE_LOG(Critical, "Failed to create 'render finished' semaphore.");
 
       return RE_CRITICAL;
     }
@@ -631,7 +631,7 @@ TResult core::MRenderer::createSyncObjects() {
   sync.asyncUpdateEntities.bindFunction(this, &MRenderer::updateBoundEntities);
   sync.asyncUpdateEntities.start();
 
-  sync.asyncUpdateInstanceBuffers.bindFunction(this, &MRenderer::updateInstanceBuffer);
+  sync.asyncUpdateInstanceBuffers.bindFunction(this, &MRenderer::updateInstanceBuffer, &sync.cvInstanceDataReady);
   sync.asyncUpdateInstanceBuffers.start();
 
   return RE_OK;
@@ -642,8 +642,7 @@ void core::MRenderer::destroySyncObjects() {
 
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
     vkDestroySemaphore(logicalDevice.device, sync.semImgAvailable[i], nullptr);
-    vkDestroySemaphore(logicalDevice.device, sync.semRenderFinished[i],
-                       nullptr);
+    vkDestroySemaphore(logicalDevice.device, sync.semRenderFinished[i], nullptr);
 
     vkDestroyFence(logicalDevice.device, sync.fenceInFlight[i], nullptr);
   }
@@ -661,6 +660,8 @@ void core::MRenderer::updateSceneUBO(uint32_t currentImage) {
   scene.sceneBufferObject.cameraPosition = view.pActiveCamera->getLocation();
   scene.sceneBufferObject.haltonJitter = system.haltonJitter[renderView.framesRendered % core::vulkan::haltonSequenceCount];
   scene.sceneBufferObject.clipData = view.pActiveCamera->getNearAndFarPlane();
+
+  //view.pActiveCamera->updateFrustum();
 
   uint8_t* pSceneUBO = static_cast<uint8_t*>(scene.sceneBuffers[currentImage].allocInfo.pMappedData) +
                        config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();

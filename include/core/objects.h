@@ -543,9 +543,10 @@ struct WModelConfigInfo {
 };
 
 struct WPrimitiveInstanceData {
-  uint32_t instanceIndex = 0;
+  std::vector<uint32_t> instanceIndex;    // reference into a corresponding instanceBuffer
   uint32_t passFlags = 0;
   bool isVisible = true;
+  AEntity* pParentEntity = nullptr;
 
   RInstanceData instanceBufferBlock;
 };

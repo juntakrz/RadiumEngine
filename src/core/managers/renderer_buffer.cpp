@@ -2,6 +2,8 @@
 #include "core/core.h"
 #include "core/material/texture.h"
 #include "core/model/model.h"
+#include "core/world/actors/entity.h"
+#include "core/managers/actors.h"
 #include "core/managers/renderer.h"
 
 TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuffer& outBuffer, void* inData) {
@@ -479,20 +481,44 @@ void core::MRenderer::copyDataToBuffer(void* pData, VkDeviceSize dataSize, RBuff
 // Runs in a dedicated thread
 void core::MRenderer::updateInstanceBuffer() {
   std::vector<RInstanceData> instanceData(scene.totalInstances);
-
   uint32_t index = 0u;
+  uint32_t bufferIndex = (renderView.frameInFlight + 1) % MAX_FRAMES_IN_FLIGHT;
+
+  ACamera* pCamera = core::actors.getCamera(RCAM_MAIN);
+  const glm::mat4 projectionViewMatrix = pCamera->getProjection() * pCamera->getView();
+
   for (auto& model : scene.pModelReferences) {
     for (auto& primitive : model->m_pLinearPrimitives) {
+      primitive->instanceInfo[bufferIndex].firstVisibleInstance = -1;
+      primitive->instanceInfo[bufferIndex].visibleInstanceCount = 0;
+      uint32_t primitiveInstanceIndex = 0u;
+
       for (auto& instanceDataEntry : primitive->instanceData) {
+        if (!(primitive->pInitialMaterial->passFlags & EDynamicRenderingPass::EnvSkybox)) {
+          instanceDataEntry.isVisible = pCamera->isBoundingBoxInFrustum(
+            primitive, projectionViewMatrix, instanceDataEntry.pParentEntity->getRootTransformationMatrix());
+        }
+
         if (instanceDataEntry.isVisible) {
           instanceData[index] = instanceDataEntry.instanceBufferBlock;
-          instanceDataEntry.instanceIndex = index;
-          index++;
+          instanceDataEntry.instanceIndex[bufferIndex] = index;
+
+          primitive->instanceInfo[bufferIndex].visibleInstanceCount++;
+
+          if (primitive->instanceInfo[bufferIndex].firstVisibleInstance == -1) {
+            primitive->instanceInfo[bufferIndex].firstVisibleInstance = primitiveInstanceIndex;
+          }
+
+          ++index;
         }
+
+        ++primitiveInstanceIndex;
       }
     }
   }
 
-  memcpy(scene.instanceBuffers[renderView.frameInFlight].allocInfo.pMappedData,
-         instanceData.data(), sizeof(RInstanceData) * instanceData.size());
+  memcpy(scene.instanceBuffers[bufferIndex].allocInfo.pMappedData,
+    instanceData.data(), sizeof(RInstanceData) * index);
+
+  sync.isInstanceDataReady = true;
 }
