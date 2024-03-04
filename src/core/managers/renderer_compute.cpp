@@ -219,7 +219,8 @@ void core::MRenderer::executeComputeJobImmediate(RComputeJobInfo* pInfo) {
       memoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
       memoryBarrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
       //memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
-      memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+      //memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+      memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
       memoryBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
 
       VkDependencyInfo computeDependency{};

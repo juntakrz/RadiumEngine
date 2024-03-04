@@ -46,6 +46,7 @@ enum class EBufferType {  // VkBuffer creation mode
   CPU_VERTEX,         // Vertex buffer for the iGPU (UNUSED)
   CPU_INDEX,          // Index buffer for the iGPU (UNUSED)
   CPU_STORAGE,        // Storage buffer for CPU to write and read data from
+  CPU_INDIRECT,
   DGPU_VERTEX,        // Dedicated GPU vertex buffer
   DGPU_INDEX,         // Dedicated GPU index buffer
   DGPU_UNIFORM,
@@ -429,6 +430,9 @@ struct RVkPhysicalDevice {
   VkPhysicalDeviceMemoryProperties memProperties;
   RVkQueueFamilyIndices queueFamilyIndices;
   RVkSwapChainInfo swapChainInfo;
+
+  bool isMultiDrawIndirectCapable = false;
+
   bool bIsValid = false;
 };
 

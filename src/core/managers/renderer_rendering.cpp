@@ -618,8 +618,7 @@ void core::MRenderer::renderFrame() {
   }
 
   /* 3. Main scene */
-
-  setCamera(RCAM_MAIN);
+  setCamera(view.pPrimaryCamera);
   updateSceneUBO(renderView.frameInFlight);
 
   // G-Buffer passes

@@ -26,6 +26,7 @@ class WPrimitive {
     glm::vec3 min = glm::vec3(0.0f);
     glm::vec3 max = glm::vec3(0.0f);
     glm::vec4 boxCorners[8];
+    float magnitude = 0.0f;
     bool isValid = false;
   } extent;
 

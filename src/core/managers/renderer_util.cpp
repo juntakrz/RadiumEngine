@@ -1064,17 +1064,6 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
     instanceData.instanceBufferBlock.materialId = primitive->pInitialMaterial->bufferIndex;
   }
 
-  // TODO: implement indirect draw command properly
-  /*VkDrawIndexedIndirectCommand drawCommand{};
-  drawCommand.firstInstance = 0;
-  drawCommand.instanceCount = 1;
-  drawCommand.vertexOffset = scene.currentVertexOffset;
-  drawCommand.firstIndex = scene.currentIndexOffset;
-  drawCommand.indexCount = pModel->m_indexCount;
-
-  system.drawCommands.emplace_back(drawCommand);*/
-  // TODO
-
   pEntity->setRendererBindingIndex(
       static_cast<int32_t>(system.bindings.size() - 1));
 
@@ -1131,21 +1120,32 @@ void core::MRenderer::uploadModelToSceneBuffer(WModel* pModel) {
   scene.currentIndexOffset += pModel->m_indexCount;
 }
 
-void core::MRenderer::setCamera(const char* name) {
-  view.pActiveCamera = core::actors.getCamera(name);
+void core::MRenderer::setCamera(const char* name, const bool setAsPrimary) {
+  ACamera* pCamera = core::actors.getCamera(name);
 
-  if (!view.pActiveCamera) {
+  if (!pCamera) {
     RE_LOG(Error, "Failed to set camera '%s' - not found.", name);
-  }
-}
-
-void core::MRenderer::setCamera(ACamera* pCamera) {
-  if (pCamera != nullptr) {
-    view.pActiveCamera = pCamera;
     return;
   }
 
-  RE_LOG(Error, "Failed to set camera, received nullptr.");
+  view.pActiveCamera = pCamera;
+
+  if (setAsPrimary) {
+    view.pPrimaryCamera = pCamera;
+  }
+}
+
+void core::MRenderer::setCamera(ACamera* pCamera, const bool setAsPrimary) {
+  if (!pCamera) {
+    RE_LOG(Error, "Failed to set camera, received nullptr.");
+    return;
+  }
+
+  view.pActiveCamera = pCamera;
+
+  if (setAsPrimary) {
+    view.pPrimaryCamera = pCamera;
+  }
 }
 
 void core::MRenderer::setSunCamera(const char* name) {

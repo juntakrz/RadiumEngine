@@ -33,8 +33,6 @@ class AEntity : public ABase {
     bool requiresTransformBufferBlockUpdate = true;
   };
 
-  glm::mat4 m_modelMatrix = glm::mat4(1.0f);
-
   EActorType m_typeId = EActorType::Entity;
 
   WModel* m_pModel = nullptr;

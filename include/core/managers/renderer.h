@@ -23,6 +23,9 @@ class MRenderer {
     std::vector<VkCommandBuffer> buffersGraphics;
     std::vector<VkCommandBuffer> buffersCompute;
     std::vector<VkCommandBuffer> buffersTransfer;
+
+    std::vector<VkDrawIndexedIndirectCommand> indirectCommands;
+    std::vector<RBuffer> indirectCommandBuffers;
   } command;
 
   struct {
@@ -154,7 +157,6 @@ class MRenderer {
     std::unordered_map<EDescriptorSetLayout, VkDescriptorSetLayout> descriptorSetLayouts;
 
     std::vector<REntityBindInfo> bindings;  // entities rendered during the current frame
-    std::vector<VkDrawIndexedIndirectCommand> drawCommands;
 
     VkQueryPool queryPool;
 
@@ -166,6 +168,7 @@ class MRenderer {
   struct {
     RCameraInfo cameraSettings;
     ACamera* pActiveCamera = nullptr;
+    ACamera* pPrimaryCamera = nullptr;
     ACamera* pSunCamera = nullptr;
   } view;
 
@@ -405,8 +408,8 @@ public:
   void uploadModelToSceneBuffer(WModel* pModel);
 
   // set camera from create cameras by name
-  void setCamera(const char* name);
-  void setCamera(ACamera* pCamera);
+  void setCamera(const char* name, const bool setAsPrimary = false);
+  void setCamera(ACamera* pCamera, const bool setAsPrimary = false);
 
   void setSunCamera(const char* name);
   void setSunCamera(ACamera* pCamera);

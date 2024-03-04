@@ -19,7 +19,7 @@
 #define RTGT_PPTAA              "RT2D_TAA"          // PBR + velocity and history images
 #define RTGT_PPBLOOM            "RT2D_PPBloom"      // Post processing bloom target
 #define RTGT_PPAO               "RT2D_PPAO"         // Post processing ambient occlusion target
-#define RTGT_PPBLUR             "RT2D_PPBlur"      // Post processing intermediate blur targets
+#define RTGT_PPBLUR             "RT2D_PPBlur"       // Post processing intermediate blur targets
 
 #define RTGT_ENV                "RTCube_Env"
 #define RTGT_ENVFILTER          "RTCube_EnvSkybox"

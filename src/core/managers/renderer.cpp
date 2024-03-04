@@ -205,6 +205,12 @@ TResult core::MRenderer::createSceneBuffers() {
   createBuffer(EBufferType::DGPU_STORAGE, 32768, scene.generalBuffer, nullptr);
   copyDataToBuffer(system.occlusionOffsets.data(), sizeof(glm::vec4) * RE_OCCLUSIONSAMPLES, &scene.generalBuffer, 0u);
 
+  command.indirectCommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+  for (uint8_t indirectBufferId = 0; indirectBufferId < MAX_FRAMES_IN_FLIGHT; ++indirectBufferId) {
+    createBuffer(EBufferType::CPU_INDIRECT, sizeof(VkDrawIndexedIndirectCommand) * config::scene::nodeBudget * 10,
+      command.indirectCommandBuffers[indirectBufferId], nullptr);
+  }
+
   return RE_OK;
 }
 
@@ -222,9 +228,11 @@ void core::MRenderer::destroySceneBuffers() {
   vmaDestroyBuffer(memAlloc, scene.skinTransformBuffer.buffer,
                    scene.skinTransformBuffer.allocation);
 
-  for (int8_t instanceBufferId = 0; instanceBufferId < MAX_FRAMES_IN_FLIGHT; ++instanceBufferId) {
-    vmaDestroyBuffer(memAlloc, scene.instanceBuffers[instanceBufferId].buffer,
-                     scene.instanceBuffers[instanceBufferId].allocation);
+  for (int8_t frameIndex = 0; frameIndex < MAX_FRAMES_IN_FLIGHT; ++frameIndex) {
+    vmaDestroyBuffer(memAlloc, scene.instanceBuffers[frameIndex].buffer,
+                     scene.instanceBuffers[frameIndex].allocation);
+    vmaDestroyBuffer(memAlloc, command.indirectCommandBuffers[frameIndex].buffer,
+                     command.indirectCommandBuffers[frameIndex].allocation);
   }
   
   vmaDestroyBuffer(memAlloc, material.buffer.buffer, material.buffer.allocation);
@@ -390,7 +398,7 @@ TResult core::MRenderer::setRendererDefaults() {
     return RE_CRITICAL;
   }
 
-  setCamera(pCamera);
+  setCamera(pCamera, true);
 
   // Set default lighting UBO data
   lighting.data.prefilteredCubeMipLevels = (float)math::getMipLevels(core::vulkan::envFilterExtent);

@@ -160,6 +160,36 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     return RE_OK;
   }
 
+  case (uint8_t)EBufferType::CPU_INDIRECT: {
+    bufferCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+      | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+    bufferCreateInfo.size = size;
+    bufferCreateInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+    bufferCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();
+    bufferCreateInfo.queueFamilyIndexCount =
+      static_cast<uint32_t>(queueFamilyIndices.size());
+
+    allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT |
+      VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
+    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
+      &outBuffer.buffer, &outBuffer.allocation,
+      &outBuffer.allocInfo) != VK_SUCCESS) {
+      RE_LOG(Error, "Failed to create CPU_STORAGE buffer.");
+      return RE_ERROR;
+    };
+
+    if (inData) {
+      memcpy(outBuffer.allocInfo.pMappedData, inData, size);
+    }
+
+    bdaInfo.buffer = outBuffer.buffer;
+    outBuffer.deviceAddress = vkGetBufferDeviceAddress(logicalDevice.device, &bdaInfo);
+
+    return RE_OK;
+  }
+
   case (uint8_t)EBufferType::DGPU_VERTEX: {
     bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     bufferCreateInfo.size = size;
@@ -484,10 +514,18 @@ void core::MRenderer::updateInstanceBuffer() {
     scene.instanceData.resize(scene.totalInstances);
   }
 
+  command.indirectCommands.clear();
+
+  ACamera* pCamera = view.pPrimaryCamera;
+
   uint32_t index = 0u;
+  uint32_t firstVisibleIndex = -1;
+  uint32_t lastVisibleIndex = -1;
   uint32_t bufferIndex = (renderView.frameInFlight + 1) % MAX_FRAMES_IN_FLIGHT;
 
-  ACamera* pCamera = core::actors.getCamera(RCAM_MAIN);
+  uint32_t indirectVisibleInstances = 0u;
+  uint32_t indirectFirstVisibleInstance = 0u;
+
   const glm::mat4 projectionViewMatrix = pCamera->getProjection() * pCamera->getView();
 
   for (auto& model : scene.pModelReferences) {
@@ -495,6 +533,8 @@ void core::MRenderer::updateInstanceBuffer() {
       primitive->instanceInfo[bufferIndex].firstVisibleInstance = -1;
       primitive->instanceInfo[bufferIndex].visibleInstanceCount = 0;
       uint32_t primitiveInstanceIndex = 0u;
+      indirectVisibleInstances = 0u;
+      indirectFirstVisibleInstance = index;
 
       for (auto& instanceDataEntry : primitive->instanceData) {
         bool isVisible = true;
@@ -513,16 +553,46 @@ void core::MRenderer::updateInstanceBuffer() {
           if (primitive->instanceInfo[bufferIndex].firstVisibleInstance == -1) {
             primitive->instanceInfo[bufferIndex].firstVisibleInstance = primitiveInstanceIndex;
           }
+
+          if (firstVisibleIndex == -1) {
+            firstVisibleIndex = index;
+          }
+
+          lastVisibleIndex = index;
+          ++indirectVisibleInstances;
         }
 
         ++primitiveInstanceIndex;
         ++index;
       }
+
+      if (indirectVisibleInstances > 0) {
+        WModel* pModel = primitive->instanceData[0].pParentEntity->getModel();
+        uint32_t modelVertexOffset = pModel->m_sceneVertexOffset;
+        uint32_t modelIndexOffset = pModel->m_sceneIndexOffset;
+
+        VkDrawIndexedIndirectCommand& pCommand = command.indirectCommands.emplace_back();
+        pCommand.vertexOffset = modelVertexOffset + primitive->vertexOffset;
+        pCommand.firstIndex = modelIndexOffset + primitive->indexOffset;
+        pCommand.indexCount = primitive->indexCount;
+        pCommand.firstInstance = indirectFirstVisibleInstance;
+        pCommand.instanceCount = indirectVisibleInstances;
+      }
     }
   }
 
-  memcpy(scene.instanceBuffers[bufferIndex].allocInfo.pMappedData,
-    scene.instanceData.data(), sizeof(RInstanceData) * index);
+  if (firstVisibleIndex != -1) {
+    lastVisibleIndex -= firstVisibleIndex;
+    ++lastVisibleIndex;
+
+    RInstanceData* pDstMemAddress = (RInstanceData*)scene.instanceBuffers[bufferIndex].allocInfo.pMappedData + firstVisibleIndex;
+    RInstanceData* pSrcMemAddress = scene.instanceData.data() + firstVisibleIndex;
+
+    memcpy(pDstMemAddress, pSrcMemAddress, sizeof(RInstanceData) * lastVisibleIndex);
+
+    memcpy(command.indirectCommandBuffers[bufferIndex].allocInfo.pMappedData,
+      command.indirectCommands.data(), sizeof(VkDrawIndexedIndirectCommand) * command.indirectCommands.size());
+  }
 
   sync.isInstanceDataReady = true;
 }

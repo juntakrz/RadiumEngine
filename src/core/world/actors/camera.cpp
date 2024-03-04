@@ -257,8 +257,10 @@ glm::vec4* ACamera::getFrustum() {
 }
 
 bool ACamera::isBoundingBoxInFrustum(const WPrimitive* pPrimitive, const glm::mat4& projectionViewMatrix, const glm::mat4& modelMatrix) {
+  const glm::mat4 MVPMatrix = projectionViewMatrix * modelMatrix;
+
   for (int32_t i = 0; i < 8; ++i) {
-    glm::vec4 boxCorner = projectionViewMatrix * modelMatrix * pPrimitive->extent.boxCorners[i];
+    glm::vec4 boxCorner = MVPMatrix * pPrimitive->extent.boxCorners[i];
 
     if (boxCorner.w == 0.0f) {
       return true;
