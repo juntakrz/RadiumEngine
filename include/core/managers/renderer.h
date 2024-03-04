@@ -26,6 +26,7 @@ class MRenderer {
 
     std::vector<VkDrawIndexedIndirectCommand> indirectCommands;
     std::vector<RBuffer> indirectCommandBuffers;
+    VkDeviceSize indirectCommandOffset = 0u;
   } command;
 
   struct {
@@ -571,6 +572,7 @@ public:
  private:
   // Draw bound entities using specific pipeline
   void drawBoundEntities(VkCommandBuffer commandBuffer, EDynamicRenderingPass passOverride = EDynamicRenderingPass::Null);
+  void drawBoundEntitiesIndirect(VkCommandBuffer commandBuffer, EDynamicRenderingPass passOverride = EDynamicRenderingPass::Null);
 
   void renderPrimitive(VkCommandBuffer cmdBuffer, WPrimitive* pPrimitive, WModel* pModel);
 

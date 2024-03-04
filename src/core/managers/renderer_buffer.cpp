@@ -514,8 +514,6 @@ void core::MRenderer::updateInstanceBuffer() {
     scene.instanceData.resize(scene.totalInstances);
   }
 
-  command.indirectCommands.clear();
-
   ACamera* pCamera = view.pPrimaryCamera;
 
   uint32_t index = 0u;
@@ -523,18 +521,14 @@ void core::MRenderer::updateInstanceBuffer() {
   uint32_t lastVisibleIndex = -1;
   uint32_t bufferIndex = (renderView.frameInFlight + 1) % MAX_FRAMES_IN_FLIGHT;
 
-  uint32_t indirectVisibleInstances = 0u;
-  uint32_t indirectFirstVisibleInstance = 0u;
-
   const glm::mat4 projectionViewMatrix = pCamera->getProjection() * pCamera->getView();
 
   for (auto& model : scene.pModelReferences) {
     for (auto& primitive : model->m_pLinearPrimitives) {
       primitive->instanceInfo[bufferIndex].firstVisibleInstance = -1;
+      primitive->instanceInfo[bufferIndex].indirectFirstVisibleInstance = -1;
       primitive->instanceInfo[bufferIndex].visibleInstanceCount = 0;
       uint32_t primitiveInstanceIndex = 0u;
-      indirectVisibleInstances = 0u;
-      indirectFirstVisibleInstance = index;
 
       for (auto& instanceDataEntry : primitive->instanceData) {
         bool isVisible = true;
@@ -559,24 +553,15 @@ void core::MRenderer::updateInstanceBuffer() {
           }
 
           lastVisibleIndex = index;
-          ++indirectVisibleInstances;
+
+          // Indirect draw data
+          if (primitive->instanceInfo[bufferIndex].indirectFirstVisibleInstance == -1) {
+            primitive->instanceInfo[bufferIndex].indirectFirstVisibleInstance = index;
+          }
         }
 
         ++primitiveInstanceIndex;
         ++index;
-      }
-
-      if (indirectVisibleInstances > 0) {
-        WModel* pModel = primitive->instanceData[0].pParentEntity->getModel();
-        uint32_t modelVertexOffset = pModel->m_sceneVertexOffset;
-        uint32_t modelIndexOffset = pModel->m_sceneIndexOffset;
-
-        VkDrawIndexedIndirectCommand& pCommand = command.indirectCommands.emplace_back();
-        pCommand.vertexOffset = modelVertexOffset + primitive->vertexOffset;
-        pCommand.firstIndex = modelIndexOffset + primitive->indexOffset;
-        pCommand.indexCount = primitive->indexCount;
-        pCommand.firstInstance = indirectFirstVisibleInstance;
-        pCommand.instanceCount = indirectVisibleInstances;
       }
     }
   }
@@ -589,9 +574,6 @@ void core::MRenderer::updateInstanceBuffer() {
     RInstanceData* pSrcMemAddress = scene.instanceData.data() + firstVisibleIndex;
 
     memcpy(pDstMemAddress, pSrcMemAddress, sizeof(RInstanceData) * lastVisibleIndex);
-
-    memcpy(command.indirectCommandBuffers[bufferIndex].allocInfo.pMappedData,
-      command.indirectCommands.data(), sizeof(VkDrawIndexedIndirectCommand) * command.indirectCommands.size());
   }
 
   sync.isInstanceDataReady = true;

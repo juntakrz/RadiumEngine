@@ -8,6 +8,7 @@ class WPrimitive {
  public:
   struct WPrimitiveInstanceInfo {
      uint32_t firstVisibleInstance = -1;
+     uint32_t indirectFirstVisibleInstance = -1;
      uint32_t visibleInstanceCount = 0;
   };
 

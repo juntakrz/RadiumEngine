@@ -27,6 +27,46 @@ void core::MRenderer::drawBoundEntities(VkCommandBuffer commandBuffer, EDynamicR
   }
 }
 
+void core::MRenderer::drawBoundEntitiesIndirect(VkCommandBuffer commandBuffer, EDynamicRenderingPass passOverride) {
+  // go through bound models and generate draw calls for each
+  renderView.refresh();
+  command.indirectCommands.clear();
+
+  if (passOverride == EDynamicRenderingPass::Null) {
+    passOverride = renderView.pCurrentPass->passId;
+  }
+
+  const uint32_t bufferIndex = renderView.frameInFlight;
+
+  for (WModel* pModel : scene.pModelReferences) {
+    auto& primitives = pModel->getPrimitives();
+    const uint32_t sceneVertexOffset = pModel->m_sceneVertexOffset;
+    const uint32_t sceneIndexOffset = pModel->m_sceneIndexOffset;
+
+    for (const auto& primitive : primitives) {
+      if (!checkPass(primitive->pInitialMaterial->passFlags, passOverride)
+        || primitive->instanceInfo[bufferIndex].visibleInstanceCount == 0) continue;
+      
+      VkDrawIndexedIndirectCommand& newCommand = command.indirectCommands.emplace_back();
+      newCommand.vertexOffset = sceneVertexOffset + primitive->vertexOffset;
+      newCommand.firstIndex = sceneIndexOffset + primitive->indexOffset;
+      newCommand.indexCount = primitive->indexCount;
+      newCommand.firstInstance = primitive->instanceInfo[bufferIndex].indirectFirstVisibleInstance;
+      newCommand.instanceCount = primitive->instanceInfo[bufferIndex].visibleInstanceCount;
+    }
+  }
+
+  const uint32_t indirectDrawCount = static_cast<uint32_t>(command.indirectCommands.size());
+  const int8_t* pMemAddress = (int8_t*)command.indirectCommandBuffers[bufferIndex].allocInfo.pMappedData + command.indirectCommandOffset;
+
+  memcpy((void*)pMemAddress, command.indirectCommands.data(), sizeof(VkDrawIndexedIndirectCommand) * indirectDrawCount);
+
+  vkCmdDrawIndexedIndirect(commandBuffer, command.indirectCommandBuffers[bufferIndex].buffer,
+    command.indirectCommandOffset, indirectDrawCount, sizeof(VkDrawIndexedIndirectCommand));
+
+  command.indirectCommandOffset += sizeof(VkDrawIndexedIndirectCommand) * indirectDrawCount;
+}
+
 void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
                                       WPrimitive* pPrimitive,
                                       WModel* pModel) {
@@ -40,8 +80,6 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
   int32_t vertexOffset = (int32_t)pModel->m_sceneVertexOffset + (int32_t)pPrimitive->vertexOffset;
   uint32_t indexOffset = pModel->m_sceneIndexOffset + pPrimitive->indexOffset;
 
-  //VkDeviceSize instanceOffset = sizeof(RInstanceData) * pPrimitive->instanceData[pPrimitive->instanceInfo[renderView.frameInFlight]
-    //.firstVisibleInstance].instanceIndex[renderView.frameInFlight];
   VkDeviceSize instanceOffset = sizeof(RInstanceData) * instanceIndex;
   vkCmdBindVertexBuffers(cmdBuffer, 1, 1, &scene.instanceBuffers[renderView.frameInFlight].buffer, &instanceOffset);
 
@@ -113,7 +151,7 @@ void core::MRenderer::renderEnvironmentMaps(
       &scene.descriptorSets[renderView.frameInFlight], 1,
       &dynamicOffset);
 
-  drawBoundEntities(commandBuffer);
+  drawBoundEntitiesIndirect(commandBuffer);
 
   vkCmdEndRendering(commandBuffer);
 
@@ -175,7 +213,7 @@ void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynam
       break;
     }
     case false: {
-      drawBoundEntities(commandBuffer);
+      drawBoundEntitiesIndirect(commandBuffer);
       break;
     }
   }
@@ -209,6 +247,8 @@ void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynam
 void core::MRenderer::prepareFrameResources(VkCommandBuffer commandBuffer) {
   /*scene.transparencyLinkedListData.nodeCount = 0u;
   memcpy(scene.transparencyLinkedListDataBuffer.allocInfo.pMappedData, &scene.transparencyLinkedListData, sizeof(uint32_t));*/
+
+  command.indirectCommandOffset = 0u;
 
   VkDeviceSize vbOffset = 0u;
   vkCmdBindVertexBuffers(commandBuffer, 0, 1, &scene.vertexBuffer.buffer, &vbOffset);
@@ -280,13 +320,13 @@ void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uin
   vkCmdPushConstants(commandBuffer, renderView.pCurrentPass->layout, VK_SHADER_STAGE_VERTEX_BIT, 0u,
                      sizeof(RSceneVertexPCB), &scene.vertexPushBlock);
 
-  drawBoundEntities(commandBuffer);
+  drawBoundEntitiesIndirect(commandBuffer);
 
   // Discard shadow pass
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
     getDynamicRenderingPass(EDynamicRenderingPass::ShadowDiscard)->pipeline);
 
-  drawBoundEntities(commandBuffer, EDynamicRenderingPass::ShadowDiscard);
+  drawBoundEntitiesIndirect(commandBuffer, EDynamicRenderingPass::ShadowDiscard);
 
   vkCmdEndRendering(commandBuffer);
 
