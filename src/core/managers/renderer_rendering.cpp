@@ -67,7 +67,7 @@ void core::MRenderer::drawBoundEntitiesIndirect(VkCommandBuffer commandBuffer, E
   command.indirectCommandOffset += sizeof(VkDrawIndexedIndirectCommand) * indirectDrawCount;
 }
 
-void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
+void core::MRenderer::renderPrimitive(VkCommandBuffer commandBuffer,
                                       WPrimitive* pPrimitive,
                                       WModel* pModel) {
   const uint32_t instanceCount = pPrimitive->instanceInfo[renderView.frameInFlight].visibleInstanceCount;
@@ -81,10 +81,10 @@ void core::MRenderer::renderPrimitive(VkCommandBuffer cmdBuffer,
   uint32_t indexOffset = pModel->m_sceneIndexOffset + pPrimitive->indexOffset;
 
   VkDeviceSize instanceOffset = sizeof(RInstanceData) * instanceIndex;
-  vkCmdBindVertexBuffers(cmdBuffer, 1, 1, &scene.instanceBuffers[renderView.frameInFlight].buffer, &instanceOffset);
+  vkCmdBindVertexBuffers(commandBuffer, 1, 1, &scene.instanceBuffers[renderView.frameInFlight].buffer, &instanceOffset);
 
   // TODO: implement draw indirect
-  vkCmdDrawIndexed(cmdBuffer, pPrimitive->indexCount, instanceCount, indexOffset, vertexOffset, 0);
+  vkCmdDrawIndexed(commandBuffer, pPrimitive->indexCount, instanceCount, indexOffset, vertexOffset, 0);
 }
 
 void core::MRenderer::renderEnvironmentMaps(
@@ -245,15 +245,12 @@ void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynam
 }
 
 void core::MRenderer::prepareFrameResources(VkCommandBuffer commandBuffer) {
-  /*scene.transparencyLinkedListData.nodeCount = 0u;
-  memcpy(scene.transparencyLinkedListDataBuffer.allocInfo.pMappedData, &scene.transparencyLinkedListData, sizeof(uint32_t));*/
-
   command.indirectCommandOffset = 0u;
 
-  VkDeviceSize vbOffset = 0u;
-  vkCmdBindVertexBuffers(commandBuffer, 0, 1, &scene.vertexBuffer.buffer, &vbOffset);
-  vkCmdBindVertexBuffers(commandBuffer, 1, 1, &scene.instanceBuffers[renderView.frameInFlight].buffer, &vbOffset);
+  VkDeviceSize vertexBufferOffsets[] = {0u, 0u};
+  VkBuffer vertexBuffers[] = {scene.vertexBuffer.buffer, scene.instanceBuffers[renderView.frameInFlight].buffer};
 
+  vkCmdBindVertexBuffers(commandBuffer, 0, 2, vertexBuffers, vertexBufferOffsets);
   vkCmdBindIndexBuffer(commandBuffer, scene.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
   uint32_t transformOffsets[3] = { 0u, 0u, 0u };
@@ -442,8 +439,8 @@ void core::MRenderer::executePostProcessTAAPass(VkCommandBuffer commandBuffer) {
 
   setImageLayout(commandBuffer, pTAATexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subRange);
 
-  copyImage(commandBuffer, postprocess.pTAATexture->texture.image, postprocess.pPreviousFrameTexture->texture.image,
-    postprocess.pTAATexture->texture.imageLayout, postprocess.pPreviousFrameTexture->texture.imageLayout, postprocess.previousFrameCopy);
+  copyImage(commandBuffer, postprocess.pTAATexture, postprocess.pPreviousFrameTexture,
+            postprocess.previousFrameCopy);
 }
 
 void core::MRenderer::executePostProcessSamplingPass(VkCommandBuffer commandBuffer, const uint32_t imageViewIndex,
@@ -620,7 +617,7 @@ void core::MRenderer::renderFrame() {
   executeQueuedComputeJobs();
   //std::this_thread::sleep_for(std::chrono::milliseconds(30));
 
-  VkCommandBuffer cmdBuffer = command.buffersGraphics[renderView.frameInFlight];
+  VkCommandBuffer commandBuffer = command.buffersGraphics[renderView.frameInFlight];
 
   // Update lighting UBO if required
   updateLightingUBO(renderView.frameInFlight);
@@ -634,18 +631,18 @@ void core::MRenderer::renderFrame() {
   beginInfo.flags = 0;
 
   // Start recording vulkan command buffer
-  if (vkBeginCommandBuffer(cmdBuffer, &beginInfo) != VK_SUCCESS) {
+  if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
     RE_LOG(Error, "Failure when trying to record command buffer.");
     return;
   }
 
   // Prepare and bind per frame resources
-  prepareFrameResources(cmdBuffer);
+  prepareFrameResources(commandBuffer);
 
   /* 1. Environment generation */
 
   if (renderView.generateEnvironmentMaps) {
-    renderEnvironmentMaps(cmdBuffer, environment.genInterval);
+    renderEnvironmentMaps(commandBuffer, environment.genInterval);
   }
 
   /* 2. Cascaded shadows */
@@ -654,7 +651,7 @@ void core::MRenderer::renderFrame() {
   updateSceneUBO(renderView.frameInFlight);
 
   for (uint8_t cascadeIndex = 0; cascadeIndex < config::shadowCascades; ++cascadeIndex) {
-    executeShadowPass(cmdBuffer, cascadeIndex);
+    executeShadowPass(commandBuffer, cascadeIndex);
   }
 
   /* 3. Main scene */
@@ -662,35 +659,52 @@ void core::MRenderer::renderFrame() {
   updateSceneUBO(renderView.frameInFlight);
 
   // G-Buffer passes
-  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::OpaqueCullBack);
-  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::OpaqueCullNone);
-  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::DiscardCullNone);
-  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::BlendCullNone);
+  executeRenderingPass(commandBuffer, EDynamicRenderingPass::OpaqueCullBack);
+  executeRenderingPass(commandBuffer, EDynamicRenderingPass::OpaqueCullNone);
+  executeRenderingPass(commandBuffer, EDynamicRenderingPass::DiscardCullNone);
+  executeRenderingPass(commandBuffer, EDynamicRenderingPass::BlendCullNone);
 
   // Synchronize instance processing thread since all instances are submitted queue
   sync.asyncUpdateInstanceBuffers.update();
 
   // Deferred rendering pass using G-Buffer collected data
-  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::PBR, material.pGBuffer, true);
+  executeRenderingPass(commandBuffer, EDynamicRenderingPass::PBR, material.pGBuffer, true);
 
   // Additional front rendering passes
-  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::Skybox);
+  executeRenderingPass(commandBuffer, EDynamicRenderingPass::Skybox);
 
-  executeAOBlurPass(cmdBuffer);
+  executeAOBlurPass(commandBuffer);
 
-  executeRenderingPass(cmdBuffer, EDynamicRenderingPass::AlphaCompositing, material.pGPBR, true);
+  executeRenderingPass(commandBuffer, EDynamicRenderingPass::AlphaCompositing, material.pGPBR, true);
 
   /* 4. Postprocessing pass */
 
   // Includes exposure, bloom and TAA passes
-  executePostProcessPass(cmdBuffer);
+  executePostProcessPass(commandBuffer);
 
   /* 5. Final presentation pass */
 
-  executePresentPass(cmdBuffer);
+  executePresentPass(commandBuffer);
+
+  RTexture* pDepthTexture = core::resources.getTexture(RTGT_DEPTH);
+  RTexture* pPreviousDepthTexture = core::resources.getTexture(RTGT_PREVDEPTH);
+  VkImageCopy depthCopyRegion{};
+  depthCopyRegion.extent = { config::renderWidth, config::renderHeight, 1 };
+  depthCopyRegion.srcOffset = { 0, 0, 0 };
+  depthCopyRegion.srcSubresource.aspectMask = pDepthTexture->texture.aspectMask;
+  depthCopyRegion.srcSubresource.baseArrayLayer = 0u;
+  depthCopyRegion.srcSubresource.layerCount = 1u;
+  depthCopyRegion.srcSubresource.mipLevel = 0u;
+  depthCopyRegion.dstOffset = { 0, 0, 0 };
+  depthCopyRegion.dstSubresource.aspectMask = pPreviousDepthTexture->texture.aspectMask;
+  depthCopyRegion.dstSubresource.baseArrayLayer = 0u;
+  depthCopyRegion.dstSubresource.layerCount = 1u;
+  depthCopyRegion.dstSubresource.mipLevel = 0u;
+
+  copyImage(commandBuffer, pDepthTexture, pPreviousDepthTexture, depthCopyRegion);
 
   // End writing commands and prepare to submit buffer to rendering queue
-  if (vkEndCommandBuffer(cmdBuffer) != VK_SUCCESS) {
+  if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to end writing to command buffer.");
   }
 
@@ -752,10 +766,11 @@ void core::MRenderer::renderFrame() {
   ++renderView.framesRendered;
 }
 
-void core::MRenderer::renderInitFrame() {
-  // Generate BRDF LUT during the initial frame
+void core::MRenderer::renderInitializationFrame() {
+  // Generate BRDF lookup table during the initial frame
   queueComputeJob(&environment.computeJobs.LUT);
 
+  // Write ambient occlusion noise/jitter map
   RTexture* pNoiseTexture = core::resources.getTexture(RTGT_NOISEMAP);
   core::resources.writeTexture(pNoiseTexture, system.randomOffsets.data(),
     sizeof(glm::vec4) * system.randomOffsets.size());

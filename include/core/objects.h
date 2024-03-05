@@ -361,6 +361,7 @@ struct RTextureInfo {
   bool extraViews = false;  // Create views into layers and mip levels
   VkMemoryPropertyFlags memoryFlags = NULL;
   VmaMemoryUsage vmaMemoryUsage = VMA_MEMORY_USAGE_AUTO;
+  VkImageAspectFlags imageAspectOverride = NULL;  // Override image aspect only if it can't be determined from the layout
   RSamplerInfo samplerInfo = RSamplerInfo{};
 };
 
@@ -533,6 +534,13 @@ struct WAttachmentInfo {
   bool attachTranslation = true;
   bool attachRotation = true;
   bool attachToForwardVector = false;
+};
+
+// Data structure used by the compute culling pass
+struct WBoundingGeometry {
+  glm::vec4 min = glm::vec4(0.0f);
+  glm::vec4 max = glm::vec4(0.0f);
+  uint32_t modelMatrix = -1;
 };
 
 struct WModelConfigInfo {

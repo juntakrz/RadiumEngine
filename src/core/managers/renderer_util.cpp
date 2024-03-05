@@ -325,35 +325,39 @@ void core::MRenderer::updateExposureLevel() {
 
 // PUBLIC
 
-TResult core::MRenderer::copyImage(VkCommandBuffer cmdBuffer, VkImage srcImage,
-                                   VkImage dstImage,
-                                   VkImageLayout srcImageLayout,
-                                   VkImageLayout dstImageLayout,
-                                   VkImageCopy& copyRegion) {
-  VkImageSubresourceRange srcRange{};
-  srcRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  srcRange.baseArrayLayer = 0;
-  srcRange.layerCount = 1;
-  srcRange.baseMipLevel = 0;
-  srcRange.levelCount = 1;
+TResult core::MRenderer::copyImage(VkCommandBuffer cmdBuffer, RTexture* pSrcTexture,
+                                   RTexture* pDstTexture, VkImageCopy& copyRegion) {
+  VkImageSubresourceRange srcRange{
+    .aspectMask = pSrcTexture->texture.aspectMask,
+    .baseMipLevel = copyRegion.srcSubresource.mipLevel,
+    .levelCount = 1,
+    .baseArrayLayer = copyRegion.srcSubresource.baseArrayLayer,
+    .layerCount = copyRegion.srcSubresource.layerCount
+  };
 
-  VkImageSubresourceRange dstRange = srcRange;
+  VkImageSubresourceRange dstRange {
+    .aspectMask = pDstTexture->texture.aspectMask,
+    .baseMipLevel = copyRegion.dstSubresource.mipLevel,
+    .levelCount = 1,
+    .baseArrayLayer = copyRegion.dstSubresource.baseArrayLayer,
+    .layerCount = copyRegion.dstSubresource.layerCount
+  };
 
-  setImageLayout(cmdBuffer, srcImage, srcImageLayout,
+  setImageLayout(cmdBuffer, pSrcTexture->texture.image, pSrcTexture->texture.imageLayout,
                  VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, srcRange);
 
-  setImageLayout(cmdBuffer, dstImage, dstImageLayout,
+  setImageLayout(cmdBuffer, pDstTexture->texture.image, pDstTexture->texture.imageLayout,
                  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dstRange);
 
-  vkCmdCopyImage(cmdBuffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                 dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
+  vkCmdCopyImage(cmdBuffer, pSrcTexture->texture.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                 pDstTexture->texture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
                  &copyRegion);
 
-  setImageLayout(cmdBuffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                 srcImageLayout, srcRange);
+  setImageLayout(cmdBuffer, pSrcTexture->texture.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                 pSrcTexture->texture.imageLayout, srcRange);
 
-  setImageLayout(cmdBuffer, dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                 dstImageLayout, dstRange);
+  setImageLayout(cmdBuffer, pDstTexture->texture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                 pDstTexture->texture.imageLayout, dstRange);
 
   return RE_OK;
 }

@@ -222,7 +222,7 @@ TResult core::create() {
   core::resources.initialize();
   core::world.initialize();
 
-  core::renderer.renderInitFrame();
+  core::renderer.renderInitializationFrame();
 
   core::input.initialize(core::window.getWindow());
   core::player.initialize();

@@ -514,5 +514,37 @@ TResult core::MRenderer::createDepthTargets() {
   RE_LOG(Log, "Created depth target '%s'.", rtName.c_str());
 #endif
 
+  // Target for storing depth to do occlusion culling
+  rtName = RTGT_PREVDEPTH;
+
+  textureInfo = RTextureInfo{};
+  textureInfo.name = rtName;
+  textureInfo.width = config::renderWidth;
+  textureInfo.height = config::renderHeight;
+  textureInfo.format = core::vulkan::formatDepth;
+  textureInfo.isCubemap = false;
+  textureInfo.layerCount = 1u;
+  textureInfo.mipLevels = math::getMipLevels(config::renderHeight);
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+
+  // Override with the same image aspect flags as the depth image source
+  textureInfo.imageAspectOverride = core::resources.getTexture(RTGT_DEPTH)->texture.aspectMask;
+
+  textureInfo.samplerInfo.filter = VK_FILTER_LINEAR;
+  textureInfo.samplerInfo.addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+
+  pNewTexture = core::resources.createTexture(&textureInfo);
+
+  if (!pNewTexture) {
+    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
+    return RE_CRITICAL;
+  }
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Created depth target '%s'.", rtName.c_str());
+#endif
+
   return RE_OK;
 }

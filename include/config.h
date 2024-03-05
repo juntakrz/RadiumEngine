@@ -30,6 +30,8 @@
 #define RTGT_VELOCITYMAP        "RT2D_Velocity"
 #define RTGT_PREVFRAME          "RT2D_PrevFrame"
 
+#define RTGT_PREVDEPTH          "RT2D_PrevDepth"
+
 #define RTGT_GPOSITION          "RT2D_GPosition"    // Fragment world space position output
 #define RTGT_GDIFFUSE           "RT2D_GDiffuse"     // Diffuse output
 #define RTGT_GNORMAL            "RT2D_GNormal"      // Normals output

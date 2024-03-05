@@ -349,9 +349,8 @@ class MRenderer {
   void updateExposureLevel();
 
 public:
-  TResult copyImage(VkCommandBuffer cmdBuffer, VkImage srcImage,
-                    VkImage dstImage, VkImageLayout srcImageLayout,
-                    VkImageLayout dstImageLayout, VkImageCopy& copyRegion);
+  TResult copyImage(VkCommandBuffer cmdBuffer, RTexture* pSrcTexture,
+                    RTexture* pDstTexture, VkImageCopy& copyRegion);
 
   void setImageLayout(VkCommandBuffer cmdBuffer, RTexture* pTexture,
                       VkImageLayout newLayout,
@@ -570,8 +569,10 @@ public:
   //
 
  private:
-  // Draw bound entities using specific pipeline
+  // DEPRECATED - use drawBoundEntitiesIndirect instead.
   void drawBoundEntities(VkCommandBuffer commandBuffer, EDynamicRenderingPass passOverride = EDynamicRenderingPass::Null);
+
+  // Draw bound entities using specific pipeline
   void drawBoundEntitiesIndirect(VkCommandBuffer commandBuffer, EDynamicRenderingPass passOverride = EDynamicRenderingPass::Null);
 
   void renderPrimitive(VkCommandBuffer cmdBuffer, WPrimitive* pPrimitive, WModel* pModel);
@@ -597,7 +598,7 @@ public:
 
  public:
   void renderFrame();
-  void renderInitFrame();
+  void renderInitializationFrame();
 };
 
 }  // namespace core
