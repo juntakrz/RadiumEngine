@@ -405,7 +405,6 @@ TResult core::MRenderer::createImageTargets() {
 TResult core::MRenderer::createGBufferRenderTargets() {
   std::vector<std::string> targetNames;
   scene.pGBufferTargets.clear();
-  scene.pABufferTargets.clear();
 
   targetNames.emplace_back(RTGT_GPOSITION);
   targetNames.emplace_back(RTGT_GDIFFUSE);
@@ -460,9 +459,13 @@ TResult core::MRenderer::createDepthTargets() {
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+  //textureInfo.targetLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
   textureInfo.memoryFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
   textureInfo.vmaMemoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+  // Remove image aspect overrides for depth targets in case general layout causes performance issues
+  textureInfo.imageAspectOverride = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
 
   RTexture* pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -470,6 +473,8 @@ TResult core::MRenderer::createDepthTargets() {
     RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
     return RE_CRITICAL;
   }
+
+  scene.pDepthTarget = pNewTexture;
 
 #ifndef NDEBUG
   RE_LOG(Log, "Created depth target '%s'.", rtName.c_str());
@@ -497,11 +502,14 @@ TResult core::MRenderer::createDepthTargets() {
   textureInfo.extraViews = true;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+  //textureInfo.targetLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
   textureInfo.memoryFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
   textureInfo.vmaMemoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 
   textureInfo.samplerInfo.addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+
+  textureInfo.imageAspectOverride = VK_IMAGE_ASPECT_DEPTH_BIT;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -525,7 +533,8 @@ TResult core::MRenderer::createDepthTargets() {
   textureInfo.isCubemap = false;
   textureInfo.layerCount = 1u;
   textureInfo.mipLevels = math::getMipLevels(config::renderHeight);
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  //textureInfo.targetLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
@@ -535,16 +544,21 @@ TResult core::MRenderer::createDepthTargets() {
   textureInfo.samplerInfo.filter = VK_FILTER_LINEAR;
   textureInfo.samplerInfo.addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 
-  pNewTexture = core::resources.createTexture(&textureInfo);
+  scene.pPreviousDepthTargets.resize(MAX_FRAMES_IN_FLIGHT);
+  for (uint8_t prevDepthIndex = 0; prevDepthIndex < MAX_FRAMES_IN_FLIGHT; ++prevDepthIndex) {
+    pNewTexture = core::resources.createTexture(&textureInfo);
 
-  if (!pNewTexture) {
-    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
-    return RE_CRITICAL;
-  }
+    if (!pNewTexture) {
+      RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
+      return RE_CRITICAL;
+    }
+
+    scene.pPreviousDepthTargets[prevDepthIndex] = pNewTexture;
 
 #ifndef NDEBUG
-  RE_LOG(Log, "Created depth target '%s'.", rtName.c_str());
+    RE_LOG(Log, "Created depth target '%s'.", rtName.c_str());
 #endif
+  }
 
   return RE_OK;
 }

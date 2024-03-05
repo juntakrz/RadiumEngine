@@ -344,19 +344,19 @@ TResult core::MRenderer::copyImage(VkCommandBuffer cmdBuffer, RTexture* pSrcText
   };
 
   setImageLayout(cmdBuffer, pSrcTexture->texture.image, pSrcTexture->texture.imageLayout,
-                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, srcRange);
+                 VK_IMAGE_LAYOUT_GENERAL, srcRange);
 
   setImageLayout(cmdBuffer, pDstTexture->texture.image, pDstTexture->texture.imageLayout,
-                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dstRange);
+    VK_IMAGE_LAYOUT_GENERAL, dstRange);
 
-  vkCmdCopyImage(cmdBuffer, pSrcTexture->texture.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                 pDstTexture->texture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
+  vkCmdCopyImage(cmdBuffer, pSrcTexture->texture.image, VK_IMAGE_LAYOUT_GENERAL,
+                 pDstTexture->texture.image, VK_IMAGE_LAYOUT_GENERAL, 1,
                  &copyRegion);
 
-  setImageLayout(cmdBuffer, pSrcTexture->texture.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+  setImageLayout(cmdBuffer, pSrcTexture->texture.image, VK_IMAGE_LAYOUT_GENERAL,
                  pSrcTexture->texture.imageLayout, srcRange);
 
-  setImageLayout(cmdBuffer, pDstTexture->texture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+  setImageLayout(cmdBuffer, pDstTexture->texture.image, VK_IMAGE_LAYOUT_GENERAL,
                  pDstTexture->texture.imageLayout, dstRange);
 
   return RE_OK;
@@ -365,11 +365,12 @@ TResult core::MRenderer::copyImage(VkCommandBuffer cmdBuffer, RTexture* pSrcText
 void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer,
                                      RTexture* pTexture,
                                      VkImageLayout newLayout,
-                                     VkImageSubresourceRange subresourceRange) {
-  if (pTexture->texture.imageLayout == newLayout) return;
+                                     VkImageSubresourceRange subresourceRange,
+                                     const bool force) {
+  if (pTexture->texture.imageLayout == newLayout && !force) return;
 
   setImageLayout(cmdBuffer, pTexture->texture.image,
-                 pTexture->texture.imageLayout, newLayout, subresourceRange);
+                 pTexture->texture.imageLayout, newLayout, subresourceRange, force);
   
   pTexture->texture.imageLayout = newLayout;
   pTexture->texture.imageInfo.imageLayout = newLayout;
@@ -378,10 +379,13 @@ void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer,
 void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
                                      VkImageLayout oldLayout,
                                      VkImageLayout newLayout,
-                                     VkImageSubresourceRange subresourceRange) {
-  if (newLayout == oldLayout) {
+                                     VkImageSubresourceRange subresourceRange,
+                                     const bool force) {
+  if (newLayout == oldLayout && !force) {
 #ifndef NDEBUG
+#ifdef _VERBOSEDEBUG
     RE_LOG(Warning, "Trying to convert texture to the same image layout.");
+#endif
 #endif
     return;
   }

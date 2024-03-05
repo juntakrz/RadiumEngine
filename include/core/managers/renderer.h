@@ -85,8 +85,10 @@ class MRenderer {
     uint32_t currentInstanceUID = 0;
     VkDescriptorSet transformDescriptorSet;
 
+    RTexture* pDepthTarget = nullptr;
     std::vector<RTexture*> pGBufferTargets;
-    std::vector<RTexture*> pABufferTargets;
+    std::vector<RTexture*> pPreviousDepthTargets;
+
     RBuffer transparencyLinkedListBuffer;
     RBuffer transparencyLinkedListDataBuffer;
     RTransparencyLinkedListData transparencyLinkedListData;
@@ -352,13 +354,17 @@ public:
   TResult copyImage(VkCommandBuffer cmdBuffer, RTexture* pSrcTexture,
                     RTexture* pDstTexture, VkImageCopy& copyRegion);
 
+  // Transition image to the desired layout, will not execute if an image is already transitioned unless forced
   void setImageLayout(VkCommandBuffer cmdBuffer, RTexture* pTexture,
                       VkImageLayout newLayout,
-                      VkImageSubresourceRange subresourceRange);
+                      VkImageSubresourceRange subresourceRange,
+                      const bool force = false);
 
+  // Transition image to the desired layout, will not execute if an image is already transitioned unless forced
   void setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
                       VkImageLayout oldLayout, VkImageLayout newLayout,
-                      VkImageSubresourceRange subresourceRange);
+                      VkImageSubresourceRange subresourceRange,
+                      const bool force = false);
 
   void convertRenderTargets(VkCommandBuffer cmdBuffer,
                             std::vector<RTexture*>* pInTextures,
@@ -581,6 +587,7 @@ public:
                              const uint32_t frameInterval = 1u);
 
   void prepareFrameResources(VkCommandBuffer commandBuffer);
+  void postFrameCommands(VkCommandBuffer commandBuffer);
 
   void executeRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId,
                             RMaterial* pPushMaterial = nullptr, bool renderQuad = false);

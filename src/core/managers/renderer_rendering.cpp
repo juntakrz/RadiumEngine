@@ -275,6 +275,23 @@ void core::MRenderer::prepareFrameResources(VkCommandBuffer commandBuffer) {
   }
 }
 
+void core::MRenderer::postFrameCommands(VkCommandBuffer commandBuffer) {
+  // Store current frame's depth map
+  RTexture* pPreviousDepthTexture = scene.pPreviousDepthTargets[renderView.frameInFlight];
+
+  VkImageCopy depthCopyRegion{};
+  depthCopyRegion.extent = { config::renderWidth, config::renderHeight, 1 };
+  depthCopyRegion.srcOffset = { 0, 0, 0 };
+  depthCopyRegion.srcSubresource.aspectMask = scene.pDepthTarget->texture.aspectMask;
+  depthCopyRegion.srcSubresource.baseArrayLayer = 0u;
+  depthCopyRegion.srcSubresource.layerCount = 1u;
+  depthCopyRegion.srcSubresource.mipLevel = 0u;
+  depthCopyRegion.dstOffset = depthCopyRegion.srcOffset;
+  depthCopyRegion.dstSubresource = depthCopyRegion.srcSubresource;
+
+  copyImage(commandBuffer, scene.pDepthTarget, pPreviousDepthTexture, depthCopyRegion);
+}
+
 void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uint32_t cascadeIndex) {
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::Shadow);
   renderView.pCurrentPass = pRenderPass;
@@ -285,19 +302,6 @@ void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uin
   VkRenderingInfo overrideInfo{};
   overrideInfo = pRenderPass->renderingInfo;
   overrideInfo.pDepthAttachment = &overrideAttachment;
-
-  if (cascadeIndex == 0u) {
-    RTexture* pShadowTexture = pRenderPass->pImageReferences[0];
-
-    VkImageSubresourceRange subRange{};
-    subRange.aspectMask = pShadowTexture->texture.aspectMask;
-    subRange.baseArrayLayer = 0u;
-    subRange.layerCount = pShadowTexture->texture.layerCount;
-    subRange.baseMipLevel = 0u;
-    subRange.levelCount = pShadowTexture->texture.levelCount;
-
-    setImageLayout(commandBuffer, pShadowTexture, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, subRange);
-  }
 
   scene.vertexPushBlock.cascadeIndex = cascadeIndex;
 
@@ -326,19 +330,6 @@ void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uin
   drawBoundEntitiesIndirect(commandBuffer, EDynamicRenderingPass::ShadowDiscard);
 
   vkCmdEndRendering(commandBuffer);
-
-  if (cascadeIndex == config::shadowCascades - 1) {
-    RTexture* pShadowTexture = pRenderPass->pImageReferences[0];
-
-    VkImageSubresourceRange subRange{};
-    subRange.aspectMask = pShadowTexture->texture.aspectMask;
-    subRange.baseArrayLayer = 0u;
-    subRange.layerCount = pShadowTexture->texture.layerCount;
-    subRange.baseMipLevel = 0u;
-    subRange.levelCount = pShadowTexture->texture.levelCount;
-
-    setImageLayout(commandBuffer, pShadowTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subRange);
-  }
 }
 
 void core::MRenderer::executeAOBlurPass(VkCommandBuffer commandBuffer) {
@@ -349,23 +340,14 @@ void core::MRenderer::executeAOBlurPass(VkCommandBuffer commandBuffer) {
   for (uint8_t pass = 0; pass < 2; ++pass) {
     VkRenderingAttachmentInfo overrideAttachment = pRenderPass->renderingInfo.pColorAttachments[0];
 
-    VkImageSubresourceRange subRange;
-    subRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    subRange.baseArrayLayer = 0u;
-    subRange.layerCount = 1u;
-    subRange.baseMipLevel = 0u;
-    subRange.levelCount = 1u;
-
     switch (pass) {
       case 0: {
-        setImageLayout(commandBuffer, pRenderPass->pImageReferences[0], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
         overrideAttachment.imageView = pRenderPass->pImageReferences[0]->texture.view;
 
         break;
       }
       default: {
         RTexture* pAOTexture = material.pBlur->pOcclusion;
-        setImageLayout(commandBuffer, pAOTexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
         overrideAttachment.imageView = pAOTexture->texture.view;
 
         break;
@@ -391,20 +373,6 @@ void core::MRenderer::executeAOBlurPass(VkCommandBuffer commandBuffer) {
     vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 
     vkCmdEndRendering(commandBuffer);
-
-    switch (pass) {
-    case 0: {
-      setImageLayout(commandBuffer, pRenderPass->pImageReferences[0], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subRange);
-
-      break;
-    }
-    default: {
-      RTexture* pAOTexture = material.pBlur->pOcclusion;
-      setImageLayout(commandBuffer, pAOTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subRange);
-
-      break;
-    }
-    }
   }
 }
 
@@ -686,22 +654,7 @@ void core::MRenderer::renderFrame() {
 
   executePresentPass(commandBuffer);
 
-  RTexture* pDepthTexture = core::resources.getTexture(RTGT_DEPTH);
-  RTexture* pPreviousDepthTexture = core::resources.getTexture(RTGT_PREVDEPTH);
-  VkImageCopy depthCopyRegion{};
-  depthCopyRegion.extent = { config::renderWidth, config::renderHeight, 1 };
-  depthCopyRegion.srcOffset = { 0, 0, 0 };
-  depthCopyRegion.srcSubresource.aspectMask = pDepthTexture->texture.aspectMask;
-  depthCopyRegion.srcSubresource.baseArrayLayer = 0u;
-  depthCopyRegion.srcSubresource.layerCount = 1u;
-  depthCopyRegion.srcSubresource.mipLevel = 0u;
-  depthCopyRegion.dstOffset = { 0, 0, 0 };
-  depthCopyRegion.dstSubresource.aspectMask = pPreviousDepthTexture->texture.aspectMask;
-  depthCopyRegion.dstSubresource.baseArrayLayer = 0u;
-  depthCopyRegion.dstSubresource.layerCount = 1u;
-  depthCopyRegion.dstSubresource.mipLevel = 0u;
-
-  copyImage(commandBuffer, pDepthTexture, pPreviousDepthTexture, depthCopyRegion);
+  postFrameCommands(commandBuffer);
 
   // End writing commands and prepare to submit buffer to rendering queue
   if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
