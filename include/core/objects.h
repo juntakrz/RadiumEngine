@@ -51,6 +51,7 @@ enum class EBufferType {  // VkBuffer creation mode
   DGPU_INDEX,         // Dedicated GPU index buffer
   DGPU_UNIFORM,
   DGPU_STORAGE,       // Dedicated GPU storage buffer
+  DGPU_INDIRECT,
   DGPU_SAMPLER,       // Dedicated GPU storage buffer for sampler descriptors
   DGPU_RESOURCE,      // Dedicated GPU storage buffer for resource descriptors
 };
@@ -68,14 +69,16 @@ enum class ECmdType {
 };
 
 enum class EComputeJob {
-  Image
+  Image,
+  Buffer
 };
 
 enum class EComputePipeline {
   Null,
   ImageLUT,
   ImageEnvIrradiance,
-  ImageEnvFilter
+  ImageEnvFilter,
+  BufferCulling
 };
 
 enum class EControlMode {
@@ -88,6 +91,7 @@ enum class EDescriptorSetLayout {
   MaterialEXT,
   Model,
   ComputeImage,
+  ComputeBuffer,
   Dummy
 };
 
@@ -122,7 +126,8 @@ enum class EPipelineLayout {
   PBR,
   Environment,
   Shadow,
-  ComputeImage
+  ComputeImage,
+  ComputeBuffer
 };
 
 enum class EPrimitiveType {
@@ -163,8 +168,9 @@ struct RComputeJobInfo {
   EComputePipeline pipeline;
   std::vector<struct RTexture*> pImageAttachments;
   std::vector<struct RTexture*> pSamplerAttachments;
+  std::vector<struct RBuffer*> pBufferAttachments;
   uint32_t width, height, depth = 1;
-  bool transtionToShaderReadOnly;
+  bool transtionToShaderReadOnly = false;
   bool useExtraImageViews = false;
   bool useExtraSamplerViews = false;
   glm::ivec4 intValues = glm::ivec4(0);
@@ -537,10 +543,11 @@ struct WAttachmentInfo {
 };
 
 // Data structure used by the compute culling pass
-struct WBoundingGeometry {
+struct WInstanceDataEntry {
   glm::vec4 min = glm::vec4(0.0f);
   glm::vec4 max = glm::vec4(0.0f);
-  uint32_t modelMatrix = -1;
+  RInstanceData instanceData;
+  uint32_t passFlags = EDynamicRenderingPass::Null;
 };
 
 struct WModelConfigInfo {
@@ -559,6 +566,7 @@ struct WPrimitiveInstanceData {
   uint32_t passFlags = 0;
   bool isVisible = true;
   AEntity* pParentEntity = nullptr;
+  uint32_t instanceDataBufferOffset = -1;
 
   RInstanceData instanceBufferBlock;
 };

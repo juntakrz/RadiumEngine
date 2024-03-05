@@ -31,6 +31,7 @@ class MRenderer {
 
   struct {
     VkDescriptorSet imageDescriptorSet;
+    VkDescriptorSet bufferDescriptorSet;
     VkExtent3D imageExtent;
     RComputeImagePCB imagePCB;
 
@@ -82,8 +83,15 @@ class MRenderer {
     uint32_t currentVertexOffset = 0u;
     uint32_t currentIndexOffset = 0u;
     size_t totalInstances = 0u;
-    uint32_t currentInstanceUID = 0;
+    uint32_t currentInstanceUID = 0u;
     VkDescriptorSet transformDescriptorSet;
+
+    // Compute instance and culling buffers
+    RBuffer depthImageTransitionBuffer;
+    RBuffer instanceDataBuffer;
+    uint32_t currentInstanceDataOffset = 0u;
+    std::vector<RBuffer> culledInstanceDataBuffers;
+    std::vector<RBuffer> culledDrawIndirectBuffers;
 
     RTexture* pDepthTarget = nullptr;
     std::vector<RTexture*> pGBufferTargets;
@@ -107,6 +115,10 @@ class MRenderer {
     std::unordered_set<WModel*> pModelReferences;
 
     std::vector<RInstanceData> instanceData;
+
+    struct {
+      RComputeJobInfo culling;
+    } computeJobs;
   } scene;
 
   struct RPostProcessData {
@@ -447,7 +459,8 @@ public:
      VkBufferCopy* copyRegion, uint32_t cmdBufferId = 0);
 
    // expects 'optimal layout' image as a source
-   TResult copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage, uint32_t width, uint32_t height, uint32_t layerCount);
+   TResult copyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, RTexture* pDstImage,
+                             uint32_t width, uint32_t height, uint32_t layerCount);
 
    TResult copyImageToBuffer(VkCommandBuffer commandBuffer, RTexture *pSrcImage, VkBuffer dstBuffer,
                              uint32_t width, uint32_t height, VkImageSubresourceLayers* subresource);
@@ -561,6 +574,8 @@ public:
  private:
   void updateComputeImageSet(std::vector<RTexture*>* pInImages, std::vector<RTexture*>* pInSamplers = nullptr,
                              const bool useExtraImageViews = false, const bool useExtraSamplerViews = false);
+  void updateComputeBufferSet(std::vector<RBuffer*>* pInBuffers);
+
   void executeComputeImage(VkCommandBuffer commandBuffer, EComputePipeline pipeline);
 
   void generateBRDFMap();

@@ -178,13 +178,31 @@ TResult core::MRenderer::createSceneBuffers() {
                config::scene::getSkinTransformBufferSize(),
                scene.skinTransformBuffer, nullptr);
 
+  RE_LOG(Log, "Allocating scene instance buffer for %d instances.", config::scene::nodeBudget);
+
+  // TODO: Deprecate old instance buffers in favor of compute culling ones
   scene.instanceBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+  //
+
+  scene.culledInstanceDataBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+  scene.culledDrawIndirectBuffers.resize(MAX_FRAMES_IN_FLIGHT);
   for (int8_t instanceBufferId = 0; instanceBufferId < MAX_FRAMES_IN_FLIGHT; ++instanceBufferId) {
-    RE_LOG(Log, "Allocating scene instance buffer for %d instances.",
-      config::scene::getNodeTransformBufferSize());
+    // TODO: Deprecate old instance buffers in favor of compute culling ones
     createBuffer(EBufferType::CPU_VERTEX, sizeof(RInstanceData) * config::scene::nodeBudget,
       scene.instanceBuffers[instanceBufferId], nullptr);
+    //
+
+    createBuffer(EBufferType::DGPU_STORAGE, sizeof(RInstanceData) * config::scene::nodeBudget,
+      scene.culledInstanceDataBuffers[instanceBufferId], nullptr);
+    createBuffer(EBufferType::DGPU_INDIRECT, sizeof(VkDrawIndexedIndirectCommand) * config::scene::nodeBudget,
+      scene.culledDrawIndirectBuffers[instanceBufferId], nullptr);
   }
+
+  createBuffer(EBufferType::DGPU_STORAGE, sizeof(WInstanceDataEntry) * config::scene::nodeBudget,
+    scene.instanceDataBuffer, nullptr);
+
+  createBuffer(EBufferType::DGPU_STORAGE, config::renderWidth * config::renderHeight * sizeof(float),
+    scene.depthImageTransitionBuffer, nullptr);
 
   RE_LOG(Log, "Creating material storage buffer.");
   createBuffer(EBufferType::CPU_STORAGE, sizeof(RSceneFragmentPCB) * (config::scene::sampledImageBudget / RE_MAXTEXTURES),
@@ -233,7 +251,15 @@ void core::MRenderer::destroySceneBuffers() {
                      scene.instanceBuffers[frameIndex].allocation);
     vmaDestroyBuffer(memAlloc, command.indirectCommandBuffers[frameIndex].buffer,
                      command.indirectCommandBuffers[frameIndex].allocation);
+
+    vmaDestroyBuffer(memAlloc, scene.culledInstanceDataBuffers[frameIndex].buffer,
+      scene.culledInstanceDataBuffers[frameIndex].allocation);
+    vmaDestroyBuffer(memAlloc, scene.culledDrawIndirectBuffers[frameIndex].buffer,
+      scene.culledDrawIndirectBuffers[frameIndex].allocation);
   }
+
+  vmaDestroyBuffer(memAlloc, scene.instanceDataBuffer.buffer, scene.instanceDataBuffer.allocation);
+  vmaDestroyBuffer(memAlloc, scene.depthImageTransitionBuffer.buffer, scene.depthImageTransitionBuffer.allocation);
   
   vmaDestroyBuffer(memAlloc, material.buffer.buffer, material.buffer.allocation);
   vmaDestroyBuffer(memAlloc, scene.transparencyLinkedListBuffer.buffer, scene.transparencyLinkedListBuffer.allocation);
@@ -333,6 +359,16 @@ TResult core::MRenderer::setDefaultComputeJobs() {
     info.pImageAttachments = { core::resources.getTexture(RTGT_ENVFILTER) };
     info.pSamplerAttachments = { core::resources.getTexture(RTGT_ENV) };
     info.intValues.x = info.pImageAttachments[0]->texture.levelCount;
+  }
+
+  // Occlusion culling (requires modification depending on the total instance count and the current frame in flight index)
+  {
+    RComputeJobInfo& info = scene.computeJobs.culling;
+    info.jobType = EComputeJob::Buffer;
+    info.pipeline = EComputePipeline::BufferCulling;
+    info.width = 1;
+    info.height = 1;
+    info.depth = 1;
   }
 
   return RE_OK;

@@ -256,6 +256,35 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
     }
   }
 
+  // Compute buffer processing layout
+
+  {
+    system.descriptorSetLayouts.emplace(EDescriptorSetLayout::ComputeBuffer,
+      VK_NULL_HANDLE);
+
+    std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
+      {0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
+      VK_SHADER_STAGE_COMPUTE_BIT, nullptr},
+      {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
+      VK_SHADER_STAGE_COMPUTE_BIT, nullptr},
+      {2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
+      VK_SHADER_STAGE_COMPUTE_BIT, nullptr}
+    };
+
+    VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
+    setLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    setLayoutCreateInfo.pBindings = setLayoutBindings.data();
+    setLayoutCreateInfo.bindingCount = static_cast<uint32_t>(setLayoutBindings.size());
+
+    if (vkCreateDescriptorSetLayout(
+      logicalDevice.device, &setLayoutCreateInfo, nullptr,
+      &system.descriptorSetLayouts.at(EDescriptorSetLayout::ComputeBuffer)) !=
+      VK_SUCCESS) {
+      RE_LOG(Critical, "Failed to create compute buffer descriptor set layout.");
+      return RE_CRITICAL;
+    }
+  }
+
   return RE_OK;
 }
 
@@ -573,7 +602,6 @@ TResult core::MRenderer::createDescriptorSets() {
   RE_LOG(Log, "Creating compute image descriptor set.");
 #endif
   {
-    // allocate material's descriptor set
     VkDescriptorSetLayout computeImageLayout =
         core::renderer.getDescriptorSetLayout(EDescriptorSetLayout::ComputeImage);
 
@@ -586,6 +614,27 @@ TResult core::MRenderer::createDescriptorSets() {
     if (vkAllocateDescriptorSets(core::renderer.logicalDevice.device,
                                  &allocateInfo,
                                  &compute.imageDescriptorSet) != VK_SUCCESS) {
+      RE_LOG(Error, "Failed to allocate descriptor set for PBR input subpass.");
+      return RE_CRITICAL;
+    };
+  }
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Creating compute buffer descriptor set.");
+#endif
+  {
+    VkDescriptorSetLayout computeBufferLayout =
+      core::renderer.getDescriptorSetLayout(EDescriptorSetLayout::ComputeBuffer);
+
+    VkDescriptorSetAllocateInfo allocateInfo{};
+    allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocateInfo.descriptorPool = core::renderer.getDescriptorPool();
+    allocateInfo.pSetLayouts = &computeBufferLayout;
+    allocateInfo.descriptorSetCount = 1;
+
+    if (vkAllocateDescriptorSets(core::renderer.logicalDevice.device,
+      &allocateInfo,
+      &compute.bufferDescriptorSet) != VK_SUCCESS) {
       RE_LOG(Error, "Failed to allocate descriptor set for PBR input subpass.");
       return RE_CRITICAL;
     };

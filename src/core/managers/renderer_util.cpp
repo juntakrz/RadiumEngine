@@ -121,7 +121,7 @@ TResult core::MRenderer::getDepthStencilFormat(VkFormat desiredFormat, VkFormat&
   std::vector<VkFormat> depthFormats = {
       VK_FORMAT_D32_SFLOAT_S8_UINT,
       VK_FORMAT_D24_UNORM_S8_UINT,
-      VK_FORMAT_D16_UNORM_S8_UINT
+      VK_FORMAT_D16_UNORM_S8_UINT,
   };
 
   VkFormatProperties formatProps;
@@ -1037,13 +1037,17 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
     return -1;
   }
 
-  // check if model is already bound, it shouldn't have valid offsets stored
+  // Check if model is already bound, it shouldn't have valid offsets stored
   if (pEntity->getRendererBindingIndex() > -1) {
     RE_LOG(Error, "Entity is already bound.");
     return -1;
   }
 
-  // add model to rendering queue, store its offsets
+  // Create staging buffer to upload data to the GPU instance data storage
+  RBuffer stagingInstanceBuffer;
+  createBuffer(EBufferType::STAGING, sizeof(WInstanceDataEntry), stagingInstanceBuffer, nullptr);
+
+  // Add model to rendering queue, store its offsets
   REntityBindInfo bindInfo{};
   bindInfo.pEntity = pEntity;
 
@@ -1070,10 +1074,32 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
     instanceData.instanceBufferBlock.nodeMatrixId = pEntity->getNodeTransformBufferIndex(pNode->index);
     instanceData.instanceBufferBlock.skinMatrixId = pEntity->getSkinTransformBufferIndex(pNode->skinIndex);
     instanceData.instanceBufferBlock.materialId = primitive->pInitialMaterial->bufferIndex;
+
+    // Store this primitive instance data in the GPU storage buffer for instance data
+    instanceData.instanceDataBufferOffset = scene.currentInstanceDataOffset;
+
+    WInstanceDataEntry bufferDataEntry;
+    bufferDataEntry.min = glm::vec4(primitive->extent.min, 1.0f);
+    bufferDataEntry.max = glm::vec4(primitive->extent.max, 1.0f);
+    bufferDataEntry.instanceData = instanceData.instanceBufferBlock;
+    bufferDataEntry.passFlags = primitive->pInitialMaterial->passFlags;
+
+    memcpy(stagingInstanceBuffer.allocInfo.pMappedData, &bufferDataEntry, sizeof(WInstanceDataEntry));
+
+    VkBufferCopy bufferCopyRegion{};
+    bufferCopyRegion.srcOffset = 0u;
+    bufferCopyRegion.size = sizeof(WInstanceDataEntry);
+    bufferCopyRegion.dstOffset = scene.currentInstanceDataOffset;
+
+    copyBuffer(stagingInstanceBuffer.buffer, scene.instanceDataBuffer.buffer, &bufferCopyRegion);
+
+    scene.currentInstanceDataOffset += sizeof(WInstanceDataEntry);
   }
 
   pEntity->setRendererBindingIndex(
       static_cast<int32_t>(system.bindings.size() - 1));
+
+  vmaDestroyBuffer(memAlloc, stagingInstanceBuffer.buffer, stagingInstanceBuffer.allocation);
 
 #ifndef NDEBUG
   RE_LOG(Log, "Bound model \"%s\" to graphics pipeline.", pModel->getName());

@@ -31,7 +31,8 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
       static_cast<uint32_t>(queueFamilyIndices.size());
 
     allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
+      | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
     if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo, &outBuffer.buffer,
       &outBuffer.allocation, &outBuffer.allocInfo) != VK_SUCCESS) {
@@ -40,14 +41,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     }
 
     if (inData) {
-      void* pData = nullptr;
-      if (vmaMapMemory(memAlloc, outBuffer.allocation, &pData) != VK_SUCCESS) {
-        RE_LOG(Error, "Failed to map memory for staging buffer data.");
-        return RE_ERROR;
-      };
-      memcpy(pData, inData, size);
-      vmaUnmapMemory(memAlloc, outBuffer.allocation);
-      outBuffer.allocInfo.pUserData = pData;
+      memcpy(outBuffer.allocInfo.pMappedData, inData, size);
     }
 
     return RE_OK;
@@ -176,7 +170,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
       &outBuffer.buffer, &outBuffer.allocation,
       &outBuffer.allocInfo) != VK_SUCCESS) {
-      RE_LOG(Error, "Failed to create CPU_STORAGE buffer.");
+      RE_LOG(Error, "Failed to create CPU_INDIRECT buffer.");
       return RE_ERROR;
     };
 
@@ -324,6 +318,42 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
 
     return RE_OK;
   }
+  case (uint8_t)EBufferType::DGPU_INDIRECT: {
+    bufferCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+      | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+    bufferCreateInfo.size = size;
+    bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    bufferCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();
+    bufferCreateInfo.queueFamilyIndexCount =
+      static_cast<uint32_t>(queueFamilyIndices.size());
+
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    allocInfo.flags = NULL;
+    allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
+      &outBuffer.buffer, &outBuffer.allocation,
+      &outBuffer.allocInfo) != VK_SUCCESS) {
+      RE_LOG(Error, "Failed to create DGPU_INDIRECT buffer.");
+      return RE_ERROR;
+    };
+
+    if (inData) {
+      VkBufferCopy copyInfo{};
+      copyInfo.srcOffset = 0;
+      copyInfo.dstOffset = 0;
+      copyInfo.size = size;
+
+      createBuffer(EBufferType::STAGING, size, stagingBuffer, inData);
+      copyBuffer(stagingBuffer.buffer, outBuffer.buffer, &copyInfo);
+      vmaDestroyBuffer(memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
+    }
+
+    bdaInfo.buffer = outBuffer.buffer;
+    outBuffer.deviceAddress = vkGetBufferDeviceAddress(logicalDevice.device, &bdaInfo);
+
+    return RE_OK;
+  }
   case (uint8_t)EBufferType::DGPU_SAMPLER: {
     bufferCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
       | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT;
@@ -437,16 +467,19 @@ TResult core::MRenderer::copyBuffer(RBuffer* srcBuffer, RBuffer* dstBuffer,
     cmdBufferId);
 }
 
-TResult core::MRenderer::copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
+TResult core::MRenderer::copyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, RTexture* pDstImage,
   uint32_t width, uint32_t height,
   uint32_t layerCount) {
-  if (!srcBuffer || !dstImage) {
+  if (!srcBuffer || !pDstImage) {
     RE_LOG(Error, "copyBufferToImage received nullptr as an argument.");
     return RE_ERROR;
   }
 
-  VkCommandBuffer cmdBuffer = createCommandBuffer(
-    ECmdType::Transfer, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
+  const bool noCommandBufferProvided = (commandBuffer == VK_NULL_HANDLE) ? true : false;
+
+  if (noCommandBufferProvided) {
+    commandBuffer = createCommandBuffer(ECmdType::Transfer, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
+  }
 
   VkBufferImageCopy imageCopy{};
   imageCopy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -459,10 +492,12 @@ TResult core::MRenderer::copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage,
   imageCopy.bufferRowLength = 0;
   imageCopy.bufferImageHeight = 0;
 
-  vkCmdCopyBufferToImage(cmdBuffer, srcBuffer, dstImage,
-    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+  vkCmdCopyBufferToImage(commandBuffer, srcBuffer, pDstImage->texture.image,
+    pDstImage->texture.imageLayout, 1, &imageCopy);
 
-  flushCommandBuffer(cmdBuffer, ECmdType::Transfer);
+  if (noCommandBufferProvided) {
+    flushCommandBuffer(commandBuffer, ECmdType::Transfer);
+  }
 
   return RE_OK;
 }

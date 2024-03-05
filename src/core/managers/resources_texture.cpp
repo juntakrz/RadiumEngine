@@ -316,9 +316,8 @@ TResult core::MResources::writeTexture(RTexture* pTexture, void* pData,
   RBuffer staging;
   core::renderer.createBuffer(EBufferType::STAGING, dataSize, staging,
                               pData);
-  core::renderer.copyBufferToImage(
-      staging.buffer, pTexture->texture.image, pTexture->texture.width,
-      pTexture->texture.height, pTexture->texture.layerCount);
+  core::renderer.copyBufferToImage(VK_NULL_HANDLE, staging.buffer, pTexture,
+    pTexture->texture.width, pTexture->texture.height, pTexture->texture.layerCount);
 
   vmaDestroyBuffer(core::renderer.memAlloc, staging.buffer,
                    staging.allocation);

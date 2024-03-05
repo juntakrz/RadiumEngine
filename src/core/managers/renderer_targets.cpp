@@ -446,14 +446,15 @@ TResult core::MRenderer::createDepthTargets() {
     return result;
   }
 
-  // default depth/stencil texture
+  // Default depth/stencil texture
   std::string rtName = RTGT_DEPTH;
 
   RTextureInfo textureInfo{};
   textureInfo.name = rtName;
   textureInfo.layerCount = 1u;
   textureInfo.isCubemap = false;
-  textureInfo.format = core::vulkan::formatDepth;
+  //textureInfo.format = core::vulkan::formatDepth;
+  textureInfo.format = VK_FORMAT_D32_SFLOAT;
   textureInfo.width = swapchain.imageExtent.width;
   textureInfo.height = swapchain.imageExtent.height;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
@@ -465,7 +466,7 @@ TResult core::MRenderer::createDepthTargets() {
   textureInfo.vmaMemoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 
   // Remove image aspect overrides for depth targets in case general layout causes performance issues
-  textureInfo.imageAspectOverride = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+  textureInfo.imageAspectOverride = VK_IMAGE_ASPECT_DEPTH_BIT;
 
   RTexture* pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -529,17 +530,18 @@ TResult core::MRenderer::createDepthTargets() {
   textureInfo.name = rtName;
   textureInfo.width = config::renderWidth;
   textureInfo.height = config::renderHeight;
-  textureInfo.format = core::vulkan::formatDepth;
+  textureInfo.format = VK_FORMAT_R32_SFLOAT;
+  //textureInfo.format = VK_FORMAT_D32_SFLOAT;
   textureInfo.isCubemap = false;
   textureInfo.layerCount = 1u;
   textureInfo.mipLevels = math::getMipLevels(config::renderHeight);
   //textureInfo.targetLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-  textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
 
   // Override with the same image aspect flags as the depth image source
-  textureInfo.imageAspectOverride = core::resources.getTexture(RTGT_DEPTH)->texture.aspectMask;
+  //textureInfo.imageAspectOverride = core::resources.getTexture(RTGT_DEPTH)->texture.aspectMask;
 
   textureInfo.samplerInfo.filter = VK_FILTER_LINEAR;
   textureInfo.samplerInfo.addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;

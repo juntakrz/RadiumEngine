@@ -279,7 +279,9 @@ void core::MRenderer::postFrameCommands(VkCommandBuffer commandBuffer) {
   // Store current frame's depth map
   RTexture* pPreviousDepthTexture = scene.pPreviousDepthTargets[renderView.frameInFlight];
 
-  VkImageCopy depthCopyRegion{};
+  VkCommandBuffer cmdBuffer = createCommandBuffer(ECmdType::Transfer, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
+
+  /*VkImageCopy depthCopyRegion{};
   depthCopyRegion.extent = { config::renderWidth, config::renderHeight, 1 };
   depthCopyRegion.srcOffset = { 0, 0, 0 };
   depthCopyRegion.srcSubresource.aspectMask = scene.pDepthTarget->texture.aspectMask;
@@ -289,7 +291,23 @@ void core::MRenderer::postFrameCommands(VkCommandBuffer commandBuffer) {
   depthCopyRegion.dstOffset = depthCopyRegion.srcOffset;
   depthCopyRegion.dstSubresource = depthCopyRegion.srcSubresource;
 
-  copyImage(commandBuffer, scene.pDepthTarget, pPreviousDepthTexture, depthCopyRegion);
+  copyImage(cmdBuffer, scene.pDepthTarget, pPreviousDepthTexture, depthCopyRegion);*/
+
+  VkImageSubresourceLayers subLayers{};
+  subLayers.aspectMask = scene.pDepthTarget->texture.aspectMask;
+  subLayers.baseArrayLayer = 0u;
+  subLayers.layerCount = 1u;
+  subLayers.mipLevel = 0u;
+
+  copyImageToBuffer(cmdBuffer, scene.pDepthTarget, scene.depthImageTransitionBuffer.buffer,
+    config::renderWidth, config::renderHeight, &subLayers);
+
+  copyBufferToImage(cmdBuffer, scene.depthImageTransitionBuffer.buffer, pPreviousDepthTexture,
+    config::renderWidth, config::renderHeight, 1u);
+
+  flushCommandBuffer(cmdBuffer, ECmdType::Transfer, true);
+
+  generateMipMaps(commandBuffer, pPreviousDepthTexture, pPreviousDepthTexture->texture.levelCount);
 }
 
 void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uint32_t cascadeIndex) {
@@ -572,17 +590,25 @@ void core::MRenderer::renderFrame() {
     return;
   }
 
-  // get new delta time between frames
+  // Get new delta time between frames
   core::time.tickTimer();
 
-  // reset fences if we will do any work this frame e.g. no swap chain
-  // recreation
+  // Reset fences if we will do any work this frame e.g. no swap chain recreation
   vkResetFences(logicalDevice.device, 1,
     &sync.fenceInFlight[renderView.frameInFlight]);
 
   vkResetCommandBuffer(command.buffersGraphics[renderView.frameInFlight], NULL);
 
+  // Execute compute jobs
   executeQueuedComputeJobs();
+
+  scene.computeJobs.culling.pImageAttachments = { scene.pPreviousDepthTargets[renderView.frameInFlight] };
+  scene.computeJobs.culling.pBufferAttachments = { &scene.instanceDataBuffer,
+    &scene.culledInstanceDataBuffers[renderView.frameInFlight], &scene.culledDrawIndirectBuffers[renderView.frameInFlight] };
+
+  beginCommandBuffer(command.buffersCompute[renderView.frameInFlight], false);
+  executeComputeJobImmediate(&scene.computeJobs.culling);
+  flushCommandBuffer(command.buffersCompute[renderView.frameInFlight], ECmdType::Compute);
   //std::this_thread::sleep_for(std::chrono::milliseconds(30));
 
   VkCommandBuffer commandBuffer = command.buffersGraphics[renderView.frameInFlight];
@@ -608,7 +634,6 @@ void core::MRenderer::renderFrame() {
   prepareFrameResources(commandBuffer);
 
   /* 1. Environment generation */
-
   if (renderView.generateEnvironmentMaps) {
     renderEnvironmentMaps(commandBuffer, environment.genInterval);
   }

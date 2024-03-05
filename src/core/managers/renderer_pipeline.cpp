@@ -37,9 +37,9 @@ TResult core::MRenderer::createPipelineLayouts() {
 
   // pipeline layout for the main 'scene'
   std::vector<VkDescriptorSetLayout> descriptorSetLayouts{
-      getDescriptorSetLayout(EDescriptorSetLayout::Scene),      // 0
-      getDescriptorSetLayout(EDescriptorSetLayout::Model),      // 1
-      getDescriptorSetLayout(EDescriptorSetLayout::MaterialEXT) // 2
+    getDescriptorSetLayout(EDescriptorSetLayout::Scene),      // 0
+    getDescriptorSetLayout(EDescriptorSetLayout::Model),      // 1
+    getDescriptorSetLayout(EDescriptorSetLayout::MaterialEXT) // 2
   };
 
   VkPipelineLayoutCreateInfo layoutInfo{};
@@ -67,9 +67,9 @@ TResult core::MRenderer::createPipelineLayouts() {
 
   descriptorSetLayouts.clear();
   descriptorSetLayouts = {
-      getDescriptorSetLayout(EDescriptorSetLayout::Scene),  // 0
-      getDescriptorSetLayout(EDescriptorSetLayout::Model),        // 1
-      getDescriptorSetLayout(EDescriptorSetLayout::MaterialEXT)   // 2
+    getDescriptorSetLayout(EDescriptorSetLayout::Scene),        // 0
+    getDescriptorSetLayout(EDescriptorSetLayout::Model),        // 1
+    getDescriptorSetLayout(EDescriptorSetLayout::MaterialEXT)   // 2
   };
 
   layoutInfo = VkPipelineLayoutCreateInfo{};
@@ -96,7 +96,7 @@ TResult core::MRenderer::createPipelineLayouts() {
 
   descriptorSetLayouts.clear();
   descriptorSetLayouts = {
-      getDescriptorSetLayout(EDescriptorSetLayout::ComputeImage)
+    getDescriptorSetLayout(EDescriptorSetLayout::ComputeImage)    // 0
   };
 
   VkPushConstantRange computeImagePushConstRange{};
@@ -114,7 +114,40 @@ TResult core::MRenderer::createPipelineLayouts() {
 
   if (vkCreatePipelineLayout(logicalDevice.device, &layoutInfo, nullptr,
                              &getPipelineLayout(layoutType)) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create \"Compute Image\" pipeline layout.");
+    RE_LOG(Critical, "Failed to create \"Compute Buffer\" pipeline layout.");
+
+    return RE_CRITICAL;
+  }
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Creating pipeline layout for \"Compute Buffer\".");
+#endif
+
+  layoutType = EPipelineLayout::ComputeBuffer;
+  system.layouts.emplace(layoutType, VK_NULL_HANDLE);
+
+  descriptorSetLayouts.clear();
+  descriptorSetLayouts = {
+    getDescriptorSetLayout(EDescriptorSetLayout::ComputeImage),   // 0
+    getDescriptorSetLayout(EDescriptorSetLayout::ComputeBuffer)   // 1
+  };
+
+  computeImagePushConstRange = VkPushConstantRange{};
+  computeImagePushConstRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+  computeImagePushConstRange.offset = 0;
+  computeImagePushConstRange.size = sizeof(RComputeImagePCB);
+
+  layoutInfo = VkPipelineLayoutCreateInfo{};
+  layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+  layoutInfo.setLayoutCount =
+    static_cast<uint32_t>(descriptorSetLayouts.size());
+  layoutInfo.pSetLayouts = descriptorSetLayouts.data();
+  layoutInfo.pushConstantRangeCount = 1;
+  layoutInfo.pPushConstantRanges = &computeImagePushConstRange;
+
+  if (vkCreatePipelineLayout(logicalDevice.device, &layoutInfo, nullptr,
+    &getPipelineLayout(layoutType)) != VK_SUCCESS) {
+    RE_LOG(Critical, "Failed to create \"Compute Buffer\" pipeline layout.");
 
     return RE_CRITICAL;
   }
@@ -217,6 +250,36 @@ TResult core::MRenderer::createComputePipelines() {
       nullptr, &getComputePipeline(EComputePipeline::ImageEnvFilter)) !=
       VK_SUCCESS) {
       RE_LOG(Critical, "Failed to create Compute Image 'Environment Prefiltered' pipeline.");
+
+      return RE_CRITICAL;
+    }
+
+    vkDestroyShaderModule(logicalDevice.device, shaderStage.module, nullptr);
+  }
+
+  //
+  // Compute Buffer pipeline for culling primitives and generating instance buffer and draw indirect commands
+  //
+  {
+    VkPipelineShaderStageCreateInfo shaderStage =
+      loadShader("cs_culling.spv", VK_SHADER_STAGE_COMPUTE_BIT);
+    computePipelineInfo.stage = shaderStage;
+
+    VkComputePipelineCreateInfo computePipelineInfo{};
+    computePipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    computePipelineInfo.layout =
+      getPipelineLayout(EPipelineLayout::ComputeBuffer);
+    computePipelineInfo.stage = shaderStage;
+    computePipelineInfo.flags = 0;
+
+    system.computePipelines.emplace(EComputePipeline::BufferCulling,
+      VK_NULL_HANDLE);
+
+    if (vkCreateComputePipelines(
+      logicalDevice.device, VK_NULL_HANDLE, 1, &computePipelineInfo,
+      nullptr, &getComputePipeline(EComputePipeline::BufferCulling)) !=
+      VK_SUCCESS) {
+      RE_LOG(Critical, "Failed to create Compute Buffer 'Culling' pipeline.");
 
       return RE_CRITICAL;
     }
