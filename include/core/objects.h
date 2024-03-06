@@ -68,18 +68,13 @@ enum class ECmdType {
   Present
 };
 
-enum class EComputeJob {
-  Image,
-  Buffer
-};
-
 enum class EComputePipeline {
   Null,
-  ImageLUT,
-  ImageEnvIrradiance,
-  ImageEnvFilter,
-  ImageMipMap,
-  BufferCulling
+  LUT,
+  EnvIrradiance,
+  EnvFilter,
+  MipMap,
+  Culling
 };
 
 enum class EControlMode {
@@ -127,8 +122,7 @@ enum class EPipelineLayout {
   PBR,
   Environment,
   Shadow,
-  ComputeImage,
-  ComputeBuffer
+  Compute
 };
 
 enum class EPrimitiveType {
@@ -164,8 +158,16 @@ struct RCameraInfo {
   float farZ = config::viewDistance;
 };
 
+struct RComputePCB {
+  uint32_t imageIndex;
+  uint32_t samplerIndex;
+  uint32_t bufferIndex;
+  uint32_t padding;
+  glm::ivec4 intValues = glm::ivec4(0);
+  glm::vec4 floatValues = glm::vec4(0.0f);
+};
+
 struct RComputeJobInfo {
-  EComputeJob jobType;
   EComputePipeline pipeline;
   std::vector<struct RTexture*> pImageAttachments;
   std::vector<struct RTexture*> pSamplerAttachments;
@@ -174,8 +176,8 @@ struct RComputeJobInfo {
   bool transtionToShaderReadOnly = false;
   bool useExtraImageViews = false;
   bool useExtraSamplerViews = false;
-  glm::ivec4 intValues = glm::ivec4(0);
-  glm::vec4 floatValues = glm::vec4(0.0f);
+  
+  RComputePCB pushBlock;
 };
 
 struct RDynamicAttachmentInfo {
@@ -455,17 +457,10 @@ struct RVulkanTexture : public ktxVulkanTexture {
 };
 
 //
-// uniform buffer objects and push contant blocks
+// Buffer objects and push contant blocks
 // 
 
-struct RComputeImagePCB {
-  uint32_t imageIndex;
-  uint32_t imageCount = 0;
-  glm::ivec4 intValues = glm::ivec4(0);
-  glm::vec4 floatValues = glm::vec4(0.0f);
-};
-
-// lighting data uniform buffer object
+// Lighting data uniform buffer object
 struct RLightingUBO {
   glm::vec4 lightLocations[RE_MAXLIGHTS];     // w is unused
   glm::vec4 lightColors[RE_MAXLIGHTS];        // alpha is intensity

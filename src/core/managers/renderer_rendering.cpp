@@ -100,20 +100,20 @@ void core::MRenderer::renderEnvironmentMaps(
   // Irradiance map is processed, compute prefiltered map one layer per frame
   } else if (environment.tracking.layer > 11) {
     // Cubemap face index
-    environment.computeJobs.prefiltered.intValues.y = environment.tracking.layer - 12;
+    compute.environmentJobInfo.prefiltered.pushBlock.intValues.y = environment.tracking.layer - 12;
     // Total samples
-    environment.computeJobs.prefiltered.intValues.z = 128;
+    compute.environmentJobInfo.prefiltered.pushBlock.intValues.z = 128;
 
-    queueComputeJob(&environment.computeJobs.prefiltered);
+    queueComputeJob(&compute.environmentJobInfo.prefiltered);
     environment.tracking.layer++;
     return;
 
   // All 6 faces are rendered, compute irradiance map one layer per frame
   } else if (environment.tracking.layer > 5) {
     // Cubemap face index
-    environment.computeJobs.irradiance.intValues.y = environment.tracking.layer - 6;
+    compute.environmentJobInfo.irradiance.pushBlock.intValues.y = environment.tracking.layer - 6;
 
-    queueComputeJob(&environment.computeJobs.irradiance);
+    queueComputeJob(&compute.environmentJobInfo.irradiance);
     environment.tracking.layer++;
     return;
   }
@@ -193,19 +193,11 @@ void core::MRenderer::prepareFrameResources(VkCommandBuffer commandBuffer) {
   }
 }
 
-void core::MRenderer::executeFrameComputeJobs() {
-  /*scene.computeJobs.culling.pImageAttachments = { scene.pPreviousDepthTargets[renderView.frameInFlight] };
-  scene.computeJobs.culling.pBufferAttachments = { &scene.instanceDataBuffer,
-    &scene.culledInstanceDataBuffers[renderView.frameInFlight], &scene.culledDrawIndirectBuffers[renderView.frameInFlight] };
-
-  beginCommandBuffer(command.buffersCompute[renderView.frameInFlight], false);
-  executeComputeJobImmediate(&scene.computeJobs.culling);
-  flushCommandBuffer(command.buffersCompute[renderView.frameInFlight], ECmdType::Compute);*/
-
+void core::MRenderer::prepareFrameComputeJobs() {
   const uint8_t previousFrameInFlight = (renderView.frameInFlight + MAX_FRAMES_IN_FLIGHT - 1) % MAX_FRAMES_IN_FLIGHT;
 
   // Mip map previous frame's depth
-  RComputeJobInfo depthMipmappingJob = scene.computeJobs.mipmapping;
+  RComputeJobInfo& depthMipmappingJob = compute.imageJobInfo.mipmapping;
   depthMipmappingJob.width = config::renderWidth / 16;
   depthMipmappingJob.height = config::renderHeight / 16;
 
@@ -214,16 +206,20 @@ void core::MRenderer::executeFrameComputeJobs() {
   depthMipmappingJob.pImageAttachments = {scene.pPreviousDepthTargets[previousFrameInFlight]};
 
   // Number of target mip maps
-  depthMipmappingJob.intValues.x = scene.pPreviousDepthTargets[previousFrameInFlight]->texture.levelCount;
+  depthMipmappingJob.pushBlock.intValues.x = scene.pPreviousDepthTargets[previousFrameInFlight]->texture.levelCount;
 
   // Type of mipmapping: from D32 to R32
-  depthMipmappingJob.intValues.y = 0;
+  depthMipmappingJob.pushBlock.intValues.y = 0;
 
-  beginCommandBuffer(command.buffersCompute[renderView.frameInFlight], false);
+  /*RComputeJobInfo cullingJob = compute.sceneJobInfo.culling;
+  cullingJob.width = static_cast<uint32_t>(scene.totalInstances) / 32 + 1;
+  cullingJob.height = 1;
+  cullingJob.depth = 1;
+  cullingJob.pSamplerAttachments = { scene.pPreviousDepthTargets[previousFrameInFlight] };
+  cullingJob.pBufferAttachments = { &scene.instanceDataBuffer,
+    &scene.culledInstanceDataBuffers[renderView.frameInFlight], &scene.culledDrawIndirectBuffers[renderView.frameInFlight] };*/
 
-  executeComputeJobImmediate(&depthMipmappingJob);
-
-  flushCommandBuffer(command.buffersCompute[renderView.frameInFlight], ECmdType::Compute);
+  queueComputeJob(&depthMipmappingJob);
 }
 
 void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId,
@@ -595,10 +591,10 @@ void core::MRenderer::renderFrame() {
 
   vkResetCommandBuffer(command.buffersGraphics[renderView.frameInFlight], NULL);
 
-  // Execute compute jobs
-  executeQueuedComputeJobs();
+  prepareFrameComputeJobs();
 
-  executeFrameComputeJobs();
+  // Execute compute jobs
+  executeQueuedComputeJobs(command.buffersCompute[renderView.frameInFlight]);
 
   //std::this_thread::sleep_for(std::chrono::milliseconds(30));
 
@@ -737,7 +733,7 @@ void core::MRenderer::renderFrame() {
 
 void core::MRenderer::renderInitializationFrame() {
   // Generate BRDF lookup table during the initial frame
-  queueComputeJob(&environment.computeJobs.LUT);
+  queueComputeJob(&compute.environmentJobInfo.LUT);
 
   // Write ambient occlusion noise/jitter map
   RTexture* pNoiseTexture = core::resources.getTexture(RTGT_NOISEMAP);

@@ -273,7 +273,7 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     info.vertexShader = "vs_skybox.spv";
     info.fragmentShader = "fs_skybox.spv";
     info.colorAttachmentClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
-    //info.pipelineInfo.enableDepthWrite = VK_FALSE;
+    info.pipelineInfo.enableDepthWrite = VK_FALSE;
     info.layoutInfo.transitionColorAttachmentLayout = true;
     info.colorAttachments = {{ pColorAttachment, pColorAttachment->texture.view, pColorAttachment->texture.imageFormat }};
     info.depthAttachment = { pDepthAttachment, pDepthAttachment->texture.view, pDepthAttachment->texture.imageFormat };

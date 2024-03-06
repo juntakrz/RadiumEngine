@@ -9,8 +9,11 @@ layout(set = 0, binding = 1) uniform samplerCube samplers[];
 
 layout (push_constant) uniform PushBlock {
 	uint imageIndex;
-	uint imageCount;
-    ivec4 intValues;	// x - total mip levels, y - current face, z - num samples
+	uint samplerIndex;
+	uint bufferIndex;
+	uint padding;
+    ivec4 intValues;	// x - 
+	vec4 floatValues;
 } pushBlock;
 
 void main() {

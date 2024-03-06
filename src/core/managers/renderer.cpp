@@ -320,9 +320,8 @@ void core::MRenderer::destroyUniformBuffers() {
 TResult core::MRenderer::setDefaultComputeJobs() {
   // BRDF LUT
   {
-    RComputeJobInfo& info = environment.computeJobs.LUT;
-    info.jobType = EComputeJob::Image;
-    info.pipeline = EComputePipeline::ImageLUT;
+    RComputeJobInfo& info = compute.environmentJobInfo.LUT;
+    info.pipeline = EComputePipeline::LUT;
     info.width = core::vulkan::LUTExtent / 8;
     info.height = core::vulkan::LUTExtent / 4;
     info.transtionToShaderReadOnly = true;
@@ -331,9 +330,8 @@ TResult core::MRenderer::setDefaultComputeJobs() {
 
   // Environment irradiance map
   {
-    RComputeJobInfo& info = environment.computeJobs.irradiance;
-    info.jobType = EComputeJob::Image;
-    info.pipeline = EComputePipeline::ImageEnvIrradiance;
+    RComputeJobInfo& info = compute.environmentJobInfo.irradiance;
+    info.pipeline = EComputePipeline::EnvIrradiance;
     info.width = core::vulkan::envFilterExtent / 8;
     info.height = core::vulkan::envFilterExtent / 4;
     info.depth = 1;
@@ -342,14 +340,13 @@ TResult core::MRenderer::setDefaultComputeJobs() {
     info.useExtraSamplerViews = false;
     info.pImageAttachments = { core::resources.getTexture(RTGT_ENVIRRAD) };
     info.pSamplerAttachments = { core::resources.getTexture(RTGT_ENV) };
-    info.intValues.x = info.pImageAttachments[0]->texture.levelCount;
+    info.pushBlock.intValues.x = info.pImageAttachments[0]->texture.levelCount;
   }
 
   // Environment prefiltered map
   {
-    RComputeJobInfo& info = environment.computeJobs.prefiltered;
-    info.jobType = EComputeJob::Image;
-    info.pipeline = EComputePipeline::ImageEnvFilter;
+    RComputeJobInfo& info = compute.environmentJobInfo.prefiltered;
+    info.pipeline = EComputePipeline::EnvFilter;
     info.width = core::vulkan::envFilterExtent / 8;
     info.height = core::vulkan::envFilterExtent / 4;
     info.depth = 1;
@@ -358,14 +355,13 @@ TResult core::MRenderer::setDefaultComputeJobs() {
     info.useExtraSamplerViews = false;
     info.pImageAttachments = { core::resources.getTexture(RTGT_ENVFILTER) };
     info.pSamplerAttachments = { core::resources.getTexture(RTGT_ENV) };
-    info.intValues.x = info.pImageAttachments[0]->texture.levelCount;
+    info.pushBlock.intValues.x = info.pImageAttachments[0]->texture.levelCount;
   }
 
   // Generate mipmaps (requires additional input data before submitting)
   {
-    RComputeJobInfo& info = scene.computeJobs.mipmapping;
-    info.jobType = EComputeJob::Image;
-    info.pipeline = EComputePipeline::ImageMipMap;
+    RComputeJobInfo& info = compute.imageJobInfo.mipmapping;
+    info.pipeline = EComputePipeline::MipMap;
     info.depth = 1;
     info.useExtraImageViews = true;
     info.useExtraSamplerViews = false;
@@ -373,9 +369,8 @@ TResult core::MRenderer::setDefaultComputeJobs() {
 
   // Occlusion culling (requires modification depending on the total instance count and the current frame in flight index)
   {
-    RComputeJobInfo& info = scene.computeJobs.culling;
-    info.jobType = EComputeJob::Buffer;
-    info.pipeline = EComputePipeline::BufferCulling;
+    RComputeJobInfo& info = compute.sceneJobInfo.culling;
+    info.pipeline = EComputePipeline::Culling;
     info.width = 1;
     info.height = 1;
     info.depth = 1;

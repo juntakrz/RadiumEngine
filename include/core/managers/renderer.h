@@ -32,10 +32,28 @@ class MRenderer {
   struct {
     VkDescriptorSet imageDescriptorSet;
     VkDescriptorSet bufferDescriptorSet;
-    VkExtent3D imageExtent;
-    RComputeImagePCB imagePCB;
+    uint32_t maxBoundDescriptorSets = 0u;
 
-    std::vector<RComputeJobInfo> jobs;
+    // Used to track and modify relative indices when executing jobs
+    uint32_t freeImageIndex = 0;
+    uint32_t freeSamplerIndex = 0;
+    uint32_t freeBufferIndex = 0;
+
+    std::vector<RComputeJobInfo> queuedJobs;
+
+    struct {
+      RComputeJobInfo LUT;
+      RComputeJobInfo irradiance;
+      RComputeJobInfo prefiltered;
+    } environmentJobInfo;
+
+    struct {
+      RComputeJobInfo culling;
+    } sceneJobInfo;
+
+    struct {
+      RComputeJobInfo mipmapping;
+    } imageJobInfo;
   } compute;
 
   struct REnvironmentData {
@@ -44,12 +62,6 @@ class MRenderer {
     int32_t genInterval = 2;
     RTexture* pTargetCubemap = nullptr;
     std::array<glm::vec3, 6> cameraTransformVectors;
-
-    struct {
-      RComputeJobInfo LUT;
-      RComputeJobInfo irradiance;
-      RComputeJobInfo prefiltered;
-    } computeJobs;
 
     struct {
       uint32_t layer = 0;     // cubemap layer
@@ -115,11 +127,6 @@ class MRenderer {
     std::unordered_set<WModel*> pModelReferences;
 
     std::vector<RInstanceData> instanceData;
-
-    struct {
-      RComputeJobInfo culling;
-      RComputeJobInfo mipmapping;
-    } computeJobs;
   } scene;
 
   struct RPostProcessData {
@@ -573,18 +580,13 @@ public:
   // ***COMPUTE
   //
  private:
-  void updateComputeImageSet(std::vector<RTexture*>* pInImages, std::vector<RTexture*>* pInSamplers = nullptr,
-                             const bool useExtraImageViews = false, const bool useExtraSamplerViews = false);
-  void updateComputeBufferSet(std::vector<RBuffer*>* pInBuffers);
-
-  void executeComputeImage(VkCommandBuffer commandBuffer, EComputePipeline pipeline);
-
-  void generateBRDFMap();
+  void updateComputeDescriptorSets(RComputeJobInfo* pJobInfo);
+  void executeComputeJob(VkCommandBuffer commandBuffer, RComputeJobInfo* pJobInfo);
 
  public:
   void queueComputeJob(RComputeJobInfo* pInfo);
-  void executeComputeJobImmediate(RComputeJobInfo* pInfo);
-  void executeQueuedComputeJobs();
+  void preprocessQueuedComputeJobs(VkCommandBuffer commandBuffer);
+  void executeQueuedComputeJobs(VkCommandBuffer commandBuffer);
 
   //
   // ***RENDERING
@@ -603,7 +605,7 @@ public:
                              const uint32_t frameInterval = 1u);
 
   void prepareFrameResources(VkCommandBuffer commandBuffer);
-  void executeFrameComputeJobs();
+  void prepareFrameComputeJobs();
 
   void executeRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId,
                             RMaterial* pPushMaterial = nullptr, bool renderQuad = false);

@@ -9,8 +9,11 @@ layout(set = 0, binding = 1) uniform samplerCube samplers[];
 
 layout (push_constant) uniform PushBlock {
 	uint imageIndex;
-	uint imageCount;
-    ivec4 intValues;        // x - total mip levels, y - current face
+	uint samplerIndex;
+	uint bufferIndex;
+	uint padding;
+    ivec4 intValues;	// x - total mip levels, y - current face
+	vec4 floatValues;
 } pushBlock;
 
 const float sampleDelta = 0.025;
@@ -48,7 +51,7 @@ void calculateIrradiance(ivec3 srcCoordinates, ivec2 cubemapSize) {
             // Tangent space to world
             vec3 sampleVector = sphereCoord.x * right + sphereCoord.y * up + sphereCoord.z * N; 
 
-            irradianceColor += textureLod(samplers[pushBlock.imageIndex], sampleVector, 0).rgb * cosTheta * sinTheta;
+            irradianceColor += textureLod(samplers[pushBlock.samplerIndex], sampleVector, 0).rgb * cosTheta * sinTheta;
         }
     }
 

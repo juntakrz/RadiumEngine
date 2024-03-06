@@ -257,19 +257,18 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
   }
 
   // Compute buffer processing layout
-
   {
     system.descriptorSetLayouts.emplace(EDescriptorSetLayout::ComputeBuffer,
       VK_NULL_HANDLE);
 
-    std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
-      {0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
-      VK_SHADER_STAGE_COMPUTE_BIT, nullptr},
-      {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
-      VK_SHADER_STAGE_COMPUTE_BIT, nullptr},
-      {2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
-      VK_SHADER_STAGE_COMPUTE_BIT, nullptr}
-    };
+    compute.maxBoundDescriptorSets = (physicalDevice.deviceProperties.properties.limits.maxBoundDescriptorSets < 8)
+      ? physicalDevice.deviceProperties.properties.limits.maxBoundDescriptorSets : 8;
+
+    std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings(compute.maxBoundDescriptorSets);
+
+    for (uint8_t bindingIndex = 0; bindingIndex < compute.maxBoundDescriptorSets; ++bindingIndex) {
+      setLayoutBindings[bindingIndex] = {bindingIndex, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr};
+    }
 
     VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
     setLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -278,11 +277,12 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
 
     if (vkCreateDescriptorSetLayout(
       logicalDevice.device, &setLayoutCreateInfo, nullptr,
-      &system.descriptorSetLayouts.at(EDescriptorSetLayout::ComputeBuffer)) !=
-      VK_SUCCESS) {
+      &system.descriptorSetLayouts.at(EDescriptorSetLayout::ComputeBuffer)) != VK_SUCCESS) {
       RE_LOG(Critical, "Failed to create compute buffer descriptor set layout.");
       return RE_CRITICAL;
     }
+
+    RE_LOG(Log, "Created compute buffer descriptor layout for maximum of %d bound buffers.", compute.maxBoundDescriptorSets);
   }
 
   return RE_OK;

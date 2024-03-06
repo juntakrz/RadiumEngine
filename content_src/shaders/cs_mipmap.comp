@@ -13,8 +13,11 @@ layout(set = 0, binding = 1) uniform sampler2D samplers[];
 
 layout (push_constant) uniform PushBlock {
 	uint imageIndex;
-	uint imageCount;
+	uint samplerIndex;
+	uint bufferIndex;
+	uint padding;
     ivec4 intValues;	// x - total mip levels, y - mipmapping mode
+	vec4 floatValues;
 } pushBlock;
 
 void generateMipMaps(ivec2 sourceSize, int totalMipLevels, int mode) {
@@ -34,21 +37,21 @@ void generateMipMaps(ivec2 sourceSize, int totalMipLevels, int mode) {
 		switch (mode) {
 			case MIPMAP_DEPTH: {			
 				// Get the minimal depth of the 4 surrounding samples
-				float color = min(textureLod(samplers[0], UV, 0).r, textureLod(samplers[0], UV + vec2(offset.x, 0.0), 0).r);
-				color = min(color, textureLod(samplers[0], UV + vec2(0.0, offset.y), 0).r);
-				color = min(color, textureLod(samplers[0], UV + offset, 0).r);
+				float color = min(textureLod(samplers[pushBlock.samplerIndex], UV, 0).r, textureLod(samplers[pushBlock.samplerIndex], UV + vec2(offset.x, 0.0), 0).r);
+				color = min(color, textureLod(samplers[pushBlock.samplerIndex], UV + vec2(0.0, offset.y), 0).r);
+				color = min(color, textureLod(samplers[pushBlock.samplerIndex], UV + offset, 0).r);
 
-				imageStore(imagesR32[1 + mipLevel], adjustedPosition / divisor, vec4(color, 0.0, 0.0, 1.0));
+				imageStore(imagesR32[pushBlock.imageIndex + 1 + mipLevel], adjustedPosition / divisor, vec4(color, 0.0, 0.0, 1.0));
 				break;
 			}
 
 			case MIPMAP_RGBA32: {		
 				// Average the 4 surrounding samples (possibly not needed for linear filtering?)
-				vec4 color = textureLod(samplers[0], UV, 0) + textureLod(samplers[0], UV + vec2(offset.x, 0.0), 0);
-				color += textureLod(samplers[0], UV + vec2(0.0, offset.y), 0) + textureLod(samplers[0], UV + offset, 0);
+				vec4 color = textureLod(samplers[pushBlock.samplerIndex], UV, 0) + textureLod(samplers[pushBlock.samplerIndex], UV + vec2(offset.x, 0.0), 0);
+				color += textureLod(samplers[pushBlock.samplerIndex], UV + vec2(0.0, offset.y), 0) + textureLod(samplers[pushBlock.samplerIndex], UV + offset, 0);
 				color *= 0.25;
 
-				imageStore(imagesR32[1 + mipLevel], sourcePosition / divisor, color);
+				imageStore(imagesR32[pushBlock.imageIndex + 1 + mipLevel], sourcePosition / divisor, color);
 				break;
 			}
 		}
@@ -57,7 +60,7 @@ void generateMipMaps(ivec2 sourceSize, int totalMipLevels, int mode) {
 
 void main() {
 	ivec2 sourcePosition = ivec2(gl_GlobalInvocationID.xy);
-	ivec2 sourceSize = textureSize(samplers[0], 0);
+	ivec2 sourceSize = textureSize(samplers[pushBlock.samplerIndex], 0);
 
 	if (sourcePosition.x >= sourceSize.x || sourcePosition.y >= sourceSize.y) {
 			return;

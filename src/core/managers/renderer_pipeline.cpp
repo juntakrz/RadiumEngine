@@ -88,21 +88,22 @@ TResult core::MRenderer::createPipelineLayouts() {
   }
 
 #ifndef NDEBUG
-  RE_LOG(Log, "Creating pipeline layout for \"Compute Image\".");
+  RE_LOG(Log, "Creating pipeline layout for \"Compute\".");
 #endif
 
-  layoutType = EPipelineLayout::ComputeImage;
+  layoutType = EPipelineLayout::Compute;
   system.layouts.emplace(layoutType, VK_NULL_HANDLE);
 
   descriptorSetLayouts.clear();
   descriptorSetLayouts = {
-    getDescriptorSetLayout(EDescriptorSetLayout::ComputeImage)    // 0
+    getDescriptorSetLayout(EDescriptorSetLayout::ComputeImage),   // 0
+    getDescriptorSetLayout(EDescriptorSetLayout::ComputeBuffer)   // 1
   };
 
   VkPushConstantRange computeImagePushConstRange{};
   computeImagePushConstRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
   computeImagePushConstRange.offset = 0;
-  computeImagePushConstRange.size = sizeof(RComputeImagePCB);
+  computeImagePushConstRange.size = sizeof(RComputePCB);
 
   layoutInfo = VkPipelineLayoutCreateInfo{};
   layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -114,39 +115,6 @@ TResult core::MRenderer::createPipelineLayouts() {
 
   if (vkCreatePipelineLayout(logicalDevice.device, &layoutInfo, nullptr,
                              &getPipelineLayout(layoutType)) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create \"Compute Buffer\" pipeline layout.");
-
-    return RE_CRITICAL;
-  }
-
-#ifndef NDEBUG
-  RE_LOG(Log, "Creating pipeline layout for \"Compute Buffer\".");
-#endif
-
-  layoutType = EPipelineLayout::ComputeBuffer;
-  system.layouts.emplace(layoutType, VK_NULL_HANDLE);
-
-  descriptorSetLayouts.clear();
-  descriptorSetLayouts = {
-    getDescriptorSetLayout(EDescriptorSetLayout::ComputeImage),   // 0
-    getDescriptorSetLayout(EDescriptorSetLayout::ComputeBuffer)   // 1
-  };
-
-  computeImagePushConstRange = VkPushConstantRange{};
-  computeImagePushConstRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-  computeImagePushConstRange.offset = 0;
-  computeImagePushConstRange.size = sizeof(RComputeImagePCB);
-
-  layoutInfo = VkPipelineLayoutCreateInfo{};
-  layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-  layoutInfo.setLayoutCount =
-    static_cast<uint32_t>(descriptorSetLayouts.size());
-  layoutInfo.pSetLayouts = descriptorSetLayouts.data();
-  layoutInfo.pushConstantRangeCount = 1;
-  layoutInfo.pPushConstantRanges = &computeImagePushConstRange;
-
-  if (vkCreatePipelineLayout(logicalDevice.device, &layoutInfo, nullptr,
-    &getPipelineLayout(layoutType)) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create \"Compute Buffer\" pipeline layout.");
 
     return RE_CRITICAL;
@@ -164,14 +132,15 @@ TResult core::MRenderer::createComputePipelines() {
 
   VkComputePipelineCreateInfo computePipelineInfo{};
   computePipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-  computePipelineInfo.layout =
-    getPipelineLayout(EPipelineLayout::ComputeImage);
+  computePipelineInfo.layout = getPipelineLayout(EPipelineLayout::Compute);
   computePipelineInfo.flags = 0;
 
   //
   // Compute Image pipeline for creating BRDF LUT image
   //
   {
+    EComputePipeline pipelineId = EComputePipeline::LUT;
+
     VkPipelineShaderStageCreateInfo shaderStage =
         loadShader("cs_brdfLUT.spv", VK_SHADER_STAGE_COMPUTE_BIT);
     computePipelineInfo.stage = shaderStage;
@@ -183,12 +152,12 @@ TResult core::MRenderer::createComputePipelines() {
     pipelineRenderingInfo.pColorAttachmentFormats = &core::vulkan::formatLUT;
     pipelineRenderingInfo.viewMask = 0;
 
-    system.computePipelines.emplace(EComputePipeline::ImageLUT, VK_NULL_HANDLE);
+    system.computePipelines.emplace(pipelineId, VK_NULL_HANDLE);
 
     if (vkCreateComputePipelines(
             logicalDevice.device, VK_NULL_HANDLE, 1, &computePipelineInfo,
             nullptr,
-            &getComputePipeline(EComputePipeline::ImageLUT)) != VK_SUCCESS) {
+            &getComputePipeline(pipelineId)) != VK_SUCCESS) {
       RE_LOG(Critical, "Failed to create Compute Image 'BRDF LUT' pipeline.");
 
       return RE_CRITICAL;
@@ -201,6 +170,8 @@ TResult core::MRenderer::createComputePipelines() {
   // Compute Image pipeline for processing environmental irradiance cubemap
   //
   {
+    EComputePipeline pipelineId = EComputePipeline::EnvIrradiance;
+
     VkPipelineShaderStageCreateInfo shaderStage =
       loadShader("cs_envIrrad.spv", VK_SHADER_STAGE_COMPUTE_BIT);
     computePipelineInfo.stage = shaderStage;
@@ -212,13 +183,11 @@ TResult core::MRenderer::createComputePipelines() {
     pipelineRenderingInfo.pColorAttachmentFormats = &core::vulkan::formatHDR16;
     pipelineRenderingInfo.viewMask = 0;
 
-    system.computePipelines.emplace(EComputePipeline::ImageEnvIrradiance,
-      VK_NULL_HANDLE);
+    system.computePipelines.emplace(pipelineId, VK_NULL_HANDLE);
 
     if (vkCreateComputePipelines(
       logicalDevice.device, VK_NULL_HANDLE, 1, &computePipelineInfo,
-      nullptr, &getComputePipeline(EComputePipeline::ImageEnvIrradiance)) !=
-      VK_SUCCESS) {
+      nullptr, &getComputePipeline(pipelineId)) != VK_SUCCESS) {
       RE_LOG(Critical, "Failed to create Compute Image 'Environment Irradiance' pipeline.");
 
       return RE_CRITICAL;
@@ -231,24 +200,23 @@ TResult core::MRenderer::createComputePipelines() {
   // Compute Image pipeline for processing environmental prefiltered cubemap
   //
   {
+    EComputePipeline pipelineId = EComputePipeline::EnvFilter;
+
     VkPipelineShaderStageCreateInfo shaderStage =
       loadShader("cs_envFilter.spv", VK_SHADER_STAGE_COMPUTE_BIT);
     computePipelineInfo.stage = shaderStage;
 
     VkComputePipelineCreateInfo computePipelineInfo{};
     computePipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-    computePipelineInfo.layout =
-      getPipelineLayout(EPipelineLayout::ComputeImage);
+    computePipelineInfo.layout = getPipelineLayout(EPipelineLayout::Compute);
     computePipelineInfo.stage = shaderStage;
     computePipelineInfo.flags = 0;
 
-    system.computePipelines.emplace(EComputePipeline::ImageEnvFilter,
-      VK_NULL_HANDLE);
+    system.computePipelines.emplace(pipelineId, VK_NULL_HANDLE);
 
     if (vkCreateComputePipelines(
       logicalDevice.device, VK_NULL_HANDLE, 1, &computePipelineInfo,
-      nullptr, &getComputePipeline(EComputePipeline::ImageEnvFilter)) !=
-      VK_SUCCESS) {
+      nullptr, &getComputePipeline(pipelineId)) != VK_SUCCESS) {
       RE_LOG(Critical, "Failed to create Compute Image 'Environment Prefiltered' pipeline.");
 
       return RE_CRITICAL;
@@ -261,24 +229,23 @@ TResult core::MRenderer::createComputePipelines() {
   // Compute Image pipeline for mipmapping textures
   //
   {
+    EComputePipeline pipelineId = EComputePipeline::MipMap;
+
     VkPipelineShaderStageCreateInfo shaderStage =
       loadShader("cs_mipmap.spv", VK_SHADER_STAGE_COMPUTE_BIT);
     computePipelineInfo.stage = shaderStage;
 
     VkComputePipelineCreateInfo computePipelineInfo{};
     computePipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-    computePipelineInfo.layout =
-      getPipelineLayout(EPipelineLayout::ComputeImage);
+    computePipelineInfo.layout = getPipelineLayout(EPipelineLayout::Compute);
     computePipelineInfo.stage = shaderStage;
     computePipelineInfo.flags = 0;
 
-    system.computePipelines.emplace(EComputePipeline::ImageMipMap,
-      VK_NULL_HANDLE);
+    system.computePipelines.emplace(pipelineId, VK_NULL_HANDLE);
 
     if (vkCreateComputePipelines(
       logicalDevice.device, VK_NULL_HANDLE, 1, &computePipelineInfo,
-      nullptr, &getComputePipeline(EComputePipeline::ImageMipMap)) !=
-      VK_SUCCESS) {
+      nullptr, &getComputePipeline(pipelineId)) != VK_SUCCESS) {
       RE_LOG(Critical, "Failed to create Compute Image 'Mipmapping' pipeline.");
 
       return RE_CRITICAL;
@@ -291,24 +258,23 @@ TResult core::MRenderer::createComputePipelines() {
   // Compute Buffer pipeline for culling primitives and generating instance buffer and draw indirect commands
   //
   {
+    EComputePipeline pipelineId = EComputePipeline::Culling;
+
     VkPipelineShaderStageCreateInfo shaderStage =
       loadShader("cs_culling.spv", VK_SHADER_STAGE_COMPUTE_BIT);
     computePipelineInfo.stage = shaderStage;
 
     VkComputePipelineCreateInfo computePipelineInfo{};
     computePipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-    computePipelineInfo.layout =
-      getPipelineLayout(EPipelineLayout::ComputeBuffer);
+    computePipelineInfo.layout = getPipelineLayout(EPipelineLayout::Compute);
     computePipelineInfo.stage = shaderStage;
     computePipelineInfo.flags = 0;
 
-    system.computePipelines.emplace(EComputePipeline::BufferCulling,
-      VK_NULL_HANDLE);
+    system.computePipelines.emplace(pipelineId, VK_NULL_HANDLE);
 
     if (vkCreateComputePipelines(
       logicalDevice.device, VK_NULL_HANDLE, 1, &computePipelineInfo,
-      nullptr, &getComputePipeline(EComputePipeline::BufferCulling)) !=
-      VK_SUCCESS) {
+      nullptr, &getComputePipeline(pipelineId)) != VK_SUCCESS) {
       RE_LOG(Critical, "Failed to create Compute Buffer 'Culling' pipeline.");
 
       return RE_CRITICAL;
