@@ -176,8 +176,8 @@ void core::MRenderer::generateBRDFMap() {
   subRange.baseMipLevel = 0;
   subRange.levelCount = 1;
 
-  setImageLayout(commandBuffer, pLUTTexture,
-    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subRange);
+  /*setImageLayout(commandBuffer, pLUTTexture,
+    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subRange);*/
 
   flushCommandBuffer(commandBuffer, ECmdType::Compute, true, false);
 
@@ -257,7 +257,7 @@ void core::MRenderer::executeComputeJobImmediate(RComputeJobInfo* pInfo) {
 
       vkCmdPipelineBarrier2(computeBuffer, &computeDependency);
 
-      if (pInfo->transtionToShaderReadOnly) {
+      /*if (pInfo->transtionToShaderReadOnly) {
         for (auto& image : pInfo->pImageAttachments) {
           range.layerCount = image->texture.layerCount;
           range.levelCount = image->texture.levelCount;
@@ -271,7 +271,7 @@ void core::MRenderer::executeComputeJobImmediate(RComputeJobInfo* pInfo) {
 
           setImageLayout(computeBuffer, sampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, range);
         }
-      }
+      }*/
 
       return;
     }

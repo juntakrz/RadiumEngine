@@ -57,7 +57,7 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.height = textureInfo.width;
   textureInfo.format = core::vulkan::formatHDR16;
   textureInfo.extraViews = true;
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
 
@@ -177,7 +177,7 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.layerCount = 1u;
   textureInfo.mipLevels = 6u;     // A small number of mip maps should be enough for post processing
   textureInfo.extraViews = true;
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
@@ -205,7 +205,7 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.isCubemap = false;
   textureInfo.layerCount = 1u;
   textureInfo.mipLevels = 1u;
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT
     | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
@@ -446,11 +446,12 @@ TResult core::MRenderer::createDepthTargets() {
     return result;
   }
 
+  RTexture* pNewTexture = nullptr;
+
   // Default depth/stencil texture
   std::string rtName = RTGT_DEPTH;
 
   RTextureInfo textureInfo{};
-  textureInfo.name = rtName;
   textureInfo.layerCount = 1u;
   textureInfo.isCubemap = false;
   //textureInfo.format = core::vulkan::formatDepth;
@@ -468,14 +469,18 @@ TResult core::MRenderer::createDepthTargets() {
   // Remove image aspect overrides for depth targets in case general layout causes performance issues
   textureInfo.imageAspectOverride = VK_IMAGE_ASPECT_DEPTH_BIT;
 
-  RTexture* pNewTexture = core::resources.createTexture(&textureInfo);
+  scene.pDepthTargets.resize(MAX_FRAMES_IN_FLIGHT);
+  for (uint8_t depthTargetIndex = 0; depthTargetIndex < MAX_FRAMES_IN_FLIGHT; ++depthTargetIndex) {
+    textureInfo.name = rtName + std::to_string(depthTargetIndex);
+    pNewTexture = core::resources.createTexture(&textureInfo);
 
-  if (!pNewTexture) {
-    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
-    return RE_CRITICAL;
+    if (!pNewTexture) {
+      RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
+      return RE_CRITICAL;
+    }
+
+    scene.pDepthTargets[depthTargetIndex] = pNewTexture;
   }
-
-  scene.pDepthTarget = pNewTexture;
 
 #ifndef NDEBUG
   RE_LOG(Log, "Created depth target '%s'.", rtName.c_str());
@@ -527,7 +532,6 @@ TResult core::MRenderer::createDepthTargets() {
   rtName = RTGT_PREVDEPTH;
 
   textureInfo = RTextureInfo{};
-  textureInfo.name = rtName;
   textureInfo.width = config::renderWidth;
   textureInfo.height = config::renderHeight;
   textureInfo.format = VK_FORMAT_R32_SFLOAT;
@@ -548,6 +552,7 @@ TResult core::MRenderer::createDepthTargets() {
 
   scene.pPreviousDepthTargets.resize(MAX_FRAMES_IN_FLIGHT);
   for (uint8_t prevDepthIndex = 0; prevDepthIndex < MAX_FRAMES_IN_FLIGHT; ++prevDepthIndex) {
+    textureInfo.name = rtName + std::to_string(prevDepthIndex);
     pNewTexture = core::resources.createTexture(&textureInfo);
 
     if (!pNewTexture) {

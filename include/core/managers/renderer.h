@@ -93,9 +93,9 @@ class MRenderer {
     std::vector<RBuffer> culledInstanceDataBuffers;
     std::vector<RBuffer> culledDrawIndirectBuffers;
 
-    RTexture* pDepthTarget = nullptr;
-    std::vector<RTexture*> pGBufferTargets;
+    std::vector<RTexture*> pDepthTargets;
     std::vector<RTexture*> pPreviousDepthTargets;
+    std::vector<RTexture*> pGBufferTargets;
 
     RBuffer transparencyLinkedListBuffer;
     RBuffer transparencyLinkedListDataBuffer;

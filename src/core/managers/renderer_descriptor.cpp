@@ -379,7 +379,8 @@ TResult core::MRenderer::createDescriptorSets() {
       };
 
       for (VkDescriptorImageInfo& imageInfo : imageDescriptors) {
-        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        //imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
       }
 
       // RTGT_ENVFILTER

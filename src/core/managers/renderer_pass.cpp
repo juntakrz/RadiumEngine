@@ -136,7 +136,7 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
   // Create environment pass
   // Cubemaps should've been created by createImageTargets() earlier
   {
-    RTexture* pDepthAttachment = core::resources.getTexture(RTGT_DEPTH);
+    RTexture* pDepthAttachment = scene.pDepthTargets[0];
 
     RDynamicRenderingInfo info{};
     info.pipelineLayout = EPipelineLayout::Scene;
@@ -184,7 +184,7 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
   {
     // Backface culled opaque pass
     uint32_t colorAttachmentCount = static_cast<uint32_t>(scene.pGBufferTargets.size());
-    RTexture* pDepthAttachment = core::resources.getTexture(RTGT_DEPTH);
+    RTexture* pDepthAttachment = scene.pDepthTargets[0];
 
     RDynamicRenderingInfo info{};
     info.pipelineLayout = EPipelineLayout::Scene;
@@ -262,7 +262,7 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
   // Skybox pass, front rendering addition to deferred passes
   {
     RTexture* pColorAttachment = core::resources.getTexture(RTGT_GPBR);
-    RTexture* pDepthAttachment = core::resources.getTexture(RTGT_DEPTH);
+    RTexture* pDepthAttachment = scene.pDepthTargets[0];
 
     RDynamicRenderingInfo info{};
     info.pipelineLayout = EPipelineLayout::Scene;

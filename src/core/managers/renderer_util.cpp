@@ -25,7 +25,8 @@ RTexture* core::MRenderer::createFragmentRenderTarget(const char* name, VkFormat
   textureInfo.format = format;
   textureInfo.width = width;
   textureInfo.height = height;
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  //textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSFER_SRC_BIT
     | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -530,9 +531,11 @@ void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
 void core::MRenderer::convertRenderTargets(VkCommandBuffer cmdBuffer,
                                            std::vector<RTexture*>* pInTextures,
                                            bool convertBackToRenderTargets) {
-  VkImageLayout newLayout = (convertBackToRenderTargets)
+  /*VkImageLayout newLayout = (convertBackToRenderTargets)
                                 ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-                                : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                                : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;*/
+
+  VkImageLayout newLayout = VK_IMAGE_LAYOUT_GENERAL;
 
   VkImageSubresourceRange range{};
   range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -638,7 +641,8 @@ TResult core::MRenderer::generateMipMaps(VkCommandBuffer cmdBuffer, RTexture* pT
       if (mipHeight > 1) mipHeight /= 2;
       
       imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-      imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      //imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
       imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
       imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
@@ -656,13 +660,15 @@ TResult core::MRenderer::generateMipMaps(VkCommandBuffer cmdBuffer, RTexture* pT
                          0, nullptr, 1, &imageMemoryBarrier);
   }
 
-  pTexture->texture.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-  pTexture->texture.imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  //pTexture->texture.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  pTexture->texture.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+  //pTexture->texture.imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  pTexture->texture.imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
   return RE_OK;
 }
 
-
+// TODO: this method is broken and has issues with outdated code, needs fixing
 TResult core::MRenderer::generateSingleMipMap(VkCommandBuffer cmdBuffer,
                                               RTexture* pTexture,
                                               uint32_t mipLevel, uint32_t layer,
@@ -681,25 +687,6 @@ TResult core::MRenderer::generateSingleMipMap(VkCommandBuffer cmdBuffer,
   }
 
   VkPipelineStageFlags srcStageMask = 0;
-
-  switch (pTexture->texture.imageInfo.imageLayout) {
-    case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL: {
-      srcStageMask = VK_ACCESS_SHADER_READ_BIT;
-      break;
-    }
-    case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL: {
-      srcStageMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-      break;
-    }
-    default: {
-      RE_LOG(Error,
-             "Unsupported layout for mip map generation for texture '%s'. "
-             "Skipping.",
-             pTexture->name.c_str());
-      return RE_ERROR;
-    }
-  }
-
   const int32_t mipWidth = pTexture->texture.width / (1 << (mipLevel - 1));
   const int32_t mipHeight = pTexture->texture.height / (1 << (mipLevel - 1));
 
@@ -718,19 +705,26 @@ TResult core::MRenderer::generateSingleMipMap(VkCommandBuffer cmdBuffer,
 
   switch (pTexture->texture.imageLayout) {
     case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL: {
+      srcStageMask = VK_ACCESS_TRANSFER_WRITE_BIT;
       barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
       break;
     }
     case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL: {
+      srcStageMask = VK_ACCESS_SHADER_READ_BIT;
       barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+      break;
+    }
+    case VK_IMAGE_LAYOUT_GENERAL: {
+      srcStageMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+      barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
       break;
     }
     default: {
       RE_LOG(
           Error,
           "Invalid input texture layout when trying to generate a mip map for "
-          "'%s'. Layout must be either VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or "
-          "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL.",
+          "'%s'. Layout must be either VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, "
+          "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL or VK_IMAGE_LAYOUT_GENERAL.",
           pTexture->name.c_str());
 
       return RE_ERROR;
