@@ -4,7 +4,7 @@
 #include "pch.h"
 
 #define RE_ERRORLIMIT           RE_ERROR        // Terminate program if some error exceeds this level
-#define MAX_FRAMES_IN_FLIGHT    3u
+#define MAX_FRAMES_IN_FLIGHT    2u
 #define MAX_TRANSFER_BUFFERS    2u
 #define RE_MAXLIGHTS            32u             // Includes directional light, always at index 0
 #define RE_MAXSHADOWCASTERS     4u

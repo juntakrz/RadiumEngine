@@ -245,8 +245,12 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
       break;
     }
     default: {
-      subRange.aspectMask = (pInfo->imageAspectOverride) ? pInfo->imageAspectOverride : VK_IMAGE_ASPECT_COLOR_BIT;
+      subRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     }
+  }
+
+  if (pInfo->imageAspectOverride) {
+    subRange.aspectMask = pInfo->imageAspectOverride;
   }
 
   VkCommandBuffer cmdBuffer = core::renderer.createCommandBuffer(

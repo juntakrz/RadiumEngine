@@ -227,15 +227,16 @@ void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynam
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(passId);
   renderView.pCurrentPass = pRenderPass;
 
-  VkRenderingInfo overrideInfo = renderView.pCurrentPass->renderingInfo;
-  VkRenderingAttachmentInfo overrideDepthAttachment;
+  /*VkRenderingInfo overrideInfo = renderView.pCurrentPass->renderingInfo;
+  VkRenderingAttachmentInfo overrideDepthAttachment;*/
 
-  if (overrideInfo.pDepthAttachment) {
-    overrideDepthAttachment = *overrideInfo.pDepthAttachment;
-    overrideDepthAttachment.imageView = scene.pDepthTargets[renderView.frameInFlight]->texture.view;
+  //if (overrideInfo.pDepthAttachment) {
+  //  overrideDepthAttachment = *overrideInfo.pDepthAttachment;
+  //  overrideDepthAttachment.imageView = scene.pDepthTargets[renderView.frameInFlight]->texture.view;
+  //  //overrideDepthAttachment.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
-    overrideInfo.pDepthAttachment = &overrideDepthAttachment;
-  }
+  //  overrideInfo.pDepthAttachment = &overrideDepthAttachment;
+  //}
 
   // Transition images to correct layouts for rendering if required
   if (pRenderPass->validateColorAttachmentLayout) {
@@ -254,7 +255,8 @@ void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynam
     }
   }
 
-  vkCmdBeginRendering(commandBuffer, &overrideInfo);
+  //vkCmdBeginRendering(commandBuffer, &overrideInfo);
+  vkCmdBeginRendering(commandBuffer, &renderView.pCurrentPass->renderingInfo);
 
   setViewport(commandBuffer, renderView.pCurrentPass->viewportId);
   renderView.currentViewportId = renderView.pCurrentPass->viewportId;
@@ -591,10 +593,10 @@ void core::MRenderer::renderFrame() {
 
   vkResetCommandBuffer(command.buffersGraphics[renderView.frameInFlight], NULL);
 
-  prepareFrameComputeJobs();
+  //prepareFrameComputeJobs();
 
   // Execute compute jobs
-  executeQueuedComputeJobs(command.buffersCompute[renderView.frameInFlight]);
+  //executeQueuedComputeJobs(command.buffersCompute[renderView.frameInFlight]);
 
   //std::this_thread::sleep_for(std::chrono::milliseconds(30));
 
@@ -622,7 +624,7 @@ void core::MRenderer::renderFrame() {
 
   /* 1. Environment generation */
   if (renderView.generateEnvironmentMaps) {
-    renderEnvironmentMaps(commandBuffer, environment.genInterval);
+    //renderEnvironmentMaps(commandBuffer, environment.genInterval);
   }
 
   /* 2. Cascaded shadows */
@@ -651,9 +653,9 @@ void core::MRenderer::renderFrame() {
   executeRenderingPass(commandBuffer, EDynamicRenderingPass::PBR, material.pGBuffer, true);
 
   // Additional front rendering passes
-  executeRenderingPass(commandBuffer, EDynamicRenderingPass::Skybox);
+  //executeRenderingPass(commandBuffer, EDynamicRenderingPass::Skybox);
 
-  executeAOBlurPass(commandBuffer);
+  //executeAOBlurPass(commandBuffer);
 
   executeRenderingPass(commandBuffer, EDynamicRenderingPass::AlphaCompositing, material.pGPBR, true);
 

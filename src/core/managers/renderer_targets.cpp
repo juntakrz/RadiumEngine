@@ -454,15 +454,15 @@ TResult core::MRenderer::createDepthTargets() {
   RTextureInfo textureInfo{};
   textureInfo.layerCount = 1u;
   textureInfo.isCubemap = false;
-  //textureInfo.format = core::vulkan::formatDepth;
-  textureInfo.format = VK_FORMAT_D32_SFLOAT;
+  textureInfo.format = core::vulkan::formatDepth;
+  //textureInfo.format = VK_FORMAT_D32_SFLOAT;
   textureInfo.width = swapchain.imageExtent.width;
   textureInfo.height = swapchain.imageExtent.height;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-  //textureInfo.targetLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+  //textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
   textureInfo.memoryFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
   textureInfo.vmaMemoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 
@@ -470,7 +470,7 @@ TResult core::MRenderer::createDepthTargets() {
   textureInfo.samplerInfo.addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 
   // Remove image aspect overrides for depth targets in case general layout causes performance issues
-  textureInfo.imageAspectOverride = VK_IMAGE_ASPECT_DEPTH_BIT;
+  //textureInfo.imageAspectOverride = VK_IMAGE_ASPECT_DEPTH_BIT;
 
   scene.pDepthTargets.resize(MAX_FRAMES_IN_FLIGHT);
   for (uint8_t depthTargetIndex = 0; depthTargetIndex < MAX_FRAMES_IN_FLIGHT; ++depthTargetIndex) {
@@ -511,14 +511,14 @@ TResult core::MRenderer::createDepthTargets() {
   textureInfo.extraViews = true;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-  //textureInfo.targetLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+  //textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
   textureInfo.memoryFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
   textureInfo.vmaMemoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 
   textureInfo.samplerInfo.addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 
-  textureInfo.imageAspectOverride = VK_IMAGE_ASPECT_DEPTH_BIT;
+  //textureInfo.imageAspectOverride = VK_IMAGE_ASPECT_DEPTH_BIT;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
 
