@@ -160,6 +160,27 @@ void core::MRenderer::executeComputeJob(VkCommandBuffer commandBuffer, RComputeJ
     sizeof(RComputePCB), &pJobInfo->pushBlock);
 
   vkCmdDispatch(commandBuffer, pJobInfo->width, pJobInfo->height, pJobInfo->depth);
+
+  if (pJobInfo->transtionToShaderReadOnly && system.enableLayoutTransitions) {
+    VkImageSubresourceRange range{};
+    range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    range.baseArrayLayer = 0;
+    range.baseMipLevel = 0;
+
+    for (auto& image : pJobInfo->pImageAttachments) {
+      range.layerCount = image->texture.layerCount;
+      range.levelCount = image->texture.levelCount;
+
+      setImageLayout(commandBuffer, image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, range);
+    }
+
+    for (auto& sampler : pJobInfo->pSamplerAttachments) {
+      range.layerCount = sampler->texture.layerCount;
+      range.levelCount = sampler->texture.levelCount;
+
+      setImageLayout(commandBuffer, sampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, range);
+    }
+  }
 }
 
 void core::MRenderer::queueComputeJob(RComputeJobInfo* pInfo) {

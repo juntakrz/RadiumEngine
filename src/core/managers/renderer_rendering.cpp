@@ -598,13 +598,13 @@ void core::MRenderer::renderFrame() {
 
   //std::this_thread::sleep_for(std::chrono::milliseconds(30));
 
-  VkCommandBuffer commandBuffer = command.buffersGraphics[renderView.frameInFlight];
-
   // Update lighting UBO if required
   updateLightingUBO(renderView.frameInFlight);
 
   // Use this frame's scene descriptor set
   renderView.pCurrentSet = scene.descriptorSets[renderView.frameInFlight];
+
+  VkCommandBuffer commandBuffer = command.buffersGraphics[renderView.frameInFlight];
 
   VkCommandBufferBeginInfo beginInfo{};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -665,8 +665,6 @@ void core::MRenderer::renderFrame() {
   /* 5. Final presentation pass */
 
   executePresentPass(commandBuffer);
-
-  //postFrameCommands(commandBuffer);
 
   // End writing commands and prepare to submit buffer to rendering queue
   if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {

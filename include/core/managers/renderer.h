@@ -183,6 +183,8 @@ class MRenderer {
 
     VkQueryPool queryPool;
 
+    bool enableLayoutTransitions = false;   // NVidia GPUs work better with general layouts only
+
     bool asyncComputeSupport = false;
     int32_t computeQueue = -1;
   } system;
