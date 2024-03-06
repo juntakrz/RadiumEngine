@@ -118,6 +118,7 @@ class MRenderer {
 
     struct {
       RComputeJobInfo culling;
+      RComputeJobInfo mipmapping;
     } computeJobs;
   } scene;
 
@@ -602,7 +603,7 @@ public:
                              const uint32_t frameInterval = 1u);
 
   void prepareFrameResources(VkCommandBuffer commandBuffer);
-  void postFrameCommands(VkCommandBuffer commandBuffer);
+  void executeFrameComputeJobs();
 
   void executeRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId,
                             RMaterial* pPushMaterial = nullptr, bool renderQuad = false);

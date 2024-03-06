@@ -258,6 +258,36 @@ TResult core::MRenderer::createComputePipelines() {
   }
 
   //
+  // Compute Image pipeline for mipmapping textures
+  //
+  {
+    VkPipelineShaderStageCreateInfo shaderStage =
+      loadShader("cs_mipmap.spv", VK_SHADER_STAGE_COMPUTE_BIT);
+    computePipelineInfo.stage = shaderStage;
+
+    VkComputePipelineCreateInfo computePipelineInfo{};
+    computePipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    computePipelineInfo.layout =
+      getPipelineLayout(EPipelineLayout::ComputeImage);
+    computePipelineInfo.stage = shaderStage;
+    computePipelineInfo.flags = 0;
+
+    system.computePipelines.emplace(EComputePipeline::ImageMipMap,
+      VK_NULL_HANDLE);
+
+    if (vkCreateComputePipelines(
+      logicalDevice.device, VK_NULL_HANDLE, 1, &computePipelineInfo,
+      nullptr, &getComputePipeline(EComputePipeline::ImageMipMap)) !=
+      VK_SUCCESS) {
+      RE_LOG(Critical, "Failed to create Compute Image 'Mipmapping' pipeline.");
+
+      return RE_CRITICAL;
+    }
+
+    vkDestroyShaderModule(logicalDevice.device, shaderStage.module, nullptr);
+  }
+
+  //
   // Compute Buffer pipeline for culling primitives and generating instance buffer and draw indirect commands
   //
   {

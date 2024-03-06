@@ -361,6 +361,16 @@ TResult core::MRenderer::setDefaultComputeJobs() {
     info.intValues.x = info.pImageAttachments[0]->texture.levelCount;
   }
 
+  // Generate mipmaps (requires additional input data before submitting)
+  {
+    RComputeJobInfo& info = scene.computeJobs.mipmapping;
+    info.jobType = EComputeJob::Image;
+    info.pipeline = EComputePipeline::ImageMipMap;
+    info.depth = 1;
+    info.useExtraImageViews = true;
+    info.useExtraSamplerViews = false;
+  }
+
   // Occlusion culling (requires modification depending on the total instance count and the current frame in flight index)
   {
     RComputeJobInfo& info = scene.computeJobs.culling;

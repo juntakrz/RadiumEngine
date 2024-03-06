@@ -145,7 +145,10 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     info.fragmentShader = "fs_skybox.spv";
     info.colorAttachments =
          {{environment.pTargetCubemap, environment.pTargetCubemap->texture.view, environment.pTargetCubemap->texture.imageFormat}};
+
+    // TODO: use a unique depth attachment for the environmental pass to avoid potential issues with the main per frame depth buffering
     info.depthAttachment = { pDepthAttachment, pDepthAttachment->texture.view, pDepthAttachment->texture.imageFormat };
+
     info.colorAttachmentClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
 
     info.clearDepthAttachment = true;

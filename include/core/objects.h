@@ -78,6 +78,7 @@ enum class EComputePipeline {
   ImageLUT,
   ImageEnvIrradiance,
   ImageEnvFilter,
+  ImageMipMap,
   BufferCulling
 };
 

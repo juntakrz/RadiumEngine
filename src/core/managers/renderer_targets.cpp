@@ -466,6 +466,9 @@ TResult core::MRenderer::createDepthTargets() {
   textureInfo.memoryFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
   textureInfo.vmaMemoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 
+  textureInfo.samplerInfo.filter = VK_FILTER_NEAREST;
+  textureInfo.samplerInfo.addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+
   // Remove image aspect overrides for depth targets in case general layout causes performance issues
   textureInfo.imageAspectOverride = VK_IMAGE_ASPECT_DEPTH_BIT;
 
@@ -539,6 +542,7 @@ TResult core::MRenderer::createDepthTargets() {
   textureInfo.isCubemap = false;
   textureInfo.layerCount = 1u;
   textureInfo.mipLevels = math::getMipLevels(config::renderHeight);
+  textureInfo.extraViews = true;
   //textureInfo.targetLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;

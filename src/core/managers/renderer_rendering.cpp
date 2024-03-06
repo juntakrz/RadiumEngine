@@ -162,11 +162,84 @@ void core::MRenderer::renderEnvironmentMaps(
   environment.tracking.layer++;
 }
 
+void core::MRenderer::prepareFrameResources(VkCommandBuffer commandBuffer) {
+  command.indirectCommandOffset = 0u;
+
+  VkDeviceSize vertexBufferOffsets[] = { 0u, 0u };
+  VkBuffer vertexBuffers[] = { scene.vertexBuffer.buffer, scene.instanceBuffers[renderView.frameInFlight].buffer };
+
+  vkCmdBindVertexBuffers(commandBuffer, 0, 2, vertexBuffers, vertexBufferOffsets);
+  vkCmdBindIndexBuffer(commandBuffer, scene.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+  uint32_t transformOffsets[3] = { 0u, 0u, 0u };
+  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+    getPipelineLayout(EPipelineLayout::Scene), 1, 1, &scene.transformDescriptorSet, 3, transformOffsets);
+
+  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+    getPipelineLayout(EPipelineLayout::Scene), 2, 1, &material.descriptorSet, 0, nullptr);
+
+  // Update transparency data
+  vkCmdClearColorImage(commandBuffer, scene.pTransparencyStorageTexture->texture.image, scene.pTransparencyStorageTexture->texture.imageLayout,
+    &scene.transparencyLinkedListClearColor, 1u, &scene.transparencySubRange);
+
+  vkCmdFillBuffer(commandBuffer, scene.transparencyLinkedListBuffer.buffer, 0, sizeof(uint32_t), 0);
+
+  // Wait for instance data thread to be ready before drawing any mesh
+  {
+    std::mutex mtx;
+    std::unique_lock<std::mutex> lock(mtx);
+    sync.cvInstanceDataReady.wait(lock, [this]() { return sync.isInstanceDataReady; });
+    sync.isInstanceDataReady = false;
+  }
+}
+
+void core::MRenderer::executeFrameComputeJobs() {
+  /*scene.computeJobs.culling.pImageAttachments = { scene.pPreviousDepthTargets[renderView.frameInFlight] };
+  scene.computeJobs.culling.pBufferAttachments = { &scene.instanceDataBuffer,
+    &scene.culledInstanceDataBuffers[renderView.frameInFlight], &scene.culledDrawIndirectBuffers[renderView.frameInFlight] };
+
+  beginCommandBuffer(command.buffersCompute[renderView.frameInFlight], false);
+  executeComputeJobImmediate(&scene.computeJobs.culling);
+  flushCommandBuffer(command.buffersCompute[renderView.frameInFlight], ECmdType::Compute);*/
+
+  const uint8_t previousFrameInFlight = (renderView.frameInFlight + MAX_FRAMES_IN_FLIGHT - 1) % MAX_FRAMES_IN_FLIGHT;
+
+  // Mip map previous frame's depth
+  RComputeJobInfo depthMipmappingJob = scene.computeJobs.mipmapping;
+  depthMipmappingJob.width = config::renderWidth / 16;
+  depthMipmappingJob.height = config::renderHeight / 16;
+
+  // Samplers and images have their indexes separate in the shader, each starting with 0, so both are at [0] in this case
+  depthMipmappingJob.pSamplerAttachments = {scene.pDepthTargets[previousFrameInFlight]};
+  depthMipmappingJob.pImageAttachments = {scene.pPreviousDepthTargets[previousFrameInFlight]};
+
+  // Number of target mip maps
+  depthMipmappingJob.intValues.x = scene.pPreviousDepthTargets[previousFrameInFlight]->texture.levelCount;
+
+  // Type of mipmapping: from D32 to R32
+  depthMipmappingJob.intValues.y = 0;
+
+  beginCommandBuffer(command.buffersCompute[renderView.frameInFlight], false);
+
+  executeComputeJobImmediate(&depthMipmappingJob);
+
+  flushCommandBuffer(command.buffersCompute[renderView.frameInFlight], ECmdType::Compute);
+}
+
 void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId,
                                            RMaterial* pPushMaterial, bool renderQuad) {
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(passId);
   renderView.pCurrentPass = pRenderPass;
-  VkRenderingInfo* pRenderingInfo = &renderView.pCurrentPass->renderingInfo;
+
+  VkRenderingInfo overrideInfo = renderView.pCurrentPass->renderingInfo;
+  VkRenderingAttachmentInfo overrideDepthAttachment;
+
+  if (overrideInfo.pDepthAttachment) {
+    overrideDepthAttachment = *overrideInfo.pDepthAttachment;
+    overrideDepthAttachment.imageView = scene.pDepthTargets[renderView.frameInFlight]->texture.view;
+
+    overrideInfo.pDepthAttachment = &overrideDepthAttachment;
+  }
 
   // Transition images to correct layouts for rendering if required
   if (pRenderPass->validateColorAttachmentLayout) {
@@ -185,7 +258,7 @@ void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynam
     }
   }
 
-  vkCmdBeginRendering(commandBuffer, pRenderingInfo);
+  vkCmdBeginRendering(commandBuffer, &overrideInfo);
 
   setViewport(commandBuffer, renderView.pCurrentPass->viewportId);
   renderView.currentViewportId = renderView.pCurrentPass->viewportId;
@@ -230,72 +303,6 @@ void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynam
       setImageLayout(commandBuffer, pImage, pRenderPass->colorAttachmentsOutLayout, subRange);
     }
   }*/
-}
-
-void core::MRenderer::prepareFrameResources(VkCommandBuffer commandBuffer) {
-  command.indirectCommandOffset = 0u;
-
-  VkDeviceSize vertexBufferOffsets[] = {0u, 0u};
-  VkBuffer vertexBuffers[] = {scene.vertexBuffer.buffer, scene.instanceBuffers[renderView.frameInFlight].buffer};
-
-  vkCmdBindVertexBuffers(commandBuffer, 0, 2, vertexBuffers, vertexBufferOffsets);
-  vkCmdBindIndexBuffer(commandBuffer, scene.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-  uint32_t transformOffsets[3] = { 0u, 0u, 0u };
-  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    getPipelineLayout(EPipelineLayout::Scene), 1, 1, &scene.transformDescriptorSet, 3, transformOffsets);
-
-  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    getPipelineLayout(EPipelineLayout::Scene), 2, 1, &material.descriptorSet, 0, nullptr);
-
-  // Update transparency data
-  vkCmdClearColorImage(commandBuffer, scene.pTransparencyStorageTexture->texture.image, scene.pTransparencyStorageTexture->texture.imageLayout,
-    &scene.transparencyLinkedListClearColor, 1u, &scene.transparencySubRange);
-  
-  vkCmdFillBuffer(commandBuffer, scene.transparencyLinkedListBuffer.buffer, 0, sizeof(uint32_t), 0);
-
-  // Wait for instance data thread to be ready before drawing any mesh
-  {
-    std::mutex mtx;
-    std::unique_lock<std::mutex> lock(mtx);
-    sync.cvInstanceDataReady.wait(lock, [this]() { return sync.isInstanceDataReady; });
-    sync.isInstanceDataReady = false;
-  }
-}
-
-void core::MRenderer::postFrameCommands(VkCommandBuffer commandBuffer) {
-  // Store current frame's depth map
-  RTexture* pPreviousDepthTexture = scene.pPreviousDepthTargets[renderView.frameInFlight];
-
-  VkCommandBuffer cmdBuffer = createCommandBuffer(ECmdType::Transfer, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
-
-  /*VkImageCopy depthCopyRegion{};
-  depthCopyRegion.extent = { config::renderWidth, config::renderHeight, 1 };
-  depthCopyRegion.srcOffset = { 0, 0, 0 };
-  depthCopyRegion.srcSubresource.aspectMask = scene.pDepthTarget->texture.aspectMask;
-  depthCopyRegion.srcSubresource.baseArrayLayer = 0u;
-  depthCopyRegion.srcSubresource.layerCount = 1u;
-  depthCopyRegion.srcSubresource.mipLevel = 0u;
-  depthCopyRegion.dstOffset = depthCopyRegion.srcOffset;
-  depthCopyRegion.dstSubresource = depthCopyRegion.srcSubresource;
-
-  copyImage(cmdBuffer, scene.pDepthTarget, pPreviousDepthTexture, depthCopyRegion);*/
-
-  /*VkImageSubresourceLayers subLayers{};
-  subLayers.aspectMask = scene.pDepthTarget->texture.aspectMask;
-  subLayers.baseArrayLayer = 0u;
-  subLayers.layerCount = 1u;
-  subLayers.mipLevel = 0u;
-
-  copyImageToBuffer(cmdBuffer, scene.pDepthTarget, scene.depthImageTransitionBuffer.buffer,
-    config::renderWidth, config::renderHeight, &subLayers);
-
-  copyBufferToImage(cmdBuffer, scene.depthImageTransitionBuffer.buffer, pPreviousDepthTexture,
-    config::renderWidth, config::renderHeight, 1u);
-
-  flushCommandBuffer(cmdBuffer, ECmdType::Transfer, true);
-
-  generateMipMaps(commandBuffer, pPreviousDepthTexture, pPreviousDepthTexture->texture.levelCount);*/
 }
 
 void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uint32_t cascadeIndex) {
@@ -591,13 +598,8 @@ void core::MRenderer::renderFrame() {
   // Execute compute jobs
   executeQueuedComputeJobs();
 
-  scene.computeJobs.culling.pImageAttachments = { scene.pPreviousDepthTargets[renderView.frameInFlight] };
-  scene.computeJobs.culling.pBufferAttachments = { &scene.instanceDataBuffer,
-    &scene.culledInstanceDataBuffers[renderView.frameInFlight], &scene.culledDrawIndirectBuffers[renderView.frameInFlight] };
+  executeFrameComputeJobs();
 
-  beginCommandBuffer(command.buffersCompute[renderView.frameInFlight], false);
-  executeComputeJobImmediate(&scene.computeJobs.culling);
-  flushCommandBuffer(command.buffersCompute[renderView.frameInFlight], ECmdType::Compute);
   //std::this_thread::sleep_for(std::chrono::milliseconds(30));
 
   VkCommandBuffer commandBuffer = command.buffersGraphics[renderView.frameInFlight];
