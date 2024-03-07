@@ -482,7 +482,7 @@ TResult core::MRenderer::copyBufferToImage(VkCommandBuffer commandBuffer, VkBuff
   }
 
   VkBufferImageCopy imageCopy{};
-  imageCopy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  imageCopy.imageSubresource.aspectMask = pDstImage->texture.aspectMask;
   imageCopy.imageSubresource.mipLevel = 0;
   imageCopy.imageSubresource.baseArrayLayer = 0;
   imageCopy.imageSubresource.layerCount = layerCount;

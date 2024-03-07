@@ -235,7 +235,7 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
   subRange.baseArrayLayer = 0;
   subRange.layerCount = createInfo.arrayLayers;
 
-  switch (pInfo->targetLayout) {
+  switch (newTexture->texture.imageLayout) {
     case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL: {
       subRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
       break;
@@ -253,11 +253,17 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
     subRange.aspectMask = pInfo->imageAspectOverride;
   }
 
+  // Mostly NVidia optimization, no need for layout transition pipeline barriers later,
+  // except for synchronizing rendering passes, as layouts are general under the hood
+  if (!core::renderer.isLayoutTransitionEnabled()) {
+    newTexture->texture.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+  }
+
   VkCommandBuffer cmdBuffer = core::renderer.createCommandBuffer(
       ECmdType::Graphics, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
   core::renderer.setImageLayout(cmdBuffer, newTexture->texture.image,
                                 VK_IMAGE_LAYOUT_UNDEFINED,
-                                pInfo->targetLayout, subRange);
+                                newTexture->texture.imageLayout, subRange);
   core::renderer.flushCommandBuffer(cmdBuffer, ECmdType::Graphics, true);
 
   newTexture->name = pInfo->name;
@@ -312,8 +318,9 @@ RTexture* core::MResources::createTexture(const std::string& name) {
 
 TResult core::MResources::writeTexture(RTexture* pTexture, void* pData,
                                        VkDeviceSize dataSize) {
-  if (!pData ||
-      pTexture->texture.imageLayout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+  if (!pData || 
+    (core::renderer.isLayoutTransitionEnabled()
+      && pTexture->texture.imageLayout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)) {
     return RE_ERROR;
   }
 
@@ -336,18 +343,14 @@ TResult core::MResources::writeTexture(RTexture* pTexture, void* pData,
   VkCommandBuffer cmdBuffer = core::renderer.createCommandBuffer(
       ECmdType::Graphics, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
 
+  VkImageLayout targetLayout = (core::renderer.isLayoutTransitionEnabled())
+    ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+
   core::renderer.setImageLayout(cmdBuffer, pTexture->texture.image,
-                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                subRange);
+                                pTexture->texture.imageLayout,
+                                targetLayout, subRange);
 
-  /*core::renderer.setImageLayout(cmdBuffer, pTexture->texture.image,
-                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                VK_IMAGE_LAYOUT_GENERAL,
-                                subRange);*/
-
-  pTexture->texture.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-  //pTexture->texture.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+  pTexture->texture.imageLayout = targetLayout;
 
   core::renderer.flushCommandBuffer(cmdBuffer, ECmdType::Graphics, true);
 

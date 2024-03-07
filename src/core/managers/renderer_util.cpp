@@ -119,7 +119,7 @@ void core::MRenderer::setResourceName(VkDevice device, VkObjectType objectType,
 }
 
 TResult core::MRenderer::getDepthStencilFormat(VkFormat desiredFormat, VkFormat& outFormat) {
-  std::vector<VkFormat> depthFormats = {
+  std::vector<VkFormat> depthStencilFormats = {
       VK_FORMAT_D32_SFLOAT_S8_UINT,
       VK_FORMAT_D24_UNORM_S8_UINT,
       VK_FORMAT_D16_UNORM_S8_UINT,
@@ -138,7 +138,7 @@ TResult core::MRenderer::getDepthStencilFormat(VkFormat desiredFormat, VkFormat&
          "Trying to use the nearest compatible format.",
          desiredFormat);
 
-  for (auto& format : depthFormats) {
+  for (auto& format : depthStencilFormats) {
     VkFormatProperties formatProps;
     vkGetPhysicalDeviceFormatProperties(physicalDevice.device, format, &formatProps);
     if (formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
@@ -573,11 +573,18 @@ TResult core::MRenderer::generateMipMaps(VkCommandBuffer cmdBuffer, RTexture* pT
   range.baseMipLevel = 0;
   range.levelCount = pTexture->texture.levelCount;
 
-  if (pTexture->texture.imageFormat != VK_FORMAT_D32_SFLOAT_S8_UINT &&
-      pTexture->texture.imageFormat != VK_FORMAT_D24_UNORM_S8_UINT) {
-    range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  } else {
-    range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+  switch (pTexture->texture.imageFormat) {
+    case VK_FORMAT_D32_SFLOAT_S8_UINT:
+    case VK_FORMAT_D24_UNORM_S8_UINT:
+    case VK_FORMAT_D16_UNORM_S8_UINT:
+      range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+      break;
+    case VK_FORMAT_D32_SFLOAT:
+      range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+      break;
+    default:
+      range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+      break;
   }
 
   // transition texture to DST layout if needed

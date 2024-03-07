@@ -804,6 +804,10 @@ core::MRenderer::REnvironmentData* core::MRenderer::getEnvironmentData() {
   return &environment;
 }
 
+bool core::MRenderer::isLayoutTransitionEnabled() {
+  return system.enableLayoutTransitions;
+}
+
 void core::MRenderer::updateLightingUBO(const int32_t frameIndex) {
   core::actors.updateLightingUBO(&lighting.data);
 

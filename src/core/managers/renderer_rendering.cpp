@@ -128,8 +128,9 @@ void core::MRenderer::renderEnvironmentMaps(
 
   // start rendering an appropriate camera view / layer
   environment.subresourceRange.baseArrayLayer = environment.tracking.layer;
-  setImageLayout(commandBuffer, environment.pTargetCubemap, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, environment.subresourceRange);
-  //setImageLayout(commandBuffer, environment.pTargetCubemap, VK_IMAGE_LAYOUT_GENERAL, environment.subresourceRange);
+
+  VkImageLayout targetLayout = (system.enableLayoutTransitions) ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+  setImageLayout(commandBuffer, environment.pTargetCubemap, targetLayout, environment.subresourceRange);
 
   VkRenderingAttachmentInfo overrideAttachment = pRenderPass->renderingInfo.pColorAttachments[0];
   overrideAttachment.imageView = environment.pTargetCubemap->texture.cubemapFaceViews[environment.tracking.layer];
@@ -156,7 +157,9 @@ void core::MRenderer::renderEnvironmentMaps(
 
   vkCmdEndRendering(commandBuffer);
 
-  setImageLayout(commandBuffer, environment.pTargetCubemap, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, environment.subresourceRange);
+  if (system.enableLayoutTransitions) {
+    setImageLayout(commandBuffer, environment.pTargetCubemap, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, environment.subresourceRange);
+  }
 
   // increase layer count to write to the next cubemap face
   environment.tracking.layer++;
@@ -227,36 +230,38 @@ void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynam
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(passId);
   renderView.pCurrentPass = pRenderPass;
 
-  /*VkRenderingInfo overrideInfo = renderView.pCurrentPass->renderingInfo;
-  VkRenderingAttachmentInfo overrideDepthAttachment;*/
+  VkRenderingInfo overrideInfo = renderView.pCurrentPass->renderingInfo;
+  VkRenderingAttachmentInfo overrideDepthAttachment;
 
-  //if (overrideInfo.pDepthAttachment) {
-  //  overrideDepthAttachment = *overrideInfo.pDepthAttachment;
-  //  overrideDepthAttachment.imageView = scene.pDepthTargets[renderView.frameInFlight]->texture.view;
-  //  //overrideDepthAttachment.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+  if (overrideInfo.pDepthAttachment) {
+    overrideDepthAttachment = *overrideInfo.pDepthAttachment;
+    overrideDepthAttachment.imageView = scene.pDepthTargets[renderView.frameInFlight]->texture.view;
 
-  //  overrideInfo.pDepthAttachment = &overrideDepthAttachment;
-  //}
+    overrideInfo.pDepthAttachment = &overrideDepthAttachment;
+  }
 
   // Transition images to correct layouts for rendering if required
+  VkImageLayout targetLayout = (system.enableLayoutTransitions)
+    ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+
   if (pRenderPass->validateColorAttachmentLayout) {
     VkImageSubresourceRange subRange{};
-    subRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     subRange.baseArrayLayer = 0u;
     subRange.baseMipLevel = 0u;
 
     for (uint8_t i = 0; i < pRenderPass->colorAttachmentCount; ++i) {
       RTexture* pImage = pRenderPass->pImageReferences[i];
+      subRange.aspectMask = pImage->texture.aspectMask;
       subRange.layerCount = pImage->texture.layerCount;
       subRange.levelCount = pImage->texture.levelCount;
 
-      setImageLayout(commandBuffer, pImage, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
-      //setImageLayout(commandBuffer, pImage, VK_IMAGE_LAYOUT_GENERAL, subRange);
+      // Some pipeline barriers are required before transparency stages regardless if layouts are being transitioned
+      setImageLayout(commandBuffer, pImage, targetLayout, subRange,
+        (!system.enableLayoutTransitions && passId & EDynamicRenderingPass::DiscardCullNone));
     }
   }
 
-  //vkCmdBeginRendering(commandBuffer, &overrideInfo);
-  vkCmdBeginRendering(commandBuffer, &renderView.pCurrentPass->renderingInfo);
+  vkCmdBeginRendering(commandBuffer, &overrideInfo);
 
   setViewport(commandBuffer, renderView.pCurrentPass->viewportId);
   renderView.currentViewportId = renderView.pCurrentPass->viewportId;
@@ -287,14 +292,14 @@ void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynam
   vkCmdEndRendering(commandBuffer);
 
   // Transition image layouts after rendering to the requested layout if required
-  if (pRenderPass->transitionColorAttachmentLayout) {
+  if (pRenderPass->transitionColorAttachmentLayout && system.enableLayoutTransitions) {
     VkImageSubresourceRange subRange{};
-    subRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     subRange.baseArrayLayer = 0u;
     subRange.baseMipLevel = 0u;
 
     for (uint8_t j = 0; j < pRenderPass->colorAttachmentCount; ++j) {
       RTexture* pImage = pRenderPass->pImageReferences[j];
+      subRange.aspectMask = pImage->texture.aspectMask;
       subRange.layerCount = pImage->texture.layerCount;
       subRange.levelCount = pImage->texture.levelCount;
 
@@ -400,8 +405,9 @@ void core::MRenderer::executePostProcessTAAPass(VkCommandBuffer commandBuffer) {
   subRange.baseMipLevel = 0u;
   subRange.levelCount = 1u;
   
-  setImageLayout(commandBuffer, pTAATexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
-  //setImageLayout(commandBuffer, pTAATexture, VK_IMAGE_LAYOUT_GENERAL, subRange);
+  VkImageLayout targetLayout = (system.enableLayoutTransitions)
+    ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+  setImageLayout(commandBuffer, pTAATexture, targetLayout, subRange);
 
   vkCmdBeginRendering(commandBuffer, &pRenderPass->renderingInfo);
 
@@ -417,7 +423,9 @@ void core::MRenderer::executePostProcessTAAPass(VkCommandBuffer commandBuffer) {
 
   vkCmdEndRendering(commandBuffer);
 
-  setImageLayout(commandBuffer, pTAATexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subRange);
+  if (system.enableLayoutTransitions) {
+    setImageLayout(commandBuffer, pTAATexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subRange);
+  }
 
   copyImage(commandBuffer, postprocess.pTAATexture, postprocess.pPreviousFrameTexture,
             postprocess.previousFrameCopy);
@@ -425,11 +433,13 @@ void core::MRenderer::executePostProcessTAAPass(VkCommandBuffer commandBuffer) {
 
 void core::MRenderer::executePostProcessSamplingPass(VkCommandBuffer commandBuffer, const uint32_t imageViewIndex,
                                                      const bool upsample) {
-  // Store a shader coordinate into either PBR texture or downsampling texture and its mip level
+  // Store a mip level index into either PBR texture or downsampling texture sets
   material.pGPBR->pushConstantBlock.textureSets = imageViewIndex;
   postprocess.bloomSubRange.baseMipLevel = imageViewIndex;
 
-  setImageLayout(commandBuffer, postprocess.pBloomTexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, postprocess.bloomSubRange);
+  VkImageLayout targetLayout = (system.enableLayoutTransitions)
+    ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+  setImageLayout(commandBuffer, postprocess.pBloomTexture, targetLayout, postprocess.bloomSubRange);
 
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass((upsample) ? EDynamicRenderingPass::PPUpsample : EDynamicRenderingPass::PPDownsample);
   renderView.pCurrentPass = pRenderPass;
@@ -455,8 +465,10 @@ void core::MRenderer::executePostProcessSamplingPass(VkCommandBuffer commandBuff
 
   vkCmdEndRendering(commandBuffer);
 
-  setImageLayout(commandBuffer, postprocess.pBloomTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, postprocess.bloomSubRange);
-  //setImageLayout(commandBuffer, postprocess.pBloomTexture, VK_IMAGE_LAYOUT_GENERAL, postprocess.bloomSubRange, true);
+  // Synchronization pipeline barrier is still required for every mip level of the bloom pass
+  (system.enableLayoutTransitions)
+    ? setImageLayout(commandBuffer, postprocess.pBloomTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, postprocess.bloomSubRange)
+    : setImageLayout(commandBuffer, postprocess.pBloomTexture, VK_IMAGE_LAYOUT_GENERAL, postprocess.bloomSubRange, true);
 }
 
 void core::MRenderer::executePostProcessGetExposurePass(VkCommandBuffer commandBuffer) {
@@ -470,7 +482,9 @@ void core::MRenderer::executePostProcessGetExposurePass(VkCommandBuffer commandB
   subRange.baseMipLevel = 0u;
   subRange.levelCount = postprocess.pExposureTexture->texture.levelCount;
 
-  setImageLayout(commandBuffer, postprocess.pExposureTexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
+  if (system.enableLayoutTransitions) {
+    setImageLayout(commandBuffer, postprocess.pExposureTexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
+  }
 
   VkRenderingInfo overrideInfo{};
   overrideInfo = pRenderPass->renderingInfo;
@@ -594,7 +608,7 @@ void core::MRenderer::renderFrame() {
 
   vkResetCommandBuffer(command.buffersGraphics[renderView.frameInFlight], NULL);
 
-  //prepareFrameComputeJobs();
+  prepareFrameComputeJobs();
 
   // Execute compute jobs
   executeQueuedComputeJobs(command.buffersCompute[renderView.frameInFlight]);

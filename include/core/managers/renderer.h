@@ -183,7 +183,9 @@ class MRenderer {
 
     VkQueryPool queryPool;
 
-    bool enableLayoutTransitions = false;   // NVidia GPUs work better with general layouts only
+    // NVidia GPUs seem to be using general layouts for everything on the driver level
+    // so transitioning pipeline barriers may slow down performance in most cases
+    bool enableLayoutTransitions = false;
 
     bool asyncComputeSupport = false;
     int32_t computeQueue = -1;
@@ -289,6 +291,7 @@ class MRenderer {
   RSceneBuffers* getSceneBuffers();
   RSceneUBO* getSceneUBO();
   REnvironmentData* getEnvironmentData();
+  bool isLayoutTransitionEnabled();
 
   void updateLightingUBO(const int32_t frameIndex);
 

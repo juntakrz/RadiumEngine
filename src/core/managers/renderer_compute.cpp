@@ -161,13 +161,13 @@ void core::MRenderer::executeComputeJob(VkCommandBuffer commandBuffer, RComputeJ
 
   vkCmdDispatch(commandBuffer, pJobInfo->width, pJobInfo->height, pJobInfo->depth);
 
-  if (pJobInfo->transtionToShaderReadOnly) {//&& system.enableLayoutTransitions) {
+  if (pJobInfo->transtionToShaderReadOnly && system.enableLayoutTransitions) {
     VkImageSubresourceRange range{};
-    range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     range.baseArrayLayer = 0;
     range.baseMipLevel = 0;
 
     for (auto& image : pJobInfo->pImageAttachments) {
+      range.aspectMask = image->texture.aspectMask;
       range.layerCount = image->texture.layerCount;
       range.levelCount = image->texture.levelCount;
 
@@ -196,12 +196,12 @@ void core::MRenderer::preprocessQueuedComputeJobs(VkCommandBuffer commandBuffer)
 
   for (auto& queuedJob : compute.queuedJobs) {
     VkImageSubresourceRange range{};
-    range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     range.baseArrayLayer = 0;
     range.baseMipLevel = 0;
 
     // Convert images if required, won't be converted if their layout is already valid
     for (auto& image : queuedJob.pImageAttachments) {
+      range.aspectMask = image->texture.aspectMask;
       range.layerCount = image->texture.layerCount;
       range.levelCount = image->texture.levelCount;
 
@@ -209,6 +209,7 @@ void core::MRenderer::preprocessQueuedComputeJobs(VkCommandBuffer commandBuffer)
     }
 
     for (auto& sampler : queuedJob.pSamplerAttachments) {
+      range.aspectMask = sampler->texture.aspectMask;
       range.layerCount = sampler->texture.layerCount;
       range.levelCount = sampler->texture.levelCount;
 
