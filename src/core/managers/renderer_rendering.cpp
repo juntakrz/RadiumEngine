@@ -128,8 +128,8 @@ void core::MRenderer::renderEnvironmentMaps(
 
   // start rendering an appropriate camera view / layer
   environment.subresourceRange.baseArrayLayer = environment.tracking.layer;
-  //setImageLayout(commandBuffer, environment.pTargetCubemap, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, environment.subresourceRange);
-  setImageLayout(commandBuffer, environment.pTargetCubemap, VK_IMAGE_LAYOUT_GENERAL, environment.subresourceRange);
+  setImageLayout(commandBuffer, environment.pTargetCubemap, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, environment.subresourceRange);
+  //setImageLayout(commandBuffer, environment.pTargetCubemap, VK_IMAGE_LAYOUT_GENERAL, environment.subresourceRange);
 
   VkRenderingAttachmentInfo overrideAttachment = pRenderPass->renderingInfo.pColorAttachments[0];
   overrideAttachment.imageView = environment.pTargetCubemap->texture.cubemapFaceViews[environment.tracking.layer];
@@ -156,7 +156,7 @@ void core::MRenderer::renderEnvironmentMaps(
 
   vkCmdEndRendering(commandBuffer);
 
-  //setImageLayout(commandBuffer, environment.pTargetCubemap, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, environment.subresourceRange);
+  setImageLayout(commandBuffer, environment.pTargetCubemap, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, environment.subresourceRange);
 
   // increase layer count to write to the next cubemap face
   environment.tracking.layer++;
@@ -250,8 +250,8 @@ void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynam
       subRange.layerCount = pImage->texture.layerCount;
       subRange.levelCount = pImage->texture.levelCount;
 
-      //setImageLayout(commandBuffer, pImage, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
-      setImageLayout(commandBuffer, pImage, VK_IMAGE_LAYOUT_GENERAL, subRange);
+      setImageLayout(commandBuffer, pImage, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
+      //setImageLayout(commandBuffer, pImage, VK_IMAGE_LAYOUT_GENERAL, subRange);
     }
   }
 
@@ -287,7 +287,7 @@ void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynam
   vkCmdEndRendering(commandBuffer);
 
   // Transition image layouts after rendering to the requested layout if required
-  /*if (pRenderPass->transitionColorAttachmentLayout) {
+  if (pRenderPass->transitionColorAttachmentLayout) {
     VkImageSubresourceRange subRange{};
     subRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     subRange.baseArrayLayer = 0u;
@@ -300,7 +300,7 @@ void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynam
 
       setImageLayout(commandBuffer, pImage, pRenderPass->colorAttachmentsOutLayout, subRange);
     }
-  }*/
+  }
 }
 
 void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uint32_t cascadeIndex) {
@@ -400,8 +400,8 @@ void core::MRenderer::executePostProcessTAAPass(VkCommandBuffer commandBuffer) {
   subRange.baseMipLevel = 0u;
   subRange.levelCount = 1u;
   
-  //setImageLayout(commandBuffer, pTAATexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
-  setImageLayout(commandBuffer, pTAATexture, VK_IMAGE_LAYOUT_GENERAL, subRange);
+  setImageLayout(commandBuffer, pTAATexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
+  //setImageLayout(commandBuffer, pTAATexture, VK_IMAGE_LAYOUT_GENERAL, subRange);
 
   vkCmdBeginRendering(commandBuffer, &pRenderPass->renderingInfo);
 
@@ -417,7 +417,7 @@ void core::MRenderer::executePostProcessTAAPass(VkCommandBuffer commandBuffer) {
 
   vkCmdEndRendering(commandBuffer);
 
-  //setImageLayout(commandBuffer, pTAATexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subRange);
+  setImageLayout(commandBuffer, pTAATexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subRange);
 
   copyImage(commandBuffer, postprocess.pTAATexture, postprocess.pPreviousFrameTexture,
             postprocess.previousFrameCopy);
@@ -429,7 +429,8 @@ void core::MRenderer::executePostProcessSamplingPass(VkCommandBuffer commandBuff
   material.pGPBR->pushConstantBlock.textureSets = imageViewIndex;
   postprocess.bloomSubRange.baseMipLevel = imageViewIndex;
 
-  //setImageLayout(commandBuffer, postprocess.pBloomTexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, postprocess.bloomSubRange);
+  setImageLayout(commandBuffer, postprocess.pBloomTexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, postprocess.bloomSubRange);
+
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass((upsample) ? EDynamicRenderingPass::PPUpsample : EDynamicRenderingPass::PPDownsample);
   renderView.pCurrentPass = pRenderPass;
 
@@ -454,8 +455,8 @@ void core::MRenderer::executePostProcessSamplingPass(VkCommandBuffer commandBuff
 
   vkCmdEndRendering(commandBuffer);
 
-  //setImageLayout(commandBuffer, postprocess.pBloomTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, postprocess.bloomSubRange);
-  setImageLayout(commandBuffer, postprocess.pBloomTexture, VK_IMAGE_LAYOUT_GENERAL, postprocess.bloomSubRange, true);
+  setImageLayout(commandBuffer, postprocess.pBloomTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, postprocess.bloomSubRange);
+  //setImageLayout(commandBuffer, postprocess.pBloomTexture, VK_IMAGE_LAYOUT_GENERAL, postprocess.bloomSubRange, true);
 }
 
 void core::MRenderer::executePostProcessGetExposurePass(VkCommandBuffer commandBuffer) {
@@ -596,7 +597,7 @@ void core::MRenderer::renderFrame() {
   //prepareFrameComputeJobs();
 
   // Execute compute jobs
-  //executeQueuedComputeJobs(command.buffersCompute[renderView.frameInFlight]);
+  executeQueuedComputeJobs(command.buffersCompute[renderView.frameInFlight]);
 
   //std::this_thread::sleep_for(std::chrono::milliseconds(30));
 
@@ -624,7 +625,7 @@ void core::MRenderer::renderFrame() {
 
   /* 1. Environment generation */
   if (renderView.generateEnvironmentMaps) {
-    //renderEnvironmentMaps(commandBuffer, environment.genInterval);
+    renderEnvironmentMaps(commandBuffer, environment.genInterval);
   }
 
   /* 2. Cascaded shadows */
@@ -653,9 +654,9 @@ void core::MRenderer::renderFrame() {
   executeRenderingPass(commandBuffer, EDynamicRenderingPass::PBR, material.pGBuffer, true);
 
   // Additional front rendering passes
-  //executeRenderingPass(commandBuffer, EDynamicRenderingPass::Skybox);
+  executeRenderingPass(commandBuffer, EDynamicRenderingPass::Skybox);
 
-  //executeAOBlurPass(commandBuffer);
+  executeAOBlurPass(commandBuffer);
 
   executeRenderingPass(commandBuffer, EDynamicRenderingPass::AlphaCompositing, material.pGPBR, true);
 

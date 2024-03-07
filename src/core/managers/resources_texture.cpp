@@ -336,18 +336,18 @@ TResult core::MResources::writeTexture(RTexture* pTexture, void* pData,
   VkCommandBuffer cmdBuffer = core::renderer.createCommandBuffer(
       ECmdType::Graphics, VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
 
-  /*core::renderer.setImageLayout(cmdBuffer, pTexture->texture.image,
-                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                subRange);*/
-
   core::renderer.setImageLayout(cmdBuffer, pTexture->texture.image,
                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                VK_IMAGE_LAYOUT_GENERAL,
+                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 subRange);
 
-  //pTexture->texture.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-  pTexture->texture.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+  /*core::renderer.setImageLayout(cmdBuffer, pTexture->texture.image,
+                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                VK_IMAGE_LAYOUT_GENERAL,
+                                subRange);*/
+
+  pTexture->texture.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  //pTexture->texture.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
   core::renderer.flushCommandBuffer(cmdBuffer, ECmdType::Graphics, true);
 

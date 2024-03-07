@@ -57,7 +57,8 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.height = textureInfo.width;
   textureInfo.format = core::vulkan::formatHDR16;
   textureInfo.extraViews = true;
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  //textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
 
@@ -177,7 +178,8 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.layerCount = 1u;
   textureInfo.mipLevels = 6u;     // A small number of mip maps should be enough for post processing
   textureInfo.extraViews = true;
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
+  //textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
@@ -205,7 +207,8 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.isCubemap = false;
   textureInfo.layerCount = 1u;
   textureInfo.mipLevels = 1u;
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
+  //textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT
     | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
@@ -543,8 +546,8 @@ TResult core::MRenderer::createDepthTargets() {
   textureInfo.layerCount = 1u;
   textureInfo.mipLevels = math::getMipLevels(config::renderHeight);
   textureInfo.extraViews = true;
-  //textureInfo.targetLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  //textureInfo.targetLayout = VK_IMAGE_LAYOUT_GENERAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
 

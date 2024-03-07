@@ -161,7 +161,7 @@ void core::MRenderer::executeComputeJob(VkCommandBuffer commandBuffer, RComputeJ
 
   vkCmdDispatch(commandBuffer, pJobInfo->width, pJobInfo->height, pJobInfo->depth);
 
-  if (pJobInfo->transtionToShaderReadOnly && system.enableLayoutTransitions) {
+  if (pJobInfo->transtionToShaderReadOnly) {//&& system.enableLayoutTransitions) {
     VkImageSubresourceRange range{};
     range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     range.baseArrayLayer = 0;
