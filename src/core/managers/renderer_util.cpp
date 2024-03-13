@@ -1047,12 +1047,11 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
   }
 
   // Create staging buffers to upload data to the related GPU storage buffers
-  RBuffer stagingInstanceBuffer, stagingDrawCommandBuffer;
-  VkBufferCopy drawCommandBufferCopyRegion;
-  bool isDrawCommandBufferCreated = false;
+  RBuffer stagingInstanceBuffer, stagingPrimitiveBuffer;
+  VkBufferCopy primitiveBufferCopyRegion;
+  WPrimitiveDataEntry primitiveDataEntry;
   createBuffer(EBufferType::STAGING, sizeof(WInstanceDataEntry), stagingInstanceBuffer, nullptr);
-
-  VkDrawIndexedIndirectCommand drawCommand;
+  createBuffer(EBufferType::STAGING, sizeof(WPrimitiveDataEntry), stagingPrimitiveBuffer, nullptr);
 
   // Add model to rendering queue, store its offsets
   REntityBindInfo bindInfo{};
@@ -1075,30 +1074,21 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
 
     // Give primitive a unique index if it was not bound to renderer and write the default indirect draw data for it
     if (primitive->instanceData.empty()) {
-      if (!isDrawCommandBufferCreated) {
-        createBuffer(EBufferType::STAGING, sizeof(VkDrawIndexedIndirectCommand), stagingDrawCommandBuffer, nullptr);
-
-        drawCommandBufferCopyRegion.srcOffset = 0;
-        drawCommandBufferCopyRegion.size = sizeof(VkDrawIndexedIndirectCommand);
-
-        isDrawCommandBufferCreated = true;
-      }
-
       primitive->bindingUID = getNewPrimitiveUID();
 
-      drawCommand.indexCount = primitive->indexCount;
-      drawCommand.instanceCount = 0;
-      drawCommand.firstIndex = pModel->m_sceneIndexOffset + primitive->indexOffset;
-      drawCommand.vertexOffset = static_cast<int32_t>(pModel->m_sceneVertexOffset + primitive->vertexOffset);
-      drawCommand.firstInstance = 0;
+      primitiveDataEntry.vertexOffset = static_cast<int32_t>(pModel->m_sceneVertexOffset + primitive->vertexOffset);
+      primitiveDataEntry.indexOffset = pModel->m_sceneIndexOffset + primitive->indexOffset;
+      primitiveDataEntry.indexCount = primitive->indexCount;
+      primitiveDataEntry.instanceCount = 0;
 
-      memcpy(stagingDrawCommandBuffer.allocInfo.pMappedData, &drawCommand, sizeof(VkDrawIndexedIndirectCommand));
+      //createBuffer(EBufferType::STAGING, sizeof(WPrimitiveDataEntry), stagingPrimitiveBuffer, (void*)&primitiveDataEntry);
+      memcpy(stagingPrimitiveBuffer.allocInfo.pMappedData, &primitiveDataEntry, sizeof(WPrimitiveDataEntry));
 
-      drawCommandBufferCopyRegion.dstOffset = sizeof(VkDrawIndexedIndirectCommand) * primitive->bindingUID;
+      primitiveBufferCopyRegion.srcOffset = 0;
+      primitiveBufferCopyRegion.size = sizeof(WPrimitiveDataEntry);
+      primitiveBufferCopyRegion.dstOffset = sizeof(WPrimitiveDataEntry) * primitive->bindingUID;
 
-      for (auto& dstBuffer : scene.culledDrawIndirectBuffers) {
-        copyBuffer(&stagingDrawCommandBuffer, &dstBuffer, &drawCommandBufferCopyRegion);
-      }
+      copyBuffer(stagingPrimitiveBuffer.buffer, scene.instanceDataBuffer.buffer, &primitiveBufferCopyRegion);
     }
 
     auto& instanceData = primitive->instanceData.emplace_back();
@@ -1128,7 +1118,8 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
     VkBufferCopy bufferCopyRegion{};
     bufferCopyRegion.srcOffset = 0u;
     bufferCopyRegion.size = sizeof(WInstanceDataEntry);
-    bufferCopyRegion.dstOffset = instanceData.instanceDataBufferOffset;
+    bufferCopyRegion.dstOffset = sizeof(WPrimitiveDataEntry) * config::scene::uniquePrimitiveBudget
+      + instanceData.instanceDataBufferOffset;
 
     copyBuffer(stagingInstanceBuffer.buffer, scene.instanceDataBuffer.buffer, &bufferCopyRegion);
 
@@ -1139,10 +1130,7 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
       static_cast<int32_t>(system.bindings.size() - 1));
 
   vmaDestroyBuffer(memAlloc, stagingInstanceBuffer.buffer, stagingInstanceBuffer.allocation);
-
-  if (isDrawCommandBufferCreated) {
-    vmaDestroyBuffer(memAlloc, stagingDrawCommandBuffer.buffer, stagingDrawCommandBuffer.allocation);
-  }
+  vmaDestroyBuffer(memAlloc, stagingPrimitiveBuffer.buffer, stagingPrimitiveBuffer.allocation);
 
 #ifndef NDEBUG
   RE_LOG(Log, "Bound model \"%s\" to graphics pipeline.", pModel->getName());

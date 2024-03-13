@@ -246,6 +246,22 @@ void AEntity::setInstancePrimitiveMaterial(const int32_t meshIndex, const int32_
   }
 
   pPrimitive->instanceData[m_instanceIndex].instanceBufferBlock.materialId = pMaterial->bufferIndex;
+
+  // Update instance data buffer
+  const uint32_t newMaterialId = pPrimitive->instanceData[m_instanceIndex].instanceBufferBlock.materialId;
+  
+  RBuffer stagingBuffer;
+  core::renderer.createBuffer(EBufferType::STAGING, sizeof(uint32_t), stagingBuffer, (void*)&newMaterialId);
+
+  VkBufferCopy copyRegion;
+  copyRegion.srcOffset = 0;
+  copyRegion.size = sizeof(uint32_t);
+  copyRegion.dstOffset = sizeof(WPrimitiveDataEntry) * config::scene::uniquePrimitiveBudget
+    + pPrimitive->instanceData[m_instanceIndex].instanceDataBufferOffset + sizeof(glm::vec4) * 2 + sizeof(uint32_t) * 3;
+
+  core::renderer.copyBuffer(&stagingBuffer, &core::renderer.getSceneBuffers()->instanceDataBuffer, &copyRegion);
+
+  vmaDestroyBuffer(core::renderer.memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
 }
 
 void AEntity::playAnimation(const std::string& name, const float speed,

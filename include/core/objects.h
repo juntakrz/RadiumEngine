@@ -463,14 +463,8 @@ struct RVulkanTexture : public ktxVulkanTexture {
 // Information written by the compute culling job
 // A number of draws to do at each corresponding pass
 struct RDrawIndirectInfo {
-  uint32_t opaqueCullBackDrawCount = 0;
-  uint32_t opaqueCullNoneDrawCount = 0;
-  uint32_t discardCullNoneDrawCount = 0;
-  uint32_t blendCullNoneDrawCount = 0;
-  uint32_t opaqueCullBackInstanceCount = 0;
-  uint32_t opaqueCullNoneInstanceCount = 0;
-  uint32_t discardCullNoneInstanceCount = 0;
-  uint32_t blendCullNoneInstanceCount = 0;
+  uint32_t drawCounts[4];
+  uint32_t instanceCounts[4];
 };
 
 // Lighting data uniform buffer object
@@ -562,6 +556,13 @@ struct WInstanceDataEntry {
   uint32_t passFlags = EDynamicRenderingPass::Null;
   uint32_t primitiveUID = -1;
   bool isVisible = true;
+};
+
+struct WPrimitiveDataEntry {
+  int32_t vertexOffset = -1;
+  uint32_t indexOffset = -1;
+  uint32_t indexCount = -1;
+  uint32_t instanceCount = -1;
 };
 
 struct WModelConfigInfo {

@@ -11,6 +11,12 @@
 //#define PASS_MASKCULLNONE		64			// Unused currently
 #define PASS_BLENDCULLNONE		128
 
+#define INVOCATION_PASS0		0
+#define INVOCATION_PASS1		1
+#define INVOCATION_PASS2		2
+#define INVOCATION_PASS3		3
+#define PASS_COUNT				4
+
 struct ModelTransformBlock {
 	mat4 matrix;
 	mat4 prevMatrix;
@@ -38,6 +44,13 @@ struct DrawIndirectCommand {
     uint firstIndex;
     int vertexOffset;
     uint firstInstance;
+};
+
+struct InPrimitiveDataEntry {
+	int vertexOffset;
+	uint indexOffset;
+	uint indexCount;
+	uint instanceCount;
 };
 
 struct InInstanceDataEntry {
@@ -73,27 +86,22 @@ layout (set = 1, binding = 2) buffer readonly UBOMesh1 {
 	NodeTransformBlock block[];
 } node;
 
-layout (set = 1, binding = 3) buffer InstanceDataBuffer {
+layout (set = 1, binding = 3) buffer coherent InstanceDataBuffer {
+	InPrimitiveDataEntry inPrimitiveData[MAX_UNIQUE_PRIMITIVES];
 	InInstanceDataEntry inInstanceData[];
 };
 
-layout (std430, set = 1, binding = 4) buffer coherent OutDrawDataBuffer {
+layout (std430, set = 1, binding = 4) buffer writeonly OutDrawDataBuffer {
 	DrawIndirectCommand outDrawCommands[];
 };
 
-layout (std430, set = 1, binding = 5) buffer coherent writeonly OutInstanceDataBuffer {
+layout (std430, set = 1, binding = 5) buffer writeonly OutInstanceDataBuffer {
 	OutInstanceDataEntry outInstanceData[];
 };
 
-layout (std430, set = 1, binding = 6) buffer coherent OutDrawCountBuffer {
-	uint opaqueCullBackDrawCount;
-	uint opaqueCullNoneDrawCount;
-	uint discardCullNoneDrawCount;
-	uint blendCullNoneDrawCount;
-	uint opaqueCullBackInstanceCount;
-	uint opaqueCullNoneInstanceCount;
-	uint discardCullNoneInstanceCount;
-	uint blendCullNoneInstanceCount;
+layout (std430, set = 1, binding = 6) buffer OutDrawCountBuffer {
+	uint passDrawCount[PASS_COUNT];
+	uint passInstanceCount[PASS_COUNT];
 } outDrawCountBuffer;
 
 layout (push_constant) uniform PushBlock {
@@ -134,52 +142,90 @@ bool isBoxInFrustum(vec4 boxMin, vec4 boxMax, mat4 transform) {
 	return false;
 }
 
-void checkRenderPass(uint renderPassId) {
+void checkRenderPass(uint renderPassId, uint primitiveUId) {
 	uint result = renderPassId & PASS_OPAQUECULLBACK;
+
 	if (result != 0) {
-		atomicAdd(outDrawCountBuffer.opaqueCullBackInstanceCount, 1);
+		atomicAdd(outDrawCountBuffer.passInstanceCount[INVOCATION_PASS0], 1);
+
+		if (inPrimitiveData[primitiveUId].instanceCount == 1) {
+			atomicAdd(outDrawCountBuffer.passDrawCount[INVOCATION_PASS0], 1);
+		}
+		
 		return;
 	}
 
 	result = renderPassId & PASS_OPAQUECULLNONE;
 	if (result != 0) {
-		atomicAdd(outDrawCountBuffer.opaqueCullNoneInstanceCount, 1);
+		atomicAdd(outDrawCountBuffer.passInstanceCount[INVOCATION_PASS1], 1);
+
+		if (inPrimitiveData[primitiveUId].instanceCount == 1) {
+			atomicAdd(outDrawCountBuffer.passDrawCount[INVOCATION_PASS1], 1);
+		}
+		
 		return;
 	}
 
 	result = renderPassId & PASS_DISCARDCULLNONE;
 	if (result != 0) {
-		atomicAdd(outDrawCountBuffer.discardCullNoneInstanceCount, 1);
+		atomicAdd(outDrawCountBuffer.passInstanceCount[INVOCATION_PASS2], 1);
+
+		if (inPrimitiveData[primitiveUId].instanceCount == 1) {
+			atomicAdd(outDrawCountBuffer.passDrawCount[INVOCATION_PASS2], 1);
+		}
+		
 		return;
 	}
 
 	result = renderPassId & PASS_BLENDCULLNONE;
 	if (result != 0) {
-		atomicAdd(outDrawCountBuffer.blendCullNoneInstanceCount, 1);
+		atomicAdd(outDrawCountBuffer.passInstanceCount[INVOCATION_PASS3], 1);
+
+		if (inPrimitiveData[primitiveUId].instanceCount == 1) {
+			atomicAdd(outDrawCountBuffer.passDrawCount[INVOCATION_PASS3], 1);
+		}
+		
 		return;
 	}
 }
 
-void main() {
-	// This invocation is larger than a total number of instances, no need to proceed
-	if (gl_GlobalInvocationID.x > pushBlock.intValues.x) return;
+uint passIndexToId(uint passIndex) {
+	switch(passIndex) {
+		case INVOCATION_PASS0: {
+			return PASS_OPAQUECULLBACK;
+		}
 
+		case INVOCATION_PASS1: {
+			return PASS_OPAQUECULLNONE;
+		}
+
+		case INVOCATION_PASS2: {
+			return PASS_DISCARDCULLNONE;
+		}
+
+		case INVOCATION_PASS3: {
+			return PASS_BLENDCULLNONE;
+		}
+	}
+}
+
+void main() {
+	// If an invocation index is larger than a 'total number of instances - 1' then there's no need to proceed
 	const int totalInstanceCount = pushBlock.intValues.x;
+
+	if (gl_GlobalInvocationID.x > totalInstanceCount - 1) return;
+
 	const uint instanceId = gl_GlobalInvocationID.x;
 	const uint primitiveUId = inInstanceData[instanceId].primitiveUId;
 
 	// Initialize with default values
-	aoutDrawCommands[primitiveUId].instanceCount = 0;
+	inPrimitiveData[primitiveUId].instanceCount = 0;
 
 	if (instanceId == 0) {
-		outDrawCountBuffer.opaqueCullBackDrawCount = 0;
-		outDrawCountBuffer.opaqueCullNoneDrawCount = 0;
-		outDrawCountBuffer.discardCullNoneDrawCount = 0;
-		outDrawCountBuffer.blendCullNoneDrawCount = 0;
-		outDrawCountBuffer.opaqueCullBackInstanceCount = 0;
-		outDrawCountBuffer.opaqueCullNoneInstanceCount = 0;
-		outDrawCountBuffer.discardCullNoneInstanceCount = 0;
-		outDrawCountBuffer.blendCullNoneInstanceCount = 0;
+		for (int passId = 0; passId < PASS_COUNT; passId++) {
+			outDrawCountBuffer.passDrawCount[passId] = 0;
+			outDrawCountBuffer.passInstanceCount[passId] = 0;
+		}
 	}
 
 	memoryBarrier();
@@ -198,52 +244,79 @@ void main() {
 	bool isVisible = isBoxInFrustum(boxMin, boxMax, transform);
 	inInstanceData[instanceId].isVisible = isVisible;
 
+	// Precalculate instance count
 	if (isVisible) {
-		checkRenderPass(inInstanceData[instanceId].renderPassId);
-		atomicAdd(outDrawCommands[primitiveUId].instanceCount, 1);
+		atomicAdd(inPrimitiveData[primitiveUId].instanceCount, 1);
 	}
 	
 	memoryBarrier();
 	barrier();
 
-	// Culling is done, time to sort instance data to correctly follow draw commands and instance count per each
-	if (gl_GlobalInvocationID.x != 0) return;
+	// Precalculate draw and instance count for every render pass
+	if (isVisible) {
+		checkRenderPass(inInstanceData[instanceId].renderPassId, primitiveUId);
+	}
 
+	// Culling is done, time to sort instance data to correctly follow draw commands and instance count per each
+	if (gl_GlobalInvocationID.x > 0) return;
+
+	memoryBarrier();
+	barrier();
+
+	//const uint passId = gl_GlobalInvocationID.x;
 	const int maxPrimitiveCount = (pushBlock.intValues.y < MAX_UNIQUE_PRIMITIVES) ? pushBlock.intValues.y : MAX_UNIQUE_PRIMITIVES;
 
-	// Fill out instance data that belongs to this pass
-	uint totalPassInstanceCount = outDrawCountBuffer.opaqueCullBackInstanceCount;
+	// Fill out primitive and instance data that belongs to this pass
+	uint outDrawIndex = 0;
 	uint outInstanceIndex = 0;
 
-	// Iterate through every primitive and check if it has any visible instances
-	for (int currentPrimitiveUId = 0; currentPrimitiveUId < maxPrimitiveCount; currentPrimitiveUId++) {
-		if (outDrawCommands[currentPrimitiveUId].instanceCount > 0) {
-			atomicAdd(outDrawCountBuffer.opaqueCullBackDrawCount, 1);
-			uint requiredInstanceCount = outDrawCommands[currentPrimitiveUId].instanceCount;
+	for (int passIndex = 0; passIndex < PASS_COUNT; passIndex++) {
+		//const uint totalPassInstanceCount = outDrawCountBuffer.passInstanceCount[passIndex];
+		uint checkPassId = passIndexToId(passIndex);
+		uint passDrawCount = 0;
 
-			// Find visible instances of this primitive and copy their data to the instance buffer
-			for (int currentInstanceId = 0; currentInstanceId < totalInstanceCount; currentInstanceId++) {
-				if (inInstanceData[currentInstanceId].primitiveUId == currentPrimitiveUId
-					&& inInstanceData[currentInstanceId].isVisible) {
-					const uint isCurrentRenderPass = inInstanceData[currentInstanceId].renderPassId & PASS_OPAQUECULLBACK;
+		// Iterate through every primitive and check if it has any visible instances
+		for (int currentPrimitiveUId = 0; currentPrimitiveUId < maxPrimitiveCount; currentPrimitiveUId++) {
+			if (inPrimitiveData[currentPrimitiveUId].instanceCount > 0) {
+				uint requiredInstanceCount = inPrimitiveData[currentPrimitiveUId].instanceCount;
+				const uint firstPrimitiveVisibleIndex = outInstanceIndex;
 
-					if (isCurrentRenderPass != 0) {
-						outInstanceData[outInstanceIndex].modelMatrixId = inInstanceData[currentInstanceId].modelMatrixId;
-						outInstanceData[outInstanceIndex].nodeMatrixId = inInstanceData[currentInstanceId].nodeMatrixId;
-						outInstanceData[outInstanceIndex].skinMatrixId = inInstanceData[currentInstanceId].skinMatrixId;
-						outInstanceData[outInstanceIndex].materialId = inInstanceData[currentInstanceId].materialId;
+				// Find visible instances of this primitive and copy their data to the instance buffer
+				for (int currentInstanceId = 0; currentInstanceId < totalInstanceCount; currentInstanceId++) {
+					if (inInstanceData[currentInstanceId].primitiveUId == currentPrimitiveUId
+						&& inInstanceData[currentInstanceId].isVisible) {
+						const uint isCurrentRenderPass = inInstanceData[currentInstanceId].renderPassId & checkPassId;
 
-						outInstanceIndex++;
-						requiredInstanceCount--;
+						if (isCurrentRenderPass != 0) {
+							outInstanceData[outInstanceIndex].modelMatrixId = inInstanceData[currentInstanceId].modelMatrixId;
+							outInstanceData[outInstanceIndex].nodeMatrixId = inInstanceData[currentInstanceId].nodeMatrixId;
+							outInstanceData[outInstanceIndex].skinMatrixId = inInstanceData[currentInstanceId].skinMatrixId;
+							outInstanceData[outInstanceIndex].materialId = inInstanceData[currentInstanceId].materialId;
+
+							outInstanceIndex++;
+							requiredInstanceCount--;
+						}
+					}
+
+					// No need to keep looking for instances of this primitive if all visible ones were found
+					if (requiredInstanceCount == 0) {
+						outDrawCommands[outDrawIndex].indexCount = inPrimitiveData[currentPrimitiveUId].indexCount;
+						outDrawCommands[outDrawIndex].instanceCount = inPrimitiveData[currentPrimitiveUId].instanceCount;
+						outDrawCommands[outDrawIndex].firstIndex = inPrimitiveData[currentPrimitiveUId].indexOffset;
+						outDrawCommands[outDrawIndex].vertexOffset = inPrimitiveData[currentPrimitiveUId].vertexOffset;
+						outDrawCommands[outDrawIndex].firstInstance = firstPrimitiveVisibleIndex;
+
+						passDrawCount++;
+						outDrawIndex++;
+						break;
 					}
 				}
-
-				// No need to keep looking for instances of this primitive if all visible ones were found
-				if (requiredInstanceCount == 0) break;
 			}
+
+			// No need to iterate through more primitives if all instance data for this pass was already filled
+			//if (outInstanceIndex == totalPassInstanceCount) break;
 		}
 
-		// No need to iterate through more primitives if all instance data for this pass was already filled
-		if (outInstanceIndex == totalPassInstanceCount) break;
+		outDrawCountBuffer.passDrawCount[passIndex] = passDrawCount;
 	}
 }

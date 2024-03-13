@@ -38,11 +38,42 @@ void core::MRenderer::drawBoundEntitiesIndirect(VkCommandBuffer commandBuffer, E
 
   const uint32_t bufferIndex = renderView.frameInFlight;
 
-  uint32_t indirectDrawCount = 0;
-  memcpy((void*)&indirectDrawCount, scene.culledDrawCountBuffers[bufferIndex].allocInfo.pMappedData, sizeof(uint32_t));
+  int32_t passId = -1;
+
+  switch (passOverride) {
+    case EDynamicRenderingPass::OpaqueCullBack: {
+      passId = 0;
+      break;
+    }
+    case EDynamicRenderingPass::OpaqueCullNone: {
+      passId = 1;
+      break;
+    }
+    case EDynamicRenderingPass::DiscardCullNone: {
+      passId = 2;
+      break;
+    }
+    case EDynamicRenderingPass::BlendCullNone: {
+      passId = 3;
+      break;
+    }
+  }
+
+  if (passId < 0) return;
+
+  RDrawIndirectInfo info;
+  memcpy((void*)&info, scene.culledDrawCountBuffers[bufferIndex].allocInfo.pMappedData, sizeof(RDrawIndirectInfo));
+
+  int32_t drawOffset = 0;
+
+  for (int32_t i = 0; i < passId; ++i) {
+    drawOffset += info.drawCounts[i];
+  }
+
+  drawOffset = sizeof(VkDrawIndexedIndirectCommand) * drawOffset;
 
   vkCmdDrawIndexedIndirect(commandBuffer, scene.culledDrawIndirectBuffers[bufferIndex].buffer,
-    0, indirectDrawCount, sizeof(VkDrawIndexedIndirectCommand));
+    drawOffset, info.drawCounts[passId], sizeof(VkDrawIndexedIndirectCommand));
 
   /*for (WModel* pModel : scene.pModelReferences) {
     auto& primitives = pModel->getPrimitives();
@@ -668,9 +699,9 @@ void core::MRenderer::renderFrame() {
 
   // G-Buffer passes
   executeRenderingPass(commandBuffer, EDynamicRenderingPass::OpaqueCullBack);
-  /*executeRenderingPass(commandBuffer, EDynamicRenderingPass::OpaqueCullNone);
-  executeRenderingPass(commandBuffer, EDynamicRenderingPass::DiscardCullNone);
-  executeRenderingPass(commandBuffer, EDynamicRenderingPass::BlendCullNone);*/
+  executeRenderingPass(commandBuffer, EDynamicRenderingPass::OpaqueCullNone);
+  //executeRenderingPass(commandBuffer, EDynamicRenderingPass::DiscardCullNone);
+  //executeRenderingPass(commandBuffer, EDynamicRenderingPass::BlendCullNone);
 
   // Synchronize instance processing thread since all instances are submitted queue
   sync.asyncUpdateInstanceBuffers.update();

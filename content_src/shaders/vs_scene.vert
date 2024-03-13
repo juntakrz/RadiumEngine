@@ -31,6 +31,9 @@ void main() {
 	const uint nodeIndex = inInstanceIndices.y;
 	const uint skinIndex = inInstanceIndices.z;
 
+	int debug0 = gl_DrawID;
+	int debug1 = gl_InstanceIndex;
+
 	vec4 worldPos;
 	vec4 prevWorldPos;
 

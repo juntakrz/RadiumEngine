@@ -219,8 +219,8 @@ TResult core::MRenderer::createSceneBuffers() {
       scene.culledDrawCountBuffers[instanceBufferId], nullptr);
   }
 
-  createBuffer(EBufferType::DGPU_STORAGE, sizeof(WInstanceDataEntry) * config::scene::nodeBudget,
-    scene.instanceDataBuffer, nullptr);
+  createBuffer(EBufferType::DGPU_STORAGE, sizeof(WPrimitiveDataEntry) * config::scene::uniquePrimitiveBudget
+    + sizeof(WInstanceDataEntry) * config::scene::nodeBudget, scene.instanceDataBuffer, nullptr);
 
   RE_LOG(Log, "Creating material storage buffer.");
   createBuffer(EBufferType::CPU_STORAGE, sizeof(RSceneFragmentPCB) * (config::scene::sampledImageBudget / RE_MAXTEXTURES),
