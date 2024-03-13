@@ -142,6 +142,12 @@ void core::MRenderer::destroySurface() {
 }
 
 TResult core::MRenderer::createSceneBuffers() {
+  scene.sceneBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+  lighting.buffers.resize(MAX_FRAMES_IN_FLIGHT);
+
+  core::vulkan::minUniformBufferAlignment = physicalDevice.deviceProperties.properties.limits.minUniformBufferOffsetAlignment;
+  core::vulkan::descriptorBufferOffsetAlignment = physicalDevice.descriptorBufferProperties.descriptorBufferOffsetAlignment;
+
   // set dynamic uniform buffer block sizes
   config::scene::cameraBlockSize =
       static_cast<uint32_t>(util::getVulkanAlignedSize(sizeof(RSceneUBO), core::vulkan::minUniformBufferAlignment));
@@ -149,6 +155,18 @@ TResult core::MRenderer::createSceneBuffers() {
       static_cast<uint32_t>(util::getVulkanAlignedSize(sizeof(glm::mat4) * 2 + sizeof(float), core::vulkan::minUniformBufferAlignment));
   config::scene::skinBlockSize =
       static_cast<uint32_t>(util::getVulkanAlignedSize(sizeof(glm::mat4) * RE_MAXJOINTS * 2, core::vulkan::minUniformBufferAlignment));
+
+  RE_LOG(Log, "Allocating scene and lighting uniform buffers");
+  VkDeviceSize uboMVPSize =
+    config::scene::cameraBlockSize * config::scene::getMaxCameraCount();
+  VkDeviceSize uboLightingSize = sizeof(RLightingUBO);
+
+  for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+    createBuffer(EBufferType::CPU_UNIFORM, uboMVPSize,
+      scene.sceneBuffers[i], nullptr);
+    createBuffer(EBufferType::CPU_UNIFORM, uboLightingSize, lighting.buffers[i],
+      &lighting.data);
+  }
 
   RE_LOG(Log, "Allocating scene storage vertex buffer for %d vertices.",
     config::scene::vertexBudget);
@@ -164,7 +182,7 @@ TResult core::MRenderer::createSceneBuffers() {
          config::scene::entityBudget);
   createBuffer(EBufferType::CPU_STORAGE,
                config::scene::getRootTransformBufferSize(),
-               scene.rootTransformBuffer, nullptr);
+               scene.modelTransformBuffer, nullptr);
 
   RE_LOG(Log, "Allocating scene buffer for %d unique nodes with transformation.",
          config::scene::nodeBudget);
@@ -186,23 +204,23 @@ TResult core::MRenderer::createSceneBuffers() {
 
   scene.culledInstanceDataBuffers.resize(MAX_FRAMES_IN_FLIGHT);
   scene.culledDrawIndirectBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+  scene.culledDrawCountBuffers.resize(MAX_FRAMES_IN_FLIGHT);
   for (int8_t instanceBufferId = 0; instanceBufferId < MAX_FRAMES_IN_FLIGHT; ++instanceBufferId) {
     // TODO: Deprecate old instance buffers in favor of compute culling ones
     createBuffer(EBufferType::CPU_VERTEX, sizeof(RInstanceData) * config::scene::nodeBudget,
       scene.instanceBuffers[instanceBufferId], nullptr);
     //
 
-    createBuffer(EBufferType::DGPU_STORAGE, sizeof(RInstanceData) * config::scene::nodeBudget,
+    createBuffer(EBufferType::DGPU_VERTEX, sizeof(RInstanceData) * config::scene::nodeBudget,
       scene.culledInstanceDataBuffers[instanceBufferId], nullptr);
     createBuffer(EBufferType::DGPU_INDIRECT, sizeof(VkDrawIndexedIndirectCommand) * config::scene::nodeBudget,
       scene.culledDrawIndirectBuffers[instanceBufferId], nullptr);
+    createBuffer(EBufferType::CPU_STORAGE, sizeof(RDrawIndirectInfo),
+      scene.culledDrawCountBuffers[instanceBufferId], nullptr);
   }
 
   createBuffer(EBufferType::DGPU_STORAGE, sizeof(WInstanceDataEntry) * config::scene::nodeBudget,
     scene.instanceDataBuffer, nullptr);
-
-  createBuffer(EBufferType::DGPU_STORAGE, config::renderWidth * config::renderHeight * sizeof(float),
-    scene.depthImageTransitionBuffer, nullptr);
 
   RE_LOG(Log, "Creating material storage buffer.");
   createBuffer(EBufferType::CPU_STORAGE, sizeof(RSceneFragmentPCB) * (config::scene::sampledImageBudget / RE_MAXTEXTURES),
@@ -239,8 +257,8 @@ void core::MRenderer::destroySceneBuffers() {
                    scene.vertexBuffer.allocation);
   vmaDestroyBuffer(memAlloc, scene.indexBuffer.buffer,
                    scene.indexBuffer.allocation);
-  vmaDestroyBuffer(memAlloc, scene.rootTransformBuffer.buffer,
-                   scene.rootTransformBuffer.allocation);
+  vmaDestroyBuffer(memAlloc, scene.modelTransformBuffer.buffer,
+                   scene.modelTransformBuffer.allocation);
   vmaDestroyBuffer(memAlloc, scene.nodeTransformBuffer.buffer,
                    scene.nodeTransformBuffer.allocation);
   vmaDestroyBuffer(memAlloc, scene.skinTransformBuffer.buffer,
@@ -256,10 +274,16 @@ void core::MRenderer::destroySceneBuffers() {
       scene.culledInstanceDataBuffers[frameIndex].allocation);
     vmaDestroyBuffer(memAlloc, scene.culledDrawIndirectBuffers[frameIndex].buffer,
       scene.culledDrawIndirectBuffers[frameIndex].allocation);
+    vmaDestroyBuffer(memAlloc, scene.culledDrawCountBuffers[frameIndex].buffer,
+      scene.culledDrawCountBuffers[frameIndex].allocation);
+
+    vmaDestroyBuffer(memAlloc, scene.sceneBuffers[frameIndex].buffer, scene.sceneBuffers[frameIndex].allocation);
+    vmaDestroyBuffer(memAlloc, lighting.buffers[frameIndex].buffer, lighting.buffers[frameIndex].allocation);
   }
 
+  vmaDestroyBuffer(memAlloc, postprocess.exposureStorageBuffer.buffer, postprocess.exposureStorageBuffer.allocation);
+
   vmaDestroyBuffer(memAlloc, scene.instanceDataBuffer.buffer, scene.instanceDataBuffer.allocation);
-  vmaDestroyBuffer(memAlloc, scene.depthImageTransitionBuffer.buffer, scene.depthImageTransitionBuffer.allocation);
   
   vmaDestroyBuffer(memAlloc, material.buffer.buffer, material.buffer.allocation);
   vmaDestroyBuffer(memAlloc, scene.transparencyLinkedListBuffer.buffer, scene.transparencyLinkedListBuffer.allocation);
@@ -282,39 +306,6 @@ core::MRenderer::RMaterialData* core::MRenderer::getMaterialData() {
 
 core::MRenderer::RSceneBuffers* core::MRenderer::getSceneBuffers() {
   return &scene;
-}
-
-TResult core::MRenderer::createUniformBuffers() {
-  scene.sceneBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-  lighting.buffers.resize(MAX_FRAMES_IN_FLIGHT);
-
-  core::vulkan::minUniformBufferAlignment = physicalDevice.deviceProperties.properties.limits.minUniformBufferOffsetAlignment;
-  core::vulkan::descriptorBufferOffsetAlignment = physicalDevice.descriptorBufferProperties.descriptorBufferOffsetAlignment;
-
-  VkDeviceSize uboMVPSize =
-      config::scene::cameraBlockSize * config::scene::getMaxCameraCount();
-  VkDeviceSize uboLightingSize = sizeof(RLightingUBO);
-
-  for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-    createBuffer(EBufferType::CPU_UNIFORM, uboMVPSize,
-                 scene.sceneBuffers[i], nullptr);
-    createBuffer(EBufferType::CPU_UNIFORM, uboLightingSize, lighting.buffers[i],
-                 &lighting.data);
-  }
-
-  return RE_OK;
-}
-
-void core::MRenderer::destroyUniformBuffers() {
-  for (auto& it : scene.sceneBuffers) {
-    vmaDestroyBuffer(memAlloc, it.buffer, it.allocation);
-  }
-
-  for (auto& it : lighting.buffers) {
-    vmaDestroyBuffer(memAlloc, it.buffer, it.allocation);
-  }
-
-  vmaDestroyBuffer(memAlloc, postprocess.exposureStorageBuffer.buffer, postprocess.exposureStorageBuffer.allocation);
 }
 
 TResult core::MRenderer::setDefaultComputeJobs() {
@@ -374,6 +365,13 @@ TResult core::MRenderer::setDefaultComputeJobs() {
     info.width = 1;
     info.height = 1;
     info.depth = 1;
+    info.pBufferAttachments = { &scene.sceneBuffers[0],                 // 0
+                                &scene.modelTransformBuffer,            // 1
+                                &scene.nodeTransformBuffer,             // 2
+                                &scene.instanceDataBuffer,              // 3
+                                &scene.culledDrawIndirectBuffers[0],    // 4
+                                &scene.culledInstanceDataBuffers[0],    // 5
+                                &scene.culledDrawCountBuffers[0] };     // 6
   }
 
   return RE_OK;
@@ -398,12 +396,6 @@ TResult core::MRenderer::setRendererDefaults() {
   }
 
   chkResult = createImageTargets();
-
-  if (chkResult != RE_OK) {
-    return chkResult;
-  }
-
-  chkResult = setDefaultComputeJobs();
 
   if (chkResult != RE_OK) {
     return chkResult;
@@ -710,8 +702,6 @@ void core::MRenderer::updateSceneUBO(uint32_t currentImage) {
   scene.sceneBufferObject.haltonJitter = system.haltonJitter[renderView.framesRendered % core::vulkan::haltonSequenceCount];
   scene.sceneBufferObject.clipData = view.pActiveCamera->getNearAndFarPlane();
 
-  //view.pActiveCamera->updateFrustum();
-
   uint8_t* pSceneUBO = static_cast<uint8_t*>(scene.sceneBuffers[currentImage].allocInfo.pMappedData) +
                        config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
 
@@ -757,11 +747,12 @@ TResult core::MRenderer::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createComputePipelines();
 
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createUniformBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorPool();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSets();
 
   if (chkResult <= RE_ERRORLIMIT) chkResult = createQueryPool();
+
+  if (chkResult <= RE_ERRORLIMIT) chkResult = setDefaultComputeJobs();
 
   return chkResult;
 }
@@ -783,7 +774,6 @@ void core::MRenderer::deinitialize() {
   destroySamplers();
   destroyDescriptorPool();
   destroyQueryPool();
-  destroyUniformBuffers();
   destroyMemAlloc();
   if(requireValidationLayers) MDebug::get().destroy(APIInstance);
   destroyLogicalDevice();

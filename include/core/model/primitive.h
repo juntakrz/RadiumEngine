@@ -17,11 +17,13 @@ class WPrimitive {
   uint32_t vertexCount = 0u;
   uint32_t indexCount = 0u;
 
+  uint32_t bindingUID = -1;
+
   RMaterial* pInitialMaterial = nullptr;
   void* pOwnerNode = nullptr;
   
-  std::vector<WPrimitiveInstanceInfo> instanceInfo;
-  std::vector<WPrimitiveInstanceData> instanceData;
+  std::vector<WPrimitiveInstanceInfo> instanceInfo;   // Per frame / possibly deprecated
+  std::vector<WPrimitiveInstanceData> instanceData;   // Data per instance
 
   struct {
     glm::vec3 min = glm::vec3(0.0f);

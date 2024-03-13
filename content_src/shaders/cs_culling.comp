@@ -3,18 +3,247 @@
 
 #include "include/common.glsl"
 
-layout(local_size_x = 8, local_size_y = 4) in;
-layout(set = 0, binding = 0, rgba16f) uniform imageCube images[];
-layout(set = 0, binding = 1) uniform samplerCube samplers[];
+#define MAX_UNIQUE_PRIMITIVES 16384
+
+#define PASS_OPAQUECULLBACK		8
+#define PASS_OPAQUECULLNONE		16
+#define PASS_DISCARDCULLNONE	32
+//#define PASS_MASKCULLNONE		64			// Unused currently
+#define PASS_BLENDCULLNONE		128
+
+struct ModelTransformBlock {
+	mat4 matrix;
+	mat4 prevMatrix;
+};
+
+struct NodeTransformBlock {
+	mat4 matrix;
+	float jointCount;
+	mat4 prevMatrix;
+	float padding[12];
+};
+
+struct UBOScene {
+	mat4 view;
+	mat4 projection;
+	vec3 camPos;
+	vec2 haltonJitter;
+	vec2 clipData;			// x = near plane, y = far plane
+	float padding[8];
+};
+
+struct DrawIndirectCommand {
+	uint indexCount;
+    uint instanceCount;
+    uint firstIndex;
+    int vertexOffset;
+    uint firstInstance;
+};
+
+struct InInstanceDataEntry {
+	vec4 AABBMin;
+	vec4 AABBMax;
+	uint modelMatrixId;
+	uint nodeMatrixId;
+	uint skinMatrixId;
+	uint materialId;
+	uint renderPassId;
+	uint primitiveUId;
+	bool isVisible;
+};
+
+struct OutInstanceDataEntry {
+	uint modelMatrixId;
+	uint nodeMatrixId;
+	uint skinMatrixId;
+	uint materialId;
+};
+
+layout (local_size_x = 32) in;
+
+layout (set = 1, binding = 0) buffer readonly SceneDataBuffer {
+	UBOScene sceneData[];
+};
+
+layout (set = 1, binding = 1) buffer readonly UBOMesh0 {
+	ModelTransformBlock block[];
+} model;
+
+layout (set = 1, binding = 2) buffer readonly UBOMesh1 {
+	NodeTransformBlock block[];
+} node;
+
+layout (set = 1, binding = 3) buffer InstanceDataBuffer {
+	InInstanceDataEntry inInstanceData[];
+};
+
+layout (std430, set = 1, binding = 4) buffer coherent OutDrawDataBuffer {
+	DrawIndirectCommand outDrawCommands[];
+};
+
+layout (std430, set = 1, binding = 5) buffer coherent writeonly OutInstanceDataBuffer {
+	OutInstanceDataEntry outInstanceData[];
+};
+
+layout (std430, set = 1, binding = 6) buffer coherent OutDrawCountBuffer {
+	uint opaqueCullBackDrawCount;
+	uint opaqueCullNoneDrawCount;
+	uint discardCullNoneDrawCount;
+	uint blendCullNoneDrawCount;
+	uint opaqueCullBackInstanceCount;
+	uint opaqueCullNoneInstanceCount;
+	uint discardCullNoneInstanceCount;
+	uint blendCullNoneInstanceCount;
+} outDrawCountBuffer;
 
 layout (push_constant) uniform PushBlock {
 	uint imageIndex;
 	uint samplerIndex;
 	uint bufferIndex;
 	uint padding;
-    ivec4 intValues;	// x - 
+    ivec4 intValues;	// x - total number of instances, y - max primitiveUId, z - camera buffer block index
 	vec4 floatValues;
 } pushBlock;
 
+bool isBoxInFrustum(vec4 boxMin, vec4 boxMax, mat4 transform) {
+	// Construct a bounding box
+	vec4 boxCorners[8];
+	boxCorners[0] = vec4(boxMin.x, boxMax.y, boxMax.z, 1.0);		//		0		1
+	boxCorners[1] = vec4(boxMax.x, boxMax.y, boxMax.z, 1.0);		//	2		3
+	boxCorners[2] = vec4(boxMin.x, boxMax.y, boxMin.z, 1.0);
+	boxCorners[3] = vec4(boxMax.x, boxMax.y, boxMin.z, 1.0);		//		4		5
+	boxCorners[4] = vec4(boxMin.x, boxMin.y, boxMax.z, 1.0);		//	6		7
+	boxCorners[5] = vec4(boxMax.x, boxMin.y, boxMax.z, 1.0);
+	boxCorners[6] = vec4(boxMin.x, boxMin.y, boxMin.z, 1.0);
+	boxCorners[7] = vec4(boxMax.x, boxMin.y, boxMin.z, 1.0);
+
+	for (int i = 0; i < 8; i++) {
+		vec4 transformedCorner = transform * boxCorners[i];
+
+		if (transformedCorner.w == 0.0) {
+			return true;
+		}
+
+		if ((transformedCorner.x > -transformedCorner.w && transformedCorner.x < transformedCorner.w)
+			|| (transformedCorner.y > -transformedCorner.w && transformedCorner.y < transformedCorner.w)
+			|| (transformedCorner.z > 0.0 && transformedCorner.z < transformedCorner.w)) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void checkRenderPass(uint renderPassId) {
+	uint result = renderPassId & PASS_OPAQUECULLBACK;
+	if (result != 0) {
+		atomicAdd(outDrawCountBuffer.opaqueCullBackInstanceCount, 1);
+		return;
+	}
+
+	result = renderPassId & PASS_OPAQUECULLNONE;
+	if (result != 0) {
+		atomicAdd(outDrawCountBuffer.opaqueCullNoneInstanceCount, 1);
+		return;
+	}
+
+	result = renderPassId & PASS_DISCARDCULLNONE;
+	if (result != 0) {
+		atomicAdd(outDrawCountBuffer.discardCullNoneInstanceCount, 1);
+		return;
+	}
+
+	result = renderPassId & PASS_BLENDCULLNONE;
+	if (result != 0) {
+		atomicAdd(outDrawCountBuffer.blendCullNoneInstanceCount, 1);
+		return;
+	}
+}
+
 void main() {
+	// This invocation is larger than a total number of instances, no need to proceed
+	if (gl_GlobalInvocationID.x > pushBlock.intValues.x) return;
+
+	const int totalInstanceCount = pushBlock.intValues.x;
+	const uint instanceId = gl_GlobalInvocationID.x;
+	const uint primitiveUId = inInstanceData[instanceId].primitiveUId;
+
+	// Initialize with default values
+	aoutDrawCommands[primitiveUId].instanceCount = 0;
+
+	if (instanceId == 0) {
+		outDrawCountBuffer.opaqueCullBackDrawCount = 0;
+		outDrawCountBuffer.opaqueCullNoneDrawCount = 0;
+		outDrawCountBuffer.discardCullNoneDrawCount = 0;
+		outDrawCountBuffer.blendCullNoneDrawCount = 0;
+		outDrawCountBuffer.opaqueCullBackInstanceCount = 0;
+		outDrawCountBuffer.opaqueCullNoneInstanceCount = 0;
+		outDrawCountBuffer.discardCullNoneInstanceCount = 0;
+		outDrawCountBuffer.blendCullNoneInstanceCount = 0;
+	}
+
+	memoryBarrier();
+	barrier();
+
+	// Precalculate occlusion related values
+	const int cameraBlockIndex = pushBlock.intValues.z;
+
+	mat4 transform = sceneData[cameraBlockIndex].projection * sceneData[cameraBlockIndex].view
+		* model.block[inInstanceData[instanceId].modelMatrixId].matrix * node.block[inInstanceData[instanceId].nodeMatrixId].matrix;
+
+	vec4 boxMin = inInstanceData[instanceId].AABBMin;
+	vec4 boxMax = inInstanceData[instanceId].AABBMax;
+
+	// Perform culling
+	bool isVisible = isBoxInFrustum(boxMin, boxMax, transform);
+	inInstanceData[instanceId].isVisible = isVisible;
+
+	if (isVisible) {
+		checkRenderPass(inInstanceData[instanceId].renderPassId);
+		atomicAdd(outDrawCommands[primitiveUId].instanceCount, 1);
+	}
+	
+	memoryBarrier();
+	barrier();
+
+	// Culling is done, time to sort instance data to correctly follow draw commands and instance count per each
+	if (gl_GlobalInvocationID.x != 0) return;
+
+	const int maxPrimitiveCount = (pushBlock.intValues.y < MAX_UNIQUE_PRIMITIVES) ? pushBlock.intValues.y : MAX_UNIQUE_PRIMITIVES;
+
+	// Fill out instance data that belongs to this pass
+	uint totalPassInstanceCount = outDrawCountBuffer.opaqueCullBackInstanceCount;
+	uint outInstanceIndex = 0;
+
+	// Iterate through every primitive and check if it has any visible instances
+	for (int currentPrimitiveUId = 0; currentPrimitiveUId < maxPrimitiveCount; currentPrimitiveUId++) {
+		if (outDrawCommands[currentPrimitiveUId].instanceCount > 0) {
+			atomicAdd(outDrawCountBuffer.opaqueCullBackDrawCount, 1);
+			uint requiredInstanceCount = outDrawCommands[currentPrimitiveUId].instanceCount;
+
+			// Find visible instances of this primitive and copy their data to the instance buffer
+			for (int currentInstanceId = 0; currentInstanceId < totalInstanceCount; currentInstanceId++) {
+				if (inInstanceData[currentInstanceId].primitiveUId == currentPrimitiveUId
+					&& inInstanceData[currentInstanceId].isVisible) {
+					const uint isCurrentRenderPass = inInstanceData[currentInstanceId].renderPassId & PASS_OPAQUECULLBACK;
+
+					if (isCurrentRenderPass != 0) {
+						outInstanceData[outInstanceIndex].modelMatrixId = inInstanceData[currentInstanceId].modelMatrixId;
+						outInstanceData[outInstanceIndex].nodeMatrixId = inInstanceData[currentInstanceId].nodeMatrixId;
+						outInstanceData[outInstanceIndex].skinMatrixId = inInstanceData[currentInstanceId].skinMatrixId;
+						outInstanceData[outInstanceIndex].materialId = inInstanceData[currentInstanceId].materialId;
+
+						outInstanceIndex++;
+						requiredInstanceCount--;
+					}
+				}
+
+				// No need to keep looking for instances of this primitive if all visible ones were found
+				if (requiredInstanceCount == 0) break;
+			}
+		}
+
+		// No need to iterate through more primitives if all instance data for this pass was already filled
+		if (outInstanceIndex == totalPassInstanceCount) break;
+	}
 }

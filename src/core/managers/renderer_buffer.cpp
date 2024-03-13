@@ -47,7 +47,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     return RE_OK;
   }
   case (uint8_t)EBufferType::CPU_UNIFORM: {
-    bufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    bufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     bufferCreateInfo.size = size;
     bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
@@ -185,7 +185,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
   }
 
   case (uint8_t)EBufferType::DGPU_VERTEX: {
-    bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     bufferCreateInfo.size = size;
     bufferCreateInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
     bufferCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();
@@ -566,14 +566,14 @@ void core::MRenderer::updateInstanceBuffer() {
       uint32_t primitiveInstanceIndex = 0u;
 
       for (auto& instanceDataEntry : primitive->instanceData) {
-        bool isVisible = true;
+        bool isInFrustum = true;
 
         if (!(primitive->pInitialMaterial->passFlags & EDynamicRenderingPass::EnvSkybox)) {
-          isVisible = pCamera->isBoundingBoxInFrustum(
+          isInFrustum = pCamera->isBoundingBoxInFrustum(
             primitive, projectionViewMatrix, instanceDataEntry.pParentEntity->getRootTransformationMatrix());
         }
 
-        if (isVisible && instanceDataEntry.isVisible) {
+        if (isInFrustum && instanceDataEntry.isVisible) {
           scene.instanceData[index] = instanceDataEntry.instanceBufferBlock;
           instanceDataEntry.instanceIndex[bufferIndex] = index;
 

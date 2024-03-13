@@ -87,11 +87,12 @@ namespace scene {
 // buffer overflow happens NOTE: on device 96 bytes per vertex / 4 bytes per
 // index
 
-const size_t vertexBudget = 10000000u;                  // ~960 MBs for vertex data
-const size_t indexBudget = 100000000u;                  // ~400 MBs for index data
-const size_t entityBudget = 1000u;                      // ~64 KBs for root transformation matrices
-const size_t nodeBudget = RE_MAXJOINTS * entityBudget;  // ~16 MBs for node transformation matrices
-const size_t cameraBudget = 64u;                        // ~9 KBs for camera MVP data
+constexpr size_t vertexBudget = 10000000u;                  // Unique, reusable vertex data
+constexpr size_t indexBudget = 100000000u;                  // Unique, reusable index data
+constexpr size_t entityBudget = 10000u;                     // Unique entity data (e.g. unique model and skin matrices)
+constexpr size_t nodeBudget = 1000u * RE_MAXJOINTS;         // Maximum unique fully animated meshes with max joints
+constexpr size_t uniquePrimitiveBudget = 16384u;            // Maximum unique primitives (used to generate draw indirect commands)
+constexpr size_t cameraBudget = 64u;
 
 extern uint32_t sampledImageBudget;
 extern uint32_t storageImageBudget;

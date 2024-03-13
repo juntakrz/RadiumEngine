@@ -38,7 +38,13 @@ void core::MRenderer::drawBoundEntitiesIndirect(VkCommandBuffer commandBuffer, E
 
   const uint32_t bufferIndex = renderView.frameInFlight;
 
-  for (WModel* pModel : scene.pModelReferences) {
+  uint32_t indirectDrawCount = 0;
+  memcpy((void*)&indirectDrawCount, scene.culledDrawCountBuffers[bufferIndex].allocInfo.pMappedData, sizeof(uint32_t));
+
+  vkCmdDrawIndexedIndirect(commandBuffer, scene.culledDrawIndirectBuffers[bufferIndex].buffer,
+    0, indirectDrawCount, sizeof(VkDrawIndexedIndirectCommand));
+
+  /*for (WModel* pModel : scene.pModelReferences) {
     auto& primitives = pModel->getPrimitives();
     const uint32_t sceneVertexOffset = pModel->m_sceneVertexOffset;
     const uint32_t sceneIndexOffset = pModel->m_sceneIndexOffset;
@@ -48,11 +54,11 @@ void core::MRenderer::drawBoundEntitiesIndirect(VkCommandBuffer commandBuffer, E
         || primitive->instanceInfo[bufferIndex].visibleInstanceCount == 0) continue;
       
       VkDrawIndexedIndirectCommand& newCommand = command.indirectCommands.emplace_back();
-      newCommand.vertexOffset = sceneVertexOffset + primitive->vertexOffset;
-      newCommand.firstIndex = sceneIndexOffset + primitive->indexOffset;
       newCommand.indexCount = primitive->indexCount;
-      newCommand.firstInstance = primitive->instanceInfo[bufferIndex].indirectFirstVisibleInstance;
       newCommand.instanceCount = primitive->instanceInfo[bufferIndex].visibleInstanceCount;
+      newCommand.firstIndex = sceneIndexOffset + primitive->indexOffset;
+      newCommand.vertexOffset = sceneVertexOffset + primitive->vertexOffset;
+      newCommand.firstInstance = primitive->instanceInfo[bufferIndex].indirectFirstVisibleInstance;
     }
   }
 
@@ -64,7 +70,7 @@ void core::MRenderer::drawBoundEntitiesIndirect(VkCommandBuffer commandBuffer, E
   vkCmdDrawIndexedIndirect(commandBuffer, command.indirectCommandBuffers[bufferIndex].buffer,
     command.indirectCommandOffset, indirectDrawCount, sizeof(VkDrawIndexedIndirectCommand));
 
-  command.indirectCommandOffset += sizeof(VkDrawIndexedIndirectCommand) * indirectDrawCount;
+  command.indirectCommandOffset += sizeof(VkDrawIndexedIndirectCommand) * indirectDrawCount;*/
 }
 
 void core::MRenderer::renderPrimitive(VkCommandBuffer commandBuffer,
@@ -169,7 +175,8 @@ void core::MRenderer::prepareFrameResources(VkCommandBuffer commandBuffer) {
   command.indirectCommandOffset = 0u;
 
   VkDeviceSize vertexBufferOffsets[] = { 0u, 0u };
-  VkBuffer vertexBuffers[] = { scene.vertexBuffer.buffer, scene.instanceBuffers[renderView.frameInFlight].buffer };
+  //VkBuffer vertexBuffers[] = { scene.vertexBuffer.buffer, scene.instanceBuffers[renderView.frameInFlight].buffer };
+  VkBuffer vertexBuffers[] = { scene.vertexBuffer.buffer, scene.culledInstanceDataBuffers[renderView.frameInFlight].buffer };
 
   vkCmdBindVertexBuffers(commandBuffer, 0, 2, vertexBuffers, vertexBufferOffsets);
   vkCmdBindIndexBuffer(commandBuffer, scene.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
@@ -214,15 +221,19 @@ void core::MRenderer::prepareFrameComputeJobs() {
   // Type of mipmapping: from D32 to R32
   depthMipmappingJob.pushBlock.intValues.y = 0;
 
-  /*RComputeJobInfo cullingJob = compute.sceneJobInfo.culling;
+  RComputeJobInfo& cullingJob = compute.sceneJobInfo.culling;
   cullingJob.width = static_cast<uint32_t>(scene.totalInstances) / 32 + 1;
-  cullingJob.height = 1;
-  cullingJob.depth = 1;
   cullingJob.pSamplerAttachments = { scene.pPreviousDepthTargets[previousFrameInFlight] };
-  cullingJob.pBufferAttachments = { &scene.instanceDataBuffer,
-    &scene.culledInstanceDataBuffers[renderView.frameInFlight], &scene.culledDrawIndirectBuffers[renderView.frameInFlight] };*/
+  cullingJob.pBufferAttachments[0] = &scene.sceneBuffers[previousFrameInFlight];
+  cullingJob.pBufferAttachments[4] = &scene.culledDrawIndirectBuffers[previousFrameInFlight];
+  cullingJob.pBufferAttachments[5] = &scene.culledInstanceDataBuffers[previousFrameInFlight];
+  cullingJob.pBufferAttachments[6] = &scene.culledDrawCountBuffers[previousFrameInFlight];
+  cullingJob.pushBlock.intValues.x = static_cast<int32_t>(scene.totalInstances);
+  cullingJob.pushBlock.intValues.y = static_cast<int32_t>(scene.nextPrimitiveUID);
+  cullingJob.pushBlock.intValues.z = static_cast<int32_t>(view.pPrimaryCamera->getViewBufferIndex()); // index for retrieving camera matrices
 
   queueComputeJob(&depthMipmappingJob);
+  queueComputeJob(&cullingJob);
 }
 
 void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynamicRenderingPass passId,
@@ -657,9 +668,9 @@ void core::MRenderer::renderFrame() {
 
   // G-Buffer passes
   executeRenderingPass(commandBuffer, EDynamicRenderingPass::OpaqueCullBack);
-  executeRenderingPass(commandBuffer, EDynamicRenderingPass::OpaqueCullNone);
+  /*executeRenderingPass(commandBuffer, EDynamicRenderingPass::OpaqueCullNone);
   executeRenderingPass(commandBuffer, EDynamicRenderingPass::DiscardCullNone);
-  executeRenderingPass(commandBuffer, EDynamicRenderingPass::BlendCullNone);
+  executeRenderingPass(commandBuffer, EDynamicRenderingPass::BlendCullNone);*/
 
   // Synchronize instance processing thread since all instances are submitted queue
   sync.asyncUpdateInstanceBuffers.update();
@@ -668,7 +679,7 @@ void core::MRenderer::renderFrame() {
   executeRenderingPass(commandBuffer, EDynamicRenderingPass::PBR, material.pGBuffer, true);
 
   // Additional front rendering passes
-  executeRenderingPass(commandBuffer, EDynamicRenderingPass::Skybox);
+  /*executeRenderingPass(commandBuffer, EDynamicRenderingPass::Skybox);*/
 
   executeAOBlurPass(commandBuffer);
 

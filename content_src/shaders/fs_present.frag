@@ -34,7 +34,7 @@ void main() {
     baseColor = tonemapReinhardWP(baseColor, 0.9);
 #endif
 
-	baseColor += bloomColor * 0.6;
+	baseColor += bloomColor * 0.5;
 	baseColor = vec3(1.0) - exp(-baseColor * exposure);
 
 	outColor = vec4(baseColor, 1.0);

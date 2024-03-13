@@ -88,22 +88,22 @@ class MRenderer {
     RBuffer vertexBuffer;
     std::vector<RBuffer> instanceBuffers;
     RBuffer indexBuffer;
-    RBuffer rootTransformBuffer;
+    RBuffer modelTransformBuffer;
     RBuffer nodeTransformBuffer;
     RBuffer skinTransformBuffer;
     RBuffer generalBuffer;
     uint32_t currentVertexOffset = 0u;
     uint32_t currentIndexOffset = 0u;
     size_t totalInstances = 0u;
-    uint32_t currentInstanceUID = 0u;
     VkDescriptorSet transformDescriptorSet;
 
     // Compute instance and culling buffers
-    RBuffer depthImageTransitionBuffer;
-    RBuffer instanceDataBuffer;
-    uint32_t currentInstanceDataOffset = 0u;
+    RBuffer instanceDataBuffer;                       // Contains all bound primitive instance data, changes when new entity is bound/unbound
+    uint32_t currentInstanceDataOffset = 0u;          // Tracks an offset at which to store a new instance data upon binding
+    uint32_t nextPrimitiveUID = 0;
     std::vector<RBuffer> culledInstanceDataBuffers;
     std::vector<RBuffer> culledDrawIndirectBuffers;
+    std::vector<RBuffer> culledDrawCountBuffers;
 
     std::vector<RTexture*> pDepthTargets;
     std::vector<RTexture*> pPreviousDepthTargets;
@@ -179,7 +179,7 @@ class MRenderer {
     VkDescriptorPool descriptorPool;
     std::unordered_map<EDescriptorSetLayout, VkDescriptorSetLayout> descriptorSetLayouts;
 
-    std::vector<REntityBindInfo> bindings;  // entities rendered during the current frame
+    std::vector<REntityBindInfo> bindings;  // entities that are bound and will be rendered
 
     VkQueryPool queryPool;
 
@@ -246,9 +246,6 @@ class MRenderer {
 
   TResult createSceneBuffers();
   void destroySceneBuffers();
-
-  TResult createUniformBuffers();
-  void destroyUniformBuffers();
 
   TResult createImageTargets();
   TResult createGBufferRenderTargets();
@@ -437,6 +434,8 @@ public:
   void clearBoundEntities();
 
   void uploadModelToSceneBuffer(WModel* pModel);
+
+  uint32_t getNewPrimitiveUID();
 
   // set camera from create cameras by name
   void setCamera(const char* name, const bool setAsPrimary = false);

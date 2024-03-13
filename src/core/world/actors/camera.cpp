@@ -225,37 +225,6 @@ void ACamera::setViewBufferIndex(const uint32_t newIndex) {
 
 const uint32_t ACamera::getViewBufferIndex() { return m_viewBufferIndex; }
 
-void ACamera::updateFrustum() {
-  //const glm::mat4& projView = getProjectionView();
-  const glm::mat4& projView = getProjection() * getView();
-
-  // Left plane
-  m_viewData.frustum[0] = glm::row(projView, 3) + glm::row(projView, 0);
-
-  // Right plane
-  m_viewData.frustum[1] = glm::row(projView, 3) - glm::row(projView, 0);
-
-  // Top plane
-  m_viewData.frustum[2] = glm::row(projView, 3) - glm::row(projView, 1);
-
-  // Bottom plane
-  m_viewData.frustum[3] = glm::row(projView, 3) + glm::row(projView, 1);
-
-  // Near plane
-  m_viewData.frustum[4] = glm::row(projView, 3) - glm::row(projView, 2);
-
-  // Far plane
-  m_viewData.frustum[5] = glm::row(projView, 3) + glm::row(projView, 2);
-
-  /*for (auto& plane : m_viewData.frustum) {
-    plane = -plane;
-  }*/
-}
-
-glm::vec4* ACamera::getFrustum() {
-  return m_viewData.frustum;
-}
-
 bool ACamera::isBoundingBoxInFrustum(const WPrimitive* pPrimitive, const glm::mat4& projectionViewMatrix, const glm::mat4& modelMatrix) {
   const glm::mat4 MVPMatrix = projectionViewMatrix * modelMatrix;
 

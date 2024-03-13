@@ -13,8 +13,6 @@ class ACamera : public ABase {
     glm::vec4 orthographicData;     // horizontal, vertical, near, far
     bool anchorFocusPoint = false;
     bool ignorePitchLimit = false;
-
-    glm::vec4 frustum[6];           // Left, right, top, bottom, near, far
   } m_viewData;
 
   struct {
@@ -89,9 +87,5 @@ class ACamera : public ABase {
   void setViewBufferIndex(const uint32_t newIndex);
   const uint32_t getViewBufferIndex();
 
-  // Calculates frustum using projection * view matrices
-  // Should be called once per frame when new camera view and projection are updated
-  void updateFrustum();
-  glm::vec4* getFrustum();
   bool isBoundingBoxInFrustum(const class WPrimitive* pPrimitive, const glm::mat4& projectionViewMatrix, const glm::mat4& modelMatrix);
 };

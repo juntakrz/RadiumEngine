@@ -264,15 +264,15 @@ std::vector<VkExtensionProperties> core::MRenderer::getInstanceExtensions(const 
 }
 
 TResult core::MRenderer::createQueryPool() {
-  VkQueryPoolCreateInfo poolCreate{};
-  poolCreate.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
-  poolCreate.queryType = VK_QUERY_TYPE_OCCLUSION;
-  poolCreate.queryCount = config::scene::nodeBudget;    // TODO: Node budget is quite large, but find a more valid number
-  
-  if (vkCreateQueryPool(logicalDevice.device, &poolCreate, nullptr, &system.queryPool) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to create query pool.");
-    return RE_CRITICAL;
-  }
+  //VkQueryPoolCreateInfo poolCreate{};
+  //poolCreate.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+  //poolCreate.queryType = VK_QUERY_TYPE_OCCLUSION;
+  //poolCreate.queryCount = config::scene::nodeBudget;    // TODO: Node budget is quite large, but find a more valid number
+  //
+  //if (vkCreateQueryPool(logicalDevice.device, &poolCreate, nullptr, &system.queryPool) != VK_SUCCESS) {
+  //  RE_LOG(Critical, "Failed to create query pool.");
+  //  return RE_CRITICAL;
+  //}
 
   return RE_OK;
 }
@@ -535,16 +535,18 @@ void core::MRenderer::convertRenderTargets(VkCommandBuffer cmdBuffer,
                                 ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
                                 : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-  //VkImageLayout newLayout = VK_IMAGE_LAYOUT_GENERAL;
+  if (!system.enableLayoutTransitions) {
+    newLayout = VK_IMAGE_LAYOUT_GENERAL;
+  }
 
   VkImageSubresourceRange range{};
-  range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   range.baseArrayLayer = 0;
   range.baseMipLevel = 0;
 
   for (int8_t i = 0; i < pInTextures->size(); ++i) {
     if (newLayout == pInTextures->at(i)->texture.imageLayout) continue;
 
+    range.aspectMask = pInTextures->at(i)->texture.aspectMask;
     range.layerCount = pInTextures->at(i)->texture.layerCount;
     range.levelCount = pInTextures->at(i)->texture.levelCount;
 
@@ -1044,9 +1046,13 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
     return -1;
   }
 
-  // Create staging buffer to upload data to the GPU instance data storage
-  RBuffer stagingInstanceBuffer;
+  // Create staging buffers to upload data to the related GPU storage buffers
+  RBuffer stagingInstanceBuffer, stagingDrawCommandBuffer;
+  VkBufferCopy drawCommandBufferCopyRegion;
+  bool isDrawCommandBufferCreated = false;
   createBuffer(EBufferType::STAGING, sizeof(WInstanceDataEntry), stagingInstanceBuffer, nullptr);
+
+  VkDrawIndexedIndirectCommand drawCommand;
 
   // Add model to rendering queue, store its offsets
   REntityBindInfo bindInfo{};
@@ -1067,6 +1073,34 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
   for (auto& primitive : pModel->m_pLinearPrimitives) {
     WModel::Node* pNode = reinterpret_cast<WModel::Node*>(primitive->pOwnerNode);
 
+    // Give primitive a unique index if it was not bound to renderer and write the default indirect draw data for it
+    if (primitive->instanceData.empty()) {
+      if (!isDrawCommandBufferCreated) {
+        createBuffer(EBufferType::STAGING, sizeof(VkDrawIndexedIndirectCommand), stagingDrawCommandBuffer, nullptr);
+
+        drawCommandBufferCopyRegion.srcOffset = 0;
+        drawCommandBufferCopyRegion.size = sizeof(VkDrawIndexedIndirectCommand);
+
+        isDrawCommandBufferCreated = true;
+      }
+
+      primitive->bindingUID = getNewPrimitiveUID();
+
+      drawCommand.indexCount = primitive->indexCount;
+      drawCommand.instanceCount = 0;
+      drawCommand.firstIndex = pModel->m_sceneIndexOffset + primitive->indexOffset;
+      drawCommand.vertexOffset = static_cast<int32_t>(pModel->m_sceneVertexOffset + primitive->vertexOffset);
+      drawCommand.firstInstance = 0;
+
+      memcpy(stagingDrawCommandBuffer.allocInfo.pMappedData, &drawCommand, sizeof(VkDrawIndexedIndirectCommand));
+
+      drawCommandBufferCopyRegion.dstOffset = sizeof(VkDrawIndexedIndirectCommand) * primitive->bindingUID;
+
+      for (auto& dstBuffer : scene.culledDrawIndirectBuffers) {
+        copyBuffer(&stagingDrawCommandBuffer, &dstBuffer, &drawCommandBufferCopyRegion);
+      }
+    }
+
     auto& instanceData = primitive->instanceData.emplace_back();
     instanceData.instanceIndex.resize(MAX_FRAMES_IN_FLIGHT);
     instanceData.isVisible = true;
@@ -1076,21 +1110,25 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
     instanceData.instanceBufferBlock.skinMatrixId = pEntity->getSkinTransformBufferIndex(pNode->skinIndex);
     instanceData.instanceBufferBlock.materialId = primitive->pInitialMaterial->bufferIndex;
 
-    // Store this primitive instance data in the GPU storage buffer for instance data
+    // Store an offset to this primitive's instance data in the GPU storage buffer for instance data
     instanceData.instanceDataBufferOffset = scene.currentInstanceDataOffset;
 
     WInstanceDataEntry bufferDataEntry;
     bufferDataEntry.min = glm::vec4(primitive->extent.min, 1.0f);
     bufferDataEntry.max = glm::vec4(primitive->extent.max, 1.0f);
-    bufferDataEntry.instanceData = instanceData.instanceBufferBlock;
+    bufferDataEntry.modelMatrixId = instanceData.instanceBufferBlock.modelMatrixId;
+    bufferDataEntry.nodeMatrixId = instanceData.instanceBufferBlock.nodeMatrixId;
+    bufferDataEntry.skinMatrixId = instanceData.instanceBufferBlock.skinMatrixId;
+    bufferDataEntry.materialId = instanceData.instanceBufferBlock.materialId;
     bufferDataEntry.passFlags = primitive->pInitialMaterial->passFlags;
+    bufferDataEntry.primitiveUID = primitive->bindingUID;
 
     memcpy(stagingInstanceBuffer.allocInfo.pMappedData, &bufferDataEntry, sizeof(WInstanceDataEntry));
 
     VkBufferCopy bufferCopyRegion{};
     bufferCopyRegion.srcOffset = 0u;
     bufferCopyRegion.size = sizeof(WInstanceDataEntry);
-    bufferCopyRegion.dstOffset = scene.currentInstanceDataOffset;
+    bufferCopyRegion.dstOffset = instanceData.instanceDataBufferOffset;
 
     copyBuffer(stagingInstanceBuffer.buffer, scene.instanceDataBuffer.buffer, &bufferCopyRegion);
 
@@ -1101,6 +1139,10 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
       static_cast<int32_t>(system.bindings.size() - 1));
 
   vmaDestroyBuffer(memAlloc, stagingInstanceBuffer.buffer, stagingInstanceBuffer.allocation);
+
+  if (isDrawCommandBufferCreated) {
+    vmaDestroyBuffer(memAlloc, stagingDrawCommandBuffer.buffer, stagingDrawCommandBuffer.allocation);
+  }
 
 #ifndef NDEBUG
   RE_LOG(Log, "Bound model \"%s\" to graphics pipeline.", pModel->getName());
@@ -1154,6 +1196,12 @@ void core::MRenderer::uploadModelToSceneBuffer(WModel* pModel) {
   scene.currentVertexOffset += pModel->m_vertexCount;
   scene.currentIndexOffset += pModel->m_indexCount;
 }
+
+uint32_t core::MRenderer::getNewPrimitiveUID() {
+  uint32_t freeID = scene.nextPrimitiveUID++;
+  return freeID;
+}
+
 
 void core::MRenderer::setCamera(const char* name, const bool setAsPrimary) {
   ACamera* pCamera = core::actors.getCamera(name);

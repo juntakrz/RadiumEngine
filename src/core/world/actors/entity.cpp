@@ -105,7 +105,7 @@ WModel* AEntity::getModel() { return m_pModel; }
 void AEntity::updateModel() {
   if (m_pModel && m_bindIndex != -1) {
     glm::mat4* pMemAddress = static_cast<glm::mat4*>(core::renderer.getSceneBuffers()
-                             ->rootTransformBuffer.allocInfo.pMappedData) + m_rootTransformBufferIndex * 2;
+                             ->modelTransformBuffer.allocInfo.pMappedData) + m_rootTransformBufferIndex * 2;
     glm::mat4* pPreviousDataAddress = pMemAddress + 1;
 
     // Copy previous frame transform

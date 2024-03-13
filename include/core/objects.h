@@ -460,6 +460,19 @@ struct RVulkanTexture : public ktxVulkanTexture {
 // Buffer objects and push contant blocks
 // 
 
+// Information written by the compute culling job
+// A number of draws to do at each corresponding pass
+struct RDrawIndirectInfo {
+  uint32_t opaqueCullBackDrawCount = 0;
+  uint32_t opaqueCullNoneDrawCount = 0;
+  uint32_t discardCullNoneDrawCount = 0;
+  uint32_t blendCullNoneDrawCount = 0;
+  uint32_t opaqueCullBackInstanceCount = 0;
+  uint32_t opaqueCullNoneInstanceCount = 0;
+  uint32_t discardCullNoneInstanceCount = 0;
+  uint32_t blendCullNoneInstanceCount = 0;
+};
+
 // Lighting data uniform buffer object
 struct RLightingUBO {
   glm::vec4 lightLocations[RE_MAXLIGHTS];     // w is unused
@@ -542,8 +555,13 @@ struct WAttachmentInfo {
 struct WInstanceDataEntry {
   glm::vec4 min = glm::vec4(0.0f);
   glm::vec4 max = glm::vec4(0.0f);
-  RInstanceData instanceData;
+  uint32_t modelMatrixId = -1;
+  uint32_t nodeMatrixId = -1;
+  uint32_t skinMatrixId = -1;
+  uint32_t materialId = -1;
   uint32_t passFlags = EDynamicRenderingPass::Null;
+  uint32_t primitiveUID = -1;
+  bool isVisible = true;
 };
 
 struct WModelConfigInfo {
