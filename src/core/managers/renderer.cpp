@@ -219,8 +219,8 @@ TResult core::MRenderer::createSceneBuffers() {
       scene.drawCountBuffers[instanceBufferId], nullptr);
   }
 
-  createBuffer(EBufferType::DGPU_STORAGE, sizeof(WPrimitiveDataEntry) * config::scene::uniquePrimitiveBudget
-    + sizeof(WInstanceDataEntry) * config::scene::nodeBudget, scene.instanceDataBuffer, nullptr);
+  createBuffer(EBufferType::DGPU_STORAGE, sizeof(WInstanceDataEntry) * config::scene::nodeBudget,
+    scene.sourceDataBuffer, nullptr);
 
   RE_LOG(Log, "Creating material storage buffer.");
   createBuffer(EBufferType::CPU_STORAGE, sizeof(RSceneFragmentPCB) * (config::scene::sampledImageBudget / RE_MAXTEXTURES),
@@ -283,7 +283,7 @@ void core::MRenderer::destroySceneBuffers() {
 
   vmaDestroyBuffer(memAlloc, postprocess.exposureStorageBuffer.buffer, postprocess.exposureStorageBuffer.allocation);
 
-  vmaDestroyBuffer(memAlloc, scene.instanceDataBuffer.buffer, scene.instanceDataBuffer.allocation);
+  vmaDestroyBuffer(memAlloc, scene.sourceDataBuffer.buffer, scene.sourceDataBuffer.allocation);
   
   vmaDestroyBuffer(memAlloc, material.buffer.buffer, material.buffer.allocation);
   vmaDestroyBuffer(memAlloc, scene.transparencyLinkedListBuffer.buffer, scene.transparencyLinkedListBuffer.allocation);
@@ -365,10 +365,10 @@ TResult core::MRenderer::setDefaultComputeJobs() {
     info.width = 1;
     info.height = 1;
     info.depth = 1;
-    info.pBufferAttachments = { &scene.sceneBuffers[0],                 // 0
-                                &scene.modelTransformBuffer,            // 1
-                                &scene.nodeTransformBuffer,             // 2
-                                &scene.instanceDataBuffer,              // 3
+    info.pBufferAttachments = { &scene.sceneBuffers[0],           // 0
+                                &scene.modelTransformBuffer,      // 1
+                                &scene.nodeTransformBuffer,       // 2
+                                &scene.sourceDataBuffer,          // 3
                                 &scene.drawCountBuffers[0] };     // 4
   }
 

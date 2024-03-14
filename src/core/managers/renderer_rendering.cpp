@@ -61,13 +61,15 @@ void core::MRenderer::drawBoundEntitiesIndirect(VkCommandBuffer commandBuffer, E
 
   if (passId < 0) return;
 
-  RDrawIndirectInfo info;
-  memcpy((void*)&info, scene.drawCountBuffers[bufferIndex].allocInfo.pMappedData, sizeof(RDrawIndirectInfo));
+  //RDrawIndirectInfo info;
+  //memcpy((void*)&info, scene.drawCountBuffers[bufferIndex].allocInfo.pMappedData, sizeof(RDrawIndirectInfo));
+
+  RDrawIndirectInfo* pInfo = (RDrawIndirectInfo*)scene.drawCountBuffers[bufferIndex].allocInfo.pMappedData;
 
   int32_t drawOffset = 0;
 
   vkCmdDrawIndexedIndirect(commandBuffer, scene.drawIndirectBuffers[bufferIndex].buffer,
-    drawOffset, info.drawCounts[passId], sizeof(VkDrawIndexedIndirectCommand));
+    drawOffset, pInfo->drawCounts[passId], sizeof(VkDrawIndexedIndirectCommand));
 
   /*for (WModel* pModel : scene.pModelReferences) {
     auto& primitives = pModel->getPrimitives();

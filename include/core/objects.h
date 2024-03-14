@@ -476,6 +476,9 @@ struct RVulkanTexture : public ktxVulkanTexture {
 // A number of draws to do at each corresponding pass
 struct RDrawIndirectInfo {
   uint32_t drawCounts[(uint32_t)ERenderingPassIndex::Count];
+  uint32_t instanceCounts[(uint32_t)ERenderingPassIndex::Count];
+  uint32_t primitiveInstanceCount[config::scene::uniquePrimitiveBudget];
+  VkBool32 instanceVisibility[config::scene::nodeBudget];
 };
 
 // Lighting data uniform buffer object

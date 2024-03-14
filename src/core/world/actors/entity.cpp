@@ -259,7 +259,7 @@ void AEntity::setInstancePrimitiveMaterial(const int32_t meshIndex, const int32_
   copyRegion.dstOffset = sizeof(WPrimitiveDataEntry) * config::scene::uniquePrimitiveBudget
     + pPrimitive->instanceData[m_instanceIndex].instanceDataBufferOffset + sizeof(glm::vec4) * 2 + sizeof(uint32_t) * 3;
 
-  core::renderer.copyBuffer(&stagingBuffer, &core::renderer.getSceneBuffers()->instanceDataBuffer, &copyRegion);
+  core::renderer.copyBuffer(&stagingBuffer, &core::renderer.getSceneBuffers()->sourceDataBuffer, &copyRegion);
 
   vmaDestroyBuffer(core::renderer.memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
 }

@@ -97,14 +97,16 @@ class MRenderer {
     size_t totalInstances = 0u;
     VkDescriptorSet transformDescriptorSet;
 
-    // Compute instance and culling buffers
-    RBuffer instanceDataBuffer;                       // Contains all bound primitive instance data, changes when new entity is bound/unbound
+    // Indirect draw data
+    RBuffer sourceDataBuffer;                         // Contains all bound primitive instance data, changes when new entity is bound/unbound
     uint32_t currentInstanceDataOffset = 0u;          // Tracks an offset at which to store a new instance data upon binding
     uint32_t nextPrimitiveUID = 0;                    // Earliest free primitive UID
     uint32_t maxPrimitiveUID = 0;                     // Latest primitive UID / max limit for searching primitives by UID
     std::vector<RBuffer> instanceDataBuffers;
     std::vector<RBuffer> drawIndirectBuffers;
     std::vector<RBuffer> drawCountBuffers;
+    uint32_t drawOffsets[MAX_FRAMES_IN_FLIGHT][(uint32_t)ERenderingPassIndex::Count];     // Draw command offset for each render pass
+    uint32_t instanceOffsets[MAX_FRAMES_IN_FLIGHT][(uint32_t)ERenderingPassIndex::Count]; // Instance entry offset for each render pass
 
     std::vector<RTexture*> pDepthTargets;
     std::vector<RTexture*> pPreviousDepthTargets;

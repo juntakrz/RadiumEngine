@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "util/util.h"
 #include "config.h"
+#include "core/objects.h"
 #include "core/core.h"
 
 namespace util {
@@ -150,8 +151,42 @@ std::wstring toWString(const char* string) {
 
   return newWStr;
 }
+
 const VkDeviceSize getVulkanAlignedSize(VkDeviceSize originalSize,
                                         VkDeviceSize minAlignment) {
   return (originalSize + minAlignment - 1) & ~(minAlignment - 1);
 }
+
+uint32_t getRenderPassIndexFromFlag(uint32_t passFlag) {
+  switch (passFlag) {
+  case EDynamicRenderingPass::Shadow:
+    return (uint32_t)ERenderingPassIndex::Shadow;
+
+  case EDynamicRenderingPass::ShadowDiscard:
+    return (uint32_t)ERenderingPassIndex::ShadowDiscard;
+
+  case EDynamicRenderingPass::EnvSkybox:
+    return (uint32_t)ERenderingPassIndex::EnvSkybox;
+
+  case EDynamicRenderingPass::OpaqueCullBack:
+    return (uint32_t)ERenderingPassIndex::OpaqueCullBack;
+
+  case EDynamicRenderingPass::OpaqueCullNone:
+    return (uint32_t)ERenderingPassIndex::OpaqueCullNone;
+
+  case EDynamicRenderingPass::DiscardCullNone:
+    return (uint32_t)ERenderingPassIndex::DiscardCullNone;
+
+  case EDynamicRenderingPass::BlendCullNone:
+    return (uint32_t)ERenderingPassIndex::BlendCullNone;
+
+  case EDynamicRenderingPass::Skybox:
+    return (uint32_t)ERenderingPassIndex::Skybox;
+
+  default:
+    RE_LOG(Error, "%s: Invalid pass flag was provided.", __FUNCTION__);
+    return -1;
+  }
+}
+
 }  // namespace util

@@ -545,42 +545,63 @@ void core::MRenderer::copyDataToBuffer(void* pData, VkDeviceSize dataSize, RBuff
 
 // Runs in a dedicated thread
 void core::MRenderer::updateInstanceBuffer() {
-  if (scene.instanceData.size() != scene.totalInstances) {
-    scene.instanceData.resize(scene.totalInstances);
-  }
-
-  ACamera* pCamera = view.pPrimaryCamera;
-
   uint32_t index = 0u;
   uint32_t firstVisibleIndex = -1;
   uint32_t lastVisibleIndex = -1;
-  uint32_t bufferIndex = (renderView.frameInFlight + 1) % MAX_FRAMES_IN_FLIGHT;
+  uint32_t nextFrameIndex = (renderView.frameInFlight + 1) % MAX_FRAMES_IN_FLIGHT;
 
-  const glm::mat4 projectionViewMatrix = pCamera->getProjection() * pCamera->getView();
+  const uint32_t totalIndirectDrawPasses = (uint32_t)ERenderingPassIndex::Count;
+
+  uint32_t currentDrawOffsets[totalIndirectDrawPasses];
+  uint32_t currentInstanceOffsets[totalIndirectDrawPasses];
+
+  // Pointer math arrays
+  const RInstanceData* instanceEntries =
+    (RInstanceData*)scene.instanceBuffers[nextFrameIndex].allocInfo.pMappedData;
+  const VkDrawIndexedIndirectCommand* drawCommands =
+    (VkDrawIndexedIndirectCommand*)scene.drawIndirectBuffers[nextFrameIndex].allocInfo.pMappedData;
+  
+  const RDrawIndirectInfo* pInfo = (RDrawIndirectInfo*)scene.drawCountBuffers[nextFrameIndex].allocInfo.pMappedData;
+
+  // Precalculate offsets
+  scene.drawOffsets[nextFrameIndex][0] = 0;
+  scene.instanceOffsets[nextFrameIndex][0] = 0;
+
+  for (uint32_t passOffsetIndex = 1; passOffsetIndex < totalIndirectDrawPasses; ++passOffsetIndex) {
+    scene.drawOffsets[nextFrameIndex][passOffsetIndex] =
+      scene.drawOffsets[nextFrameIndex][passOffsetIndex - 1] + pInfo->drawCounts[passOffsetIndex - 1];
+    scene.instanceOffsets[nextFrameIndex][passOffsetIndex] =
+      scene.instanceOffsets[nextFrameIndex][passOffsetIndex - 1] + pInfo->instanceCounts[passOffsetIndex - 1];
+  }
+
+  // Copy offsets for tracking, not error checked later on, so the shader code and related math must be correct
+  // or draw commands and instance data entries won't be properly laid out
+  memcpy(currentDrawOffsets, scene.drawOffsets[nextFrameIndex], sizeof(uint32_t) * totalIndirectDrawPasses);
+  memcpy(currentInstanceOffsets, scene.instanceOffsets[nextFrameIndex], sizeof(uint32_t) * totalIndirectDrawPasses);
+
+  //
+  sync.isInstanceDataReady = true;
+  return;
+  //
 
   for (auto& model : scene.pModelReferences) {
     for (auto& primitive : model->m_pLinearPrimitives) {
-      primitive->instanceInfo[bufferIndex].firstVisibleInstance = -1;
-      primitive->instanceInfo[bufferIndex].indirectFirstVisibleInstance = -1;
-      primitive->instanceInfo[bufferIndex].visibleInstanceCount = 0;
+      primitive->instanceInfo[nextFrameIndex].firstVisibleInstance = -1;
+      primitive->instanceInfo[nextFrameIndex].indirectFirstVisibleInstance = -1;
+      primitive->instanceInfo[nextFrameIndex].visibleInstanceCount = 0;
       uint32_t primitiveInstanceIndex = 0u;
 
       for (auto& instanceDataEntry : primitive->instanceData) {
-        bool isInFrustum = true;
+        bool isVisible;
 
-        if (!(primitive->pInitialMaterial->passFlags & EDynamicRenderingPass::EnvSkybox)) {
-          isInFrustum = pCamera->isBoundingBoxInFrustum(
-            primitive, projectionViewMatrix, instanceDataEntry.pParentEntity->getRootTransformationMatrix());
-        }
-
-        if (isInFrustum && instanceDataEntry.isVisible) {
+        if (instanceDataEntry.isVisible) {
           scene.instanceData[index] = instanceDataEntry.instanceBufferBlock;
-          instanceDataEntry.instanceIndex[bufferIndex] = index;
+          instanceDataEntry.instanceIndex[nextFrameIndex] = index;
 
-          primitive->instanceInfo[bufferIndex].visibleInstanceCount++;
+          primitive->instanceInfo[nextFrameIndex].visibleInstanceCount++;
 
-          if (primitive->instanceInfo[bufferIndex].firstVisibleInstance == -1) {
-            primitive->instanceInfo[bufferIndex].firstVisibleInstance = primitiveInstanceIndex;
+          if (primitive->instanceInfo[nextFrameIndex].firstVisibleInstance == -1) {
+            primitive->instanceInfo[nextFrameIndex].firstVisibleInstance = primitiveInstanceIndex;
           }
 
           if (firstVisibleIndex == -1) {
@@ -590,8 +611,8 @@ void core::MRenderer::updateInstanceBuffer() {
           lastVisibleIndex = index;
 
           // Indirect draw data
-          if (primitive->instanceInfo[bufferIndex].indirectFirstVisibleInstance == -1) {
-            primitive->instanceInfo[bufferIndex].indirectFirstVisibleInstance = index;
+          if (primitive->instanceInfo[nextFrameIndex].indirectFirstVisibleInstance == -1) {
+            primitive->instanceInfo[nextFrameIndex].indirectFirstVisibleInstance = index;
           }
         }
 
@@ -605,7 +626,7 @@ void core::MRenderer::updateInstanceBuffer() {
     lastVisibleIndex -= firstVisibleIndex;
     ++lastVisibleIndex;
 
-    RInstanceData* pDstMemAddress = (RInstanceData*)scene.instanceBuffers[bufferIndex].allocInfo.pMappedData + firstVisibleIndex;
+    RInstanceData* pDstMemAddress = (RInstanceData*)scene.instanceBuffers[nextFrameIndex].allocInfo.pMappedData + firstVisibleIndex;
     RInstanceData* pSrcMemAddress = scene.instanceData.data() + firstVisibleIndex;
 
     memcpy(pDstMemAddress, pSrcMemAddress, sizeof(RInstanceData) * lastVisibleIndex);

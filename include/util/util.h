@@ -12,6 +12,8 @@ std::wstring toWString(const char* string);
 const VkDeviceSize getVulkanAlignedSize(VkDeviceSize originalSize,
                                         VkDeviceSize minAlignmanet);
 
+uint32_t getRenderPassIndexFromFlag(uint32_t passFlag);
+
 template<typename T>
 size_t hash(T input) {
   std::hash<T> hasher;

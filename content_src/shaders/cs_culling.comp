@@ -75,13 +75,15 @@ layout (set = 1, binding = 2) buffer readonly UBOMesh1 {
 	NodeTransformBlock block[];
 } node;
 
-layout (set = 1, binding = 3) buffer coherent InstanceDataBuffer {
-	PrimitiveDataEntry primitiveData[MAX_UNIQUE_PRIMITIVES];
-	InstanceDataEntry instanceData[];
+layout (set = 1, binding = 3) buffer readonly InstanceDataBuffer {
+	InstanceDataEntry inInstanceData[];
 };
 
 layout (std430, set = 1, binding = 4) buffer writeonly coherent OutDrawCountBuffer {
 	uint passDrawCount[PASS_COUNT];
+	uint passInstanceCount[PASS_COUNT];
+	uint primitiveInstanceCount[MAX_UNIQUE_PRIMITIVES];
+	uint instanceVisibility[];
 } outDrawCountBuffer;
 
 layout (push_constant) uniform PushBlock {
@@ -127,14 +129,16 @@ bool isBoxInFrustum(vec4 boxMin, vec4 boxMax, mat4 transform) {
 	return false;
 }
 
-void checkRenderPass(uint renderPassFlags) {
+void checkRenderPass(uint renderPassFlags, bool isDrawCountOutput) {
 	uint result = 0;
 
 	for (uint i = 0; i < PASS_COUNT; i++) {
 		result = renderPassFlags & passIds[i];
 
 		if (result != 0) {
-			atomicAdd(outDrawCountBuffer.passDrawCount[i], 1);
+			(isDrawCountOutput == true)
+				? atomicAdd(outDrawCountBuffer.passDrawCount[i], 1)
+				: atomicAdd(outDrawCountBuffer.passInstanceCount[i], 1);
 		}
 	}
 }
@@ -146,13 +150,15 @@ void main() {
 	if (gl_GlobalInvocationID.x > totalInstanceCount - 1) return;
 
 	const uint instanceId = gl_GlobalInvocationID.x;
-	const uint primitiveUId = instanceData[instanceId].primitiveUId;
+	const uint primitiveUId = inInstanceData[instanceId].primitiveUId;
 
-	primitiveData[primitiveUId].instanceCount = 0;
+	outDrawCountBuffer.primitiveInstanceCount[primitiveUId] = 0;
+	outDrawCountBuffer.instanceVisibility[instanceId] = 0;
 
 	if (instanceId == 0) {
 		for (int i = 0; i < PASS_COUNT; i++) {
 			outDrawCountBuffer.passDrawCount[i] = 0;
+			outDrawCountBuffer.passInstanceCount[i] = 0;
 		}
 	}
 
@@ -163,22 +169,24 @@ void main() {
 	const int cameraBlockIndex = pushBlock.intValues.z;
 
 	mat4 transform = sceneData[cameraBlockIndex].projection * sceneData[cameraBlockIndex].view
-		* model.block[instanceData[instanceId].modelMatrixId].matrix * node.block[instanceData[instanceId].nodeMatrixId].matrix;
+		* model.block[inInstanceData[instanceId].modelMatrixId].matrix * node.block[inInstanceData[instanceId].nodeMatrixId].matrix;
 
-	vec4 boxMin = instanceData[instanceId].AABBMin;
-	vec4 boxMax = instanceData[instanceId].AABBMax;
+	vec4 boxMin = inInstanceData[instanceId].AABBMin;
+	vec4 boxMax = inInstanceData[instanceId].AABBMax;
 
 	// Perform culling
 	bool isVisible = isBoxInFrustum(boxMin, boxMax, transform);
-	instanceData[instanceId].isVisible = isVisible;
 
 	int instanceIndex = -1;
 
 	if (isVisible) {
-		instanceIndex = int(atomicAdd(primitiveData[primitiveUId].instanceCount, 1));
+		instanceIndex = int(atomicAdd(outDrawCountBuffer.primitiveInstanceCount[primitiveUId], 1));
+		checkRenderPass(inInstanceData[instanceId].renderPassFlags, false);
+
+		outDrawCountBuffer.instanceVisibility[instanceId] = 1;
 
 		if (instanceIndex == 0) {
-			checkRenderPass(instanceData[instanceId].renderPassFlags);
+			checkRenderPass(inInstanceData[instanceId].renderPassFlags, true);
 		}
 	}
 }

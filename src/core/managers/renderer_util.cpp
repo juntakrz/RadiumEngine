@@ -1047,11 +1047,9 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
   }
 
   // Create staging buffers to upload data to the related GPU storage buffers
-  RBuffer stagingInstanceBuffer, stagingPrimitiveBuffer;
-  VkBufferCopy primitiveBufferCopyRegion;
-  WPrimitiveDataEntry primitiveDataEntry;
+  RBuffer stagingInstanceBuffer;
+
   createBuffer(EBufferType::STAGING, sizeof(WInstanceDataEntry), stagingInstanceBuffer, nullptr);
-  createBuffer(EBufferType::STAGING, sizeof(WPrimitiveDataEntry), stagingPrimitiveBuffer, nullptr);
 
   // Add model to rendering queue, store its offsets
   REntityBindInfo bindInfo{};
@@ -1075,16 +1073,6 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
     // Give primitive a unique index if it was not bound to renderer and write the default indirect draw data for it
     if (primitive->instanceData.empty()) {
       primitive->bindingUID = getNewPrimitiveUID();
-      primitiveDataEntry.instanceCount = 0;
-
-      //createBuffer(EBufferType::STAGING, sizeof(WPrimitiveDataEntry), stagingPrimitiveBuffer, (void*)&primitiveDataEntry);
-      memcpy(stagingPrimitiveBuffer.allocInfo.pMappedData, &primitiveDataEntry, sizeof(WPrimitiveDataEntry));
-
-      primitiveBufferCopyRegion.srcOffset = 0;
-      primitiveBufferCopyRegion.size = sizeof(WPrimitiveDataEntry);
-      primitiveBufferCopyRegion.dstOffset = sizeof(WPrimitiveDataEntry) * primitive->bindingUID;
-
-      copyBuffer(stagingPrimitiveBuffer.buffer, scene.instanceDataBuffer.buffer, &primitiveBufferCopyRegion);
     }
 
     auto& instanceData = primitive->instanceData.emplace_back();
@@ -1113,10 +1101,9 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
     VkBufferCopy bufferCopyRegion{};
     bufferCopyRegion.srcOffset = 0u;
     bufferCopyRegion.size = sizeof(WInstanceDataEntry);
-    bufferCopyRegion.dstOffset = sizeof(WPrimitiveDataEntry) * config::scene::uniquePrimitiveBudget
-      + instanceData.instanceDataBufferOffset;
+    bufferCopyRegion.dstOffset = instanceData.instanceDataBufferOffset;
 
-    copyBuffer(stagingInstanceBuffer.buffer, scene.instanceDataBuffer.buffer, &bufferCopyRegion);
+    copyBuffer(stagingInstanceBuffer.buffer, scene.sourceDataBuffer.buffer, &bufferCopyRegion);
 
     scene.currentInstanceDataOffset += sizeof(WInstanceDataEntry);
   }
@@ -1125,7 +1112,6 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
       static_cast<int32_t>(system.bindings.size() - 1));
 
   vmaDestroyBuffer(memAlloc, stagingInstanceBuffer.buffer, stagingInstanceBuffer.allocation);
-  vmaDestroyBuffer(memAlloc, stagingPrimitiveBuffer.buffer, stagingPrimitiveBuffer.allocation);
 
 #ifndef NDEBUG
   RE_LOG(Log, "Bound model \"%s\" to graphics pipeline.", pModel->getName());
