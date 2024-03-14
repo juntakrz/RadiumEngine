@@ -202,21 +202,21 @@ TResult core::MRenderer::createSceneBuffers() {
   scene.instanceBuffers.resize(MAX_FRAMES_IN_FLIGHT);
   //
 
-  scene.culledInstanceDataBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-  scene.culledDrawIndirectBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-  scene.culledDrawCountBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+  scene.instanceDataBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+  scene.drawIndirectBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+  scene.drawCountBuffers.resize(MAX_FRAMES_IN_FLIGHT);
   for (int8_t instanceBufferId = 0; instanceBufferId < MAX_FRAMES_IN_FLIGHT; ++instanceBufferId) {
     // TODO: Deprecate old instance buffers in favor of compute culling ones
     createBuffer(EBufferType::CPU_VERTEX, sizeof(RInstanceData) * config::scene::nodeBudget,
       scene.instanceBuffers[instanceBufferId], nullptr);
     //
 
-    createBuffer(EBufferType::DGPU_VERTEX, sizeof(RInstanceData) * config::scene::nodeBudget,
-      scene.culledInstanceDataBuffers[instanceBufferId], nullptr);
-    createBuffer(EBufferType::DGPU_INDIRECT, sizeof(VkDrawIndexedIndirectCommand) * config::scene::nodeBudget,
-      scene.culledDrawIndirectBuffers[instanceBufferId], nullptr);
+    createBuffer(EBufferType::CPU_VERTEX, sizeof(RInstanceData) * config::scene::nodeBudget,
+      scene.instanceDataBuffers[instanceBufferId], nullptr);
+    createBuffer(EBufferType::CPU_INDIRECT, sizeof(VkDrawIndexedIndirectCommand) * config::scene::uniquePrimitiveBudget,
+      scene.drawIndirectBuffers[instanceBufferId], nullptr);
     createBuffer(EBufferType::CPU_STORAGE, sizeof(RDrawIndirectInfo),
-      scene.culledDrawCountBuffers[instanceBufferId], nullptr);
+      scene.drawCountBuffers[instanceBufferId], nullptr);
   }
 
   createBuffer(EBufferType::DGPU_STORAGE, sizeof(WPrimitiveDataEntry) * config::scene::uniquePrimitiveBudget
@@ -270,12 +270,12 @@ void core::MRenderer::destroySceneBuffers() {
     vmaDestroyBuffer(memAlloc, command.indirectCommandBuffers[frameIndex].buffer,
                      command.indirectCommandBuffers[frameIndex].allocation);
 
-    vmaDestroyBuffer(memAlloc, scene.culledInstanceDataBuffers[frameIndex].buffer,
-      scene.culledInstanceDataBuffers[frameIndex].allocation);
-    vmaDestroyBuffer(memAlloc, scene.culledDrawIndirectBuffers[frameIndex].buffer,
-      scene.culledDrawIndirectBuffers[frameIndex].allocation);
-    vmaDestroyBuffer(memAlloc, scene.culledDrawCountBuffers[frameIndex].buffer,
-      scene.culledDrawCountBuffers[frameIndex].allocation);
+    vmaDestroyBuffer(memAlloc, scene.instanceDataBuffers[frameIndex].buffer,
+      scene.instanceDataBuffers[frameIndex].allocation);
+    vmaDestroyBuffer(memAlloc, scene.drawIndirectBuffers[frameIndex].buffer,
+      scene.drawIndirectBuffers[frameIndex].allocation);
+    vmaDestroyBuffer(memAlloc, scene.drawCountBuffers[frameIndex].buffer,
+      scene.drawCountBuffers[frameIndex].allocation);
 
     vmaDestroyBuffer(memAlloc, scene.sceneBuffers[frameIndex].buffer, scene.sceneBuffers[frameIndex].allocation);
     vmaDestroyBuffer(memAlloc, lighting.buffers[frameIndex].buffer, lighting.buffers[frameIndex].allocation);
@@ -369,9 +369,7 @@ TResult core::MRenderer::setDefaultComputeJobs() {
                                 &scene.modelTransformBuffer,            // 1
                                 &scene.nodeTransformBuffer,             // 2
                                 &scene.instanceDataBuffer,              // 3
-                                &scene.culledDrawIndirectBuffers[0],    // 4
-                                &scene.culledInstanceDataBuffers[0],    // 5
-                                &scene.culledDrawCountBuffers[0] };     // 6
+                                &scene.drawCountBuffers[0] };     // 4
   }
 
   return RE_OK;

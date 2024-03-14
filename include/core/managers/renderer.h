@@ -100,10 +100,11 @@ class MRenderer {
     // Compute instance and culling buffers
     RBuffer instanceDataBuffer;                       // Contains all bound primitive instance data, changes when new entity is bound/unbound
     uint32_t currentInstanceDataOffset = 0u;          // Tracks an offset at which to store a new instance data upon binding
-    uint32_t nextPrimitiveUID = 0;
-    std::vector<RBuffer> culledInstanceDataBuffers;
-    std::vector<RBuffer> culledDrawIndirectBuffers;
-    std::vector<RBuffer> culledDrawCountBuffers;
+    uint32_t nextPrimitiveUID = 0;                    // Earliest free primitive UID
+    uint32_t maxPrimitiveUID = 0;                     // Latest primitive UID / max limit for searching primitives by UID
+    std::vector<RBuffer> instanceDataBuffers;
+    std::vector<RBuffer> drawIndirectBuffers;
+    std::vector<RBuffer> drawCountBuffers;
 
     std::vector<RTexture*> pDepthTargets;
     std::vector<RTexture*> pPreviousDepthTargets;

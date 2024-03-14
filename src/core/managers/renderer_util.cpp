@@ -1075,10 +1075,6 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
     // Give primitive a unique index if it was not bound to renderer and write the default indirect draw data for it
     if (primitive->instanceData.empty()) {
       primitive->bindingUID = getNewPrimitiveUID();
-
-      primitiveDataEntry.vertexOffset = static_cast<int32_t>(pModel->m_sceneVertexOffset + primitive->vertexOffset);
-      primitiveDataEntry.indexOffset = pModel->m_sceneIndexOffset + primitive->indexOffset;
-      primitiveDataEntry.indexCount = primitive->indexCount;
       primitiveDataEntry.instanceCount = 0;
 
       //createBuffer(EBufferType::STAGING, sizeof(WPrimitiveDataEntry), stagingPrimitiveBuffer, (void*)&primitiveDataEntry);
@@ -1109,7 +1105,6 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
     bufferDataEntry.modelMatrixId = instanceData.instanceBufferBlock.modelMatrixId;
     bufferDataEntry.nodeMatrixId = instanceData.instanceBufferBlock.nodeMatrixId;
     bufferDataEntry.skinMatrixId = instanceData.instanceBufferBlock.skinMatrixId;
-    bufferDataEntry.materialId = instanceData.instanceBufferBlock.materialId;
     bufferDataEntry.passFlags = primitive->pInitialMaterial->passFlags;
     bufferDataEntry.primitiveUID = primitive->bindingUID;
 

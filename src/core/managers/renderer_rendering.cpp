@@ -62,17 +62,11 @@ void core::MRenderer::drawBoundEntitiesIndirect(VkCommandBuffer commandBuffer, E
   if (passId < 0) return;
 
   RDrawIndirectInfo info;
-  memcpy((void*)&info, scene.culledDrawCountBuffers[bufferIndex].allocInfo.pMappedData, sizeof(RDrawIndirectInfo));
+  memcpy((void*)&info, scene.drawCountBuffers[bufferIndex].allocInfo.pMappedData, sizeof(RDrawIndirectInfo));
 
   int32_t drawOffset = 0;
 
-  for (int32_t i = 0; i < passId; ++i) {
-    drawOffset += info.drawCounts[i];
-  }
-
-  drawOffset = sizeof(VkDrawIndexedIndirectCommand) * drawOffset;
-
-  vkCmdDrawIndexedIndirect(commandBuffer, scene.culledDrawIndirectBuffers[bufferIndex].buffer,
+  vkCmdDrawIndexedIndirect(commandBuffer, scene.drawIndirectBuffers[bufferIndex].buffer,
     drawOffset, info.drawCounts[passId], sizeof(VkDrawIndexedIndirectCommand));
 
   /*for (WModel* pModel : scene.pModelReferences) {
@@ -207,7 +201,7 @@ void core::MRenderer::prepareFrameResources(VkCommandBuffer commandBuffer) {
 
   VkDeviceSize vertexBufferOffsets[] = { 0u, 0u };
   //VkBuffer vertexBuffers[] = { scene.vertexBuffer.buffer, scene.instanceBuffers[renderView.frameInFlight].buffer };
-  VkBuffer vertexBuffers[] = { scene.vertexBuffer.buffer, scene.culledInstanceDataBuffers[renderView.frameInFlight].buffer };
+  VkBuffer vertexBuffers[] = { scene.vertexBuffer.buffer, scene.instanceDataBuffers[renderView.frameInFlight].buffer };
 
   vkCmdBindVertexBuffers(commandBuffer, 0, 2, vertexBuffers, vertexBufferOffsets);
   vkCmdBindIndexBuffer(commandBuffer, scene.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
@@ -256,9 +250,7 @@ void core::MRenderer::prepareFrameComputeJobs() {
   cullingJob.width = static_cast<uint32_t>(scene.totalInstances) / 32 + 1;
   cullingJob.pSamplerAttachments = { scene.pPreviousDepthTargets[previousFrameInFlight] };
   cullingJob.pBufferAttachments[0] = &scene.sceneBuffers[previousFrameInFlight];
-  cullingJob.pBufferAttachments[4] = &scene.culledDrawIndirectBuffers[previousFrameInFlight];
-  cullingJob.pBufferAttachments[5] = &scene.culledInstanceDataBuffers[previousFrameInFlight];
-  cullingJob.pBufferAttachments[6] = &scene.culledDrawCountBuffers[previousFrameInFlight];
+  cullingJob.pBufferAttachments[4] = &scene.drawCountBuffers[previousFrameInFlight];
   cullingJob.pushBlock.intValues.x = static_cast<int32_t>(scene.totalInstances);
   cullingJob.pushBlock.intValues.y = static_cast<int32_t>(scene.nextPrimitiveUID);
   cullingJob.pushBlock.intValues.z = static_cast<int32_t>(view.pPrimaryCamera->getViewBufferIndex()); // index for retrieving camera matrices

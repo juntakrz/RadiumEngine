@@ -5,17 +5,25 @@
 
 #define MAX_UNIQUE_PRIMITIVES 16384
 
+#define PASS_SHADOW				1
+#define PASS_DISCARDSHADOW		2
+#define PASS_ENVSKYBOX			4
 #define PASS_OPAQUECULLBACK		8
 #define PASS_OPAQUECULLNONE		16
 #define PASS_DISCARDCULLNONE	32
 //#define PASS_MASKCULLNONE		64			// Unused currently
 #define PASS_BLENDCULLNONE		128
+#define PASS_SKYBOX				256
 
-#define INVOCATION_PASS0		0
-#define INVOCATION_PASS1		1
-#define INVOCATION_PASS2		2
-#define INVOCATION_PASS3		3
-#define PASS_COUNT				4
+#define IDP_SHADOW				0
+#define IDP_DISCARDSHADOW		1
+#define IDP_ENVSKYBOX			2
+#define IDP_OPAQUECULLBACK		3
+#define IDP_OPAQUECULLNONE		4
+#define IDP_DISCARDCULLNONE		5
+#define IDP_BLENDCULLNONE		6
+#define IDP_SKYBOX				7
+#define PASS_COUNT				8
 
 struct ModelTransformBlock {
 	mat4 matrix;
@@ -38,38 +46,19 @@ struct UBOScene {
 	float padding[8];
 };
 
-struct DrawIndirectCommand {
-	uint indexCount;
-    uint instanceCount;
-    uint firstIndex;
-    int vertexOffset;
-    uint firstInstance;
-};
-
-struct InPrimitiveDataEntry {
-	int vertexOffset;
-	uint indexOffset;
-	uint indexCount;
+struct PrimitiveDataEntry {
 	uint instanceCount;
 };
 
-struct InInstanceDataEntry {
+struct InstanceDataEntry {
 	vec4 AABBMin;
 	vec4 AABBMax;
 	uint modelMatrixId;
 	uint nodeMatrixId;
 	uint skinMatrixId;
-	uint materialId;
-	uint renderPassId;
+	uint renderPassFlags;
 	uint primitiveUId;
 	bool isVisible;
-};
-
-struct OutInstanceDataEntry {
-	uint modelMatrixId;
-	uint nodeMatrixId;
-	uint skinMatrixId;
-	uint materialId;
 };
 
 layout (local_size_x = 32) in;
@@ -87,21 +76,12 @@ layout (set = 1, binding = 2) buffer readonly UBOMesh1 {
 } node;
 
 layout (set = 1, binding = 3) buffer coherent InstanceDataBuffer {
-	InPrimitiveDataEntry inPrimitiveData[MAX_UNIQUE_PRIMITIVES];
-	InInstanceDataEntry inInstanceData[];
+	PrimitiveDataEntry primitiveData[MAX_UNIQUE_PRIMITIVES];
+	InstanceDataEntry instanceData[];
 };
 
-layout (std430, set = 1, binding = 4) buffer writeonly OutDrawDataBuffer {
-	DrawIndirectCommand outDrawCommands[];
-};
-
-layout (std430, set = 1, binding = 5) buffer writeonly OutInstanceDataBuffer {
-	OutInstanceDataEntry outInstanceData[];
-};
-
-layout (std430, set = 1, binding = 6) buffer OutDrawCountBuffer {
+layout (std430, set = 1, binding = 4) buffer writeonly coherent OutDrawCountBuffer {
 	uint passDrawCount[PASS_COUNT];
-	uint passInstanceCount[PASS_COUNT];
 } outDrawCountBuffer;
 
 layout (push_constant) uniform PushBlock {
@@ -112,6 +92,11 @@ layout (push_constant) uniform PushBlock {
     ivec4 intValues;	// x - total number of instances, y - max primitiveUId, z - camera buffer block index
 	vec4 floatValues;
 } pushBlock;
+
+const uint passIds[PASS_COUNT] = uint[PASS_COUNT](
+	PASS_SHADOW, PASS_DISCARDSHADOW, PASS_ENVSKYBOX, PASS_OPAQUECULLBACK,
+	PASS_OPAQUECULLNONE, PASS_DISCARDCULLNONE, PASS_BLENDCULLNONE, PASS_SKYBOX
+);
 
 bool isBoxInFrustum(vec4 boxMin, vec4 boxMax, mat4 transform) {
 	// Construct a bounding box
@@ -142,69 +127,14 @@ bool isBoxInFrustum(vec4 boxMin, vec4 boxMax, mat4 transform) {
 	return false;
 }
 
-void checkRenderPass(uint renderPassId, uint primitiveUId) {
-	uint result = renderPassId & PASS_OPAQUECULLBACK;
+void checkRenderPass(uint renderPassFlags) {
+	uint result = 0;
 
-	if (result != 0) {
-		atomicAdd(outDrawCountBuffer.passInstanceCount[INVOCATION_PASS0], 1);
+	for (uint i = 0; i < PASS_COUNT; i++) {
+		result = renderPassFlags & passIds[i];
 
-		if (inPrimitiveData[primitiveUId].instanceCount == 1) {
-			atomicAdd(outDrawCountBuffer.passDrawCount[INVOCATION_PASS0], 1);
-		}
-		
-		return;
-	}
-
-	result = renderPassId & PASS_OPAQUECULLNONE;
-	if (result != 0) {
-		atomicAdd(outDrawCountBuffer.passInstanceCount[INVOCATION_PASS1], 1);
-
-		if (inPrimitiveData[primitiveUId].instanceCount == 1) {
-			atomicAdd(outDrawCountBuffer.passDrawCount[INVOCATION_PASS1], 1);
-		}
-		
-		return;
-	}
-
-	result = renderPassId & PASS_DISCARDCULLNONE;
-	if (result != 0) {
-		atomicAdd(outDrawCountBuffer.passInstanceCount[INVOCATION_PASS2], 1);
-
-		if (inPrimitiveData[primitiveUId].instanceCount == 1) {
-			atomicAdd(outDrawCountBuffer.passDrawCount[INVOCATION_PASS2], 1);
-		}
-		
-		return;
-	}
-
-	result = renderPassId & PASS_BLENDCULLNONE;
-	if (result != 0) {
-		atomicAdd(outDrawCountBuffer.passInstanceCount[INVOCATION_PASS3], 1);
-
-		if (inPrimitiveData[primitiveUId].instanceCount == 1) {
-			atomicAdd(outDrawCountBuffer.passDrawCount[INVOCATION_PASS3], 1);
-		}
-		
-		return;
-	}
-}
-
-uint passIndexToId(uint passIndex) {
-	switch(passIndex) {
-		case INVOCATION_PASS0: {
-			return PASS_OPAQUECULLBACK;
-		}
-
-		case INVOCATION_PASS1: {
-			return PASS_OPAQUECULLNONE;
-		}
-
-		case INVOCATION_PASS2: {
-			return PASS_DISCARDCULLNONE;
-		}
-
-		case INVOCATION_PASS3: {
-			return PASS_BLENDCULLNONE;
+		if (result != 0) {
+			atomicAdd(outDrawCountBuffer.passDrawCount[i], 1);
 		}
 	}
 }
@@ -216,15 +146,13 @@ void main() {
 	if (gl_GlobalInvocationID.x > totalInstanceCount - 1) return;
 
 	const uint instanceId = gl_GlobalInvocationID.x;
-	const uint primitiveUId = inInstanceData[instanceId].primitiveUId;
+	const uint primitiveUId = instanceData[instanceId].primitiveUId;
 
-	// Initialize with default values
-	inPrimitiveData[primitiveUId].instanceCount = 0;
+	primitiveData[primitiveUId].instanceCount = 0;
 
 	if (instanceId == 0) {
-		for (int passId = 0; passId < PASS_COUNT; passId++) {
-			outDrawCountBuffer.passDrawCount[passId] = 0;
-			outDrawCountBuffer.passInstanceCount[passId] = 0;
+		for (int i = 0; i < PASS_COUNT; i++) {
+			outDrawCountBuffer.passDrawCount[i] = 0;
 		}
 	}
 
@@ -235,88 +163,22 @@ void main() {
 	const int cameraBlockIndex = pushBlock.intValues.z;
 
 	mat4 transform = sceneData[cameraBlockIndex].projection * sceneData[cameraBlockIndex].view
-		* model.block[inInstanceData[instanceId].modelMatrixId].matrix * node.block[inInstanceData[instanceId].nodeMatrixId].matrix;
+		* model.block[instanceData[instanceId].modelMatrixId].matrix * node.block[instanceData[instanceId].nodeMatrixId].matrix;
 
-	vec4 boxMin = inInstanceData[instanceId].AABBMin;
-	vec4 boxMax = inInstanceData[instanceId].AABBMax;
+	vec4 boxMin = instanceData[instanceId].AABBMin;
+	vec4 boxMax = instanceData[instanceId].AABBMax;
 
 	// Perform culling
 	bool isVisible = isBoxInFrustum(boxMin, boxMax, transform);
-	inInstanceData[instanceId].isVisible = isVisible;
+	instanceData[instanceId].isVisible = isVisible;
 
-	// Precalculate instance count
+	int instanceIndex = -1;
+
 	if (isVisible) {
-		atomicAdd(inPrimitiveData[primitiveUId].instanceCount, 1);
-	}
-	
-	memoryBarrier();
-	barrier();
+		instanceIndex = int(atomicAdd(primitiveData[primitiveUId].instanceCount, 1));
 
-	// Precalculate draw and instance count for every render pass
-	if (isVisible) {
-		checkRenderPass(inInstanceData[instanceId].renderPassId, primitiveUId);
-	}
-
-	// Culling is done, time to sort instance data to correctly follow draw commands and instance count per each
-	if (gl_GlobalInvocationID.x > 0) return;
-
-	memoryBarrier();
-	barrier();
-
-	//const uint passId = gl_GlobalInvocationID.x;
-	const int maxPrimitiveCount = (pushBlock.intValues.y < MAX_UNIQUE_PRIMITIVES) ? pushBlock.intValues.y : MAX_UNIQUE_PRIMITIVES;
-
-	// Fill out primitive and instance data that belongs to this pass
-	uint outDrawIndex = 0;
-	uint outInstanceIndex = 0;
-
-	for (int passIndex = 0; passIndex < PASS_COUNT; passIndex++) {
-		//const uint totalPassInstanceCount = outDrawCountBuffer.passInstanceCount[passIndex];
-		uint checkPassId = passIndexToId(passIndex);
-		uint passDrawCount = 0;
-
-		// Iterate through every primitive and check if it has any visible instances
-		for (int currentPrimitiveUId = 0; currentPrimitiveUId < maxPrimitiveCount; currentPrimitiveUId++) {
-			if (inPrimitiveData[currentPrimitiveUId].instanceCount > 0) {
-				uint requiredInstanceCount = inPrimitiveData[currentPrimitiveUId].instanceCount;
-				const uint firstPrimitiveVisibleIndex = outInstanceIndex;
-
-				// Find visible instances of this primitive and copy their data to the instance buffer
-				for (int currentInstanceId = 0; currentInstanceId < totalInstanceCount; currentInstanceId++) {
-					if (inInstanceData[currentInstanceId].primitiveUId == currentPrimitiveUId
-						&& inInstanceData[currentInstanceId].isVisible) {
-						const uint isCurrentRenderPass = inInstanceData[currentInstanceId].renderPassId & checkPassId;
-
-						if (isCurrentRenderPass != 0) {
-							outInstanceData[outInstanceIndex].modelMatrixId = inInstanceData[currentInstanceId].modelMatrixId;
-							outInstanceData[outInstanceIndex].nodeMatrixId = inInstanceData[currentInstanceId].nodeMatrixId;
-							outInstanceData[outInstanceIndex].skinMatrixId = inInstanceData[currentInstanceId].skinMatrixId;
-							outInstanceData[outInstanceIndex].materialId = inInstanceData[currentInstanceId].materialId;
-
-							outInstanceIndex++;
-							requiredInstanceCount--;
-						}
-					}
-
-					// No need to keep looking for instances of this primitive if all visible ones were found
-					if (requiredInstanceCount == 0) {
-						outDrawCommands[outDrawIndex].indexCount = inPrimitiveData[currentPrimitiveUId].indexCount;
-						outDrawCommands[outDrawIndex].instanceCount = inPrimitiveData[currentPrimitiveUId].instanceCount;
-						outDrawCommands[outDrawIndex].firstIndex = inPrimitiveData[currentPrimitiveUId].indexOffset;
-						outDrawCommands[outDrawIndex].vertexOffset = inPrimitiveData[currentPrimitiveUId].vertexOffset;
-						outDrawCommands[outDrawIndex].firstInstance = firstPrimitiveVisibleIndex;
-
-						passDrawCount++;
-						outDrawIndex++;
-						break;
-					}
-				}
-			}
-
-			// No need to iterate through more primitives if all instance data for this pass was already filled
-			//if (outInstanceIndex == totalPassInstanceCount) break;
+		if (instanceIndex == 0) {
+			checkRenderPass(instanceData[instanceId].renderPassFlags);
 		}
-
-		outDrawCountBuffer.passDrawCount[passIndex] = passDrawCount;
 	}
 }

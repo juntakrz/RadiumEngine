@@ -112,6 +112,18 @@ enum EDynamicRenderingPass : uint32_t {
   Present             = 0b10000000000000000
 };
 
+enum class ERenderingPassIndex : uint32_t {
+  Shadow = 0,
+  ShadowDiscard,
+  EnvSkybox,
+  OpaqueCullBack,
+  OpaqueCullNone,
+  DiscardCullNone,
+  BlendCullNone,
+  Skybox,
+  Count
+};
+
 enum class ELightType {
   Directional,
   Point
@@ -463,8 +475,7 @@ struct RVulkanTexture : public ktxVulkanTexture {
 // Information written by the compute culling job
 // A number of draws to do at each corresponding pass
 struct RDrawIndirectInfo {
-  uint32_t drawCounts[4];
-  uint32_t instanceCounts[4];
+  uint32_t drawCounts[(uint32_t)ERenderingPassIndex::Count];
 };
 
 // Lighting data uniform buffer object
@@ -552,16 +563,12 @@ struct WInstanceDataEntry {
   uint32_t modelMatrixId = -1;
   uint32_t nodeMatrixId = -1;
   uint32_t skinMatrixId = -1;
-  uint32_t materialId = -1;
   uint32_t passFlags = EDynamicRenderingPass::Null;
   uint32_t primitiveUID = -1;
   bool isVisible = true;
 };
 
 struct WPrimitiveDataEntry {
-  int32_t vertexOffset = -1;
-  uint32_t indexOffset = -1;
-  uint32_t indexCount = -1;
   uint32_t instanceCount = -1;
 };
 
