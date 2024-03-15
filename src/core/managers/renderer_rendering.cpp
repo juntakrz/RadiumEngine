@@ -8,25 +8,6 @@
 #include "core/material/texture.h"
 #include "core/managers/renderer.h"
 
-void core::MRenderer::drawBoundEntities(VkCommandBuffer commandBuffer, EDynamicRenderingPass passOverride) {
-  // go through bound models and generate draw calls for each
-  renderView.refresh();
-
-  if (passOverride == EDynamicRenderingPass::Null) {
-    passOverride = renderView.pCurrentPass->passId;
-  }
-
-  for (WModel* pModel : scene.pModelReferences) {
-    auto& primitives = pModel->getPrimitives();
-
-    for (const auto& primitive : primitives) {
-      if (!checkPass(primitive->pInitialMaterial->passFlags, passOverride)) continue;
-
-      renderPrimitive(commandBuffer, primitive, pModel);
-    }
-  }
-}
-
 void core::MRenderer::drawBoundEntitiesIndirect(VkCommandBuffer commandBuffer, EDynamicRenderingPass passOverride) {
   // go through bound models and generate draw calls for each
   renderView.refresh();
@@ -41,35 +22,46 @@ void core::MRenderer::drawBoundEntitiesIndirect(VkCommandBuffer commandBuffer, E
   int32_t passId = -1;
 
   switch (passOverride) {
-    case EDynamicRenderingPass::OpaqueCullBack: {
+    case EDynamicRenderingPass::Shadow: {
       passId = 0;
       break;
     }
-    case EDynamicRenderingPass::OpaqueCullNone: {
+    case EDynamicRenderingPass::ShadowDiscard: {
       passId = 1;
       break;
     }
-    case EDynamicRenderingPass::DiscardCullNone: {
+    case EDynamicRenderingPass::EnvSkybox: {
       passId = 2;
       break;
     }
-    case EDynamicRenderingPass::BlendCullNone: {
+    case EDynamicRenderingPass::OpaqueCullBack: {
       passId = 3;
+      break;
+    }
+    case EDynamicRenderingPass::OpaqueCullNone: {
+      passId = 4;
+      break;
+    }
+    case EDynamicRenderingPass::DiscardCullNone: {
+      passId = 5;
+      break;
+    }
+    case EDynamicRenderingPass::BlendCullNone: {
+      passId = 6;
+      break;
+    }
+    case EDynamicRenderingPass::Skybox: {
+      passId = 7;
       break;
     }
   }
 
   if (passId < 0) return;
 
-  //RDrawIndirectInfo info;
-  //memcpy((void*)&info, scene.drawCountBuffers[bufferIndex].allocInfo.pMappedData, sizeof(RDrawIndirectInfo));
-
-  RDrawIndirectInfo* pInfo = (RDrawIndirectInfo*)scene.drawCountBuffers[bufferIndex].allocInfo.pMappedData;
-
-  int32_t drawOffset = 0;
+  VkDeviceSize drawOffset = static_cast<VkDeviceSize>(scene.drawOffsets[bufferIndex][passId] * sizeof(VkDrawIndexedIndirectCommand));
 
   vkCmdDrawIndexedIndirect(commandBuffer, scene.drawIndirectBuffers[bufferIndex].buffer,
-    drawOffset, pInfo->drawCounts[passId], sizeof(VkDrawIndexedIndirectCommand));
+    drawOffset, scene.drawCounts[bufferIndex][passId], sizeof(VkDrawIndexedIndirectCommand));
 
   /*for (WModel* pModel : scene.pModelReferences) {
     auto& primitives = pModel->getPrimitives();
@@ -98,26 +90,6 @@ void core::MRenderer::drawBoundEntitiesIndirect(VkCommandBuffer commandBuffer, E
     command.indirectCommandOffset, indirectDrawCount, sizeof(VkDrawIndexedIndirectCommand));
 
   command.indirectCommandOffset += sizeof(VkDrawIndexedIndirectCommand) * indirectDrawCount;*/
-}
-
-void core::MRenderer::renderPrimitive(VkCommandBuffer commandBuffer,
-                                      WPrimitive* pPrimitive,
-                                      WModel* pModel) {
-  const uint32_t instanceCount = pPrimitive->instanceInfo[renderView.frameInFlight].visibleInstanceCount;
-
-  if (instanceCount == 0) return;
-
-  const uint32_t firstVisibleInstance = pPrimitive->instanceInfo[renderView.frameInFlight].firstVisibleInstance;
-  const uint32_t instanceIndex = pPrimitive->instanceData[firstVisibleInstance].instanceIndex[renderView.frameInFlight];
-
-  int32_t vertexOffset = (int32_t)pModel->m_sceneVertexOffset + (int32_t)pPrimitive->vertexOffset;
-  uint32_t indexOffset = pModel->m_sceneIndexOffset + pPrimitive->indexOffset;
-
-  VkDeviceSize instanceOffset = sizeof(RInstanceData) * instanceIndex;
-  vkCmdBindVertexBuffers(commandBuffer, 1, 1, &scene.instanceBuffers[renderView.frameInFlight].buffer, &instanceOffset);
-
-  // TODO: implement draw indirect
-  vkCmdDrawIndexed(commandBuffer, pPrimitive->indexCount, instanceCount, indexOffset, vertexOffset, 0);
 }
 
 void core::MRenderer::renderEnvironmentMaps(
@@ -201,8 +173,17 @@ void core::MRenderer::renderEnvironmentMaps(
 void core::MRenderer::prepareFrameResources(VkCommandBuffer commandBuffer) {
   command.indirectCommandOffset = 0u;
 
+  const uint32_t nextFrameIndex = (renderView.frameInFlight + 1) % MAX_FRAMES_IN_FLIGHT;
+
+  // Wait for instance data thread to be ready before drawing any mesh
+  {
+    std::mutex mtx;
+    std::unique_lock<std::mutex> lock(mtx);
+    sync.cvInstanceDataReady.wait(lock, [this]() { return sync.isInstanceDataReady[renderView.frameInFlight]; });
+    sync.isInstanceDataReady[renderView.frameInFlight] = false;
+  }
+
   VkDeviceSize vertexBufferOffsets[] = { 0u, 0u };
-  //VkBuffer vertexBuffers[] = { scene.vertexBuffer.buffer, scene.instanceBuffers[renderView.frameInFlight].buffer };
   VkBuffer vertexBuffers[] = { scene.vertexBuffer.buffer, scene.instanceDataBuffers[renderView.frameInFlight].buffer };
 
   vkCmdBindVertexBuffers(commandBuffer, 0, 2, vertexBuffers, vertexBufferOffsets);
@@ -220,14 +201,6 @@ void core::MRenderer::prepareFrameResources(VkCommandBuffer commandBuffer) {
     &scene.transparencyLinkedListClearColor, 1u, &scene.transparencySubRange);
 
   vkCmdFillBuffer(commandBuffer, scene.transparencyLinkedListBuffer.buffer, 0, sizeof(uint32_t), 0);
-
-  // Wait for instance data thread to be ready before drawing any mesh
-  {
-    std::mutex mtx;
-    std::unique_lock<std::mutex> lock(mtx);
-    sync.cvInstanceDataReady.wait(lock, [this]() { return sync.isInstanceDataReady; });
-    sync.isInstanceDataReady = false;
-  }
 }
 
 void core::MRenderer::prepareFrameComputeJobs() {
@@ -643,7 +616,7 @@ void core::MRenderer::renderFrame() {
     &sync.fenceInFlight[renderView.frameInFlight]);
 
   vkResetCommandBuffer(command.buffersGraphics[renderView.frameInFlight], NULL);
-
+  updateInstanceBuffer();       // TODO: fix syncing issues when running on a dedicated thread
   prepareFrameComputeJobs();
 
   // Execute compute jobs
@@ -694,17 +667,17 @@ void core::MRenderer::renderFrame() {
   // G-Buffer passes
   executeRenderingPass(commandBuffer, EDynamicRenderingPass::OpaqueCullBack);
   executeRenderingPass(commandBuffer, EDynamicRenderingPass::OpaqueCullNone);
-  //executeRenderingPass(commandBuffer, EDynamicRenderingPass::DiscardCullNone);
-  //executeRenderingPass(commandBuffer, EDynamicRenderingPass::BlendCullNone);
+  executeRenderingPass(commandBuffer, EDynamicRenderingPass::DiscardCullNone);
+  executeRenderingPass(commandBuffer, EDynamicRenderingPass::BlendCullNone);
 
   // Synchronize instance processing thread since all instances are submitted queue
-  sync.asyncUpdateInstanceBuffers.update();
+  /*sync.asyncUpdateInstanceBuffers.update();*/
 
   // Deferred rendering pass using G-Buffer collected data
   executeRenderingPass(commandBuffer, EDynamicRenderingPass::PBR, material.pGBuffer, true);
 
   // Additional front rendering passes
-  /*executeRenderingPass(commandBuffer, EDynamicRenderingPass::Skybox);*/
+  executeRenderingPass(commandBuffer, EDynamicRenderingPass::Skybox);
 
   executeAOBlurPass(commandBuffer);
 

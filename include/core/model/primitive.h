@@ -6,12 +6,6 @@
 
 class WPrimitive {
  public:
-  struct WPrimitiveInstanceInfo {
-     uint32_t firstVisibleInstance = -1;
-     uint32_t indirectFirstVisibleInstance = -1;
-     uint32_t visibleInstanceCount = 0;
-  };
-
   uint32_t vertexOffset = 0u;    // initial vertex location in owning model
   uint32_t indexOffset = 0u;     // initial index location in owning model
   uint32_t vertexCount = 0u;
@@ -22,7 +16,6 @@ class WPrimitive {
   RMaterial* pInitialMaterial = nullptr;
   void* pOwnerNode = nullptr;
   
-  std::vector<WPrimitiveInstanceInfo> instanceInfo;   // Per frame / possibly deprecated
   std::vector<WPrimitiveInstanceData> instanceData;   // Data per instance
 
   struct {

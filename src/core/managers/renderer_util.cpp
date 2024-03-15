@@ -1076,7 +1076,6 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
     }
 
     auto& instanceData = primitive->instanceData.emplace_back();
-    instanceData.instanceIndex.resize(MAX_FRAMES_IN_FLIGHT);
     instanceData.isVisible = true;
     instanceData.pParentEntity = pEntity;
     instanceData.instanceBufferBlock.modelMatrixId = pEntity->getRootTransformBufferIndex();
@@ -1084,9 +1083,14 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
     instanceData.instanceBufferBlock.skinMatrixId = pEntity->getSkinTransformBufferIndex(pNode->skinIndex);
     instanceData.instanceBufferBlock.materialId = primitive->pInitialMaterial->bufferIndex;
 
-    // Store an offset to this primitive's instance data in the GPU storage buffer for instance data
-    instanceData.instanceDataBufferOffset = scene.currentInstanceDataOffset;
+    // Store unique instance index
+    instanceData.instanceUID = scene.nextInstanceUID++;
+    scene.maxInstanceUID = std::max(scene.nextInstanceUID, scene.maxInstanceUID);
 
+    // Store an offset to this primitive's instance data in the GPU storage buffer for instance data
+    instanceData.instanceDataBufferOffset = sizeof(WInstanceDataEntry) * instanceData.instanceUID;
+
+    // Store data in a source compute culling buffer
     WInstanceDataEntry bufferDataEntry;
     bufferDataEntry.min = glm::vec4(primitive->extent.min, 1.0f);
     bufferDataEntry.max = glm::vec4(primitive->extent.max, 1.0f);
@@ -1104,8 +1108,6 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
     bufferCopyRegion.dstOffset = instanceData.instanceDataBufferOffset;
 
     copyBuffer(stagingInstanceBuffer.buffer, scene.sourceDataBuffer.buffer, &bufferCopyRegion);
-
-    scene.currentInstanceDataOffset += sizeof(WInstanceDataEntry);
   }
 
   pEntity->setRendererBindingIndex(
@@ -1168,6 +1170,7 @@ void core::MRenderer::uploadModelToSceneBuffer(WModel* pModel) {
 
 uint32_t core::MRenderer::getNewPrimitiveUID() {
   uint32_t freeID = scene.nextPrimitiveUID++;
+  scene.maxPrimitiveUID = std::max(scene.nextPrimitiveUID, scene.maxPrimitiveUID);
   return freeID;
 }
 

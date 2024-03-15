@@ -198,19 +198,10 @@ TResult core::MRenderer::createSceneBuffers() {
 
   RE_LOG(Log, "Allocating scene instance buffer for %d instances.", config::scene::nodeBudget);
 
-  // TODO: Deprecate old instance buffers in favor of compute culling ones
-  scene.instanceBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-  //
-
   scene.instanceDataBuffers.resize(MAX_FRAMES_IN_FLIGHT);
   scene.drawIndirectBuffers.resize(MAX_FRAMES_IN_FLIGHT);
   scene.drawCountBuffers.resize(MAX_FRAMES_IN_FLIGHT);
   for (int8_t instanceBufferId = 0; instanceBufferId < MAX_FRAMES_IN_FLIGHT; ++instanceBufferId) {
-    // TODO: Deprecate old instance buffers in favor of compute culling ones
-    createBuffer(EBufferType::CPU_VERTEX, sizeof(RInstanceData) * config::scene::nodeBudget,
-      scene.instanceBuffers[instanceBufferId], nullptr);
-    //
-
     createBuffer(EBufferType::CPU_VERTEX, sizeof(RInstanceData) * config::scene::nodeBudget,
       scene.instanceDataBuffers[instanceBufferId], nullptr);
     createBuffer(EBufferType::CPU_INDIRECT, sizeof(VkDrawIndexedIndirectCommand) * config::scene::uniquePrimitiveBudget,
@@ -265,8 +256,6 @@ void core::MRenderer::destroySceneBuffers() {
                    scene.skinTransformBuffer.allocation);
 
   for (int8_t frameIndex = 0; frameIndex < MAX_FRAMES_IN_FLIGHT; ++frameIndex) {
-    vmaDestroyBuffer(memAlloc, scene.instanceBuffers[frameIndex].buffer,
-                     scene.instanceBuffers[frameIndex].allocation);
     vmaDestroyBuffer(memAlloc, command.indirectCommandBuffers[frameIndex].buffer,
                      command.indirectCommandBuffers[frameIndex].allocation);
 
@@ -670,8 +659,8 @@ TResult core::MRenderer::createSyncObjects() {
   sync.asyncUpdateEntities.bindFunction(this, &MRenderer::updateBoundEntities);
   sync.asyncUpdateEntities.start();
 
-  sync.asyncUpdateInstanceBuffers.bindFunction(this, &MRenderer::updateInstanceBuffer, &sync.cvInstanceDataReady);
-  sync.asyncUpdateInstanceBuffers.start();
+  /*sync.asyncUpdateInstanceBuffers.bindFunction(this, &MRenderer::updateInstanceBuffer, &sync.cvInstanceDataReady);
+  sync.asyncUpdateInstanceBuffers.start();*/
 
   return RE_OK;
 }

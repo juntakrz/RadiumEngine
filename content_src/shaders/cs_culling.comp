@@ -100,6 +100,8 @@ const uint passIds[PASS_COUNT] = uint[PASS_COUNT](
 	PASS_OPAQUECULLNONE, PASS_DISCARDCULLNONE, PASS_BLENDCULLNONE, PASS_SKYBOX
 );
 
+const uint alwaysVisiblePassIds[2] = uint[2](PASS_ENVSKYBOX, PASS_SKYBOX);
+
 bool isBoxInFrustum(vec4 boxMin, vec4 boxMax, mat4 transform) {
 	// Construct a bounding box
 	vec4 boxCorners[8];
@@ -124,6 +126,17 @@ bool isBoxInFrustum(vec4 boxMin, vec4 boxMax, mat4 transform) {
 			|| (transformedCorner.z > 0.0 && transformedCorner.z < transformedCorner.w)) {
 			return true;
 		}
+	}
+
+	return false;
+}
+
+bool isAlwaysVisiblePass(uint renderPassFlags) {
+	uint result = 0;
+	for (uint i = 0; i < 2; i++) {
+		result = renderPassFlags & alwaysVisiblePassIds[i];
+
+		if (result != 0) return true;
 	}
 
 	return false;
@@ -175,7 +188,11 @@ void main() {
 	vec4 boxMax = inInstanceData[instanceId].AABBMax;
 
 	// Perform culling
-	bool isVisible = isBoxInFrustum(boxMin, boxMax, transform);
+	bool isVisible = isAlwaysVisiblePass(inInstanceData[instanceId].renderPassFlags);
+
+	if (!isVisible) {
+		isVisible = isBoxInFrustum(boxMin, boxMax, transform);
+	}
 
 	int instanceIndex = -1;
 

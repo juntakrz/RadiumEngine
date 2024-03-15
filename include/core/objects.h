@@ -112,7 +112,7 @@ enum EDynamicRenderingPass : uint32_t {
   Present             = 0b10000000000000000
 };
 
-enum class ERenderingPassIndex : uint32_t {
+enum class EIndirectPassIndex : uint32_t {
   Shadow = 0,
   ShadowDiscard,
   EnvSkybox,
@@ -475,8 +475,8 @@ struct RVulkanTexture : public ktxVulkanTexture {
 // Information written by the compute culling job
 // A number of draws to do at each corresponding pass
 struct RDrawIndirectInfo {
-  uint32_t drawCounts[(uint32_t)ERenderingPassIndex::Count];
-  uint32_t instanceCounts[(uint32_t)ERenderingPassIndex::Count];
+  uint32_t drawCounts[(uint32_t)EIndirectPassIndex::Count];
+  uint32_t instanceCounts[(uint32_t)EIndirectPassIndex::Count];
   uint32_t primitiveInstanceCount[config::scene::uniquePrimitiveBudget];
   VkBool32 instanceVisibility[config::scene::nodeBudget];
 };
@@ -587,11 +587,29 @@ struct WModelConfigInfo {
 };
 
 struct WPrimitiveInstanceData {
-  std::vector<uint32_t> instanceIndex;    // reference into a corresponding instanceBuffer
-  uint32_t passFlags = 0;
   bool isVisible = true;
   AEntity* pParentEntity = nullptr;
+  uint32_t instanceUID = -1;
   uint32_t instanceDataBufferOffset = -1;
 
   RInstanceData instanceBufferBlock;
+};
+
+// Helper structures
+
+namespace helper {
+  const EDynamicRenderingPass indirectPassList[] = {
+    EDynamicRenderingPass::Shadow,
+    EDynamicRenderingPass::ShadowDiscard,
+    EDynamicRenderingPass::EnvSkybox,
+    EDynamicRenderingPass::OpaqueCullBack,
+    EDynamicRenderingPass::OpaqueCullNone,
+    EDynamicRenderingPass::DiscardCullNone,
+    EDynamicRenderingPass::BlendCullNone,
+    EDynamicRenderingPass::Skybox,
+  };
+
+  const uint32_t indirectPassCount = (uint32_t)EIndirectPassIndex::Count;
+
+  uint32_t indirectPassFlagToIndex(uint32_t passFlag);
 };

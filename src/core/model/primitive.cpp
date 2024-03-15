@@ -12,8 +12,6 @@ WPrimitive::WPrimitive(RPrimitiveInfo* pCreateInfo) {
     return;
   }
 
-  instanceInfo.resize(MAX_FRAMES_IN_FLIGHT);
-
   vertexOffset = pCreateInfo->vertexOffset;
   vertexCount = pCreateInfo->vertexCount;
   indexOffset = pCreateInfo->indexOffset;

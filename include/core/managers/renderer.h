@@ -86,7 +86,6 @@ class MRenderer {
 
   struct RSceneBuffers {
     RBuffer vertexBuffer;
-    std::vector<RBuffer> instanceBuffers;
     RBuffer indexBuffer;
     RBuffer modelTransformBuffer;
     RBuffer nodeTransformBuffer;
@@ -99,14 +98,15 @@ class MRenderer {
 
     // Indirect draw data
     RBuffer sourceDataBuffer;                         // Contains all bound primitive instance data, changes when new entity is bound/unbound
-    uint32_t currentInstanceDataOffset = 0u;          // Tracks an offset at which to store a new instance data upon binding
-    uint32_t nextPrimitiveUID = 0;                    // Earliest free primitive UID
-    uint32_t maxPrimitiveUID = 0;                     // Latest primitive UID / max limit for searching primitives by UID
     std::vector<RBuffer> instanceDataBuffers;
     std::vector<RBuffer> drawIndirectBuffers;
     std::vector<RBuffer> drawCountBuffers;
-    uint32_t drawOffsets[MAX_FRAMES_IN_FLIGHT][(uint32_t)ERenderingPassIndex::Count];     // Draw command offset for each render pass
-    uint32_t instanceOffsets[MAX_FRAMES_IN_FLIGHT][(uint32_t)ERenderingPassIndex::Count]; // Instance entry offset for each render pass
+    uint32_t drawCounts[MAX_FRAMES_IN_FLIGHT][(uint32_t)EIndirectPassIndex::Count];
+    uint32_t drawOffsets[MAX_FRAMES_IN_FLIGHT][(uint32_t)EIndirectPassIndex::Count];     // Draw counts and command offsets for each render pass
+    uint32_t nextPrimitiveUID = 0;                    // Earliest free primitive UID
+    uint32_t maxPrimitiveUID = 0;                     // Latest primitive UID / max limit for searching primitives by UID
+    uint32_t nextInstanceUID = 0;
+    uint32_t maxInstanceUID = 0;
 
     std::vector<RTexture*> pDepthTargets;
     std::vector<RTexture*> pPreviousDepthTargets;
@@ -166,7 +166,7 @@ class MRenderer {
     RAsync asyncUpdateInstanceBuffers;
 
     std::condition_variable cvInstanceDataReady;
-    bool isInstanceDataReady = false;
+    bool isInstanceDataReady[MAX_FRAMES_IN_FLIGHT] = {true};
   } sync;
 
   // render system data - passes, pipelines, mesh data to render
@@ -600,13 +600,8 @@ public:
   //
 
  private:
-  // DEPRECATED - use drawBoundEntitiesIndirect instead.
-  void drawBoundEntities(VkCommandBuffer commandBuffer, EDynamicRenderingPass passOverride = EDynamicRenderingPass::Null);
-
   // Draw bound entities using specific pipeline
   void drawBoundEntitiesIndirect(VkCommandBuffer commandBuffer, EDynamicRenderingPass passOverride = EDynamicRenderingPass::Null);
-
-  void renderPrimitive(VkCommandBuffer cmdBuffer, WPrimitive* pPrimitive, WModel* pModel);
 
   void renderEnvironmentMaps(VkCommandBuffer commandBuffer,
                              const uint32_t frameInterval = 1u);
