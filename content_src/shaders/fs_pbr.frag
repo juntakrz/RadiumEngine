@@ -10,15 +10,6 @@ layout (location = 0) in vec2 inUV0;
 layout (location = 0) out vec4 outColor;
 layout (location = 1) out vec2 outAO;
 
-// Scene bindings
-layout (set = 0, binding = 0) uniform UBOScene {
-	mat4 view;
-	mat4 projection;
-	vec3 camPos;
-	vec2 haltonJitter;
-	vec2 planeData;
-} scene;
-
 // environment bindings
 layout (set = 0, binding = 2) uniform samplerCube prefilteredMap;
 layout (set = 0, binding = 3) uniform samplerCube irradianceMap;
@@ -374,7 +365,7 @@ void main() {
 
 	vec3 specularColor = mix(f0, diffuseColor, metallic);
 
-	vec3 V = normalize(scene.camPos - worldPos.xyz);			// Vector from surface point to camera
+	vec3 V = normalize(scene.cameraPos - worldPos.xyz);			// Vector from surface point to camera
 
 	vec3 color = getIBLContribution(diffuseColor, specularColor, perceptualRoughness, V, normal);
 
@@ -385,7 +376,7 @@ void main() {
 	color = mix(color, color * ao, occlusionStrength);
 
 	// Calculate shadow and its color
-	float relativeDistance = length(scene.camPos - worldPos.xyz);
+	float relativeDistance = length(scene.cameraPos - worldPos.xyz);
 	float shadowA = 0.0f;
 
 	int distanceIndex;

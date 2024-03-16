@@ -564,8 +564,6 @@ void core::MRenderer::renderFrame() {
   prepareFrameComputeJobs();
   executeQueuedComputeJobs(command.buffersCompute[renderView.frameInFlight]);
 
-  //std::this_thread::sleep_for(std::chrono::milliseconds(30));
-
   // Update lighting UBO if required
   updateLightingUBO(renderView.frameInFlight);
 

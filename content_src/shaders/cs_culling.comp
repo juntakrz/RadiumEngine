@@ -40,6 +40,7 @@ struct NodeTransformBlock {
 struct UBOScene {
 	mat4 view;
 	mat4 projection;
+	mat4 prevView;
 	vec3 camPos;
 	vec2 haltonJitter;
 	vec2 clipData;			// x = near plane, y = far plane

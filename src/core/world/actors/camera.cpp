@@ -43,11 +43,13 @@ glm::vec2 ACamera::getNearAndFarPlane() {
       : glm::vec2(m_viewData.orthographicData.z, m_viewData.orthographicData.w);
 }
 
-glm::mat4& ACamera::getView() {
-  return m_view = glm::lookAt(
-             m_transformationData.translation,
-             m_transformationData.translation + m_transformationData.forwardVector,
-             m_viewData.upVector);
+glm::mat4& ACamera::getView(const bool update) {
+  return (update)
+    ? m_view = glm::lookAt(
+      m_transformationData.translation,
+      m_transformationData.translation + m_transformationData.forwardVector,
+      m_viewData.upVector)
+    : m_view;
 }
 
 glm::mat4& ACamera::getProjection() { return m_projection; }

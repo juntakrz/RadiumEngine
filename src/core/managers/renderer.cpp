@@ -692,6 +692,8 @@ void core::MRenderer::destroySyncObjects() {
 }
 
 void core::MRenderer::updateSceneUBO(uint32_t currentImage) {
+  scene.sceneBufferObject.prevView = view.pActiveCamera->getView(false);
+
   scene.sceneBufferObject.view = view.pActiveCamera->getView();
   scene.sceneBufferObject.projection = view.pActiveCamera->getProjection();
   scene.sceneBufferObject.cameraPosition = view.pActiveCamera->getLocation();

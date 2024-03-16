@@ -54,8 +54,9 @@ class ACamera : public ABase {
   float getFarPlane();
   glm::vec2 getNearAndFarPlane();
 
-  // get view matrix for current camera position and rotation
-  glm::mat4& getView();
+  // If 'update' is set to false - will retrieve currently stored view matrix
+  // instead of calculating a new one
+  glm::mat4& getView(const bool update = true);
   glm::mat4& getProjection();
   const glm::mat4& getProjectionView();
 

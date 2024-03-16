@@ -30,6 +30,7 @@ class AEntity : public ABase {
 
     AnimatedSkinBinding* pSkinBinding = nullptr;
 
+    bool isJustCreated = true;
     bool requiresTransformBufferBlockUpdate = true;
   };
 

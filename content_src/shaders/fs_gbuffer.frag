@@ -22,15 +22,6 @@ layout (location = 3) out vec4 outPhysical;		// x = metalness, y = roughness, z 
 layout (location = 4) out vec4 outEmissive;
 layout (location = 5) out vec2 outVelocity;
 
-// scene bindings
-layout (set = 0, binding = 0) uniform UBOScene {
-	mat4 view;
-	mat4 projection;
-	vec3 camPos;
-	vec2 haltonJitter;
-	vec2 clipData;			// x = near plane, y = far plane
-} scene;
-
 const float minRoughness = 0.04;
 
 vec2 getVelocity(vec4 prevPos, vec4 currentPos){

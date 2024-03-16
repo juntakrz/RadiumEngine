@@ -36,22 +36,24 @@ void AEntity::updateTransformBuffers() noexcept {
   }
 
   for (auto& node : m_animatedNodes) {
-    if (!node.requiresTransformBufferBlockUpdate) continue;
+    if (!node.requiresTransformBufferBlockUpdate && !node.isJustCreated) continue;
 
-    int8_t* pNodeMemoryAddress =
+    int8_t* pPreviousNodeMemoryAddress =
       static_cast<int8_t*>(core::renderer.getSceneBuffers()
         ->nodeTransformBuffer.allocInfo.pMappedData) + node.nodeTransformBufferOffset;
 
-    // Adjust by a single transform matrix plus GPU aligned float
-    int8_t* pPreviousNodeMemoryAddress = pNodeMemoryAddress + (sizeof(glm::mat4) + 16);
+    int8_t* pNodeMemoryAddress = pPreviousNodeMemoryAddress + (sizeof(glm::mat4));
 
     // Store previous frame node transformation matrix
-    memcpy(pPreviousNodeMemoryAddress, pNodeMemoryAddress, sizeof(glm::mat4));
+    (node.isJustCreated)
+      ? memcpy(pPreviousNodeMemoryAddress, &node.transformBufferBlock.nodeMatrix, sizeof(glm::mat4))
+      : memcpy(pPreviousNodeMemoryAddress, pNodeMemoryAddress, sizeof(glm::mat4));
 
     // Copy node transform data for vertex shader (node matrix and joint count)
-    memcpy(pNodeMemoryAddress, &node.transformBufferBlock,
+    memcpy(pNodeMemoryAddress, &node.transformBufferBlock.nodeMatrix,
       sizeof(glm::mat4) + sizeof(float));
 
+    node.isJustCreated = false;
     node.requiresTransformBufferBlockUpdate = false;
   }
 }
