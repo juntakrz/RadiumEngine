@@ -148,10 +148,6 @@ TResult core::MRenderer::createSwapChain() {
     return RE_CRITICAL;
   }
 
-  for (uint8_t syncId = 0; syncId < MAX_FRAMES_IN_FLIGHT; ++syncId) {
-    sync.isInstanceDataReady[syncId] = true;
-  }
-
   VkSwapchainCreateInfoKHR createInfo{};
   createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
   createInfo.imageFormat = swapchain.formatData.format;

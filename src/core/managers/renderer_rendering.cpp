@@ -19,77 +19,14 @@ void core::MRenderer::drawBoundEntitiesIndirect(VkCommandBuffer commandBuffer, E
 
   const uint32_t bufferIndex = renderView.frameInFlight;
 
-  int32_t passId = -1;
+  int32_t passId = helper::indirectPassFlagToIndex(passOverride);
 
-  switch (passOverride) {
-    case EDynamicRenderingPass::Shadow: {
-      passId = 0;
-      break;
-    }
-    case EDynamicRenderingPass::ShadowDiscard: {
-      passId = 1;
-      break;
-    }
-    case EDynamicRenderingPass::EnvSkybox: {
-      passId = 2;
-      break;
-    }
-    case EDynamicRenderingPass::OpaqueCullBack: {
-      passId = 3;
-      break;
-    }
-    case EDynamicRenderingPass::OpaqueCullNone: {
-      passId = 4;
-      break;
-    }
-    case EDynamicRenderingPass::DiscardCullNone: {
-      passId = 5;
-      break;
-    }
-    case EDynamicRenderingPass::BlendCullNone: {
-      passId = 6;
-      break;
-    }
-    case EDynamicRenderingPass::Skybox: {
-      passId = 7;
-      break;
-    }
-  }
-
-  if (passId < 0) return;
+  if (passId == -1) return;
 
   VkDeviceSize drawOffset = static_cast<VkDeviceSize>(scene.drawOffsets[bufferIndex][passId] * sizeof(VkDrawIndexedIndirectCommand));
 
   vkCmdDrawIndexedIndirect(commandBuffer, scene.drawIndirectBuffers[bufferIndex].buffer,
     drawOffset, scene.drawCounts[bufferIndex][passId], sizeof(VkDrawIndexedIndirectCommand));
-
-  /*for (WModel* pModel : scene.pModelReferences) {
-    auto& primitives = pModel->getPrimitives();
-    const uint32_t sceneVertexOffset = pModel->m_sceneVertexOffset;
-    const uint32_t sceneIndexOffset = pModel->m_sceneIndexOffset;
-
-    for (const auto& primitive : primitives) {
-      if (!checkPass(primitive->pInitialMaterial->passFlags, passOverride)
-        || primitive->instanceInfo[bufferIndex].visibleInstanceCount == 0) continue;
-      
-      VkDrawIndexedIndirectCommand& newCommand = command.indirectCommands.emplace_back();
-      newCommand.indexCount = primitive->indexCount;
-      newCommand.instanceCount = primitive->instanceInfo[bufferIndex].visibleInstanceCount;
-      newCommand.firstIndex = sceneIndexOffset + primitive->indexOffset;
-      newCommand.vertexOffset = sceneVertexOffset + primitive->vertexOffset;
-      newCommand.firstInstance = primitive->instanceInfo[bufferIndex].indirectFirstVisibleInstance;
-    }
-  }
-
-  const uint32_t indirectDrawCount = static_cast<uint32_t>(command.indirectCommands.size());
-  const int8_t* pMemAddress = (int8_t*)command.indirectCommandBuffers[bufferIndex].allocInfo.pMappedData + command.indirectCommandOffset;
-
-  memcpy((void*)pMemAddress, command.indirectCommands.data(), sizeof(VkDrawIndexedIndirectCommand) * indirectDrawCount);
-
-  vkCmdDrawIndexedIndirect(commandBuffer, command.indirectCommandBuffers[bufferIndex].buffer,
-    command.indirectCommandOffset, indirectDrawCount, sizeof(VkDrawIndexedIndirectCommand));
-
-  command.indirectCommandOffset += sizeof(VkDrawIndexedIndirectCommand) * indirectDrawCount;*/
 }
 
 void core::MRenderer::renderEnvironmentMaps(
@@ -173,14 +110,21 @@ void core::MRenderer::renderEnvironmentMaps(
 void core::MRenderer::prepareFrameResources(VkCommandBuffer commandBuffer) {
   command.indirectCommandOffset = 0u;
 
-  const uint32_t nextFrameIndex = (renderView.frameInFlight + 1) % MAX_FRAMES_IN_FLIGHT;
-
-  // Wait for instance data thread to be ready before drawing any mesh
+  // Wait for instance data thread to finish its work before proceeding with the new frame
   {
     std::mutex mtx;
     std::unique_lock<std::mutex> lock(mtx);
-    sync.cvInstanceDataReady.wait(lock, [this]() { return sync.isInstanceDataReady[renderView.frameInFlight]; });
-    sync.isInstanceDataReady[renderView.frameInFlight] = false;
+    sync.cvInstanceDataReady.wait(lock, [this]() { return sync.isInstanceDataReady; });
+    sync.isInstanceDataReady = false;
+
+    const uint32_t bufferIndex = (renderView.frameInFlight + 1) % MAX_FRAMES_IN_FLIGHT;
+
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+    if (vkGetFenceStatus(logicalDevice.device, sync.fenceUpdateBuffers[bufferIndex]) != VK_SUCCESS) {
+      vkQueueSubmit(logicalDevice.queues.graphics, 1, &submitInfo, sync.fenceUpdateBuffers[bufferIndex]);
+    }
   }
 
   VkDeviceSize vertexBufferOffsets[] = { 0u, 0u };
@@ -586,9 +530,10 @@ void core::MRenderer::executePresentPass(VkCommandBuffer commandBuffer) {
 void core::MRenderer::renderFrame() {
   TResult chkResult = RE_OK;
 
-  vkWaitForFences(logicalDevice.device, 1,
-    &sync.fenceInFlight[renderView.frameInFlight], VK_TRUE,
-    UINT64_MAX);
+  const VkFence fences[] = { sync.fenceInFlight[renderView.frameInFlight], sync.fenceUpdateBuffers[renderView.frameInFlight] };
+  const uint32_t fenceCount = 2;
+
+  vkWaitForFences(logicalDevice.device, fenceCount, fences, VK_TRUE, UINT64_MAX);
 
   VkResult APIResult =
     vkAcquireNextImageKHR(logicalDevice.device, swapChain, UINT64_MAX,
@@ -612,14 +557,11 @@ void core::MRenderer::renderFrame() {
   core::time.tickTimer();
 
   // Reset fences if we will do any work this frame e.g. no swap chain recreation
-  vkResetFences(logicalDevice.device, 1,
-    &sync.fenceInFlight[renderView.frameInFlight]);
+  vkResetFences(logicalDevice.device, fenceCount, fences);
 
   vkResetCommandBuffer(command.buffersGraphics[renderView.frameInFlight], NULL);
-  updateInstanceBuffer();       // TODO: fix syncing issues when running on a dedicated thread
-  prepareFrameComputeJobs();
 
-  // Execute compute jobs
+  prepareFrameComputeJobs();
   executeQueuedComputeJobs(command.buffersCompute[renderView.frameInFlight]);
 
   //std::this_thread::sleep_for(std::chrono::milliseconds(30));
@@ -647,7 +589,7 @@ void core::MRenderer::renderFrame() {
   prepareFrameResources(commandBuffer);
 
   /* 1. Environment generation */
-  if (renderView.generateEnvironmentMaps) {
+  if (renderView.generateEnvironmentMaps && renderView.framesRendered > MAX_FRAMES_IN_FLIGHT) {
     renderEnvironmentMaps(commandBuffer, environment.genInterval);
   }
 
@@ -671,7 +613,7 @@ void core::MRenderer::renderFrame() {
   executeRenderingPass(commandBuffer, EDynamicRenderingPass::BlendCullNone);
 
   // Synchronize instance processing thread since all instances are submitted queue
-  /*sync.asyncUpdateInstanceBuffers.update();*/
+  sync.asyncUpdateIndirectDrawBuffers.update();
 
   // Deferred rendering pass using G-Buffer collected data
   executeRenderingPass(commandBuffer, EDynamicRenderingPass::PBR, material.pGBuffer, true);
@@ -733,6 +675,11 @@ void core::MRenderer::renderFrame() {
 
   APIResult = vkQueuePresentKHR(logicalDevice.queues.present, &presentInfo);
 
+  sync.asyncUpdateEntities.update();
+
+  renderView.frameInFlight = ++renderView.frameInFlight % MAX_FRAMES_IN_FLIGHT;
+  ++renderView.framesRendered;
+
   if (APIResult == VK_ERROR_OUT_OF_DATE_KHR || APIResult == VK_SUBOPTIMAL_KHR ||
       framebufferResized) {
     RE_LOG(Warning, "Recreating swap chain, reason: %d", APIResult);
@@ -747,12 +694,6 @@ void core::MRenderer::renderFrame() {
 
     return;
   }
-
-  // Synchronize CPU threads
-  sync.asyncUpdateEntities.update();
-
-  renderView.frameInFlight = ++renderView.frameInFlight % MAX_FRAMES_IN_FLIGHT;
-  ++renderView.framesRendered;
 }
 
 void core::MRenderer::renderInitializationFrame() {

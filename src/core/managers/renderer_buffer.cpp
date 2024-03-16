@@ -134,8 +134,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
       static_cast<uint32_t>(queueFamilyIndices.size());
 
     allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT |
-      VMA_ALLOCATION_CREATE_MAPPED_BIT;
+    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
     if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
       &outBuffer.buffer, &outBuffer.allocation,
@@ -164,8 +163,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
       static_cast<uint32_t>(queueFamilyIndices.size());
 
     allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT |
-      VMA_ALLOCATION_CREATE_MAPPED_BIT;
+    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
     if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
       &outBuffer.buffer, &outBuffer.allocation,
@@ -544,35 +542,36 @@ void core::MRenderer::copyDataToBuffer(void* pData, VkDeviceSize dataSize, RBuff
 }
 
 // Runs in a dedicated thread
-void core::MRenderer::updateInstanceBuffer() {
+void core::MRenderer::updateIndirectDrawBuffers() {
+  const uint32_t bufferIndex = (renderView.frameInFlight + 1) % MAX_FRAMES_IN_FLIGHT;
+  //const uint32_t bufferIndex = renderView.frameInFlight;
+
   uint32_t instanceIndex = 0u;
-  //uint32_t nextFrameIndex = (renderView.frameInFlight + 1) % MAX_FRAMES_IN_FLIGHT;
-  uint32_t nextFrameIndex = renderView.frameInFlight;
-  //uint32_t nextFrameIndex = (renderView.frameInFlight + MAX_FRAMES_IN_FLIGHT - 1) % MAX_FRAMES_IN_FLIGHT;
 
   const uint32_t totalIndirectDrawPasses = (uint32_t)EIndirectPassIndex::Count;
   uint32_t currentDrawOffsets[totalIndirectDrawPasses];
 
-  // Pointer math arrays
-  RInstanceData* instanceEntries =
-    (RInstanceData*)scene.instanceDataBuffers[nextFrameIndex].allocInfo.pMappedData;
-  VkDrawIndexedIndirectCommand* drawCommands =
-    (VkDrawIndexedIndirectCommand*)scene.drawIndirectBuffers[nextFrameIndex].allocInfo.pMappedData;
+  // Input buffer, should use current frame as its being generated several frames ahead
+  const RDrawIndirectInfo* pInfo = (RDrawIndirectInfo*)scene.drawCountBuffers[renderView.frameInFlight].allocInfo.pMappedData;
 
-  const RDrawIndirectInfo* pInfo = (RDrawIndirectInfo*)scene.drawCountBuffers[nextFrameIndex].allocInfo.pMappedData;
+  // Pointer math arrays for output buffers
+  RInstanceData* instanceEntries =
+    (RInstanceData*)scene.instanceDataBuffers[bufferIndex].allocInfo.pMappedData;
+  VkDrawIndexedIndirectCommand* drawCommands =
+    (VkDrawIndexedIndirectCommand*)scene.drawIndirectBuffers[bufferIndex].allocInfo.pMappedData;
 
   // Precalculate offsets
-  scene.drawOffsets[nextFrameIndex][0] = 0;
+  scene.drawOffsets[bufferIndex][0] = 0;
 
   for (uint32_t passOffsetIndex = 1; passOffsetIndex < totalIndirectDrawPasses; ++passOffsetIndex) {
-    scene.drawOffsets[nextFrameIndex][passOffsetIndex] =
-      scene.drawOffsets[nextFrameIndex][passOffsetIndex - 1] + pInfo->drawCounts[passOffsetIndex - 1];
+    scene.drawOffsets[bufferIndex][passOffsetIndex] =
+      scene.drawOffsets[bufferIndex][passOffsetIndex - 1] + pInfo->drawCounts[passOffsetIndex - 1];
   }
 
   // Copy offsets for tracking, not error checked later on, so the shader code and related math must be correct
   // or draw commands and instance data entries won't be properly laid out
-  memcpy(scene.drawCounts[nextFrameIndex], pInfo->drawCounts, sizeof(uint32_t) * totalIndirectDrawPasses);
-  memcpy(currentDrawOffsets, scene.drawOffsets[nextFrameIndex], sizeof(uint32_t) * totalIndirectDrawPasses);
+  memcpy(scene.drawCounts[bufferIndex], pInfo->drawCounts, sizeof(uint32_t) * totalIndirectDrawPasses);
+  memcpy(currentDrawOffsets, scene.drawOffsets[bufferIndex], sizeof(uint32_t) * totalIndirectDrawPasses);
 
   for (auto& pModel : scene.pModelReferences) {
     for (auto& pPrimitive : pModel->m_pLinearPrimitives) {
@@ -580,7 +579,7 @@ void core::MRenderer::updateInstanceBuffer() {
 
       const uint32_t renderPassFlags = pPrimitive->pInitialMaterial->passFlags;
 
-      VkDrawIndexedIndirectCommand newDrawCommand {
+      VkDrawIndexedIndirectCommand newDrawCommand{
       .indexCount = pPrimitive->indexCount,
       .instanceCount = pInfo->primitiveInstanceCount[pPrimitive->bindingUID],
       .firstIndex = pModel->m_sceneIndexOffset + pPrimitive->indexOffset,
@@ -605,5 +604,5 @@ void core::MRenderer::updateInstanceBuffer() {
     }
   }
 
-  sync.isInstanceDataReady[nextFrameIndex] = true;
+  sync.isInstanceDataReady = true;
 }

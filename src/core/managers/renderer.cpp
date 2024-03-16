@@ -622,13 +622,14 @@ TResult core::MRenderer::createSyncObjects() {
   sync.semImgAvailable.resize(MAX_FRAMES_IN_FLIGHT);
   sync.semRenderFinished.resize(MAX_FRAMES_IN_FLIGHT);
   sync.fenceInFlight.resize(MAX_FRAMES_IN_FLIGHT);
+  sync.fenceUpdateBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
   VkSemaphoreCreateInfo semInfo{};
   semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-  VkFenceCreateInfo fenInfo{};
-  fenInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-  fenInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;  // signaled to skip waiting for
+  VkFenceCreateInfo fenceInfo{};
+  fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+  fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;  // signaled to skip waiting for
                                                  // it on the first frame
 
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
@@ -646,9 +647,16 @@ TResult core::MRenderer::createSyncObjects() {
       return RE_CRITICAL;
     }
 
-    if (vkCreateFence(logicalDevice.device, &fenInfo, nullptr,
+    if (vkCreateFence(logicalDevice.device, &fenceInfo, nullptr,
                       &sync.fenceInFlight[i])) {
-      RE_LOG(Critical, "failed to create 'in flight' fence.");
+      RE_LOG(Critical, "Failed to create 'in flight' fence.");
+
+      return RE_CRITICAL;
+    }
+
+    if (vkCreateFence(logicalDevice.device, &fenceInfo, nullptr,
+                      &sync.fenceUpdateBuffers[i])) {
+      RE_LOG(Critical, "Failed to create 'buffer update' fence.");
 
       return RE_CRITICAL;
     }
@@ -659,8 +667,8 @@ TResult core::MRenderer::createSyncObjects() {
   sync.asyncUpdateEntities.bindFunction(this, &MRenderer::updateBoundEntities);
   sync.asyncUpdateEntities.start();
 
-  /*sync.asyncUpdateInstanceBuffers.bindFunction(this, &MRenderer::updateInstanceBuffer, &sync.cvInstanceDataReady);
-  sync.asyncUpdateInstanceBuffers.start();*/
+  sync.asyncUpdateIndirectDrawBuffers.bindFunction(this, &MRenderer::updateIndirectDrawBuffers, &sync.cvInstanceDataReady);
+  sync.asyncUpdateIndirectDrawBuffers.start();
 
   return RE_OK;
 }
@@ -673,13 +681,14 @@ void core::MRenderer::destroySyncObjects() {
     vkDestroySemaphore(logicalDevice.device, sync.semRenderFinished[i], nullptr);
 
     vkDestroyFence(logicalDevice.device, sync.fenceInFlight[i], nullptr);
+    vkDestroyFence(logicalDevice.device, sync.fenceUpdateBuffers[i], nullptr);
   }
 
   RE_LOG(Log, "Stopping entity update thread.");
   sync.asyncUpdateEntities.stop();
 
   RE_LOG(Log, "Stopping instance buffers update thread.");
-  sync.asyncUpdateInstanceBuffers.stop();
+  sync.asyncUpdateIndirectDrawBuffers.stop();
 }
 
 void core::MRenderer::updateSceneUBO(uint32_t currentImage) {

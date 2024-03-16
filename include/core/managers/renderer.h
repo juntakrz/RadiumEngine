@@ -162,11 +162,12 @@ class MRenderer {
     std::vector<VkSemaphore> semImgAvailable;
     std::vector<VkSemaphore> semRenderFinished;
     std::vector<VkFence> fenceInFlight;
+    std::vector<VkFence> fenceUpdateBuffers;
     RAsync asyncUpdateEntities;
-    RAsync asyncUpdateInstanceBuffers;
+    RAsync asyncUpdateIndirectDrawBuffers;
 
     std::condition_variable cvInstanceDataReady;
-    bool isInstanceDataReady[MAX_FRAMES_IN_FLIGHT] = {true};
+    bool isInstanceDataReady = false;
   } sync;
 
   // render system data - passes, pipelines, mesh data to render
@@ -482,7 +483,7 @@ public:
 
    void copyDataToBuffer(void* pData, VkDeviceSize dataSize, RBuffer* pDstBuffer, VkDeviceSize offset = 0u);
 
-   void updateInstanceBuffer();
+   void updateIndirectDrawBuffers();
 
   //
   // ***PHYSICAL DEVICE
