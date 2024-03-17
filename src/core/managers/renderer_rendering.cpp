@@ -173,6 +173,7 @@ void core::MRenderer::prepareFrameComputeJobs() {
   cullingJob.pushBlock.intValues.x = static_cast<int32_t>(scene.totalInstances);
   cullingJob.pushBlock.intValues.y = static_cast<int32_t>(scene.nextPrimitiveUID);
   cullingJob.pushBlock.intValues.z = static_cast<int32_t>(view.pPrimaryCamera->getViewBufferIndex()); // index for retrieving camera matrices
+  cullingJob.pushBlock.intValues.w = static_cast<int32_t>(scene.pPreviousDepthTargets[previousFrameInFlight]->texture.levelCount - 1);
 
   queueComputeJob(&depthMipmappingJob);
   queueComputeJob(&cullingJob);

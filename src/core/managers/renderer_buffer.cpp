@@ -544,7 +544,6 @@ void core::MRenderer::copyDataToBuffer(void* pData, VkDeviceSize dataSize, RBuff
 // Runs in a dedicated thread
 void core::MRenderer::updateIndirectDrawBuffers() {
   const uint32_t bufferIndex = (renderView.frameInFlight + 1) % MAX_FRAMES_IN_FLIGHT;
-  //const uint32_t bufferIndex = renderView.frameInFlight;
 
   uint32_t instanceIndex = 0u;
 
@@ -552,7 +551,7 @@ void core::MRenderer::updateIndirectDrawBuffers() {
   uint32_t currentDrawOffsets[totalIndirectDrawPasses];
 
   // Input buffer, should use current frame as its being generated several frames ahead
-  const RDrawIndirectInfo* pInfo = (RDrawIndirectInfo*)scene.drawCountBuffers[renderView.frameInFlight].allocInfo.pMappedData;
+  const RDrawIndirectInfo* pInfo = (RDrawIndirectInfo*)scene.drawCountBuffers[bufferIndex].allocInfo.pMappedData;
 
   // Pointer math arrays for output buffers
   RInstanceData* instanceEntries =

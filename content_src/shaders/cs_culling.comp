@@ -64,6 +64,8 @@ struct InstanceDataEntry {
 
 layout (local_size_x = 32) in;
 
+layout (set = 0, binding = 0) uniform sampler2D depthPyramid;
+
 layout (set = 1, binding = 0) buffer readonly SceneDataBuffer {
 	UBOScene sceneData[];
 };
@@ -92,7 +94,7 @@ layout (push_constant) uniform PushBlock {
 	uint samplerIndex;
 	uint bufferIndex;
 	uint padding;
-    ivec4 intValues;	// x - total number of instances, y - max primitiveUId, z - camera buffer block index
+    ivec4 intValues;	// x - total number of instances, y - max primitiveUId, z - camera buffer block index, w - max depth mip level
 	vec4 floatValues;
 } pushBlock;
 
@@ -103,7 +105,7 @@ const uint passIds[PASS_COUNT] = uint[PASS_COUNT](
 
 const uint alwaysVisiblePassIds[2] = uint[2](PASS_ENVSKYBOX, PASS_SKYBOX);
 
-bool isBoxInFrustum(vec4 boxMin, vec4 boxMax, mat4 transform) {
+bool isBoxInFrustum(vec4 boxMin, vec4 boxMax, mat4 transform, inout vec4 AABB[8], in out bool isInsideTheBox) {
 	// Construct a bounding box
 	vec4 boxCorners[8];
 	boxCorners[0] = vec4(boxMin.x, boxMax.y, boxMax.z, 1.0);		//		0		1
@@ -115,16 +117,60 @@ bool isBoxInFrustum(vec4 boxMin, vec4 boxMax, mat4 transform) {
 	boxCorners[6] = vec4(boxMin.x, boxMin.y, boxMin.z, 1.0);
 	boxCorners[7] = vec4(boxMax.x, boxMin.y, boxMin.z, 1.0);
 
-	for (int i = 0; i < 8; i++) {
-		vec4 transformedCorner = transform * boxCorners[i];
+	vec4 minVertex = vec4(FLT_MAX);
+	vec4 maxVertex = vec4(-FLT_MAX);
 
-		if (transformedCorner.w == 0.0) {
+	// Output an axis aligned bounding box
+	for (int i = 0; i < 8; i++) {
+		AABB[i] = transform * boxCorners[i];
+	}
+
+	// Check if at least a single vertex is in frustum
+	for (int j = 0; j < 8; j++) {
+		if (AABB[j].w < 1.0) {
+			isInsideTheBox = true;
 			return true;
 		}
 
-		if ((transformedCorner.x > -transformedCorner.w && transformedCorner.x < transformedCorner.w)
-			|| (transformedCorner.y > -transformedCorner.w && transformedCorner.y < transformedCorner.w)
-			|| (transformedCorner.z > 0.0 && transformedCorner.z < transformedCorner.w)) {
+//		if (AABB[j].w == 0.0) {
+//			return true;
+//		}
+
+		if ((AABB[j].x > -AABB[j].w && AABB[j].x < AABB[j].w)
+			|| (AABB[j].y > -AABB[j].w && AABB[j].y < AABB[j].w)
+			|| (AABB[j].z > 0.0 && AABB[j].z < AABB[j].w)) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool isBoxOcclusionCulled(in vec4 AABB[8]) {
+	vec2 depthSize = textureSize(depthPyramid, 0);
+	vec2 minUV = vec2(1.1);
+	vec2 maxUV = vec2(-0.1);
+
+	// Convert clip space AABB to UV space and get min/max coordinates
+	for (int i = 0; i < 8; i++) {
+		AABB[i].xyz /= AABB[i].w;
+		AABB[i].x = clamp((AABB[i].x + 1.0) * 0.5, 0.0, 1.0);
+		AABB[i].y = clamp((1.0 - ((AABB[i].y + 1.0) * 0.5)), 0.0, 1.0);
+
+		minUV = min(minUV, AABB[i].xy);
+		maxUV = max(maxUV, AABB[i].xy);
+	}
+
+	// Calculate resulting visible box size
+	vec2 boxSize = maxUV - minUV;
+	vec2 boxSizeRatio = boxSize * depthSize;
+	float requiredMipLevel = log2(max(boxSizeRatio.x, boxSizeRatio.y)) - 1.0;
+	int sampleMipLevel = pushBlock.intValues.w - int(clamp(requiredMipLevel, 0.0, float(pushBlock.intValues.w)));
+
+	// Test against the depth pyramid
+	for (int j = 0; j < 8; j++) {
+		float sampledDepth = textureLod(depthPyramid, AABB[j].xy, sampleMipLevel).r;
+		if (AABB[j].z <= sampledDepth) {
 			return true;
 		}
 	}
@@ -188,15 +234,26 @@ void main() {
 	vec4 boxMin = inInstanceData[instanceId].AABBMin;
 	vec4 boxMax = inInstanceData[instanceId].AABBMax;
 
-	// Perform culling
+	// Instances belonging to special, non-culled passes are always visible
 	bool isVisible = isAlwaysVisiblePass(inInstanceData[instanceId].renderPassFlags);
 
+	// If an instance isn't always visible - perform culling
 	if (!isVisible) {
-		isVisible = isBoxInFrustum(boxMin, boxMax, transform);
+		vec4 AABB[8];
+		bool isInsideTheBox = false;
+
+		isVisible = isBoxInFrustum(boxMin, boxMax, transform, AABB, isInsideTheBox);
+
+		// If an instance is inside the camera frustum, but the camera isn't inside its bounding box
+		// perform final occlusion culling
+		if (isVisible && !isInsideTheBox) {
+			isVisible = isBoxOcclusionCulled(AABB);
+		}
 	}
 
 	int instanceIndex = -1;
 
+	// Write the result of culling (instance visibility, counts per pass etc)
 	if (isVisible) {
 		instanceIndex = int(atomicAdd(outDrawCountBuffer.primitiveInstanceCount[primitiveUId], 1));
 		checkRenderPass(inInstanceData[instanceId].renderPassFlags, false);

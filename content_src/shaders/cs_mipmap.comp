@@ -36,12 +36,25 @@ void generateMipMaps(ivec2 sourceSize, int totalMipLevels, int mode) {
 
 		switch (mode) {
 			case MIPMAP_DEPTH: {			
-				// Get the minimal depth of the 4 surrounding samples
-				float color = min(textureLod(samplers[pushBlock.samplerIndex], UV, 0).r, textureLod(samplers[pushBlock.samplerIndex], UV + vec2(offset.x, 0.0), 0).r);
-				color = min(color, textureLod(samplers[pushBlock.samplerIndex], UV + vec2(0.0, offset.y), 0).r);
-				color = min(color, textureLod(samplers[pushBlock.samplerIndex], UV + offset, 0).r);
+				// Get the maximum depth of the 4 surrounding samples
+				float color = max(textureLod(samplers[pushBlock.samplerIndex], UV, mipLevel).r, textureLod(samplers[pushBlock.samplerIndex], UV + vec2(offset.x, 0.0), 0).r);
+				color = max(color, textureLod(samplers[pushBlock.samplerIndex], UV + vec2(0.0, offset.y), mipLevel).r);
+				color = max(color, textureLod(samplers[pushBlock.samplerIndex], UV + offset, mipLevel).r);
+
+//				float color = -0.1;
+//
+//				for (int x = -1; x <= 1; x++) {
+//					for (int y = -1; y <=1; y++) {
+//						vec2 newOffset = vec2(offset.x * x, offset.y * y);
+//						color = max(color, textureLod(samplers[pushBlock.samplerIndex], UV + newOffset, mipLevel).r);
+//					}
+//				}
 
 				imageStore(imagesR32[pushBlock.imageIndex + 1 + mipLevel], adjustedPosition / divisor, vec4(color, 0.0, 0.0, 1.0));
+
+				memoryBarrier();
+				barrier();
+
 				break;
 			}
 
