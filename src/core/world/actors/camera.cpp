@@ -1,10 +1,11 @@
 #include "pch.h"
 #include "core/objects.h"
 #include "core/core.h"
-#include "core/managers/time.h"
-#include "core/world/actors/camera.h"
 #include "util/util.h"
 #include "util/math.h"
+#include "core/managers/time.h"
+#include "core/model/primitive.h"
+#include "core/world/actors/camera.h"
 
 void ACamera::setPerspective(float FOV, float aspectRatio, float nearZ,
                              float farZ) noexcept {
@@ -26,21 +27,29 @@ void ACamera::setOrthographic(float horizontal, float vertical, float nearZ,
   m_projectionType = ECameraProjection::Orthogtaphic;
 }
 
-glm::vec2 ACamera::getNearAndFarPlane() {
-  switch (m_projectionType) {
-    case ECameraProjection::Orthogtaphic:
-      return { m_viewData.orthographicData.z, m_viewData.orthographicData.w };
-    default:
-    case ECameraProjection::Perspective:
-      return { m_viewData.perspectiveData.z, m_viewData.perspectiveData.w };
-  }
+float ACamera::getNearPlane() {
+  return (m_projectionType == ECameraProjection::Perspective)
+    ? m_viewData.perspectiveData.z : m_viewData.orthographicData.z;
 }
 
-glm::mat4& ACamera::getView() {
-  return m_view = glm::lookAt(
-             m_transformationData.translation,
-             m_transformationData.translation + m_transformationData.forwardVector,
-             m_viewData.upVector);
+float ACamera::getFarPlane() {
+  return (m_projectionType == ECameraProjection::Perspective)
+    ? m_viewData.perspectiveData.w : m_viewData.orthographicData.w;
+}
+
+glm::vec2 ACamera::getNearAndFarPlane() {
+  return (m_projectionType == ECameraProjection::Perspective)
+    ? glm::vec2(m_viewData.perspectiveData.z, m_viewData.perspectiveData.w) 
+      : glm::vec2(m_viewData.orthographicData.z, m_viewData.orthographicData.w);
+}
+
+glm::mat4& ACamera::getView(const bool update) {
+  return (update)
+    ? m_view = glm::lookAt(
+      m_transformationData.translation,
+      m_transformationData.translation + m_transformationData.forwardVector,
+      m_viewData.upVector)
+    : m_view;
 }
 
 glm::mat4& ACamera::getProjection() { return m_projection; }
@@ -195,6 +204,10 @@ void ACamera::setFOV(float FOV) noexcept {
       m_viewData.perspectiveData.z, m_viewData.perspectiveData.w);
 }
 
+float ACamera::getFOV() noexcept {
+  return m_viewData.perspectiveData.x;
+}
+
 void ACamera::setAspectRatio(float ratio) noexcept {
   if (m_projectionType == ECameraProjection::Orthogtaphic) return;
 
@@ -204,8 +217,32 @@ void ACamera::setAspectRatio(float ratio) noexcept {
       m_viewData.perspectiveData.z, m_viewData.perspectiveData.w);
 }
 
+float ACamera::getAspectRatio() noexcept {
+  return (m_projectionType == ECameraProjection::Perspective) ? m_viewData.perspectiveData.y : 1.0f;
+}
+
 void ACamera::setViewBufferIndex(const uint32_t newIndex) {
   m_viewBufferIndex = newIndex;
 }
 
 const uint32_t ACamera::getViewBufferIndex() { return m_viewBufferIndex; }
+
+bool ACamera::isBoundingBoxInFrustum(const WPrimitive* pPrimitive, const glm::mat4& projectionViewMatrix, const glm::mat4& modelMatrix) {
+  const glm::mat4 MVPMatrix = projectionViewMatrix * modelMatrix;
+
+  for (int32_t i = 0; i < 8; ++i) {
+    glm::vec4 boxCorner = MVPMatrix * pPrimitive->extent.boxCorners[i];
+
+    if (boxCorner.w == 0.0f) {
+      return true;
+    }
+
+    if ((boxCorner.x > -boxCorner.w && boxCorner.x < boxCorner.w)
+          || (boxCorner.y > -boxCorner.w && boxCorner.y < boxCorner.w)
+          || (boxCorner.z > 0.0f && boxCorner.z < boxCorner.w)) {
+      return true;
+    }
+  }
+
+  return false;
+}

@@ -11,11 +11,15 @@ void RAsync::loop() {
       break;
     }
 
-    cue = false;
+    for (const auto& functionStruct : boundFunctions) {
+      functionStruct.function->exec();
 
-    for (const auto& function : boundFunctions) {
-      function->exec();
+      if (functionStruct.pConditional) {
+        functionStruct.pConditional->notify_all();
+      }
     }
+
+    cue = false;
   }
 }
 
@@ -25,6 +29,7 @@ void RAsync::start() {
     return;
   }
 
+  cue = true;
   thread = std::thread(&RAsync::loop, this);
 }
 
@@ -33,6 +38,7 @@ void RAsync::stop() {
     std::lock_guard<std::mutex> lock(mutex);
     execute = false;
   }
+
   conditional.notify_all();
 
   if (thread.joinable()) {

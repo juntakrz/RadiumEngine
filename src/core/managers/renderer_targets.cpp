@@ -205,7 +205,7 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.isCubemap = false;
   textureInfo.layerCount = 1u;
   textureInfo.mipLevels = 1u;
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  textureInfo.targetLayout =  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT
     | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
@@ -405,7 +405,6 @@ TResult core::MRenderer::createImageTargets() {
 TResult core::MRenderer::createGBufferRenderTargets() {
   std::vector<std::string> targetNames;
   scene.pGBufferTargets.clear();
-  scene.pABufferTargets.clear();
 
   targetNames.emplace_back(RTGT_GPOSITION);
   targetNames.emplace_back(RTGT_GDIFFUSE);
@@ -447,28 +446,38 @@ TResult core::MRenderer::createDepthTargets() {
     return result;
   }
 
-  // default depth/stencil texture
+  RTexture* pNewTexture = nullptr;
+
+  // Default depth/stencil texture
   std::string rtName = RTGT_DEPTH;
 
   RTextureInfo textureInfo{};
-  textureInfo.name = rtName;
   textureInfo.layerCount = 1u;
   textureInfo.isCubemap = false;
-  textureInfo.format = core::vulkan::formatDepth;
+  textureInfo.format = VK_FORMAT_D32_SFLOAT;
   textureInfo.width = swapchain.imageExtent.width;
   textureInfo.height = swapchain.imageExtent.height;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
-    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-  textureInfo.targetLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
   textureInfo.memoryFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
   textureInfo.vmaMemoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-  RTexture* pNewTexture = core::resources.createTexture(&textureInfo);
+  textureInfo.samplerInfo.filter = VK_FILTER_NEAREST;
+  textureInfo.samplerInfo.addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 
-  if (!pNewTexture) {
-    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
-    return RE_CRITICAL;
+  scene.pDepthTargets.resize(MAX_FRAMES_IN_FLIGHT);
+  for (uint8_t depthTargetIndex = 0; depthTargetIndex < MAX_FRAMES_IN_FLIGHT; ++depthTargetIndex) {
+    textureInfo.name = rtName + std::to_string(depthTargetIndex);
+    pNewTexture = core::resources.createTexture(&textureInfo);
+
+    if (!pNewTexture) {
+      RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
+      return RE_CRITICAL;
+    }
+
+    scene.pDepthTargets[depthTargetIndex] = pNewTexture;
   }
 
 #ifndef NDEBUG
@@ -513,6 +522,41 @@ TResult core::MRenderer::createDepthTargets() {
 #ifndef NDEBUG
   RE_LOG(Log, "Created depth target '%s'.", rtName.c_str());
 #endif
+
+  // Target for storing depth to do occlusion culling
+  rtName = RTGT_PREVDEPTH;
+
+  textureInfo = RTextureInfo{};
+  textureInfo.width = config::renderWidth;
+  textureInfo.height = config::renderHeight;
+  textureInfo.format = VK_FORMAT_R32_SFLOAT;
+  textureInfo.isCubemap = false;
+  textureInfo.layerCount = 1u;
+  textureInfo.mipLevels = math::getMipLevels(config::renderHeight);
+  textureInfo.extraViews = true;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.usageFlags = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
+
+  textureInfo.samplerInfo.filter = VK_FILTER_LINEAR;
+  textureInfo.samplerInfo.addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+
+  scene.pPreviousDepthTargets.resize(MAX_FRAMES_IN_FLIGHT);
+  for (uint8_t prevDepthIndex = 0; prevDepthIndex < MAX_FRAMES_IN_FLIGHT; ++prevDepthIndex) {
+    textureInfo.name = rtName + std::to_string(prevDepthIndex);
+    pNewTexture = core::resources.createTexture(&textureInfo);
+
+    if (!pNewTexture) {
+      RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
+      return RE_CRITICAL;
+    }
+
+    scene.pPreviousDepthTargets[prevDepthIndex] = pNewTexture;
+
+#ifndef NDEBUG
+    RE_LOG(Log, "Created depth target '%s'.", rtName.c_str());
+#endif
+  }
 
   return RE_OK;
 }

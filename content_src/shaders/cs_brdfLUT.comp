@@ -7,7 +7,11 @@ layout (constant_id = 0) const uint NUM_SAMPLES = 512u;
 
 layout (push_constant) uniform PushBlock {
 	uint imageIndex;
-	uint imageCount;
+	uint samplerIndex;
+	uint bufferIndex;
+	uint padding;
+    ivec4 intValues;
+	vec4 floatValues;
 } pushBlock;
 
 const float PI = 3.1415926536;

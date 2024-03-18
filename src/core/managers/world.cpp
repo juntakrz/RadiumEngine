@@ -158,7 +158,18 @@ TResult core::MWorld::createModel(EPrimitiveType type, std::string name,
     }
   }
 
-  // copy vertex and index data to local staging buffers and adjust offsets
+  // Calculate bounding box extent
+  glm::vec3 min = glm::vec3(0.0f);
+  glm::vec3 max = glm::vec3(0.0f);
+
+  for (auto& vertex : vertices) {
+    min = glm::vec3(std::min(vertex.pos.x, min.x), std::min(vertex.pos.y, min.y), std::min(vertex.pos.z, min.z));
+    max = glm::vec3(std::max(vertex.pos.x, max.x), std::max(vertex.pos.y, max.y), std::max(vertex.pos.z, max.z));
+  }
+
+  pNode->pMesh->pPrimitives.back()->setBoundingBoxExtent(min, max);
+
+  // Copy vertex and index data to local staging buffers and adjust offsets
   pModel->staging.vertices.insert(pModel->staging.vertices.begin(), vertices.begin(), vertices.end());
   pModel->staging.indices.insert(pModel->staging.indices.begin(), indices.begin(), indices.end());
 
@@ -169,7 +180,7 @@ TResult core::MWorld::createModel(EPrimitiveType type, std::string name,
 
   pModel->m_pLinearPrimitives.emplace_back(pNode->pMesh->pPrimitives.back().get());
 
-  // assign default material to the model
+  // Assign default material to the model
   RMaterialInfo defaultMaterialInfo{};
   RMaterial* pDefaultMaterial =
       core::resources.createMaterial(&defaultMaterialInfo);
@@ -177,18 +188,6 @@ TResult core::MWorld::createModel(EPrimitiveType type, std::string name,
   for (auto& primitive : pModel->getPrimitives()) {
     primitive->pInitialMaterial = pDefaultMaterial;
   }
-
-  // calculate bounding box extent for the whole mesh based on created primitives
-  /*glm::vec3 minExtent{0.0f}, maxExtent{0.0f};
-  for (const auto& primitive : pNode->pMesh->pPrimitives) {
-    if (primitive->getBoundingBoxExtent(minExtent, maxExtent)) {
-      pNode->pMesh->extent.min = glm::min(pNode->pMesh->extent.min, minExtent);
-      pNode->pMesh->extent.max = glm::max(pNode->pMesh->extent.max, maxExtent);
-      pNode->pMesh->extent.isValid = true;
-
-      pModel->m_pLinearPrimitives.emplace_back(primitive.get());
-    }
-  }*/
 
   pModel->createStagingBuffers();
   pModel->uploadToSceneBuffer();

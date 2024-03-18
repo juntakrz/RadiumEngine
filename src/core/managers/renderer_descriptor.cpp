@@ -256,6 +256,35 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
     }
   }
 
+  // Compute buffer processing layout
+  {
+    system.descriptorSetLayouts.emplace(EDescriptorSetLayout::ComputeBuffer,
+      VK_NULL_HANDLE);
+
+    compute.maxBoundDescriptorSets = (physicalDevice.deviceProperties.properties.limits.maxBoundDescriptorSets < 8)
+      ? physicalDevice.deviceProperties.properties.limits.maxBoundDescriptorSets : 8;
+
+    std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings(compute.maxBoundDescriptorSets);
+
+    for (uint8_t bindingIndex = 0; bindingIndex < compute.maxBoundDescriptorSets; ++bindingIndex) {
+      setLayoutBindings[bindingIndex] = {bindingIndex, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr};
+    }
+
+    VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
+    setLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    setLayoutCreateInfo.pBindings = setLayoutBindings.data();
+    setLayoutCreateInfo.bindingCount = static_cast<uint32_t>(setLayoutBindings.size());
+
+    if (vkCreateDescriptorSetLayout(
+      logicalDevice.device, &setLayoutCreateInfo, nullptr,
+      &system.descriptorSetLayouts.at(EDescriptorSetLayout::ComputeBuffer)) != VK_SUCCESS) {
+      RE_LOG(Critical, "Failed to create compute buffer descriptor set layout.");
+      return RE_CRITICAL;
+    }
+
+    RE_LOG(Log, "Created compute buffer descriptor layout for maximum of %d bound buffers.", compute.maxBoundDescriptorSets);
+  }
+
   return RE_OK;
 }
 
@@ -304,10 +333,10 @@ TResult core::MRenderer::createDescriptorSets() {
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
       // model*view*projection data for descriptor set
-      VkDescriptorBufferInfo descriptorBufferInfoMVP;
-      descriptorBufferInfoMVP.buffer = scene.sceneBuffers[i].buffer;
-      descriptorBufferInfoMVP.offset = 0;
-      descriptorBufferInfoMVP.range = sizeof(RSceneUBO);
+      VkDescriptorBufferInfo descriptorBufferInfoScene;
+      descriptorBufferInfoScene.buffer = scene.sceneBuffers[i].buffer;
+      descriptorBufferInfoScene.offset = 0;
+      descriptorBufferInfoScene.range = sizeof(RSceneUBO);
 
       // lighting data for descriptor set
       VkDescriptorBufferInfo descriptorBufferInfoLighting;
@@ -325,7 +354,7 @@ TResult core::MRenderer::createDescriptorSets() {
       writeDescriptorSets[0].dstBinding = 0;
       writeDescriptorSets[0].dstArrayElement = 0;
       writeDescriptorSets[0].descriptorCount = 1;
-      writeDescriptorSets[0].pBufferInfo = &descriptorBufferInfoMVP;
+      writeDescriptorSets[0].pBufferInfo = &descriptorBufferInfoScene;
       writeDescriptorSets[0].pImageInfo = nullptr;
       writeDescriptorSets[0].pTexelBufferView = nullptr;
       writeDescriptorSets[0].pNext = nullptr;
@@ -350,7 +379,8 @@ TResult core::MRenderer::createDescriptorSets() {
       };
 
       for (VkDescriptorImageInfo& imageInfo : imageDescriptors) {
-        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.imageLayout = (system.enableLayoutTransitions)
+          ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
       }
 
       // RTGT_ENVFILTER
@@ -440,10 +470,10 @@ TResult core::MRenderer::createDescriptorSets() {
 #endif
 
     // 0
-    VkDescriptorBufferInfo rootMatrixBufferInfo{};
-    rootMatrixBufferInfo.buffer = scene.rootTransformBuffer.buffer;
-    rootMatrixBufferInfo.offset = 0;
-    rootMatrixBufferInfo.range = VK_WHOLE_SIZE;  // root matrix
+    VkDescriptorBufferInfo modelMatrixBufferInfo{};
+    modelMatrixBufferInfo.buffer = scene.modelTransformBuffer.buffer;
+    modelMatrixBufferInfo.offset = 0;
+    modelMatrixBufferInfo.range = VK_WHOLE_SIZE;  // root matrix
 
     // 1
     VkDescriptorBufferInfo nodeMatrixBufferInfo{};
@@ -481,7 +511,7 @@ TResult core::MRenderer::createDescriptorSets() {
     writeSets[0].descriptorCount = 1;
     writeSets[0].dstSet = scene.transformDescriptorSet;
     writeSets[0].dstBinding = 0;
-    writeSets[0].pBufferInfo = &rootMatrixBufferInfo;
+    writeSets[0].pBufferInfo = &modelMatrixBufferInfo;
 
     writeSets[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     writeSets[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
@@ -573,7 +603,6 @@ TResult core::MRenderer::createDescriptorSets() {
   RE_LOG(Log, "Creating compute image descriptor set.");
 #endif
   {
-    // allocate material's descriptor set
     VkDescriptorSetLayout computeImageLayout =
         core::renderer.getDescriptorSetLayout(EDescriptorSetLayout::ComputeImage);
 
@@ -586,6 +615,27 @@ TResult core::MRenderer::createDescriptorSets() {
     if (vkAllocateDescriptorSets(core::renderer.logicalDevice.device,
                                  &allocateInfo,
                                  &compute.imageDescriptorSet) != VK_SUCCESS) {
+      RE_LOG(Error, "Failed to allocate descriptor set for PBR input subpass.");
+      return RE_CRITICAL;
+    };
+  }
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Creating compute buffer descriptor set.");
+#endif
+  {
+    VkDescriptorSetLayout computeBufferLayout =
+      core::renderer.getDescriptorSetLayout(EDescriptorSetLayout::ComputeBuffer);
+
+    VkDescriptorSetAllocateInfo allocateInfo{};
+    allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocateInfo.descriptorPool = core::renderer.getDescriptorPool();
+    allocateInfo.pSetLayouts = &computeBufferLayout;
+    allocateInfo.descriptorSetCount = 1;
+
+    if (vkAllocateDescriptorSets(core::renderer.logicalDevice.device,
+      &allocateInfo,
+      &compute.bufferDescriptorSet) != VK_SUCCESS) {
       RE_LOG(Error, "Failed to allocate descriptor set for PBR input subpass.");
       return RE_CRITICAL;
     };

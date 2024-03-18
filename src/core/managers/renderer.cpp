@@ -142,6 +142,12 @@ void core::MRenderer::destroySurface() {
 }
 
 TResult core::MRenderer::createSceneBuffers() {
+  scene.sceneBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+  lighting.buffers.resize(MAX_FRAMES_IN_FLIGHT);
+
+  core::vulkan::minUniformBufferAlignment = physicalDevice.deviceProperties.properties.limits.minUniformBufferOffsetAlignment;
+  core::vulkan::descriptorBufferOffsetAlignment = physicalDevice.descriptorBufferProperties.descriptorBufferOffsetAlignment;
+
   // set dynamic uniform buffer block sizes
   config::scene::cameraBlockSize =
       static_cast<uint32_t>(util::getVulkanAlignedSize(sizeof(RSceneUBO), core::vulkan::minUniformBufferAlignment));
@@ -149,6 +155,18 @@ TResult core::MRenderer::createSceneBuffers() {
       static_cast<uint32_t>(util::getVulkanAlignedSize(sizeof(glm::mat4) * 2 + sizeof(float), core::vulkan::minUniformBufferAlignment));
   config::scene::skinBlockSize =
       static_cast<uint32_t>(util::getVulkanAlignedSize(sizeof(glm::mat4) * RE_MAXJOINTS * 2, core::vulkan::minUniformBufferAlignment));
+
+  RE_LOG(Log, "Allocating scene and lighting uniform buffers");
+  VkDeviceSize uboMVPSize =
+    config::scene::cameraBlockSize * config::scene::getMaxCameraCount();
+  VkDeviceSize uboLightingSize = sizeof(RLightingUBO);
+
+  for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+    createBuffer(EBufferType::CPU_UNIFORM, uboMVPSize,
+      scene.sceneBuffers[i], nullptr);
+    createBuffer(EBufferType::CPU_UNIFORM, uboLightingSize, lighting.buffers[i],
+      &lighting.data);
+  }
 
   RE_LOG(Log, "Allocating scene storage vertex buffer for %d vertices.",
     config::scene::vertexBudget);
@@ -164,7 +182,7 @@ TResult core::MRenderer::createSceneBuffers() {
          config::scene::entityBudget);
   createBuffer(EBufferType::CPU_STORAGE,
                config::scene::getRootTransformBufferSize(),
-               scene.rootTransformBuffer, nullptr);
+               scene.modelTransformBuffer, nullptr);
 
   RE_LOG(Log, "Allocating scene buffer for %d unique nodes with transformation.",
          config::scene::nodeBudget);
@@ -178,13 +196,22 @@ TResult core::MRenderer::createSceneBuffers() {
                config::scene::getSkinTransformBufferSize(),
                scene.skinTransformBuffer, nullptr);
 
-  scene.instanceBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+  RE_LOG(Log, "Allocating scene instance buffer for %d instances.", config::scene::nodeBudget);
+
+  scene.instanceDataBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+  scene.drawIndirectBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+  scene.drawCountBuffers.resize(MAX_FRAMES_IN_FLIGHT);
   for (int8_t instanceBufferId = 0; instanceBufferId < MAX_FRAMES_IN_FLIGHT; ++instanceBufferId) {
-    RE_LOG(Log, "Allocating scene instance buffer for %d instances.",
-      config::scene::getNodeTransformBufferSize());
     createBuffer(EBufferType::CPU_VERTEX, sizeof(RInstanceData) * config::scene::nodeBudget,
-      scene.instanceBuffers[instanceBufferId], nullptr);
+      scene.instanceDataBuffers[instanceBufferId], nullptr);
+    createBuffer(EBufferType::CPU_INDIRECT, sizeof(VkDrawIndexedIndirectCommand) * config::scene::uniquePrimitiveBudget,
+      scene.drawIndirectBuffers[instanceBufferId], nullptr);
+    createBuffer(EBufferType::CPU_STORAGE, sizeof(RDrawIndirectInfo),
+      scene.drawCountBuffers[instanceBufferId], nullptr);
   }
+
+  createBuffer(EBufferType::DGPU_STORAGE, sizeof(WInstanceDataEntry) * config::scene::nodeBudget,
+    scene.sourceDataBuffer, nullptr);
 
   RE_LOG(Log, "Creating material storage buffer.");
   createBuffer(EBufferType::CPU_STORAGE, sizeof(RSceneFragmentPCB) * (config::scene::sampledImageBudget / RE_MAXTEXTURES),
@@ -205,6 +232,12 @@ TResult core::MRenderer::createSceneBuffers() {
   createBuffer(EBufferType::DGPU_STORAGE, 32768, scene.generalBuffer, nullptr);
   copyDataToBuffer(system.occlusionOffsets.data(), sizeof(glm::vec4) * RE_OCCLUSIONSAMPLES, &scene.generalBuffer, 0u);
 
+  command.indirectCommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+  for (uint8_t indirectBufferId = 0; indirectBufferId < MAX_FRAMES_IN_FLIGHT; ++indirectBufferId) {
+    createBuffer(EBufferType::CPU_INDIRECT, sizeof(VkDrawIndexedIndirectCommand) * config::scene::nodeBudget * 10,
+      command.indirectCommandBuffers[indirectBufferId], nullptr);
+  }
+
   return RE_OK;
 }
 
@@ -215,17 +248,31 @@ void core::MRenderer::destroySceneBuffers() {
                    scene.vertexBuffer.allocation);
   vmaDestroyBuffer(memAlloc, scene.indexBuffer.buffer,
                    scene.indexBuffer.allocation);
-  vmaDestroyBuffer(memAlloc, scene.rootTransformBuffer.buffer,
-                   scene.rootTransformBuffer.allocation);
+  vmaDestroyBuffer(memAlloc, scene.modelTransformBuffer.buffer,
+                   scene.modelTransformBuffer.allocation);
   vmaDestroyBuffer(memAlloc, scene.nodeTransformBuffer.buffer,
                    scene.nodeTransformBuffer.allocation);
   vmaDestroyBuffer(memAlloc, scene.skinTransformBuffer.buffer,
                    scene.skinTransformBuffer.allocation);
 
-  for (int8_t instanceBufferId = 0; instanceBufferId < MAX_FRAMES_IN_FLIGHT; ++instanceBufferId) {
-    vmaDestroyBuffer(memAlloc, scene.instanceBuffers[instanceBufferId].buffer,
-                     scene.instanceBuffers[instanceBufferId].allocation);
+  for (int8_t frameIndex = 0; frameIndex < MAX_FRAMES_IN_FLIGHT; ++frameIndex) {
+    vmaDestroyBuffer(memAlloc, command.indirectCommandBuffers[frameIndex].buffer,
+                     command.indirectCommandBuffers[frameIndex].allocation);
+
+    vmaDestroyBuffer(memAlloc, scene.instanceDataBuffers[frameIndex].buffer,
+      scene.instanceDataBuffers[frameIndex].allocation);
+    vmaDestroyBuffer(memAlloc, scene.drawIndirectBuffers[frameIndex].buffer,
+      scene.drawIndirectBuffers[frameIndex].allocation);
+    vmaDestroyBuffer(memAlloc, scene.drawCountBuffers[frameIndex].buffer,
+      scene.drawCountBuffers[frameIndex].allocation);
+
+    vmaDestroyBuffer(memAlloc, scene.sceneBuffers[frameIndex].buffer, scene.sceneBuffers[frameIndex].allocation);
+    vmaDestroyBuffer(memAlloc, lighting.buffers[frameIndex].buffer, lighting.buffers[frameIndex].allocation);
   }
+
+  vmaDestroyBuffer(memAlloc, postprocess.exposureStorageBuffer.buffer, postprocess.exposureStorageBuffer.allocation);
+
+  vmaDestroyBuffer(memAlloc, scene.sourceDataBuffer.buffer, scene.sourceDataBuffer.allocation);
   
   vmaDestroyBuffer(memAlloc, material.buffer.buffer, material.buffer.allocation);
   vmaDestroyBuffer(memAlloc, scene.transparencyLinkedListBuffer.buffer, scene.transparencyLinkedListBuffer.allocation);
@@ -250,45 +297,11 @@ core::MRenderer::RSceneBuffers* core::MRenderer::getSceneBuffers() {
   return &scene;
 }
 
-TResult core::MRenderer::createUniformBuffers() {
-  scene.sceneBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-  lighting.buffers.resize(MAX_FRAMES_IN_FLIGHT);
-
-  core::vulkan::minUniformBufferAlignment = physicalDevice.deviceProperties.properties.limits.minUniformBufferOffsetAlignment;
-  core::vulkan::descriptorBufferOffsetAlignment = physicalDevice.descriptorBufferProperties.descriptorBufferOffsetAlignment;
-
-  VkDeviceSize uboMVPSize =
-      config::scene::cameraBlockSize * config::scene::getMaxCameraCount();
-  VkDeviceSize uboLightingSize = sizeof(RLightingUBO);
-
-  for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-    createBuffer(EBufferType::CPU_UNIFORM, uboMVPSize,
-                 scene.sceneBuffers[i], nullptr);
-    createBuffer(EBufferType::CPU_UNIFORM, uboLightingSize, lighting.buffers[i],
-                 &lighting.data);
-  }
-
-  return RE_OK;
-}
-
-void core::MRenderer::destroyUniformBuffers() {
-  for (auto& it : scene.sceneBuffers) {
-    vmaDestroyBuffer(memAlloc, it.buffer, it.allocation);
-  }
-
-  for (auto& it : lighting.buffers) {
-    vmaDestroyBuffer(memAlloc, it.buffer, it.allocation);
-  }
-
-  vmaDestroyBuffer(memAlloc, postprocess.exposureStorageBuffer.buffer, postprocess.exposureStorageBuffer.allocation);
-}
-
 TResult core::MRenderer::setDefaultComputeJobs() {
   // BRDF LUT
   {
-    RComputeJobInfo& info = environment.computeJobs.LUT;
-    info.jobType = EComputeJob::Image;
-    info.pipeline = EComputePipeline::ImageLUT;
+    RComputeJobInfo& info = compute.environmentJobInfo.LUT;
+    info.pipeline = EComputePipeline::LUT;
     info.width = core::vulkan::LUTExtent / 8;
     info.height = core::vulkan::LUTExtent / 4;
     info.transtionToShaderReadOnly = true;
@@ -297,9 +310,8 @@ TResult core::MRenderer::setDefaultComputeJobs() {
 
   // Environment irradiance map
   {
-    RComputeJobInfo& info = environment.computeJobs.irradiance;
-    info.jobType = EComputeJob::Image;
-    info.pipeline = EComputePipeline::ImageEnvIrradiance;
+    RComputeJobInfo& info = compute.environmentJobInfo.irradiance;
+    info.pipeline = EComputePipeline::EnvIrradiance;
     info.width = core::vulkan::envFilterExtent / 8;
     info.height = core::vulkan::envFilterExtent / 4;
     info.depth = 1;
@@ -308,14 +320,13 @@ TResult core::MRenderer::setDefaultComputeJobs() {
     info.useExtraSamplerViews = false;
     info.pImageAttachments = { core::resources.getTexture(RTGT_ENVIRRAD) };
     info.pSamplerAttachments = { core::resources.getTexture(RTGT_ENV) };
-    info.intValues.x = info.pImageAttachments[0]->texture.levelCount;
+    info.pushBlock.intValues.x = info.pImageAttachments[0]->texture.levelCount;
   }
 
   // Environment prefiltered map
   {
-    RComputeJobInfo& info = environment.computeJobs.prefiltered;
-    info.jobType = EComputeJob::Image;
-    info.pipeline = EComputePipeline::ImageEnvFilter;
+    RComputeJobInfo& info = compute.environmentJobInfo.prefiltered;
+    info.pipeline = EComputePipeline::EnvFilter;
     info.width = core::vulkan::envFilterExtent / 8;
     info.height = core::vulkan::envFilterExtent / 4;
     info.depth = 1;
@@ -324,7 +335,30 @@ TResult core::MRenderer::setDefaultComputeJobs() {
     info.useExtraSamplerViews = false;
     info.pImageAttachments = { core::resources.getTexture(RTGT_ENVFILTER) };
     info.pSamplerAttachments = { core::resources.getTexture(RTGT_ENV) };
-    info.intValues.x = info.pImageAttachments[0]->texture.levelCount;
+    info.pushBlock.intValues.x = info.pImageAttachments[0]->texture.levelCount;
+  }
+
+  // Generate mipmaps (requires additional input data before submitting)
+  {
+    RComputeJobInfo& info = compute.imageJobInfo.mipmapping;
+    info.pipeline = EComputePipeline::MipMap;
+    info.depth = 1;
+    info.useExtraImageViews = true;
+    info.useExtraSamplerViews = false;
+  }
+
+  // Occlusion culling (requires modification depending on the total instance count and the current frame in flight index)
+  {
+    RComputeJobInfo& info = compute.sceneJobInfo.culling;
+    info.pipeline = EComputePipeline::Culling;
+    info.width = 1;
+    info.height = 1;
+    info.depth = 1;
+    info.pBufferAttachments = { &scene.sceneBuffers[0],           // 0
+                                &scene.modelTransformBuffer,      // 1
+                                &scene.nodeTransformBuffer,       // 2
+                                &scene.sourceDataBuffer,          // 3
+                                &scene.drawCountBuffers[0] };     // 4
   }
 
   return RE_OK;
@@ -349,12 +383,6 @@ TResult core::MRenderer::setRendererDefaults() {
   }
 
   chkResult = createImageTargets();
-
-  if (chkResult != RE_OK) {
-    return chkResult;
-  }
-
-  chkResult = setDefaultComputeJobs();
 
   if (chkResult != RE_OK) {
     return chkResult;
@@ -390,7 +418,7 @@ TResult core::MRenderer::setRendererDefaults() {
     return RE_CRITICAL;
   }
 
-  setCamera(pCamera);
+  setCamera(pCamera, true);
 
   // Set default lighting UBO data
   lighting.data.prefilteredCubeMipLevels = (float)math::getMipLevels(core::vulkan::envFilterExtent);
@@ -594,33 +622,41 @@ TResult core::MRenderer::createSyncObjects() {
   sync.semImgAvailable.resize(MAX_FRAMES_IN_FLIGHT);
   sync.semRenderFinished.resize(MAX_FRAMES_IN_FLIGHT);
   sync.fenceInFlight.resize(MAX_FRAMES_IN_FLIGHT);
+  sync.fenceUpdateBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
   VkSemaphoreCreateInfo semInfo{};
   semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-  VkFenceCreateInfo fenInfo{};
-  fenInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-  fenInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;  // signaled to skip waiting for
+  VkFenceCreateInfo fenceInfo{};
+  fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+  fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;  // signaled to skip waiting for
                                                  // it on the first frame
 
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
     if (vkCreateSemaphore(logicalDevice.device, &semInfo, nullptr,
                           &sync.semImgAvailable[i]) != VK_SUCCESS) {
-      RE_LOG(Critical, "failed to create 'image available' semaphore.");
+      RE_LOG(Critical, "Failed to create 'image available' semaphore.");
 
       return RE_CRITICAL;
     }
 
     if (vkCreateSemaphore(logicalDevice.device, &semInfo, nullptr,
                           &sync.semRenderFinished[i]) != VK_SUCCESS) {
-      RE_LOG(Critical, "failed to create 'render finished' semaphore.");
+      RE_LOG(Critical, "Failed to create 'render finished' semaphore.");
 
       return RE_CRITICAL;
     }
 
-    if (vkCreateFence(logicalDevice.device, &fenInfo, nullptr,
+    if (vkCreateFence(logicalDevice.device, &fenceInfo, nullptr,
                       &sync.fenceInFlight[i])) {
-      RE_LOG(Critical, "failed to create 'in flight' fence.");
+      RE_LOG(Critical, "Failed to create 'in flight' fence.");
+
+      return RE_CRITICAL;
+    }
+
+    if (vkCreateFence(logicalDevice.device, &fenceInfo, nullptr,
+                      &sync.fenceUpdateBuffers[i])) {
+      RE_LOG(Critical, "Failed to create 'buffer update' fence.");
 
       return RE_CRITICAL;
     }
@@ -631,8 +667,8 @@ TResult core::MRenderer::createSyncObjects() {
   sync.asyncUpdateEntities.bindFunction(this, &MRenderer::updateBoundEntities);
   sync.asyncUpdateEntities.start();
 
-  sync.asyncUpdateInstanceBuffers.bindFunction(this, &MRenderer::updateInstanceBuffer);
-  sync.asyncUpdateInstanceBuffers.start();
+  sync.asyncUpdateIndirectDrawBuffers.bindFunction(this, &MRenderer::updateIndirectDrawBuffers, &sync.cvInstanceDataReady);
+  sync.asyncUpdateIndirectDrawBuffers.start();
 
   return RE_OK;
 }
@@ -642,20 +678,22 @@ void core::MRenderer::destroySyncObjects() {
 
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
     vkDestroySemaphore(logicalDevice.device, sync.semImgAvailable[i], nullptr);
-    vkDestroySemaphore(logicalDevice.device, sync.semRenderFinished[i],
-                       nullptr);
+    vkDestroySemaphore(logicalDevice.device, sync.semRenderFinished[i], nullptr);
 
     vkDestroyFence(logicalDevice.device, sync.fenceInFlight[i], nullptr);
+    vkDestroyFence(logicalDevice.device, sync.fenceUpdateBuffers[i], nullptr);
   }
 
   RE_LOG(Log, "Stopping entity update thread.");
   sync.asyncUpdateEntities.stop();
 
   RE_LOG(Log, "Stopping instance buffers update thread.");
-  sync.asyncUpdateInstanceBuffers.stop();
+  sync.asyncUpdateIndirectDrawBuffers.stop();
 }
 
 void core::MRenderer::updateSceneUBO(uint32_t currentImage) {
+  scene.sceneBufferObject.prevView = view.pActiveCamera->getView(false);
+
   scene.sceneBufferObject.view = view.pActiveCamera->getView();
   scene.sceneBufferObject.projection = view.pActiveCamera->getProjection();
   scene.sceneBufferObject.cameraPosition = view.pActiveCamera->getLocation();
@@ -707,11 +745,12 @@ TResult core::MRenderer::initialize() {
   if (chkResult <= RE_ERRORLIMIT) chkResult = createComputePipelines();
 
   if (chkResult <= RE_ERRORLIMIT) chkResult = createSyncObjects();
-  if (chkResult <= RE_ERRORLIMIT) chkResult = createUniformBuffers();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorPool();
   if (chkResult <= RE_ERRORLIMIT) chkResult = createDescriptorSets();
 
   if (chkResult <= RE_ERRORLIMIT) chkResult = createQueryPool();
+
+  if (chkResult <= RE_ERRORLIMIT) chkResult = setDefaultComputeJobs();
 
   return chkResult;
 }
@@ -733,7 +772,6 @@ void core::MRenderer::deinitialize() {
   destroySamplers();
   destroyDescriptorPool();
   destroyQueryPool();
-  destroyUniformBuffers();
   destroyMemAlloc();
   if(requireValidationLayers) MDebug::get().destroy(APIInstance);
   destroyLogicalDevice();
@@ -752,6 +790,10 @@ RSceneUBO* core::MRenderer::getSceneUBO() {
 
 core::MRenderer::REnvironmentData* core::MRenderer::getEnvironmentData() {
   return &environment;
+}
+
+bool core::MRenderer::isLayoutTransitionEnabled() {
+  return system.enableLayoutTransitions;
 }
 
 void core::MRenderer::updateLightingUBO(const int32_t frameIndex) {

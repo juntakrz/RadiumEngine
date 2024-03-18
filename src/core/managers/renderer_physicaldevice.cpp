@@ -29,8 +29,11 @@ TResult core::MRenderer::enumPhysicalDevices() {
 }
 
 TResult core::MRenderer::initPhysicalDevice() {
-  for (const auto& deviceInfo : availablePhysicalDevices)
-    if (initPhysicalDevice(deviceInfo) == RE_OK) return RE_OK;
+  for (const auto& deviceInfo : availablePhysicalDevices) {
+    if (initPhysicalDevice(deviceInfo) == RE_OK) {
+      return RE_OK;
+    }
+  }
 
   RE_LOG(Critical, "No valid physical devices found.");
 
@@ -73,20 +76,20 @@ TResult core::MRenderer::setPhysicalDeviceData(VkPhysicalDevice device,
   vkGetPhysicalDeviceFeatures2(device, &outDeviceData.deviceFeatures);
   vkGetPhysicalDeviceMemoryProperties(device, &outDeviceData.memProperties);
 
-  // detect if device supports required queue families
+  // Detect if the device supports required queue families
   chkResult = setPhysicalDeviceQueueFamilies(outDeviceData);
   if (chkResult != RE_OK) finalResult = chkResult;
 
-  // detect if device supports required extensions
+  // Detect if the device supports required extensions
   chkResult = checkPhysicalDeviceExtensionSupport(outDeviceData);
   if (finalResult == RE_OK && chkResult != RE_OK) finalResult = chkResult;
 
-  // detect if device supports all the required swap chain features
+  // Detect if the device supports all the required swap chain features
   chkResult = queryPhysicalDeviceSwapChainInfo(outDeviceData,
                                                outDeviceData.swapChainInfo);
   if (finalResult == RE_OK && chkResult != RE_OK) finalResult = chkResult;
 
-  // detect if device is discrete and supports OpenGL 4.0 at the least
+  // Detect if the device is discrete and supports OpenGL 4.0 at the least
   if (!(outDeviceData.deviceProperties.properties.deviceType ==
         VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) &&
       !outDeviceData.deviceFeatures.features.tessellationShader &&
@@ -96,6 +99,10 @@ TResult core::MRenderer::setPhysicalDeviceData(VkPhysicalDevice device,
 
   (finalResult == RE_OK) ? outDeviceData.bIsValid = true
                          : outDeviceData.bIsValid = false;
+
+  if (outDeviceData.bIsValid) {
+    outDeviceData.isMultiDrawIndirectCapable = outDeviceData.deviceFeatures.features.multiDrawIndirect;
+  }
 
   return finalResult;
 }

@@ -6,10 +6,10 @@ struct ModelTransformBlock {
 };
 
 struct NodeTransformBlock {
+	mat4 prevMatrix;
 	mat4 matrix;
 	float jointCount;
-	mat4 prevMatrix;
-	float padding[12];
+	float padding[15];
 };
 
 struct SkinTransformBlock {
@@ -20,8 +20,11 @@ struct SkinTransformBlock {
 layout(binding = 0) uniform UBOView {
 	mat4 view;
 	mat4 projection;
+	mat4 prevView;
 	vec3 cameraPos;
 	vec2 haltonJitter;
+	vec2 clipData;			// x = near plane, y = far plane
+	float padding[8];
 } scene;
 
 layout (set = 1, binding = 0) buffer UBOMesh0 {

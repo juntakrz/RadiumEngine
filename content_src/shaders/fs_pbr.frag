@@ -10,15 +10,6 @@ layout (location = 0) in vec2 inUV0;
 layout (location = 0) out vec4 outColor;
 layout (location = 1) out vec2 outAO;
 
-// Scene bindings
-layout (set = 0, binding = 0) uniform UBOScene {
-	mat4 view;
-	mat4 projection;
-	vec3 camPos;
-	vec2 haltonJitter;
-	vec2 planeData;
-} scene;
-
 // environment bindings
 layout (set = 0, binding = 2) uniform samplerCube prefilteredMap;
 layout (set = 0, binding = 3) uniform samplerCube irradianceMap;
@@ -226,6 +217,12 @@ vec3 minDiff(vec3 P, vec3 Pr, vec3 Pl) {
 
 vec3 getViewPos(vec2 UV) {
 	float viewDepth = textureLod(samplers[material.samplerIndex[POSITIONMAP]], UV, 0).w;
+
+	// Fix for a zero G-Buffer depth producing incorrect AO results
+	if (viewDepth < 0.0001) {
+		viewDepth = FLT_MAX;
+	}
+
 	const vec2 A = vec2(2.0 / scene.projection[0][0], 2.0 / scene.projection[1][1]);
 	const vec2 B = vec2(-1.0 / scene.projection[0][0], -1.0 / scene.projection[1][1]);
 	vec3 viewPos = vec3((UV * A + B) * viewDepth, viewDepth);
@@ -368,7 +365,7 @@ void main() {
 
 	vec3 specularColor = mix(f0, diffuseColor, metallic);
 
-	vec3 V = normalize(scene.camPos - worldPos.xyz);			// Vector from surface point to camera
+	vec3 V = normalize(scene.cameraPos - worldPos.xyz);			// Vector from surface point to camera
 
 	vec3 color = getIBLContribution(diffuseColor, specularColor, perceptualRoughness, V, normal);
 
@@ -379,7 +376,7 @@ void main() {
 	color = mix(color, color * ao, occlusionStrength);
 
 	// Calculate shadow and its color
-	float relativeDistance = length(scene.camPos - worldPos.xyz);
+	float relativeDistance = length(scene.cameraPos - worldPos.xyz);
 	float shadowA = 0.0f;
 
 	int distanceIndex;
@@ -420,7 +417,7 @@ void main() {
 
 	// Calculate SSAO (ignore emissive materials as they shouldn't self shadow)
 	if (lighting.aoMode == AO_NONE || baseColor.a < 0.01 || length(emissive.rgb) > 1.0 || worldPos.w > occlusionDistance) {
-		outAO = vec2(1.0, scene.planeData.y);
+		outAO = vec2(1.0, FLT_MAX);
 		return;
 	}
 

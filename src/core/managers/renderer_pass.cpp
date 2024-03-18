@@ -136,7 +136,7 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
   // Create environment pass
   // Cubemaps should've been created by createImageTargets() earlier
   {
-    RTexture* pDepthAttachment = core::resources.getTexture(RTGT_DEPTH);
+    RTexture* pDepthAttachment = scene.pDepthTargets[0];
 
     RDynamicRenderingInfo info{};
     info.pipelineLayout = EPipelineLayout::Scene;
@@ -145,7 +145,10 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     info.fragmentShader = "fs_skybox.spv";
     info.colorAttachments =
          {{environment.pTargetCubemap, environment.pTargetCubemap->texture.view, environment.pTargetCubemap->texture.imageFormat}};
+
+    // TODO: use a unique depth attachment for the environmental pass to avoid potential issues with the main per frame depth buffering
     info.depthAttachment = { pDepthAttachment, pDepthAttachment->texture.view, pDepthAttachment->texture.imageFormat };
+
     info.colorAttachmentClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
 
     info.clearDepthAttachment = true;
@@ -184,7 +187,7 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
   {
     // Backface culled opaque pass
     uint32_t colorAttachmentCount = static_cast<uint32_t>(scene.pGBufferTargets.size());
-    RTexture* pDepthAttachment = core::resources.getTexture(RTGT_DEPTH);
+    RTexture* pDepthAttachment = scene.pDepthTargets[0];
 
     RDynamicRenderingInfo info{};
     info.pipelineLayout = EPipelineLayout::Scene;
@@ -240,9 +243,7 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
 
   // PBR pass, processes the result of the G-Buffer
   {
-    //RTexture* pColorAttachment = core::resources.getTexture(RTGT_GPBR);
     std::vector<RTexture*> pColorAttachments = { core::resources.getTexture(RTGT_GPBR), core::resources.getTexture(RTGT_PPAO) };
-    RTexture* pDepthAttachment = core::resources.getTexture(RTGT_DEPTH);
 
     RDynamicRenderingInfo info{};
     info.pipelineLayout = EPipelineLayout::Scene;
@@ -252,7 +253,6 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     info.colorAttachmentClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
     info.clearColorAttachments = true;
     info.layoutInfo.validateColorAttachmentLayout = true;
-    //info.colorAttachments = {{ pColorAttachment, pColorAttachment->texture.view, pColorAttachment->texture.imageFormat }};
 
     info.colorAttachments.resize(pColorAttachments.size());
     for (uint8_t i = 0; i < pColorAttachments.size(); ++i) {
@@ -265,7 +265,7 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
   // Skybox pass, front rendering addition to deferred passes
   {
     RTexture* pColorAttachment = core::resources.getTexture(RTGT_GPBR);
-    RTexture* pDepthAttachment = core::resources.getTexture(RTGT_DEPTH);
+    RTexture* pDepthAttachment = scene.pDepthTargets[0];
 
     RDynamicRenderingInfo info{};
     info.pipelineLayout = EPipelineLayout::Scene;
@@ -273,6 +273,7 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     info.vertexShader = "vs_skybox.spv";
     info.fragmentShader = "fs_skybox.spv";
     info.colorAttachmentClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
+    info.pipelineInfo.enableDepthWrite = VK_FALSE;
     info.layoutInfo.transitionColorAttachmentLayout = true;
     info.colorAttachments = {{ pColorAttachment, pColorAttachment->texture.view, pColorAttachment->texture.imageFormat }};
     info.depthAttachment = { pDepthAttachment, pDepthAttachment->texture.view, pDepthAttachment->texture.imageFormat };
@@ -385,8 +386,6 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
 
   // "Present" final output pass
   {
-    RTexture* pDepthAttachment = core::resources.getTexture(RTGT_DEPTH);
-
     RDynamicRenderingInfo info{};
     info.pipelineLayout = EPipelineLayout::Scene;
     info.viewportId = EViewport::vpMain;
@@ -404,8 +403,6 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
       info.colorAttachments[i] =
       { swapchain.pImages[i], swapchain.pImages[i]->texture.view, swapchain.pImages[i]->texture.imageFormat };
     }
-
-    info.depthAttachment = { pDepthAttachment, pDepthAttachment->texture.view, pDepthAttachment->texture.imageFormat };
 
     createDynamicRenderingPass(EDynamicRenderingPass::Present, &info);
   }

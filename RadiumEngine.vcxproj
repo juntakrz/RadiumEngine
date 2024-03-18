@@ -386,8 +386,10 @@
     <None Include="content\shaders\shaders" />
     <None Include="content\shaders\vs_default.spv" />
     <None Include="content_src\shaders\cs_brdfLUT.comp" />
+    <None Include="content_src\shaders\cs_culling.comp" />
     <None Include="content_src\shaders\cs_envFilter.comp" />
     <None Include="content_src\shaders\cs_envIrrad.comp" />
+    <None Include="content_src\shaders\cs_mipmap.comp" />
     <None Include="content_src\shaders\fs_abuffer.frag" />
     <None Include="content_src\shaders\fs_gbufferDiscard.frag" />
     <None Include="content_src\shaders\fs_ppBlur.frag" />

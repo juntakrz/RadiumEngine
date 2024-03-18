@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "util/util.h"
+#include "core/world/actors/camera.h"
 #include "core/objects.h"
 
 std::set<int32_t> RVkQueueFamilyIndices::getAsSet() const {
@@ -76,4 +77,36 @@ std::vector<VkVertexInputAttributeDescription> RVertex::getAttributeDescs() {
   attrDescs[7].offset = 0;
 
   return attrDescs;
+}
+
+uint32_t helper::indirectPassFlagToIndex(uint32_t passFlag) {
+  switch (passFlag) {
+  case EDynamicRenderingPass::Shadow:
+    return (uint32_t)EIndirectPassIndex::Shadow;
+
+  case EDynamicRenderingPass::ShadowDiscard:
+    return (uint32_t)EIndirectPassIndex::ShadowDiscard;
+
+  case EDynamicRenderingPass::EnvSkybox:
+    return (uint32_t)EIndirectPassIndex::EnvSkybox;
+
+  case EDynamicRenderingPass::OpaqueCullBack:
+    return (uint32_t)EIndirectPassIndex::OpaqueCullBack;
+
+  case EDynamicRenderingPass::OpaqueCullNone:
+    return (uint32_t)EIndirectPassIndex::OpaqueCullNone;
+
+  case EDynamicRenderingPass::DiscardCullNone:
+    return (uint32_t)EIndirectPassIndex::DiscardCullNone;
+
+  case EDynamicRenderingPass::BlendCullNone:
+    return (uint32_t)EIndirectPassIndex::BlendCullNone;
+
+  case EDynamicRenderingPass::Skybox:
+    return (uint32_t)EIndirectPassIndex::Skybox;
+
+  default:
+    RE_LOG(Error, "%s: Invalid pass flag was provided.", __FUNCTION__);
+    return -1;
+  }
 }
