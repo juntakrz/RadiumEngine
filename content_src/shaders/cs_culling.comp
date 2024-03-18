@@ -105,7 +105,7 @@ const uint passIds[PASS_COUNT] = uint[PASS_COUNT](
 
 const uint alwaysVisiblePassIds[2] = uint[2](PASS_ENVSKYBOX, PASS_SKYBOX);
 
-bool isBoxInFrustum(vec4 boxMin, vec4 boxMax, mat4 transform, inout vec4 AABB[8], in out bool isInsideTheBox) {
+bool isBoxInFrustum(vec4 boxMin, vec4 boxMax, mat4 transform, inout vec4 AABB[8]) {
 	// Construct a bounding box
 	vec4 boxCorners[8];
 	boxCorners[0] = vec4(boxMin.x, boxMax.y, boxMax.z, 1.0);		//		0		1
@@ -127,14 +127,9 @@ bool isBoxInFrustum(vec4 boxMin, vec4 boxMax, mat4 transform, inout vec4 AABB[8]
 
 	// Check if at least a single vertex is in frustum
 	for (int j = 0; j < 8; j++) {
-		if (AABB[j].w < 1.0) {
-			isInsideTheBox = true;
+		if (AABB[j].w == 0.0) {
 			return true;
 		}
-
-//		if (AABB[j].w == 0.0) {
-//			return true;
-//		}
 
 		if ((AABB[j].x > -AABB[j].w && AABB[j].x < AABB[j].w)
 			|| (AABB[j].y > -AABB[j].w && AABB[j].y < AABB[j].w)
@@ -153,7 +148,13 @@ bool isBoxOcclusionCulled(in vec4 AABB[8]) {
 
 	// Convert clip space AABB to UV space and get min/max coordinates
 	for (int i = 0; i < 8; i++) {
+		// Bounding box has passed the frustum culling, so it's visible
+		// However if at least one vertex is behind the camera - the camera is "inside" the box
+		// so the instance should be rendered regardless of occlusion
+		if (AABB[i].z < 0.01 && AABB[i].w < 0.01) return true;
+
 		AABB[i].xyz /= AABB[i].w;
+
 		AABB[i].x = clamp((AABB[i].x + 1.0) * 0.5, 0.0, 1.0);
 		AABB[i].y = clamp((1.0 - ((AABB[i].y + 1.0) * 0.5)), 0.0, 1.0);
 
@@ -164,8 +165,9 @@ bool isBoxOcclusionCulled(in vec4 AABB[8]) {
 	// Calculate resulting visible box size
 	vec2 boxSize = maxUV - minUV;
 	vec2 boxSizeRatio = boxSize * depthSize;
-	float requiredMipLevel = log2(max(boxSizeRatio.x, boxSizeRatio.y)) - 1.0;
-	int sampleMipLevel = pushBlock.intValues.w - int(clamp(requiredMipLevel, 0.0, float(pushBlock.intValues.w)));
+
+	float requiredMipLevel = log2(max(boxSizeRatio.x, boxSizeRatio.y));
+	int sampleMipLevel = int(clamp(requiredMipLevel, 0.0, float(pushBlock.intValues.w)));
 
 	// Test against the depth pyramid
 	for (int j = 0; j < 8; j++) {
@@ -240,13 +242,12 @@ void main() {
 	// If an instance isn't always visible - perform culling
 	if (!isVisible) {
 		vec4 AABB[8];
-		bool isInsideTheBox = false;
 
-		isVisible = isBoxInFrustum(boxMin, boxMax, transform, AABB, isInsideTheBox);
+		isVisible = isBoxInFrustum(boxMin, boxMax, transform, AABB);
 
 		// If an instance is inside the camera frustum, but the camera isn't inside its bounding box
 		// perform final occlusion culling
-		if (isVisible && !isInsideTheBox) {
+		if (isVisible) {
 			isVisible = isBoxOcclusionCulled(AABB);
 		}
 	}

@@ -156,7 +156,7 @@ void core::MRenderer::prepareFrameComputeJobs() {
   depthMipmappingJob.height = config::renderHeight / 16;
 
   // Samplers and images have their indexes separate in the shader, each starting with 0, so both are at [0] in this case
-  depthMipmappingJob.pSamplerAttachments = {scene.pDepthTargets[previousFrameInFlight]};
+  depthMipmappingJob.pSamplerAttachments = {scene.pDepthTargets[previousFrameInFlight], scene.pPreviousDepthTargets[previousFrameInFlight]};
   depthMipmappingJob.pImageAttachments = {scene.pPreviousDepthTargets[previousFrameInFlight]};
 
   // Number of target mip maps
@@ -167,7 +167,7 @@ void core::MRenderer::prepareFrameComputeJobs() {
 
   RComputeJobInfo& cullingJob = compute.sceneJobInfo.culling;
   cullingJob.width = static_cast<uint32_t>(scene.totalInstances) / 32 + 1;
-  cullingJob.pSamplerAttachments = { scene.pPreviousDepthTargets[previousFrameInFlight] };
+  cullingJob.pSamplerAttachments = {scene.pPreviousDepthTargets[previousFrameInFlight]};
   cullingJob.pBufferAttachments[0] = &scene.sceneBuffers[previousFrameInFlight];
   cullingJob.pBufferAttachments[4] = &scene.drawCountBuffers[previousFrameInFlight];
   cullingJob.pushBlock.intValues.x = static_cast<int32_t>(scene.totalInstances);

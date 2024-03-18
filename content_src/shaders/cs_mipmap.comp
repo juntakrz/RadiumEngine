@@ -7,8 +7,8 @@
 #define MIPMAP_RGBA32	1
 
 layout(local_size_x = 16, local_size_y = 16) in;
-layout(set = 0, binding = 0, r32f) uniform image2D imagesR32[];
-layout(set = 0, binding = 0, rgba16f) uniform image2D imagesRGBA16[];
+layout(set = 0, binding = 0, r32f) uniform writeonly image2D imagesR32[];
+layout(set = 0, binding = 0, rgba16f) uniform writeonly image2D imagesRGBA16[];
 layout(set = 0, binding = 1) uniform sampler2D samplers[];
 
 layout (push_constant) uniform PushBlock {
@@ -29,28 +29,45 @@ void generateMipMaps(ivec2 sourceSize, int totalMipLevels, int mode) {
 		vec2 offset = 1.0 / vec2(sourceSize / divisor);
 
 		// Using small worker offset - let freed up workers take part instead of loading select few with the most calculations
-		if ((sourcePosition.x - mipLevel) % divisor != 0 && sourcePosition.y % divisor != 0) return;
+		//if ((sourcePosition.x - mipLevel) % divisor != 0 && sourcePosition.y % divisor != 0) return;
+		if (sourcePosition.x % divisor != 0 && sourcePosition.y % divisor != 0) continue;
 
-		ivec2 adjustedPosition = ivec2(sourcePosition.x - mipLevel, sourcePosition.y);
+		//ivec2 adjustedPosition = ivec2(sourcePosition.x - mipLevel, sourcePosition.y);
+		ivec2 adjustedPosition = ivec2(sourcePosition.x, sourcePosition.y);
 		vec2 UV = adjustedPosition / vec2(sourceSize);	
 
 		switch (mode) {
 			case MIPMAP_DEPTH: {			
 				// Get the maximum depth of the 4 surrounding samples
-				float color = max(textureLod(samplers[pushBlock.samplerIndex], UV, mipLevel).r, textureLod(samplers[pushBlock.samplerIndex], UV + vec2(offset.x, 0.0), 0).r);
-				color = max(color, textureLod(samplers[pushBlock.samplerIndex], UV + vec2(0.0, offset.y), mipLevel).r);
-				color = max(color, textureLod(samplers[pushBlock.samplerIndex], UV + offset, mipLevel).r);
+				uint currentSamplerIndex = (mipLevel == 0) ? pushBlock.samplerIndex : pushBlock.samplerIndex + 1;
+				uint currentMipLevel = (mipLevel == 0) ? 0 : mipLevel - 1;
 
-//				float color = -0.1;
+				float color = max(textureLod(samplers[currentSamplerIndex], UV, currentMipLevel).r,
+					textureLod(samplers[currentSamplerIndex], UV + vec2(offset.x, 0.0), currentMipLevel).r);
+				color = max(color, textureLod(samplers[currentSamplerIndex], UV + vec2(0.0, offset.y), currentMipLevel).r);
+				color = max(color, textureLod(samplers[currentSamplerIndex], UV + offset, currentMipLevel).r);
+
+				// Index 0 per image is "all mips view", if more views are present - index 1 is mip 0, index 2 is mip 1 etc.
+				imageStore(imagesR32[(pushBlock.imageIndex + 1) + mipLevel], adjustedPosition / divisor, vec4(color, 0.0, 0.0, 1.0));
+
+
+				// DEBUG VISUALIZATION
+//				float color = 0.0;
 //
-//				for (int x = -1; x <= 1; x++) {
-//					for (int y = -1; y <=1; y++) {
-//						vec2 newOffset = vec2(offset.x * x, offset.y * y);
-//						color = max(color, textureLod(samplers[pushBlock.samplerIndex], UV + newOffset, mipLevel).r);
-//					}
+//				if (mipLevel == 0) {
+//					color = max(textureLod(samplers[currentSamplerIndex], UV, currentMipLevel).r,
+//						textureLod(samplers[currentSamplerIndex], UV + vec2(offset.x, 0.0), currentMipLevel).r);
+//					color = max(color, textureLod(samplers[currentSamplerIndex], UV + vec2(0.0, offset.y), currentMipLevel).r);
+//					color = max(color, textureLod(samplers[currentSamplerIndex], UV + offset, currentMipLevel).r);
+//				} else {
+//					color = min(textureLod(samplers[currentSamplerIndex], UV, currentMipLevel).r,
+//						textureLod(samplers[currentSamplerIndex], UV + vec2(offset.x, 0.0), currentMipLevel).r);
+//					color = min(color, textureLod(samplers[currentSamplerIndex], UV + vec2(0.0, offset.y), currentMipLevel).r);
+//					color = min(color, textureLod(samplers[currentSamplerIndex], UV + offset, currentMipLevel).r);
 //				}
-
-				imageStore(imagesR32[pushBlock.imageIndex + 1 + mipLevel], adjustedPosition / divisor, vec4(color, 0.0, 0.0, 1.0));
+//
+//				float testColor = (mipLevel == 0) ? (1.0 - color) * 256.0 : color;
+//				imageStore(imagesR32[(pushBlock.imageIndex + 1) + mipLevel], adjustedPosition / divisor, vec4(testColor, 0.0, 0.0, 1.0));
 
 				memoryBarrier();
 				barrier();

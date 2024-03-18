@@ -181,6 +181,18 @@ void core::MRenderer::executeComputeJob(VkCommandBuffer commandBuffer, RComputeJ
       setImageLayout(commandBuffer, sampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, range);
     }
   }
+
+  /*VkImageSubresourceRange range{};
+  range.baseArrayLayer = 0;
+  range.baseMipLevel = 0;
+
+  for (auto& image : pJobInfo->pImageAttachments) {
+    range.aspectMask = image->texture.aspectMask;
+    range.layerCount = image->texture.layerCount;
+    range.levelCount = image->texture.levelCount;
+
+    setImageLayout(commandBuffer, image, VK_IMAGE_LAYOUT_GENERAL, range, true);
+  }*/
 }
 
 void core::MRenderer::queueComputeJob(RComputeJobInfo* pInfo) {
