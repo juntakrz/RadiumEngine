@@ -149,6 +149,7 @@ void core::MRenderer::prepareFrameResources(VkCommandBuffer commandBuffer) {
 
 void core::MRenderer::prepareFrameComputeJobs() {
   const uint8_t previousFrameInFlight = (renderView.frameInFlight + MAX_FRAMES_IN_FLIGHT - 1) % MAX_FRAMES_IN_FLIGHT;
+  const uint8_t nextFrameInFlight = (renderView.frameInFlight + 1) % MAX_FRAMES_IN_FLIGHT;
 
   // Mip map previous frame's depth
   RComputeJobInfo& depthMipmappingJob = compute.imageJobInfo.mipmapping;
@@ -167,7 +168,7 @@ void core::MRenderer::prepareFrameComputeJobs() {
 
   RComputeJobInfo& cullingJob = compute.sceneJobInfo.culling;
   cullingJob.width = static_cast<uint32_t>(scene.totalInstances) / 32 + 1;
-  cullingJob.pSamplerAttachments = {scene.pPreviousDepthTargets[previousFrameInFlight]};
+  cullingJob.pSamplerAttachments = {scene.pPreviousDepthTargets[nextFrameInFlight]};
   cullingJob.pBufferAttachments[0] = &scene.sceneBuffers[previousFrameInFlight];
   cullingJob.pBufferAttachments[4] = &scene.drawCountBuffers[previousFrameInFlight];
   cullingJob.pushBlock.intValues.x = static_cast<int32_t>(scene.totalInstances);
@@ -533,7 +534,6 @@ void core::MRenderer::renderFrame() {
 
   const VkFence fences[] = { sync.fenceInFlight[renderView.frameInFlight], sync.fenceUpdateBuffers[renderView.frameInFlight] };
   const uint32_t fenceCount = 2;
-
   vkWaitForFences(logicalDevice.device, fenceCount, fences, VK_TRUE, UINT64_MAX);
 
   VkResult APIResult =
@@ -567,6 +567,8 @@ void core::MRenderer::renderFrame() {
 
   // Update lighting UBO if required
   updateLightingUBO(renderView.frameInFlight);
+
+  //std::this_thread::sleep_for(std::chrono::milliseconds(30));
 
   // Use this frame's scene descriptor set
   renderView.pCurrentSet = scene.descriptorSets[renderView.frameInFlight];

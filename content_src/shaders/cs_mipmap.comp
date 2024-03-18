@@ -29,11 +29,9 @@ void generateMipMaps(ivec2 sourceSize, int totalMipLevels, int mode) {
 		vec2 offset = 1.0 / vec2(sourceSize / divisor);
 
 		// Using small worker offset - let freed up workers take part instead of loading select few with the most calculations
-		//if ((sourcePosition.x - mipLevel) % divisor != 0 && sourcePosition.y % divisor != 0) return;
-		if (sourcePosition.x % divisor != 0 && sourcePosition.y % divisor != 0) continue;
+		if ((sourcePosition.x - mipLevel) % divisor != 0 && sourcePosition.y % divisor != 0) return;
 
-		//ivec2 adjustedPosition = ivec2(sourcePosition.x - mipLevel, sourcePosition.y);
-		ivec2 adjustedPosition = ivec2(sourcePosition.x, sourcePosition.y);
+		ivec2 adjustedPosition = ivec2(sourcePosition.x - mipLevel, sourcePosition.y);
 		vec2 UV = adjustedPosition / vec2(sourceSize);	
 
 		switch (mode) {
@@ -49,25 +47,6 @@ void generateMipMaps(ivec2 sourceSize, int totalMipLevels, int mode) {
 
 				// Index 0 per image is "all mips view", if more views are present - index 1 is mip 0, index 2 is mip 1 etc.
 				imageStore(imagesR32[(pushBlock.imageIndex + 1) + mipLevel], adjustedPosition / divisor, vec4(color, 0.0, 0.0, 1.0));
-
-
-				// DEBUG VISUALIZATION
-//				float color = 0.0;
-//
-//				if (mipLevel == 0) {
-//					color = max(textureLod(samplers[currentSamplerIndex], UV, currentMipLevel).r,
-//						textureLod(samplers[currentSamplerIndex], UV + vec2(offset.x, 0.0), currentMipLevel).r);
-//					color = max(color, textureLod(samplers[currentSamplerIndex], UV + vec2(0.0, offset.y), currentMipLevel).r);
-//					color = max(color, textureLod(samplers[currentSamplerIndex], UV + offset, currentMipLevel).r);
-//				} else {
-//					color = min(textureLod(samplers[currentSamplerIndex], UV, currentMipLevel).r,
-//						textureLod(samplers[currentSamplerIndex], UV + vec2(offset.x, 0.0), currentMipLevel).r);
-//					color = min(color, textureLod(samplers[currentSamplerIndex], UV + vec2(0.0, offset.y), currentMipLevel).r);
-//					color = min(color, textureLod(samplers[currentSamplerIndex], UV + offset, currentMipLevel).r);
-//				}
-//
-//				float testColor = (mipLevel == 0) ? (1.0 - color) * 256.0 : color;
-//				imageStore(imagesR32[(pushBlock.imageIndex + 1) + mipLevel], adjustedPosition / divisor, vec4(testColor, 0.0, 0.0, 1.0));
 
 				memoryBarrier();
 				barrier();

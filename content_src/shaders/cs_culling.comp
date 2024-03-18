@@ -25,6 +25,10 @@
 #define IDP_SKYBOX				7
 #define PASS_COUNT				8
 
+#define FRUSTUM_REVERSE_BIAS	-1.0
+
+//#define VISIBILITY_BIAS
+
 struct ModelTransformBlock {
 	mat4 matrix;
 	mat4 prevMatrix;
@@ -64,7 +68,7 @@ struct InstanceDataEntry {
 
 layout (local_size_x = 32) in;
 
-layout (set = 0, binding = 0) uniform sampler2D depthPyramid;
+layout (set = 0, binding = 1) uniform sampler2D samplers[];
 
 layout (set = 1, binding = 0) buffer readonly SceneDataBuffer {
 	UBOScene sceneData[];
@@ -133,7 +137,7 @@ bool isBoxInFrustum(vec4 boxMin, vec4 boxMax, mat4 transform, inout vec4 AABB[8]
 
 		if ((AABB[j].x > -AABB[j].w && AABB[j].x < AABB[j].w)
 			|| (AABB[j].y > -AABB[j].w && AABB[j].y < AABB[j].w)
-			|| (AABB[j].z > 0.0 && AABB[j].z < AABB[j].w)) {
+			|| (AABB[j].z > FRUSTUM_REVERSE_BIAS && AABB[j].z < AABB[j].w)) {
 			return true;
 		}
 	}
@@ -142,7 +146,7 @@ bool isBoxInFrustum(vec4 boxMin, vec4 boxMax, mat4 transform, inout vec4 AABB[8]
 }
 
 bool isBoxOcclusionCulled(in vec4 AABB[8]) {
-	vec2 depthSize = textureSize(depthPyramid, 0);
+	vec2 depthPyramidSize = textureSize(samplers[pushBlock.samplerIndex], 0);
 	vec2 minUV = vec2(1.1);
 	vec2 maxUV = vec2(-0.1);
 
@@ -164,18 +168,43 @@ bool isBoxOcclusionCulled(in vec4 AABB[8]) {
 
 	// Calculate resulting visible box size
 	vec2 boxSize = maxUV - minUV;
-	vec2 boxSizeRatio = boxSize * depthSize;
+	vec2 boxScreenSize = boxSize * depthPyramidSize;
 
-	float requiredMipLevel = log2(max(boxSizeRatio.x, boxSizeRatio.y));
-	int sampleMipLevel = int(clamp(requiredMipLevel, 0.0, float(pushBlock.intValues.w)));
+	float depthSize = (boxScreenSize.x > boxScreenSize.y) ? depthPyramidSize.x : depthPyramidSize.y;
+	float maxBoxSideSize = (boxScreenSize.x, boxScreenSize.y);
+	float sizeRatio = depthSize / maxBoxSideSize;
+	int sampleMipLevel = pushBlock.intValues.w;
 
-	// Test against the depth pyramid
+	while (sizeRatio >= 1.0 && sampleMipLevel > 0) {
+		depthSize *= 0.5;
+		sizeRatio = depthSize / maxBoxSideSize;
+		--sampleMipLevel;
+	}
+
+#ifdef VISIBILITY_BIAS
+	// Bias the result towards visibility by testing each bounding box vertex depth
+	// against maximum available depth for any one of them
+	float sampledDepth = -0.1;
+
 	for (int j = 0; j < 8; j++) {
-		float sampledDepth = textureLod(depthPyramid, AABB[j].xy, sampleMipLevel).r;
+		sampledDepth = max(sampledDepth, textureLod(samplers[pushBlock.samplerIndex], AABB[j].xy, sampleMipLevel).r);
+	}
+
+	for (int k = 0; k < 8; k++) {
+		if (AABB[k].z <= sampledDepth) {
+			return true;
+		}
+	}
+#else
+	// Cull without any bias, at least one bounding box vertex must not be obscured
+	for (int j = 0; j < 8; j++) {
+		float sampledDepth = textureLod(samplers[pushBlock.samplerIndex], AABB[j].xy, sampleMipLevel).r;
+
 		if (AABB[j].z <= sampledDepth) {
 			return true;
 		}
 	}
+#endif
 
 	return false;
 }

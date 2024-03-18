@@ -66,7 +66,7 @@ constexpr bool enableGPUAssistedValidation = false;
 #define RTGT_PPBLUR             "RT2D_PPBlur"       // Post processing intermediate blur targets
 
 #define RTGT_ENV                "RTCube_Env"
-#define RTGT_ENVFILTER          "RTCube_EnvSkybox"
+#define RTGT_ENVFILTER          "RTCube_EnvFilter"
 #define RTGT_ENVIRRAD           "RTCube_EnvIrrad"
 #define RTGT_BRDFMAP            "RT2D_EnvBRDF"
 #define RTGT_NOISEMAP           "RT2D_NoiseMap"

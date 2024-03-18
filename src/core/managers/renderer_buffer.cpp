@@ -551,7 +551,7 @@ void core::MRenderer::updateIndirectDrawBuffers() {
   uint32_t currentDrawOffsets[totalIndirectDrawPasses];
 
   // Input buffer, should use current frame as its being generated several frames ahead
-  const RDrawIndirectInfo* pInfo = (RDrawIndirectInfo*)scene.drawCountBuffers[bufferIndex].allocInfo.pMappedData;
+  const RDrawIndirectInfo* pInfo = (RDrawIndirectInfo*)scene.drawCountBuffers[renderView.frameInFlight].allocInfo.pMappedData;
 
   // Pointer math arrays for output buffers
   RInstanceData* instanceEntries =
