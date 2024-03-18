@@ -26,8 +26,13 @@
 #define PASS_COUNT				8
 
 #define FRUSTUM_REVERSE_BIAS	-1.0
+#define DEPTH_BIAS				0.0001
 
-//#define VISIBILITY_BIAS
+// Sample 9 depth values around each vertex and use the maximum one for culling
+//#define HIGH_VISIBILITY_BIAS
+
+// If an instance is occluded - do a single sample from the lower mip level to check again
+#define MIP_VISIBILITY_BIAS
 
 struct ModelTransformBlock {
 	mat4 matrix;
@@ -145,7 +150,7 @@ bool isBoxInFrustum(vec4 boxMin, vec4 boxMax, mat4 transform, inout vec4 AABB[8]
 	return false;
 }
 
-bool isBoxOcclusionCulled(in vec4 AABB[8]) {
+bool isBoxOccluded(in vec4 AABB[8]) {
 	vec2 depthPyramidSize = textureSize(samplers[pushBlock.samplerIndex], 0);
 	vec2 minUV = vec2(1.1);
 	vec2 maxUV = vec2(-0.1);
@@ -173,7 +178,8 @@ bool isBoxOcclusionCulled(in vec4 AABB[8]) {
 	float depthSize = (boxScreenSize.x > boxScreenSize.y) ? depthPyramidSize.x : depthPyramidSize.y;
 	float maxBoxSideSize = (boxScreenSize.x, boxScreenSize.y);
 	float sizeRatio = depthSize / maxBoxSideSize;
-	int sampleMipLevel = pushBlock.intValues.w;
+	const int maxMipLevel = pushBlock.intValues.w;
+	int sampleMipLevel = maxMipLevel;
 
 	while (sizeRatio >= 1.0 && sampleMipLevel > 0) {
 		depthSize *= 0.5;
@@ -181,7 +187,7 @@ bool isBoxOcclusionCulled(in vec4 AABB[8]) {
 		--sampleMipLevel;
 	}
 
-#ifdef VISIBILITY_BIAS
+#ifdef HIGH_VISIBILITY_BIAS
 	// Bias the result towards visibility by testing each bounding box vertex depth
 	// against maximum available depth for any one of them
 	float sampledDepth = -0.1;
@@ -194,6 +200,17 @@ bool isBoxOcclusionCulled(in vec4 AABB[8]) {
 		if (AABB[k].z <= sampledDepth) {
 			return true;
 		}
+#ifdef MIP_VISIBILITY_BIAS
+		else { 
+			if (sampleMipLevel < maxMipLevel) {
+				sampledDepth = textureLod(samplers[pushBlock.samplerIndex], AABB[j].xy, sampleMipLevel + 1).r;
+
+				if (AABB[k].z <= sampledDepth + DEPTH_BIAS) {
+					return true;
+				}
+			}
+		}
+#endif
 	}
 #else
 	// Cull without any bias, at least one bounding box vertex must not be obscured
@@ -203,6 +220,17 @@ bool isBoxOcclusionCulled(in vec4 AABB[8]) {
 		if (AABB[j].z <= sampledDepth) {
 			return true;
 		}
+#ifdef MIP_VISIBILITY_BIAS
+		else { 
+			if (sampleMipLevel < maxMipLevel) {
+				sampledDepth = textureLod(samplers[pushBlock.samplerIndex], AABB[j].xy, sampleMipLevel + 1).r;
+
+				if (AABB[j].z <= sampledDepth + DEPTH_BIAS) {
+					return true;
+				}
+			}
+		}
+#endif
 	}
 #endif
 
@@ -277,7 +305,7 @@ void main() {
 		// If an instance is inside the camera frustum, but the camera isn't inside its bounding box
 		// perform final occlusion culling
 		if (isVisible) {
-			isVisible = isBoxOcclusionCulled(AABB);
+			isVisible = isBoxOccluded(AABB);
 		}
 	}
 
