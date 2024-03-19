@@ -101,7 +101,7 @@ class ABase {
   virtual glm::vec3& getForwardVector();
 
   virtual void setName(const char* name);
-  virtual const char* getName();
+  virtual const std::string& getName();
 
   virtual const EActorType& getTypeId();
 

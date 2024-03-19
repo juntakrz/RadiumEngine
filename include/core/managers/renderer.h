@@ -232,6 +232,7 @@ class MRenderer {
     uint32_t currentFrameIndex = 0;
     uint32_t frameInFlight = 0;
     uint32_t framesRendered = 0;
+    float lastFrameTime = 0.0f;
     bool generateEnvironmentMapsImmediate = false;  // queue single pass environment map gen (slow)
     bool generateEnvironmentMaps = false;           // queue sequenced environment map gen (fast)
     bool isEnvironmentPass = false;                 // is in the process of generating
@@ -462,6 +463,9 @@ public:
   void setIBLScale(float newScale);
   void setShadowColor(const glm::vec3& color);
   void setBloomIntensity(const float intensity);
+
+  float getFPS();
+  float getFrameTime();
 
   //
   // ***BUFFER

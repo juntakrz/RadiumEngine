@@ -1116,7 +1116,7 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
   vmaDestroyBuffer(memAlloc, stagingInstanceBuffer.buffer, stagingInstanceBuffer.allocation);
 
 #ifndef NDEBUG
-  RE_LOG(Log, "Bound model \"%s\" to graphics pipeline.", pModel->getName());
+  RE_LOG(Log, "Bound model \"%s\" to graphics pipeline.", pModel->getName().c_str());
 #endif
 
   return (uint32_t)system.bindings.size() - 1;
@@ -1252,4 +1252,12 @@ void core::MRenderer::setShadowColor(const glm::vec3& color) {
 
 void core::MRenderer::setBloomIntensity(const float intensity) {
   lighting.data.bloomIntensity = intensity;
+}
+
+float core::MRenderer::getFPS() {
+    return 1.0f / renderView.lastFrameTime;
+}
+
+float core::MRenderer::getFrameTime() {
+    return renderView.lastFrameTime;
 }

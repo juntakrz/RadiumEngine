@@ -2,6 +2,6 @@
   "renderdoc" : {
 	"enabled" : true,
     "path" : "f:\\dev\\RenderDoc\\",
-	"showOverlay" : true
+	"showOverlay" : false
   }
 }

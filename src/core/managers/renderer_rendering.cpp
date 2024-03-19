@@ -585,7 +585,7 @@ void core::MRenderer::renderFrame() {
   }
 
   // Get new delta time between frames
-  core::time.tickTimer();
+  renderView.lastFrameTime = core::time.tickTimer();
 
   // Reset fences if we will do any work this frame e.g. no swap chain recreation
   vkResetFences(logicalDevice.device, fenceCount, fences);

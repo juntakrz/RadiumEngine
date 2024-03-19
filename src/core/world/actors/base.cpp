@@ -170,7 +170,7 @@ glm::vec3& ABase::getForwardVector() {
 
 void ABase::setName(const char* name) { m_name = name; }
 
-const char* ABase::getName() { return m_name.c_str(); }
+const std::string& ABase::getName() { return m_name; }
 
 const EActorType& ABase::getTypeId() { return m_typeId; }
 

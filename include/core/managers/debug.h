@@ -11,9 +11,9 @@ namespace core {
 
 #ifndef NDEBUG
     struct DebugRenderDoc {
-      bool bEnabled = false;
+      bool isEnabled = false;
       std::string path = "";
-      bool bEnableOverlay = true;
+      bool isOverlayEnabled = false;
       HMODULE hRenderDocModule = NULL;
       RENDERDOC_API_1_6_0* pAPI = nullptr;
     } m_renderdoc;
@@ -43,6 +43,8 @@ namespace core {
     // RenderDoc (methods will not execute if NDEBUG is set)
     void initializeRenderDoc();
     void enableRenderDocOverlay(bool bEnable);
+    bool isRenderDocEnabled();
+    bool isRenderDocOverlayVisible();
 
 #ifndef NDEBUG
     DebugRenderDoc& getRenderDoc();

@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "core/core.h"
 #include "core/managers/animations.h"
+#include "core/managers/ref.h"
 #include "core/managers/renderer.h"
 #include "core/model/model.h"
 #include "core/world/actors/entity.h"
@@ -157,10 +158,15 @@ void AEntity::bindToRenderer() {
   // Increase the number of times this model is bound to renderer and store the latest 0-based instance index
   m_pModel->m_instanceCount++;
   m_instanceIndex = m_pModel->m_instanceCount - 1;
+
+  // Register entity with the scene graph
+  core::ref.registerInstance(this);
 }
 
 void AEntity::unbindFromRenderer() {
   core::renderer.unbindEntity(m_bindIndex);
+  core::ref.unregisterInstance(this);
+
   m_bindIndex = -1;
 }
 

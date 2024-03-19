@@ -77,7 +77,7 @@ ACamera* core::MActors::createCamera(const char* name,
     pCamera->setViewBufferIndex(index);
     m_linearActors.pCameras.emplace_back(pCamera);
 
-    core::ref.registerActor(name, pCamera);
+    core::ref.registerCamera(pCamera);
 
     RE_LOG(Log, "Created camera '%s'.", name);
     return pCamera;
@@ -157,9 +157,9 @@ ALight* core::MActors::createLight(const char* name, RLightInfo* pInfo) {
     }
   }
 
-  // should probably add a reference to MRef here?
-
   RE_LOG(Log, "Created light '%s'.", name);
+
+  core::ref.registerLight(pNewLight);
 
   m_linearActors.pLights.emplace_back(m_actors.lights.at(name).get());
   return m_actors.lights.at(name).get();

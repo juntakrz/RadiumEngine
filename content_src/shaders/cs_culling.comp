@@ -29,7 +29,7 @@
 #define DEPTH_BIAS				0.0001
 
 // Sample all bounding box vertex depth values first and use only the maximum depth
-//#define HIGH_VISIBILITY_BIAS
+#define HIGH_VISIBILITY_BIAS
 
 // Perform culling at a lower mip level, less precise, but also more relaxed
 #define MIP_VISIBILITY_BIAS
@@ -54,10 +54,6 @@ struct UBOScene {
 	vec2 haltonJitter;
 	vec2 clipData;			// x = near plane, y = far plane
 	float padding[8];
-};
-
-struct PrimitiveDataEntry {
-	uint instanceCount;
 };
 
 struct InstanceDataEntry {
@@ -176,7 +172,7 @@ bool isBoxOccluded(in vec4 AABB[8]) {
 	vec2 boxScreenSize = boxSize * depthPyramidSize;
 
 	float depthSize = (boxScreenSize.x > boxScreenSize.y) ? depthPyramidSize.x : depthPyramidSize.y;
-	float maxBoxSideSize = (boxScreenSize.x, boxScreenSize.y);
+	float maxBoxSideSize = max(boxScreenSize.x, boxScreenSize.y);
 	float sizeRatio = depthSize / maxBoxSideSize;
 	const int maxMipLevel = pushBlock.intValues.w;
 	int sampleMipLevel = maxMipLevel;
@@ -200,7 +196,7 @@ bool isBoxOccluded(in vec4 AABB[8]) {
 	}
 
 	for (int k = 0; k < 8; k++) {
-		if (AABB[k].z <= sampledDepth) {
+		if (AABB[k].z <= sampledDepth + DEPTH_BIAS) {
 			return true;
 		}
 	}
@@ -209,7 +205,7 @@ bool isBoxOccluded(in vec4 AABB[8]) {
 	for (int j = 0; j < 8; j++) {
 		float sampledDepth = textureLod(samplers[pushBlock.samplerIndex], AABB[j].xy, sampleMipLevel).r;
 
-		if (AABB[j].z <= sampledDepth) {
+		if (AABB[j].z <= sampledDepth + DEPTH_BIAS) {
 			return true;
 		}
 	}

@@ -51,7 +51,7 @@ void core::MDebug::compileDebugShaders() {
 void core::MDebug::initializeRenderDoc() {
 #ifndef NDEBUG
 
-  if (!m_renderdoc.bEnabled) {
+  if (!m_renderdoc.isEnabled) {
       RE_LOG(Log, "RenderDoc integration is disabled.");
       return;
   }
@@ -94,7 +94,7 @@ void core::MDebug::initializeRenderDoc() {
   // disable capture keys, should capture frames from the connected RenderDoc app
   if (m_renderdoc.pAPI) {
       m_renderdoc.pAPI->SetCaptureKeys(NULL, 0);
-      enableRenderDocOverlay(m_renderdoc.bEnableOverlay);
+      enableRenderDocOverlay(m_renderdoc.isOverlayEnabled);
   }
 
 #endif
@@ -108,10 +108,10 @@ core::MDebug::DebugRenderDoc& core::MDebug::getRenderDoc() {
 
 void core::MDebug::enableRenderDocOverlay(bool bEnable) {
   #ifndef NDEBUG
-  m_renderdoc.bEnableOverlay = bEnable;
+  m_renderdoc.isOverlayEnabled = bEnable;
 
   if (m_renderdoc.pAPI) {
-    if (m_renderdoc.bEnableOverlay) {
+    if (m_renderdoc.isOverlayEnabled) {
       m_renderdoc.pAPI->MaskOverlayBits(
           RENDERDOC_OverlayBits::eRENDERDOC_Overlay_All,
           RENDERDOC_OverlayBits::eRENDERDOC_Overlay_All);
@@ -124,6 +124,14 @@ void core::MDebug::enableRenderDocOverlay(bool bEnable) {
         RENDERDOC_OverlayBits::eRENDERDOC_Overlay_None);
   }
   #endif
+}
+
+bool core::MDebug::isRenderDocEnabled() {
+  return m_renderdoc.isEnabled;
+}
+
+bool core::MDebug::isRenderDocOverlayVisible() { 
+  return m_renderdoc.isOverlayEnabled;
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL

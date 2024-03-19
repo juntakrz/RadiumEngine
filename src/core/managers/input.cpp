@@ -12,6 +12,9 @@ core::MInput::MInput() {
 }
 
 void core::MInput::scanInput() {
+  // ImGui wants keyboard focus - block GLFW input
+  if (ImGui::GetIO().WantCaptureKeyboard) return;
+
   GLFWwindow* pWindow = core::window.getWindow();
 
   // Get status for every bound repeated action key and call the proper function
@@ -97,8 +100,10 @@ const glm::vec2& core::MInput::getMouseDelta() {
 
 void core::MInput::keyEventCallback(GLFWwindow* window, int key, int scancode,
                               int action, int mods) {
+  // ImGui wants to capture keyboard input, block GLFW input
+  if (ImGui::GetIO().WantCaptureKeyboard) return;
 
-  // get status for every bound single action key and call the proper function
+  // Get status for every bound single action key and call the proper function
   if (get().m_inputFuncsSingle.contains(key)) {
     const auto& keyStateVector = get().m_inputFuncsSingle.at(key);
 

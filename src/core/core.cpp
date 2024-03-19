@@ -44,6 +44,7 @@ void core::run() {
   RE_LOG(Log, "Successfully initialized engine core.");
 
   core::script.loadMap("default");
+  core::ref.setSceneName("Default Scene");
 
   // remove this after loadMap improvements -------- //
   RSamplerInfo samplerInfo{};
@@ -329,10 +330,10 @@ void core::loadDevelopmentConfig(const wchar_t* path) {
   if (data->contains("renderdoc")) {
     const auto& coreData = data->at("renderdoc");
     if (coreData.contains("enabled")) {
-      coreData.at("enabled").get_to(core::debug.getRenderDoc().bEnabled);
+      coreData.at("enabled").get_to(core::debug.getRenderDoc().isEnabled);
     }
     
-    if (core::debug.getRenderDoc().bEnabled) {
+    if (core::debug.isRenderDocEnabled()) {
       if (coreData.contains("path")) {
         std::string path;
         coreData.at("path").get_to(path);
@@ -340,7 +341,7 @@ void core::loadDevelopmentConfig(const wchar_t* path) {
       }
       if (coreData.contains("showOverlay")) {
         coreData.at("showOverlay")
-            .get_to(core::debug.getRenderDoc().bEnableOverlay);
+            .get_to(core::debug.getRenderDoc().isOverlayEnabled);
       }
     }
   }

@@ -191,7 +191,7 @@ class WModel {
                            std::string nodeName);
 
  public:
-  const char* getName();
+  const std::string& getName();
   uint32_t getVertexCount() { return m_vertexCount; }
   uint32_t getIndexCount() { return m_indexCount; }
   const std::vector<WPrimitive*>& getPrimitives();

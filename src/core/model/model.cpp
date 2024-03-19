@@ -116,7 +116,7 @@ void WModel::prepareStagingData() {
   staging.indices.resize(m_indexCount);
 }
 
-const char* WModel::getName() { return m_name.c_str(); }
+const std::string& WModel::getName() { return m_name; }
 
 bool WModel::Mesh::validateBoundingBoxExtent() {
   if (extent.min == extent.max) {
