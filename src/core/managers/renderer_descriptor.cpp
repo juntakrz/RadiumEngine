@@ -33,7 +33,8 @@ TResult core::MRenderer::createDescriptorPool() {
   poolInfo.poolSizeCount = poolSizeCount;
   poolInfo.pPoolSizes = poolSizes;
   poolInfo.maxSets = maxSets;
-  poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT;
+  poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT
+    | VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 
   if (vkCreateDescriptorPool(logicalDevice.device, &poolInfo, nullptr,
                              &system.descriptorPool) != VK_SUCCESS) {

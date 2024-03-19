@@ -756,8 +756,6 @@ TResult core::MRenderer::initialize() {
 }
 
 void core::MRenderer::deinitialize() {
-  waitForSystemIdle();
-
   destroySwapChain();
   destroySyncObjects();
   destroyCoreCommandBuffers();

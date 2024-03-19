@@ -82,11 +82,23 @@ void core::MGUI::initialize() {
 }
 
 void core::MGUI::deinitialize() {
+  core::renderer.waitForSystemIdle();
   ImGui_ImplVulkan_DestroyFontsTexture();
   ImGui_ImplVulkan_Shutdown();
   ImGui_ImplGlfw_Shutdown();
+  ImGui::DestroyContext();
 }
 
 ImGuiIO& core::MGUI::io() {
   return *m_pIO;
+}
+
+void core::MGUI::render() {
+  ImGui_ImplVulkan_NewFrame();
+  ImGui_ImplGlfw_NewFrame();
+  ImGui::NewFrame();
+
+  ImGui::ShowDemoWindow();
+
+  ImGui::Render();
 }

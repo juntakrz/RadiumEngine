@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "core/core.h"
 #include "core/managers/actors.h"
+#include "core/managers/gui.h"
 #include "core/managers/time.h"
 #include "core/managers/world.h"
 #include "core/world/actors/entity.h"
@@ -491,6 +492,8 @@ void core::MRenderer::executePostProcessPass(VkCommandBuffer commandBuffer) {
 }
 
 void core::MRenderer::executeGUIPass(VkCommandBuffer commandBuffer) {
+  core::gui.render();
+
   ImDrawData* pDrawData = ImGui::GetDrawData();
   RTexture* pImage = swapchain.pImages[renderView.currentFrameIndex];
 

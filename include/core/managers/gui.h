@@ -18,5 +18,7 @@ public:
   void deinitialize();
 
   ImGuiIO& io();
+
+  void render();
 };
 }
