@@ -28,10 +28,10 @@
 #define FRUSTUM_REVERSE_BIAS	-1.0
 #define DEPTH_BIAS				0.0001
 
-// Sample 9 depth values around each vertex and use the maximum one for culling
+// Sample all bounding box vertex depth values first and use only the maximum depth
 //#define HIGH_VISIBILITY_BIAS
 
-// If an instance is occluded - do a single sample from the lower mip level to check again
+// Perform culling at a lower mip level, less precise, but also more relaxed
 #define MIP_VISIBILITY_BIAS
 
 struct ModelTransformBlock {
@@ -187,9 +187,12 @@ bool isBoxOccluded(in vec4 AABB[8]) {
 		--sampleMipLevel;
 	}
 
+#ifdef MIP_VISIBILITY_BIAS
+	if (sampleMipLevel < maxMipLevel) ++sampleMipLevel;
+#endif
+
 #ifdef HIGH_VISIBILITY_BIAS
-	// Bias the result towards visibility by testing each bounding box vertex depth
-	// against maximum available depth for any one of them
+	// Find the highest depth value for any bounding box vertex and use it to test all of them
 	float sampledDepth = -0.1;
 
 	for (int j = 0; j < 8; j++) {
@@ -200,37 +203,15 @@ bool isBoxOccluded(in vec4 AABB[8]) {
 		if (AABB[k].z <= sampledDepth) {
 			return true;
 		}
-#ifdef MIP_VISIBILITY_BIAS
-		else { 
-			if (sampleMipLevel < maxMipLevel) {
-				sampledDepth = textureLod(samplers[pushBlock.samplerIndex], AABB[j].xy, sampleMipLevel + 1).r;
-
-				if (AABB[k].z <= sampledDepth + DEPTH_BIAS) {
-					return true;
-				}
-			}
-		}
-#endif
 	}
 #else
-	// Cull without any bias, at least one bounding box vertex must not be obscured
+	// Cull normally, at least one bounding box vertex must not be obscured
 	for (int j = 0; j < 8; j++) {
 		float sampledDepth = textureLod(samplers[pushBlock.samplerIndex], AABB[j].xy, sampleMipLevel).r;
 
 		if (AABB[j].z <= sampledDepth) {
 			return true;
 		}
-#ifdef MIP_VISIBILITY_BIAS
-		else { 
-			if (sampleMipLevel < maxMipLevel) {
-				sampledDepth = textureLod(samplers[pushBlock.samplerIndex], AABB[j].xy, sampleMipLevel + 1).r;
-
-				if (AABB[j].z <= sampledDepth + DEPTH_BIAS) {
-					return true;
-				}
-			}
-		}
-#endif
 	}
 #endif
 

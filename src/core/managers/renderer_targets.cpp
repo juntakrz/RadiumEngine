@@ -8,8 +8,33 @@ TResult core::MRenderer::createImageTargets() {
   RTexture* pNewTexture = nullptr;
   RTextureInfo textureInfo{};
 
-  // front target texture used as a source for environment cubemap sides
-  std::string rtName = RTGT_ENVSRC;
+  std::string rtName = RTGT_IMGUI;
+  
+  textureInfo.name = rtName;
+  textureInfo.layerCount = 1u;
+  textureInfo.mipLevels = 1u;
+  textureInfo.isCubemap = false;
+  textureInfo.width = config::renderWidth;
+  textureInfo.height = config::renderHeight;
+  textureInfo.format = core::vulkan::formatHDR16;
+  textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+  textureInfo.usageFlags =
+    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+
+  pNewTexture = core::resources.createTexture(&textureInfo);
+
+  if (!pNewTexture) {
+    RE_LOG(Critical, "Failed to create texture \"%s\".", rtName.c_str());
+    return RE_CRITICAL;
+  }
+
+#ifndef NDEBUG
+  RE_LOG(Log, "Created image target '%s'.", rtName.c_str());
+#endif
+
+  // Front target texture used as a source for environment cubemap sides
+  rtName = RTGT_ENVSRC;
 
   textureInfo = RTextureInfo{};
   textureInfo.name = rtName;

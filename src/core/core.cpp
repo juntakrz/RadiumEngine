@@ -6,6 +6,7 @@
 #include "core/managers/input.h"
 #include "core/managers/actors.h"
 #include "core/managers/animations.h"
+#include "core/managers/gui.h"
 #include "core/managers/player.h"
 #include "core/managers/script.h"
 #include "core/managers/ref.h"
@@ -13,18 +14,19 @@
 #include "core/managers/resources.h"
 #include "core/managers/world.h"
 
-class core::MRenderer& core::renderer = MRenderer::get();
-class core::MWindow& core::window = MWindow::get();
-class core::MInput& core::input = MInput::get();
-class core::MScript& core::script = MScript::get();
 class core::MActors& core::actors = MActors::get();
+class core::MAnimations& core::animations = MAnimations::get();
 class core::MDebug& core::debug = MDebug::get();
-class core::MResources& core::resources = MResources::get();
+class core::MGUI& core::gui = MGUI::get();
+class core::MInput& core::input = MInput::get();
 class core::MPlayer& core::player = MPlayer::get();
 class core::MRef& core::ref = MRef::get();
+class core::MRenderer& core::renderer = MRenderer::get();
+class core::MResources& core::resources = MResources::get();
+class core::MScript& core::script = MScript::get();
 class core::MTime& core::time = MTime::get();
+class core::MWindow& core::window = MWindow::get();
 class core::MWorld& core::world = MWorld::get();
-class core::MAnimations& core::animations = MAnimations::get();
 
 void core::run() {
 
@@ -222,12 +224,13 @@ TResult core::create() {
   core::resources.initialize();
   core::world.initialize();
 
+  core::input.initialize(core::window.getWindow());
+  core::gui.initialize();
+
   core::renderer.renderInitializationFrame();
 
-  core::input.initialize(core::window.getWindow());
   core::player.initialize();
 
-  
 #ifndef NDEBUG
   core::renderer.debug_initialize();
 #endif
@@ -236,12 +239,19 @@ TResult core::create() {
 }
 
 void core::destroy() {
+  core::gui.deinitialize();
   core::renderer.deinitialize();
   core::window.destroyWindow();
   glfwTerminate();
 }
 
 void core::drawFrame() {
+  ImGui_ImplVulkan_NewFrame();
+  ImGui_ImplGlfw_NewFrame();
+  ImGui::NewFrame();
+  ImGui::ShowDemoWindow();
+  ImGui::Render();
+
   core::renderer.renderFrame();
 }
 

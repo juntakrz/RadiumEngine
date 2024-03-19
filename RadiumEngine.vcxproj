@@ -146,6 +146,28 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="lib\include\imgui\imgui.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="lib\include\imgui\imgui_demo.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="lib\include\imgui\imgui_draw.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="lib\include\imgui\imgui_impl_glfw.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="lib\include\imgui\imgui_impl_vulkan.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="lib\include\imgui\imgui_tables.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="lib\include\imgui\imgui_widgets.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\core\managers\gui.cpp" />
     <ClCompile Include="src\core\managers\renderer_buffer.cpp" />
     <ClCompile Include="src\core\managers\renderer_compute.cpp" />
     <ClCompile Include="src\core\managers\renderer_debug.cpp" />
@@ -333,6 +355,7 @@
     <ClInclude Include="include\core\managers\animations.h" />
     <ClInclude Include="include\core\managers\common.h" />
     <ClInclude Include="include\core\managers\debug.h" />
+    <ClInclude Include="include\core\managers\gui.h" />
     <ClInclude Include="include\core\managers\resources.h" />
     <ClInclude Include="include\core\managers\player.h" />
     <ClInclude Include="include\core\managers\renderer.h" />
@@ -361,6 +384,7 @@
     <ClInclude Include="include\core\model\primitivedata.h" />
     <ClInclude Include="include\define.h" />
     <ClInclude Include="include\define_input.h" />
+    <ClInclude Include="include\imconfig.h" />
     <ClInclude Include="include\pch.h" />
     <ClInclude Include="include\config.h" />
     <ClInclude Include="include\define_t.h" />

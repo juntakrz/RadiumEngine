@@ -3,12 +3,12 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define _USE_MATH_DEFINES
 
-// linked libraries
+// Linked libraries
 #pragma comment(lib, "glfw3.lib")
-#pragma comment(lib, "vulkan-1.lib")
 #pragma comment(lib, "ktx_read.lib")
+#pragma comment(lib, "vulkan-1.lib")
 
-// standard library headers
+// Standard library headers
 #include <algorithm>
 #include <conio.h>
 #include <chrono>
@@ -29,13 +29,13 @@
 #include <unordered_set>
 #include <vector>
 
-// debug modules
+// Debug modules
 #ifndef NDEBUG
 #include <debug/renderdoc_app.h>
 #include <windows.h>
 #endif
 
-// internal global definitions
+// Internal global definitions
 #include "define.h"
 #include "define_t.h"
 
@@ -52,12 +52,17 @@
 #include <GLM/gtx/matrix_interpolation.hpp>
 #include <ktxvulkan.h>
 
-// external engine modules
+// imGUI headers
+#include <imgui/imgui.h>
+#include <imgui/imgui_impl_glfw.h>
+#include <imgui/imgui_impl_vulkan.h>
+
+// External engine modules
 #include <json.hpp>
 
-/* comments:
+/* Comments:
 * 
-* relies on Visual C++ 20 2022 redistributable package
+* Relies on Visual C++ 20 2022 redistributable package
 * glfw3.lib - GLFW 3.3.8 built for Visual Studio 17 2022 v143 using 10.0.19041 SDK and /MD
 * 
 */

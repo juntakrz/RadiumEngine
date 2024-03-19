@@ -7,37 +7,31 @@ TResult core::MRenderer::createDescriptorPool() {
   RE_LOG(Log, "Creating descriptor pool.");
 
   // the number of descriptors in the given pool per set/layout type
-  std::vector<VkDescriptorPoolSize> poolSizes;
-  poolSizes.resize(3);
+  const VkDescriptorPoolSize poolSizes[] = {
+    { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+    { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4000 },
+    { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+    { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+    { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+    { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+    { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+    { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+    { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+    { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+    { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
+  };
 
-  // model view projection matrix
-  poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-
-  // model nodes
-  // TODO: rewrite so that descriptorCounts are calculated without hardcoding
-  poolSizes[0].descriptorCount += 2000 * MAX_FRAMES_IN_FLIGHT;
-
-  // materials and textures
-  // TODO: rewrite so that descriptorCounts are calculated by objects/textures
-  // using map data e.g. max textures that are going to be loaded
-  poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-  poolSizes[1].descriptorCount = 2000 * MAX_FRAMES_IN_FLIGHT;
-
-  // compute image descriptors
-  poolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-  poolSizes[2].descriptorCount = 10;
+  const uint32_t poolSizeCount = sizeof(poolSizes) / sizeof(VkDescriptorPoolSize);
 
   uint32_t maxSets = 0;
-  for (uint8_t i = 0; i < poolSizes.size(); ++i) {
+  for (uint32_t i = 0; i < poolSizeCount; ++i) {
     maxSets += poolSizes[i].descriptorCount;
   }
-  maxSets += 100;  // descriptor set headroom
 
   VkDescriptorPoolCreateInfo poolInfo{};
   poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-  poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
-  poolInfo.pPoolSizes = poolSizes.data();
+  poolInfo.poolSizeCount = poolSizeCount;
+  poolInfo.pPoolSizes = poolSizes;
   poolInfo.maxSets = maxSets;
   poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT;
 

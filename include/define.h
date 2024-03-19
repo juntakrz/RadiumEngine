@@ -59,6 +59,7 @@ constexpr bool enableGPUAssistedValidation = false;
 #define RTGT_PRESENT            "RT2D_Present"      // Final swapchain target
 #define RTGT_DEPTH              "RT2D_Depth"        // Active camera depth render target
 #define RTGT_SHADOW             "RT2D_Shadow"       // Shadow render target (depth)
+#define RTGT_IMGUI              "RT2D_ImGui"        // imGUI is being rendered to this target
 #define RTGT_ENVSRC             "RT2D_EnvSrc"       // Source texture for environment cubemaps
 #define RTGT_PPTAA              "RT2D_TAA"          // PBR + velocity and history images
 #define RTGT_PPBLOOM            "RT2D_PPBloom"      // Post processing bloom target

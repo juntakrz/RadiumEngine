@@ -490,6 +490,33 @@ void core::MRenderer::executePostProcessPass(VkCommandBuffer commandBuffer) {
   };
 }
 
+void core::MRenderer::executeGUIPass(VkCommandBuffer commandBuffer) {
+  ImDrawData* pDrawData = ImGui::GetDrawData();
+  RTexture* pImage = swapchain.pImages[renderView.currentFrameIndex];
+
+  if (pDrawData) {
+    VkRenderingAttachmentInfo overrideAttachment = gui.renderingInfo.pColorAttachments[0];
+    overrideAttachment.imageView = pImage->texture.view;
+    overrideAttachment.imageLayout = pImage->texture.imageLayout;
+
+    VkRenderingInfo overrideRenderingInfo = gui.renderingInfo;
+    overrideRenderingInfo.pColorAttachments = &overrideAttachment;
+
+    vkCmdBeginRendering(commandBuffer, &overrideRenderingInfo);
+    ImGui_ImplVulkan_RenderDrawData(pDrawData, commandBuffer);
+    vkCmdEndRendering(commandBuffer);
+  }
+
+  VkImageSubresourceRange subRange{};
+  subRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  subRange.baseArrayLayer = 0u;
+  subRange.layerCount = 1u;
+  subRange.baseMipLevel = 0u;
+  subRange.levelCount = 1u;
+
+  setImageLayout(commandBuffer, pImage, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, subRange);
+}
+
 void core::MRenderer::executePresentPass(VkCommandBuffer commandBuffer) {
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::Present);
   renderView.pCurrentPass = pRenderPass;
@@ -526,7 +553,7 @@ void core::MRenderer::executePresentPass(VkCommandBuffer commandBuffer) {
 
   vkCmdEndRendering(commandBuffer);
 
-  setImageLayout(commandBuffer, pImage, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, subRange);
+  //setImageLayout(commandBuffer, pImage, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, subRange);
 }
 
 void core::MRenderer::renderFrame() {
@@ -634,6 +661,8 @@ void core::MRenderer::renderFrame() {
   /* 5. Final presentation pass */
 
   executePresentPass(commandBuffer);
+
+  executeGUIPass(commandBuffer);
 
   // End writing commands and prepare to submit buffer to rendering queue
   if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {

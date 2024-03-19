@@ -14,6 +14,8 @@ struct RMaterial;
 namespace core {
 
 class MRenderer {
+  friend class MGUI;
+
  private:
   // command buffers and pools data
   struct {
@@ -67,6 +69,12 @@ class MRenderer {
       uint32_t layer = 0;     // cubemap layer
     } tracking;
   } environment;
+
+  struct RGUIData {
+    RTexture* pTexture = nullptr;
+    VkRenderingAttachmentInfo colorAttachment;
+    VkRenderingInfo renderingInfo;
+  } gui;
 
   struct RLightingData {
     std::vector<RBuffer> buffers;
@@ -621,6 +629,8 @@ public:
   void executePostProcessSamplingPass(VkCommandBuffer commandBuffer, const uint32_t imageViewIndex, const bool upsample);
   void executePostProcessGetExposurePass(VkCommandBuffer commandBuffer);
   void executePostProcessPass(VkCommandBuffer commandBuffer);
+
+  void executeGUIPass(VkCommandBuffer commandBuffer);
 
   void executePresentPass(VkCommandBuffer commandBuffer);
 
