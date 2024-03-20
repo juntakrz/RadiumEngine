@@ -9,12 +9,14 @@
 struct transparencyNode{
 	vec4 color;
 	float depth;
+    int actorUID;
 	uint nextNodeIndex;
 };
 
 layout(location = 0) in vec2 inUV;
 
 layout (location = 0) out vec4 outColor;
+layout (location = 1) out int outActorUID;
 
 layout (set = 1, binding = 3) buffer transparencyLinkedListData {
 	uint nodeCount;
@@ -28,8 +30,7 @@ layout (set = 1, binding = 5) buffer transparencyLinkedListBuffer {
 	transparencyNode nodes[];
 };
 
-layout (set = 2, binding = 0) uniform sampler2D samplers[];
-layout (set = 2, binding = 0) uniform sampler2DArray arraySamplers[];
+layout (set = 2, binding = 1, r32ui) uniform uimage2D samplersInt[];
 
 // The higher the value - the higher the mix of ambient occlusion
 const float occlusionBias = 0.25;
@@ -78,6 +79,7 @@ vec3 getOcclusion(vec3 color) {
 void main() {
     transparencyNode fragmentNodes[MAX_TRANSPARENCY_LAYERS];
     int count = 0;
+    //float testAlpha = 0.0;
 
     uint nodeIndex = imageLoad(headIndexImage, ivec2(gl_FragCoord.xy)).r;
 
@@ -126,4 +128,12 @@ void main() {
     }
     
     outColor = mix(sampleColor, color, color.a);
+
+    // Output actor UID adjusted by 1 to avoid writing index 0 or reuse index from previous deferred passes
+    if (count > 0) {
+        outActorUID = fragmentNodes[0].actorUID + 1;
+    } else {
+        int actorUID = int(imageLoad(samplersInt[material.samplerIndex[EXTRAMAP2]], ivec2(gl_FragCoord.xy)).r);
+        outActorUID = actorUID;
+    }
 }

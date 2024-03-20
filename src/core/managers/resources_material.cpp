@@ -79,6 +79,7 @@ void core::MResources::initialize() {
   materialInfo.textures.emissive = RTGT_PPTAA;
   materialInfo.textures.extra0 = RTGT_APBR;
   materialInfo.textures.extra1 = RTGT_PPAO;
+  materialInfo.textures.extra2 = RTGT_RAYCAST;
   materialInfo.alphaMode = EAlphaMode::Opaque;
   materialInfo.doubleSided = false;
   materialInfo.manageTextures = true;

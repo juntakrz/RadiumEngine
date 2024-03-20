@@ -284,6 +284,7 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
   // Alpha compositing pass, return the results of alpha buffer
   {
     RTexture* pColorAttachment = core::resources.getTexture(RTGT_APBR);
+    RTexture* pRayCastAttachment = core::resources.getTexture(RTGT_RAYCAST);
 
     RDynamicRenderingInfo info{};
     info.pipelineLayout = EPipelineLayout::Scene;
@@ -291,9 +292,13 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     info.vertexShader = "vs_quad.spv";
     info.fragmentShader = "fs_transparencyLayer.spv";
     info.colorAttachmentClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
+    info.clearColorAttachments = false;
     info.layoutInfo.validateColorAttachmentLayout = true;
     info.layoutInfo.transitionColorAttachmentLayout = true;
-    info.colorAttachments = {{ pColorAttachment, pColorAttachment->texture.view, pColorAttachment->texture.imageFormat }};
+    info.colorAttachments = {
+      { pColorAttachment, pColorAttachment->texture.view, pColorAttachment->texture.imageFormat },
+      { pRayCastAttachment, pRayCastAttachment->texture.view, pRayCastAttachment->texture.imageFormat }
+    };
 
     createDynamicRenderingPass(EDynamicRenderingPass::AlphaCompositing, &info);
   }

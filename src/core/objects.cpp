@@ -32,7 +32,7 @@ std::vector<VkVertexInputBindingDescription> RVertex::getBindingDescs() {
 }
 
 std::vector<VkVertexInputAttributeDescription> RVertex::getAttributeDescs() {
-  std::vector<VkVertexInputAttributeDescription> attrDescs(8);
+  std::vector<VkVertexInputAttributeDescription> attrDescs(9);
   
   // Vertex
   attrDescs[0].binding = 0;                         // binding defined by binding description of RVertex
@@ -75,6 +75,11 @@ std::vector<VkVertexInputAttributeDescription> RVertex::getAttributeDescs() {
   attrDescs[7].format = VK_FORMAT_R32G32B32A32_UINT;
   attrDescs[7].location = 7;
   attrDescs[7].offset = 0;
+
+  attrDescs[8].binding = 1;
+  attrDescs[8].format = VK_FORMAT_R32_SINT;
+  attrDescs[8].location = 8;
+  attrDescs[8].offset = offsetof(RInstanceData, actorUID);
 
   return attrDescs;
 }

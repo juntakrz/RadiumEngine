@@ -97,5 +97,7 @@ public:
   ImGuiIO& io();
 
   void render();
+
+  bool isEditorVisible();
 };
 }

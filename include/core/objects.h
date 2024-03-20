@@ -298,6 +298,7 @@ struct RInstanceData {
   int32_t nodeMatrixId = -1;
   int32_t skinMatrixId = -1;
   int32_t materialId = -1;
+  int32_t actorUID = -1;
 };
 
 struct RLightInfo {
@@ -395,6 +396,7 @@ struct RTransparencyLinkedListData {
 struct RTransparencyLinkedListNode {
   glm::vec4 color;
   float depth;
+  int actorUID;
   uint32_t nextNodeIndex;
 };
 

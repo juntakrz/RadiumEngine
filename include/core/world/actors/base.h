@@ -16,7 +16,7 @@ class ABase {
   std::string m_name = "";
   std::string m_previousName = "";
   EActorType m_typeId = EActorType::Base;
-  uint32_t m_UID = -1;
+  int32_t m_UID = -1;
 
   struct TransformationData {
     // data used in actual transformation calculations

@@ -10,6 +10,7 @@
 struct transparencyNode{
 	vec4 color;
 	float depth;
+	int actorUID;
 	uint nextNodeIndex;
 };
 
@@ -23,6 +24,7 @@ layout (location = 4) in vec4 inColor0;
 
 // Per Instance
 layout (location = 7) flat in uint inMaterialIndex;
+layout (location = 8) flat in int inActorUID;
 
 // Environment bindings
 layout (set = 0, binding = 2) uniform samplerCube prefilteredMap;
@@ -359,6 +361,7 @@ void main() {
         // Store node data
         nodes[nodeIndex].color = getColor(baseColor);
         nodes[nodeIndex].depth = gl_FragCoord.z;
+		nodes[nodeIndex].actorUID = inActorUID;
         nodes[nodeIndex].nextNodeIndex = prevHeadIndex;
     }
 }

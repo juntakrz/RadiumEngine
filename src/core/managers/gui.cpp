@@ -82,8 +82,6 @@ void core::MGUI::initialize() {
   ImGui_ImplGlfw_InitForVulkan(core::window.getWindow(), true);
 
   // Prepare pipeline info for imGUI to use in a dynamic rendering pass later
-  RTexture* pTexture = core::resources.getTexture(RTGT_IMGUI);
-
   VkPipelineRenderingCreateInfoKHR pipelineInfo{};
   pipelineInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
   pipelineInfo.viewMask = NULL;
@@ -116,7 +114,7 @@ void core::MGUI::initialize() {
   ImGui_ImplVulkan_CreateFontsTexture();
 
   // Prepare dynamic rendering data
-  core::renderer.gui.pTexture = pTexture;
+  RTexture* pSwapchainImage = core::renderer.swapchain.pImages[0];
 
   VkRenderingAttachmentInfo& attachmentInfo = core::renderer.gui.colorAttachment;
   attachmentInfo = VkRenderingAttachmentInfo{};
@@ -124,8 +122,8 @@ void core::MGUI::initialize() {
   attachmentInfo.clearValue.color = {0.0f, 0.0f, 0.0f, 0.0f};
   attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
   attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-  attachmentInfo.imageView = pTexture->texture.view;
-  attachmentInfo.imageLayout = pTexture->texture.imageLayout;
+  attachmentInfo.imageView = pSwapchainImage->texture.view;
+  attachmentInfo.imageLayout = pSwapchainImage->texture.imageLayout;
   attachmentInfo.pNext = nullptr;
 
   VkRenderingInfo& renderingInfo = core::renderer.gui.renderingInfo;
@@ -133,10 +131,10 @@ void core::MGUI::initialize() {
   renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
   renderingInfo.pColorAttachments = &attachmentInfo;
   renderingInfo.colorAttachmentCount = 1;
-  renderingInfo.layerCount = pTexture->texture.layerCount;
+  renderingInfo.layerCount = 1;
   renderingInfo.renderArea.offset = { 0, 0 };
-  renderingInfo.renderArea.extent.width = pTexture->texture.width;
-  renderingInfo.renderArea.extent.height = pTexture->texture.height;
+  renderingInfo.renderArea.extent.width = config::renderWidth;
+  renderingInfo.renderArea.extent.height = config::renderHeight;
   renderingInfo.pDepthAttachment = nullptr;
   renderingInfo.pStencilAttachment = nullptr;
   renderingInfo.viewMask = NULL;
@@ -185,4 +183,8 @@ void core::MGUI::render() {
   }
 
   ImGui::Render();
+}
+
+bool core::MGUI::isEditorVisible() {
+  return m_isEditorVisible;
 }

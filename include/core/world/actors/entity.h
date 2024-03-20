@@ -83,4 +83,9 @@ class AEntity : public ABase {
     const bool loop = true, const bool isReversed = false);
 
   void playAnimation(const WAnimationInfo* pAnimationInfo);
+
+  // Change the render pass of the whole model's list of materials if primitiveUID is left at -1
+  // It's possible to select only one of GBuffer or ABuffer passes or one of shadow passes, rest will be ignored
+  bool changeRenderPass(EDynamicRenderingPass newPass = EDynamicRenderingPass::Null,
+    const bool changeShadowPass = false, const uint32_t primitiveUID = -1);
 };

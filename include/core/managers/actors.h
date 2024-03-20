@@ -27,7 +27,7 @@ class MActors {
   } m_linearActors;
 
   ALight* m_pSunLight = nullptr;
-  uint32_t m_nextActorUID = 0;
+  int32_t m_nextActorUID = 0;
 
  private:
   MActors();

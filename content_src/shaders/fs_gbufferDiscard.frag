@@ -14,6 +14,7 @@ layout (location = 6) in vec4 inPrevWorldPos;
 
 // Per Instance
 layout (location = 7) flat in uint inMaterialIndex;
+layout (location = 8) flat in int inActorUID;
 
 layout (location = 0) out vec4 outPosition;
 layout (location = 1) out vec4 outColor;
@@ -21,6 +22,7 @@ layout (location = 2) out vec4 outNormal;
 layout (location = 3) out vec4 outPhysical;		// x = metalness, y = roughness, z = ambient occlusion
 layout (location = 4) out vec4 outEmissive;
 layout (location = 5) out vec2 outVelocity;
+layout (location = 6) out int outActorUID;
 
 const float minRoughness = 0.04;
 
@@ -135,4 +137,7 @@ void main() {
 
 	// 6. Store velocity vector
 	outVelocity = getVelocity(inPrevWorldPos, inCurrentWorldPos);
+
+	// 7. Store actor UID (increased by 1 to avoid writing 0)
+	outActorUID = inActorUID + 1;
 }

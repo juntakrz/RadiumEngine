@@ -8,7 +8,7 @@ TResult core::MRenderer::createImageTargets() {
   RTexture* pNewTexture = nullptr;
   RTextureInfo textureInfo{};
 
-  std::string rtName = RTGT_IMGUI;
+  std::string rtName = RTGT_RAYCAST;
   
   textureInfo.name = rtName;
   textureInfo.layerCount = 1u;
@@ -16,11 +16,11 @@ TResult core::MRenderer::createImageTargets() {
   textureInfo.isCubemap = false;
   textureInfo.width = config::renderWidth;
   textureInfo.height = config::renderHeight;
-  textureInfo.format = core::vulkan::formatHDR16;
+  textureInfo.format = VK_FORMAT_R32_SINT;
   textureInfo.targetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   textureInfo.usageFlags =
-    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
   pNewTexture = core::resources.createTexture(&textureInfo);
 
@@ -454,6 +454,9 @@ TResult core::MRenderer::createGBufferRenderTargets() {
 
     scene.pGBufferTargets.emplace_back(pNewTarget);
   }
+
+  // Add raycasting map to GBuffer
+  scene.pGBufferTargets.emplace_back(core::resources.getTexture(RTGT_RAYCAST));
 
   if (!createFragmentRenderTarget(RTGT_GPBR, core::vulkan::formatHDR16)) {
     return RE_CRITICAL;

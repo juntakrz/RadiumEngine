@@ -16,6 +16,7 @@ layout (location = 6) in vec4 inColor0;
 
 // Per Instance
 layout (location = 7) in uvec4 inInstanceIndices;		// x - model, y - node, z - skin, w - material
+layout (location = 8) in int inActorUID;
 
 layout (location = 0) out vec3 outWorldPos;
 layout (location = 1) out vec3 outNormal;
@@ -25,6 +26,7 @@ layout (location = 4) out vec4 outColor0;
 layout (location = 5) out vec4 outCurrentMVPPos;
 layout (location = 6) out vec4 outPrevMVPPos;
 layout (location = 7) flat out uint outMaterialIndex;
+layout (location = 8) flat out int outActorUID;
 
 void main() {
 	const uint modelIndex = inInstanceIndices.x;
@@ -69,6 +71,7 @@ void main() {
 	outCurrentMVPPos = scene.projection * scene.view * vec4(outWorldPos, 1.0);
 
 	outMaterialIndex = inInstanceIndices.w;
+	outActorUID = inActorUID;
 
 	// Jittering an output vertex position for TAA history accumulation
 	gl_Position = outCurrentMVPPos + vec4(scene.haltonJitter * outCurrentMVPPos.w, 0.0, 0.0);

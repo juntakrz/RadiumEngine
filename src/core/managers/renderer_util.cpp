@@ -1082,6 +1082,7 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
     instanceData.instanceBufferBlock.nodeMatrixId = pEntity->getNodeTransformBufferIndex(pNode->index);
     instanceData.instanceBufferBlock.skinMatrixId = pEntity->getSkinTransformBufferIndex(pNode->skinIndex);
     instanceData.instanceBufferBlock.materialId = primitive->pInitialMaterial->bufferIndex;
+    instanceData.instanceBufferBlock.actorUID = pEntity->getUID();
 
     // Store unique instance index
     instanceData.instanceUID = scene.nextInstanceUID++;

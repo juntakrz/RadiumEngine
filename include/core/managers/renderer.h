@@ -71,7 +71,6 @@ class MRenderer {
   } environment;
 
   struct RGUIData {
-    RTexture* pTexture = nullptr;
     VkRenderingAttachmentInfo colorAttachment;
     VkRenderingInfo renderingInfo;
   } gui;

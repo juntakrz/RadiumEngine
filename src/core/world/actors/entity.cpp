@@ -313,3 +313,52 @@ void AEntity::playAnimation(const WAnimationInfo* pAnimationInfo) {
   //  }
   //}
 }
+
+bool AEntity::changeRenderPass(
+  EDynamicRenderingPass newPass, const bool changeShadowPass, const uint32_t primitiveUID) {
+
+  const uint32_t allowedPasses = (changeShadowPass)
+    ? EDynamicRenderingPass::Shadow
+    | EDynamicRenderingPass::ShadowDiscard
+
+    : EDynamicRenderingPass::OpaqueCullBack
+    | EDynamicRenderingPass::OpaqueCullNone
+    | EDynamicRenderingPass::DiscardCullNone
+    | EDynamicRenderingPass::BlendCullNone
+    | EDynamicRenderingPass::MaskCullBack;
+
+  const uint32_t clearMask = ~allowedPasses;
+
+  // New rendering pass does not belong to the allowed passes if the result of this check is non-zero
+  if (newPass & clearMask) {
+    return false;
+  }
+
+  RBuffer stagingBuffer;
+  core::renderer.createBuffer(EBufferType::STAGING, sizeof(WInstanceDataEntry), stagingBuffer, nullptr);
+
+  VkBufferCopy bufferCopyRegion{};
+  bufferCopyRegion.srcOffset = 0u;
+  bufferCopyRegion.size = sizeof(uint32_t);
+
+  // Change material render passes
+  if (primitiveUID == -1) {
+    for (auto& primitive : m_pModel->m_pLinearPrimitives) {
+      primitive->pInitialMaterial->passFlags &= clearMask;
+      primitive->pInitialMaterial->passFlags |= newPass;
+
+      memcpy(stagingBuffer.allocInfo.pMappedData, &primitive->pInitialMaterial->passFlags, sizeof(uint32_t));
+
+      bufferCopyRegion.dstOffset = 
+        primitive->instanceData[m_instanceIndex].instanceDataBufferOffset + offsetof(WInstanceDataEntry, passFlags);
+      core::renderer.copyBuffer(
+        stagingBuffer.buffer, core::renderer.getSceneBuffers()->sourceDataBuffer.buffer, &bufferCopyRegion);
+    }
+
+    vmaDestroyBuffer(core::renderer.memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
+    return true;
+  }
+
+  vmaDestroyBuffer(core::renderer.memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
+  return true;
+}

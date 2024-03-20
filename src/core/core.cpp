@@ -93,6 +93,7 @@ void core::run() {
   entityInfo.scale = glm::vec3(0.18f);
   
   APawn* pPawn = core::actors.createPawn(&entityInfo);
+  //pPawn->changeRenderPass(EDynamicRenderingPass::BlendCullNone);
   //pPawn->setInstancePrimitiveMaterial(0, 0, "RMat_Light0");
 
   entityInfo = WEntityCreateInfo{};
