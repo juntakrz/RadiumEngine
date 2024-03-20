@@ -12,21 +12,32 @@ const core::MRef::WSceneGraph& core::MRef::getSceneGraph() {
   return m_sceneGraph;
 }
 
-void core::MRef::registerActor(ABase* pActor) {
+bool core::MRef::registerActor(ABase* pActor) {
+  const std::string& previousName = pActor->getPreviousName();
   const std::string& name = pActor->getName();
 
-  if (m_actorPointers.contains(name)) {
-    RE_LOG(Error, "Failed to register actor '%s'.", name.c_str());
-    return;
+  // Check if a target actor name isn't taken
+  if (!getActor(name)) {
+    // Check if the same actor with the previous name is already registered and perform renaming
+    if (ABase* pActorToUnregister = getActor(previousName)) {
+      if (pActorToUnregister == pActor) {
+        m_actorPointers.erase(previousName);
+      }
+    }
+
+    m_actorPointers[name] = pActor;
+    return true;
   }
 
-  m_actorPointers[name] = pActor;
+  RE_LOG(Error, "Failed to register actor '%s', an actor with the same name is already registered.",
+    name.c_str());
+  return false;
 }
 
 void core::MRef::unregisterActor(ABase* pActor) {
   const std::string& name = pActor->getName();
 
-  if (m_actorPointers.contains(name)) {
+  if (getActor(name)) {
     m_actorPointers.erase(name);
     return;
   }
@@ -34,114 +45,128 @@ void core::MRef::unregisterActor(ABase* pActor) {
   RE_LOG(Error, "Failed to unregister actor '%s'. Isn't registered with the reference manager.", name.c_str());
 }
 
-bool core::MRef::isActorRegistered(const std::string& name) {
-  return m_actorPointers.contains(name);
+void core::MRef::unregisterActor(const std::string& name) {
+  if (getActor(name)) {
+    m_actorPointers.erase(name);
+    return;
+  }
+
+  RE_LOG(Error, "Failed to unregister actor '%s'. Isn't registered with the reference manager.", name.c_str());
 }
 
 ABase* core::MRef::getActor(const std::string& name) {
-  return m_actorPointers.at(name);
+  if (m_actorPointers.contains(name)) {
+    return m_actorPointers[name];
+  }
+
+  return nullptr;
 }
 
-void core::MRef::registerInstance(AEntity* pEntity) {
-  const std::string& modelName = pEntity->getModel()->getName();
+bool core::MRef::registerInstance(AEntity* pEntity) {
+  WModel* pModel = pEntity->getModel();
   const std::string& instanceName = pEntity->getName();
 
-  if (!isActorRegistered(instanceName)) {
+  // registerActor executes first and writes a pointer to ABase, so need to make sure it did
+  if (getActor(instanceName) == pEntity) {
     // Make sure model entry exists, if not create one
-    if (!m_sceneGraph.instances.contains(modelName)) {
-      m_sceneGraph.instances[modelName] = {};
+    if (!m_sceneGraph.instances.contains(pModel)) {
+      m_sceneGraph.instances[pModel] = {};
     }
 
     // Register new instance if it isn't present already
-    if (!m_sceneGraph.instances[modelName].contains(instanceName)) {
-      m_sceneGraph.instances[modelName][instanceName] = pEntity;
-      m_instanceModelReferences[instanceName] = pEntity->getModel();
+    if (!m_sceneGraph.instances[pModel].contains(pEntity)) {
+      m_sceneGraph.instances[pModel].insert(pEntity);
 
-      registerActor(pEntity);
-
-      return;
+      return true;
     }
   }
 
   RE_LOG(Warning, "Failed to add instance '%s' of model '%s' to scene graph. Already exists.",
-    instanceName.c_str(), modelName.c_str());
+    instanceName.c_str(), pModel->getName().c_str());
+
+  return false;
 }
 
-void core::MRef::unregisterInstance(AEntity* pEntity) {
-  const std::string& modelName = pEntity->getModel()->getName();
+bool core::MRef::unregisterInstance(AEntity* pEntity) {
+  WModel* pModel = pEntity->getModel();
   const std::string& instanceName = pEntity->getName();
 
-  if (isActorRegistered(instanceName)) {
-    m_sceneGraph.instances[modelName].erase(instanceName);
-    m_instanceModelReferences.erase(instanceName);
-      
+  if (getActor(instanceName) == pEntity) {
+    m_sceneGraph.instances[pModel].erase(pEntity);
     unregisterActor(pEntity);
 
-    if (m_sceneGraph.instances[modelName].empty()) {
-      m_sceneGraph.instances.erase(modelName);
+    if (m_sceneGraph.instances[pModel].empty()) {
+      m_sceneGraph.instances.erase(pModel);
     }
 
-    return;
+    return true;
   }
 
   RE_LOG(Warning, "Failed to remove instance '%s' of model '%s' from scene graph. It isn't registered.",
-    instanceName.c_str(), modelName.c_str());
+    instanceName.c_str(), pModel->getName().c_str());
+  return false;
 }
 
-void core::MRef::registerCamera(ACamera* pCamera) {
+bool core::MRef::registerCamera(ACamera* pCamera) {
   const std::string& name = pCamera->getName();
 
-  if (!isActorRegistered(name)) {
-    m_sceneGraph.cameras[name] = pCamera;
-    registerActor(pCamera);
-
-    return;
+  if (!m_sceneGraph.cameras.contains(pCamera)) {
+    m_sceneGraph.cameras.insert(pCamera);
+    return true;
   }
 
   RE_LOG(Warning, "Trying to register camera '%s' with a scene graph, but it is already registered.", name.c_str());
+  return false;
 }
 
-void core::MRef::unregisterCamera(ACamera* pCamera) {
+bool core::MRef::unregisterCamera(ACamera* pCamera) {
   const std::string& name = pCamera->getName();
 
-  if (isActorRegistered(name)) {
-    m_sceneGraph.cameras.erase(name);
+  if (getActor(name)) {
+    m_sceneGraph.cameras.erase(pCamera);
     unregisterActor(pCamera);
 
-    return;
+    return true;
   }
 
   RE_LOG(Warning, "Trying to delete camera '%s' from a scene graph, but it isn't registered.", name.c_str());
+  return false;
 }
 
-void core::MRef::registerLight(ALight* pLight) {
+bool core::MRef::registerLight(ALight* pLight) {
   const std::string& name = pLight->getName();
 
-  if (!isActorRegistered(name)) {
-    m_sceneGraph.lights[name] = pLight;
-    registerActor(pLight);
-
-    return;
+  if (!m_sceneGraph.lights.contains(pLight)) {
+    m_sceneGraph.lights.insert(pLight);
+    return true;
   }
 
   RE_LOG(Warning, "Trying to register light '%s' with a scene graph, but it is already registered.", name.c_str());
+  return false;
 }
 
-void core::MRef::unregisterLight(ALight* pLight) {
+bool core::MRef::unregisterLight(ALight* pLight) {
   const std::string& name = pLight->getName();
 
-  if (isActorRegistered(name)) {
-    m_sceneGraph.lights.erase(name);
+  if (getActor(name)) {
+    m_sceneGraph.lights.erase(pLight);
     unregisterActor(pLight);
 
-    return;
+    return true;
   }
 
   RE_LOG(Warning, "Trying to delete light '%s' from a scene graph, but it isn't registered.", name.c_str());
+  return false;
 }
 
-void core::MRef::setSceneName(const char* name) {
-  m_sceneGraph.sceneName = name;
+void core::MRef::setSceneName(const std::string& name) {
+  bool sameNameExists = false;
+
+  if (getActor(name)) {
+    sameNameExists = true;
+  }
+
+  m_sceneGraph.sceneName = name + std::string((sameNameExists) ? "_" : "");
 }
 
 const std::string& core::MRef::getSceneName() {

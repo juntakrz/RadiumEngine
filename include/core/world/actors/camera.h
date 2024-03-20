@@ -4,7 +4,6 @@
 
 class ACamera : public ABase {
  protected:
-  EActorType m_typeId = EActorType::Camera;
   ECameraProjection m_projectionType = ECameraProjection::Perspective;
 
   struct {
@@ -39,8 +38,9 @@ class ACamera : public ABase {
   }
 
  public:
-  ACamera() noexcept {};
-  virtual ~ACamera() override{};
+  ACamera() = default;
+  ACamera(const uint32_t UID) { m_UID = UID; m_typeId = EActorType::Camera; };
+  virtual ~ACamera() override {};
 
   // sets camera projection matrix as perspective
   void setPerspective(float FOV, float aspectRatio, float nearZ,

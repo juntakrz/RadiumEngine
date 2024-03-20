@@ -4,7 +4,6 @@
 
 class ALight : public ACamera {
  protected:
-  EActorType m_typeId = EActorType::Light;
   ELightType m_lightType = ELightType::Directional;
 
   // r, g, b = color, a = intensity
@@ -13,6 +12,9 @@ class ALight : public ACamera {
   bool m_isShadowCaster = false;
 
  public:
+   ALight() = default;
+   ALight(const uint32_t UID) { m_UID = UID; m_typeId = EActorType::Light; };
+
   void setLightColor(const glm::vec3& newColor);
   void setLightColor(float r, float g, float b);
   void setLightIntensity(float newIntensity);

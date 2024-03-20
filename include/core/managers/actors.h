@@ -15,20 +15,19 @@ class MActors {
 
  private:
   struct {
-    std::unordered_map<std::string, std::unique_ptr<ACamera>> cameras;
-    std::unordered_map<std::string, std::unique_ptr<ALight>> lights;
-    std::unordered_map<std::string, std::unique_ptr<APawn>> pawns;
-    std::unordered_map<std::string, std::unique_ptr<AStatic>> statics;
+    std::unordered_map<uint32_t, std::unique_ptr<ACamera>> cameras;
+    std::unordered_map<uint32_t, std::unique_ptr<ALight>> lights;
+    std::unordered_map<uint32_t, std::unique_ptr<APawn>> pawns;
+    std::unordered_map<uint32_t, std::unique_ptr<AStatic>> statics;
   } m_actors;
 
   struct {
     std::vector<ACamera*> pCameras;
     std::vector<ALight*> pLights;
-    std::vector<APawn*> pPawns;
-    std::vector<AStatic*> pStatics;
   } m_linearActors;
 
   ALight* m_pSunLight = nullptr;
+  uint32_t m_nextActorUID = 0;
 
  private:
   MActors();
@@ -47,32 +46,31 @@ class MActors {
 
   // CAMERA
 
-  ACamera* createCamera(const char* name,
-                        RCameraInfo* cameraSettings = nullptr);
-  TResult destroyCamera(const char* name);
-  ACamera* getCamera(const char* name);
+  ACamera* createCamera(const std::string& name, RCameraInfo* cameraSettings = nullptr);
+  TResult destroyCamera(ACamera *pCamera);
+  ACamera* getCamera(const std::string& name);
 
   // LIGHT
 
-  ALight* createLight(const char* name, RLightInfo* pInfo = nullptr);
-  TResult destroyLight(const char* name);
-  ALight* getLight(const char* name);
-  bool setSunLight(const char* name);
+  ALight* createLight(const std::string& name, RLightInfo* pInfo = nullptr);
+  TResult destroyLight(ALight *pLight);
+  ALight* getLight(const std::string& name);
+  bool setSunLight(const std::string& name);
   bool setSunLight(ALight* pLight);
   ALight* getSunLight();
 
   // PAWN
 
-  APawn* createPawn(const char* name);
-  TResult destroyPawn(const char* name);
-  APawn* getPawn(const char* name);
+  APawn* createPawn(WEntityCreateInfo* pInfo);
+  TResult destroyPawn(APawn* pPawn);
+  APawn* getPawn(const std::string& name);
   void destroyAllPawns();
 
   // STATIC
 
-  AStatic* createStatic(const char* name);
-  TResult destroyStatic(const char* name);
-  AStatic* getStatic(const char* name);
+  AStatic* createStatic(WEntityCreateInfo* pInfo);
+  TResult destroyStatic(AStatic* pStatic);
+  AStatic* getStatic(const std::string& name);
   void destroyAllStatics();
 
   // ENTITY

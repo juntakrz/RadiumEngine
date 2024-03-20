@@ -6,7 +6,7 @@
 
 #include "tiny_gltf.h"
 
-TResult WModel::createModel(const char* name, const tinygltf::Model* pInModel,
+TResult WModel::createModel(const std::string& name, const tinygltf::Model* pInModel,
                             const WModelConfigInfo* pConfigInfo) {
   if (!pInModel) {
     RE_LOG(Error,

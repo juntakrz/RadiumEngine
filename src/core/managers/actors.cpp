@@ -46,11 +46,11 @@ void core::MActors::updateLightingUBO(RLightingUBO* pLightingBuffer) {
   pLightingBuffer->lightCount = lightCount;
 }
 
-ACamera* core::MActors::createCamera(const char* name,
-                                     RCameraInfo* cameraSettings) {
-  if (m_actors.cameras.try_emplace(name).second) {
-    m_actors.cameras.at(name) = std::make_unique<ACamera>();
-    ACamera* pCamera = m_actors.cameras.at(name).get();
+ACamera* core::MActors::createCamera(const std::string& name, RCameraInfo* cameraSettings) {
+  if (!core::ref.getActor(name)) {
+    m_actors.cameras[m_nextActorUID] = std::make_unique<ACamera>(m_nextActorUID);
+    ACamera* pCamera = m_actors.cameras[m_nextActorUID].get();
+
     pCamera->setName(name);
 
     if (cameraSettings) {
@@ -79,20 +79,26 @@ ACamera* core::MActors::createCamera(const char* name,
 
     core::ref.registerCamera(pCamera);
 
-    RE_LOG(Log, "Created camera '%s'.", name);
+#ifndef NDEBUG
+    RE_LOG(Log, "Created camera '%s'.", name.c_str());
+#endif
+
+    ++m_nextActorUID;
     return pCamera;
   }
 
 #ifndef NDEBUG
   RE_LOG(Warning, "Failed to create camera '%s'. Probably already exists.",
-         name);
+         name.c_str());
 #endif
   return getCamera(name);
 }
 
-TResult core::MActors::destroyCamera(const char* name) {
-  if (m_actors.cameras.contains(name)) {
-    ACamera* pCamera = m_actors.cameras.at(name).get();
+TResult core::MActors::destroyCamera(ACamera* pCamera) {
+  const uint32_t UID = pCamera->getUID();
+
+  if (m_actors.cameras.contains(UID)) {
+    ACamera* pCamera = m_actors.cameras.at(UID).get();
     size_t index = 0;
     
     for (const auto& it : m_linearActors.pCameras) {
@@ -103,109 +109,121 @@ TResult core::MActors::destroyCamera(const char* name) {
       ++index;
     }
 
+    // Remove the camera from the scene graph
+    core::ref.unregisterCamera(pCamera);
+
     m_linearActors.pCameras.erase(m_linearActors.pCameras.begin() + index);
-    m_actors.cameras.erase(name);
+    m_actors.cameras.erase(UID);
+
     return RE_OK;
   }
 
-  RE_LOG(Error, "Failed to delete '%s' camera. Not found.", name);
+#ifndef NDEBUG
+  RE_LOG(Error, "Failed to destroy camera at %d.", pCamera);
+#endif
   return RE_ERROR;
 }
 
-ACamera* core::MActors::getCamera(const char* name) {
-  if (m_actors.cameras.contains(name)) {
-    return m_actors.cameras.at(name).get();
+ACamera* core::MActors::getCamera(const std::string& name) {
+  if (ACamera* pCamera = core::ref.getActor(name)->getAs<ACamera>()) {
+    return pCamera;
   }
 
   return nullptr;
 }
 
-ALight* core::MActors::createLight(const char* name, RLightInfo* pInfo) {
-  if (m_actors.lights.contains(name)) {
-    return m_actors.lights.at(name).get();
-  }
+ALight* core::MActors::createLight(const std::string& name, RLightInfo* pInfo) {
+  if (!core::ref.getActor(name)) {
+    m_actors.lights[m_nextActorUID] = std::make_unique<ALight>(m_nextActorUID);
+    ALight* pNewLight = m_actors.lights.at(m_nextActorUID).get();
 
-  m_actors.lights[name] = std::make_unique<ALight>();
-  ALight* pNewLight = m_actors.lights.at(name).get();
+    pNewLight->setName(name);
 
-  pNewLight->setName(name);
+    if (pInfo) {
+      pNewLight->setLightType(pInfo->type);
+      pNewLight->setLightColor(pInfo->color);
+      pNewLight->setLightIntensity(pInfo->intensity);
+      pNewLight->setLocation(pInfo->translation);
+      pNewLight->setRotation(pInfo->direction);
 
-  if (pInfo) {
-    pNewLight->setLightType(pInfo->type);
-    pNewLight->setLightColor(pInfo->color);
-    pNewLight->setLightIntensity(pInfo->intensity);
-    pNewLight->setLocation(pInfo->translation);
-    pNewLight->setRotation(pInfo->direction);
+      if (pInfo->isShadowCaster) {
+        pNewLight->setAsShadowCaster(true);
+        pNewLight->setOrthographic(2.0f, 2.0f, 0.001f, 1000.0f);
 
-    if (pInfo->isShadowCaster) {
-      pNewLight->setAsShadowCaster(true);
-      pNewLight->setOrthographic(2.0f, 2.0f, 0.001f, 1000.0f);
+        // get free camera offset index into the dynamic buffer
+        uint32_t index = 0;
 
-      // get free camera offset index into the dynamic buffer
-      uint32_t index = 0;
+        for (const auto& it : m_linearActors.pCameras) {
+          if (it->getViewBufferIndex() != index) {
+            break;
+          }
 
-      for (const auto& it : m_linearActors.pCameras) {
-        if (it->getViewBufferIndex() != index) {
-          break;
+          ++index;
         }
 
-        ++index;
+        pNewLight->setViewBufferIndex(index);
+        m_linearActors.pCameras.emplace_back(pNewLight);
       }
-
-      pNewLight->setViewBufferIndex(index);
-      m_linearActors.pCameras.emplace_back(pNewLight);
     }
-  }
 
-  RE_LOG(Log, "Created light '%s'.", name);
-
-  core::ref.registerLight(pNewLight);
-
-  m_linearActors.pLights.emplace_back(m_actors.lights.at(name).get());
-  return m_actors.lights.at(name).get();
-}
-
-TResult core::MActors::destroyLight(const char* name) {
-  if (m_actors.lights.contains(name)) {
-    m_actors.lights.at(name).reset();
-    m_actors.lights.erase(name);
+    core::ref.registerLight(pNewLight);
+    m_linearActors.pLights.emplace_back(pNewLight);
 
 #ifndef NDEBUG
-    RE_LOG(Log, "Destroyed light '%s'.", name);
+    RE_LOG(Log, "Created light '%s'.", name.c_str());
 #endif
+
+    ++m_nextActorUID;
+    return pNewLight;
+  }
+
+#ifndef NDEBUG
+  RE_LOG(Warning, "Failed to create light '%s'. Probably already exists.",
+    name.c_str());
+#endif
+  return getLight(name);
+}
+
+TResult core::MActors::destroyLight(ALight* pLight) {
+  const uint32_t UID = pLight->getUID();
+
+  uint32_t index = 0;
+  if (m_actors.lights.contains(UID)) {
+    for (const auto& it : m_linearActors.pLights) {
+      if (it == pLight) {
+        break;
+      }
+
+      ++index;
+    }
+
+    core::ref.unregisterLight(pLight);
+
+    m_linearActors.pLights.erase(m_linearActors.pLights.begin() + index);
+
+    m_actors.lights[UID].reset();
+    m_actors.lights.erase(UID);
 
     return RE_OK;
   }
 
 #ifndef NDEBUG
-  RE_LOG(Warning, "Couldn't destroy light '%s'. Was not found.", name);
+  RE_LOG(Error, "Failed to destroy light at %d.", pLight);
 #endif
 
-  return RE_WARNING;
+  return RE_ERROR;
 }
 
-ALight* core::MActors::getLight(const char* name) {
-  if (m_actors.lights.contains(name)) {
-    return m_actors.lights.at(name).get();
+ALight* core::MActors::getLight(const std::string& name) {
+  if (ALight* pLight = core::ref.getActor(name)->getAs<ALight>()) {
+    return pLight;
   }
 
-  RE_LOG(Error, "Failed to get light '%s' from actor list. It does not exist.",
-         name);
   return nullptr;
 }
 
-bool core::MActors::setSunLight(const char* name) {
-  if (m_actors.lights.contains(name)) {
-    ALight* pLight = m_actors.lights.at(name).get();
-
-    if (pLight->isShadowCaster() && pLight->getLightType() == ELightType::Directional) {
-      m_pSunLight = pLight;
-      return true;
-    }
-  }
-
-  RE_LOG(Error, "Failed to set '%s' as sun light. It either does not exist or isn't a directional caster.", name);
-  return false;
+bool core::MActors::setSunLight(const std::string& name) {
+  return setSunLight(core::ref.getActor(name)->getAs<ALight>());
 }
 
 bool core::MActors::setSunLight(ALight* pLight) {
@@ -222,89 +240,121 @@ ALight* core::MActors::getSunLight() {
   return m_pSunLight;
 }
 
-APawn* core::MActors::createPawn(const char* name) {
-  if (!m_actors.pawns.try_emplace(name).second) {
-    RE_LOG(Error, "Failed to created pawn '%s'. It probably already exists.",
+APawn* core::MActors::createPawn(WEntityCreateInfo* pInfo) {
+  // Model is missing
+  if (!pInfo->pModel) return nullptr;
+
+  const std::string& name = pInfo->name;
+
+  if (core::ref.getActor(name)) {
+    RE_LOG(Error, "Failed to create pawn '%s'. It probably already exists.",
            name);
     return nullptr;
   };
 
-  m_actors.pawns.at(name) = std::make_unique<APawn>();
-  m_actors.pawns.at(name)->setName(name);
+  m_actors.pawns[m_nextActorUID] = std::make_unique<APawn>(m_nextActorUID);
 
-  // should probably add a reference to MRef here?
+  APawn* pPawn = m_actors.pawns[m_nextActorUID].get();
+  pPawn->setName(name);
+  pPawn->setModel(pInfo->pModel);
+  pPawn->bindToRenderer();
 
-  m_linearActors.pPawns.emplace_back(m_actors.pawns.at(name).get());
-  return m_actors.pawns.at(name).get();
+  pPawn->setLocation(pInfo->translation);
+  pPawn->setRotation(glm::vec3(pInfo->rotation.x, pInfo->rotation.y, pInfo->rotation.z), pInfo->rotation.w);
+  pPawn->setScale(pInfo->scale);
+
+  ++m_nextActorUID;
+  return pPawn;
 }
 
-TResult core::MActors::destroyPawn(const char* name) {
-  if (m_actors.pawns.contains(name)){
-    if (m_actors.pawns.at(name)->getRendererBindingIndex() > -1) {
+TResult core::MActors::destroyPawn(APawn* pPawn) {
+  const uint32_t UID = pPawn->getUID();
+  pPawn->unbindFromRenderer();
+
+  if (m_actors.pawns.contains(UID)) {
+    if (pPawn->getRendererBindingIndex() > -1) {
       RE_LOG(Error,
-             "Failed to destroy pawn \"%s\". It is still bound to rendering "
-             "pipeline.");
+        "Failed to destroy pawn \"%s\". It is still bound to rendering "
+        "pipeline.");
 
       return RE_ERROR;
     }
 
-    m_actors.pawns.erase(name);
+    core::ref.unregisterInstance(pPawn);
+    m_actors.pawns.erase(UID);
+
     return RE_OK;
   }
 
-  RE_LOG(Error, "Failed to destroy pawn '%s', doesn't exist.", name);
+  RE_LOG(Error, "Failed to destroy pawn at %d.", pPawn);
   return RE_ERROR;
 }
 
-APawn* core::MActors::getPawn(const char* name) {
-  if (m_actors.pawns.contains(name)) {
-    return m_actors.pawns.at(name).get();
+APawn* core::MActors::getPawn(const std::string& name) {
+  if (APawn* pPawn = core::ref.getActor(name)->getAs<APawn>()) {
+    return pPawn;
   }
 
-  RE_LOG(Error, "Failed to get pawn '%s'.", name);
+  RE_LOG(Error, "Failed to get pawn '%s'.", name.c_str());
   return nullptr;
 }
 
-AStatic* core::MActors::createStatic(const char* name) {
-  if (!m_actors.statics.try_emplace(name).second) {
-    RE_LOG(Error, "Failed to created static '%s'. It probably already exists.",
-           name);
+AStatic* core::MActors::createStatic(WEntityCreateInfo *pInfo) {
+  // Model is missing
+  if (!pInfo->pModel) return nullptr;
+
+  const std::string& name = pInfo->name;
+
+  if (core::ref.getActor(name)) {
+    RE_LOG(Error, "Failed to create static '%s'. It probably already exists.",
+      name);
     return nullptr;
   };
 
-  m_actors.statics.at(name) = std::make_unique<AStatic>();
-  m_actors.statics.at(name)->setName(name);
+  m_actors.statics[m_nextActorUID] = std::make_unique<AStatic>(m_nextActorUID);
 
-  // should probably add a reference to MRef here?
+  AStatic* pStatic = m_actors.statics[m_nextActorUID].get();
+  pStatic->setName(name);
+  pStatic->setModel(pInfo->pModel);
+  pStatic->bindToRenderer();
 
-  m_linearActors.pStatics.emplace_back(m_actors.statics.at(name).get());
-  return m_actors.statics.at(name).get();
+  pStatic->setLocation(pInfo->translation);
+  pStatic->setRotation(glm::vec3(pInfo->rotation.x, pInfo->rotation.y, pInfo->rotation.z), pInfo->rotation.w);
+  pStatic->setScale(pInfo->scale);
+
+  ++m_nextActorUID;
+  return pStatic;
 }
 
-TResult core::MActors::destroyStatic(const char* name) {
-  if (m_actors.statics.contains(name)) {
-    if (m_actors.statics.at(name)->getRendererBindingIndex() > -1) {
+TResult core::MActors::destroyStatic(AStatic *pStatic) {
+  const uint32_t UID = pStatic->getUID();
+  pStatic->unbindFromRenderer();
+
+  if (m_actors.statics.contains(UID)) {
+    if (pStatic->getRendererBindingIndex() > -1) {
       RE_LOG(Error,
-             "Failed to destroy static \"%s\". It is still bound to rendering "
-             "pipeline.");
+        "Failed to destroy pawn \"%s\". It is still bound to rendering "
+        "pipeline.");
 
       return RE_ERROR;
     }
 
-    m_actors.statics.erase(name);
+    core::ref.unregisterInstance(pStatic);
+    m_actors.pawns.erase(UID);
+
     return RE_OK;
   }
 
-  RE_LOG(Error, "Failed to destroy static '%s', doesn't exist.", name);
+  RE_LOG(Error, "Failed to destroy pawn at %d.", pStatic);
   return RE_ERROR;
 }
 
-AStatic* core::MActors::getStatic(const char* name) {
-  if (m_actors.statics.contains(name)) {
-    return m_actors.statics.at(name).get();
+AStatic* core::MActors::getStatic(const std::string& name) {
+  if (AStatic* pStatic = core::ref.getActor(name)->getAs<AStatic>()) {
+    return pStatic;
   }
 
-  RE_LOG(Error, "Failed to get static '%s'.", name);
+  RE_LOG(Error, "Failed to get static '%s'.", name.c_str());
   return nullptr;
 }
 

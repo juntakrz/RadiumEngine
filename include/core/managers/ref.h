@@ -15,16 +15,15 @@ class MRef {
 
  private:
   std::unordered_map<std::string, ABase*> m_actorPointers;
-  std::unordered_map<std::string, WModel*> m_instanceModelReferences; // Models by instance name
 
   struct WSceneGraph {
     std::string sceneName;
 
     // A map of WModel name maps that contain instances of any given model
-    std::unordered_map<std::string, std::unordered_map<std::string, AEntity*>> instances;
+    std::unordered_map<WModel*, std::unordered_set<AEntity*>> instances;
 
-    std::unordered_map<std::string, ACamera*> cameras;
-    std::unordered_map<std::string, ALight*> lights;
+    std::unordered_set<ACamera*> cameras;
+    std::unordered_set<ALight*> lights;
   } m_sceneGraph;
 
   bool m_sceneGraphRequiresUpdate = false;
@@ -43,21 +42,25 @@ class MRef {
 
   const WSceneGraph& getSceneGraph();
 
-  void registerActor(class ABase* pActor);
+  // Should only be called by setName method of ABase
+  bool registerActor(class ABase* pActor);
+
   void unregisterActor(class ABase* pActor);
-  bool isActorRegistered(const std::string& name);
+  void unregisterActor(const std::string& name);
+
+  // Can be used to check if an actor is registered, will return nullptr if not
   ABase* getActor(const std::string& name);
 
-  void registerInstance(AEntity* pEntity);
-  void unregisterInstance(AEntity* pEntity);
+  bool registerInstance(AEntity* pEntity);
+  bool unregisterInstance(AEntity* pEntity);
 
-  void registerCamera(ACamera* pCamera);
-  void unregisterCamera(ACamera* pCamera);
+  bool registerCamera(ACamera* pCamera);
+  bool unregisterCamera(ACamera* pCamera);
 
-  void registerLight(ALight* pLight);
-  void unregisterLight(ALight* pLight);
+  bool registerLight(ALight* pLight);
+  bool unregisterLight(ALight* pLight);
 
-  void setSceneName(const char* name);
+  void setSceneName(const std::string& name);
   const std::string& getSceneName();
 };
 }  // namespace core

@@ -12,8 +12,11 @@ class ACamera;
 
 class ABase {
  protected:
-  std::string m_name = "$NONAME$";
+  // Names must be set using setName method
+  std::string m_name = "";
+  std::string m_previousName = "";
   EActorType m_typeId = EActorType::Base;
+  uint32_t m_UID = -1;
 
   struct TransformationData {
     // data used in actual transformation calculations
@@ -45,15 +48,16 @@ class ABase {
   bool m_isVisible = true;
 
  protected:
-  ABase(){};
-  virtual ~ABase(){};
-
   // SIMD stuff, no error checks
   void copyVec3ToMatrix(const float* vec3, float* matrixColumn) noexcept;
 
   virtual void updateAttachments();
 
  public:
+  ABase() = default;
+  ABase(const uint32_t UID) { m_UID = UID; };
+  virtual ~ABase() {};
+
   // try to get this actor as its real subclass
   // example: ACamera* camera = actor.getAs<ACamera>();
   template <typename T>
@@ -100,13 +104,16 @@ class ABase {
   virtual void setForwardVector(const glm::vec3& newVector);
   virtual glm::vec3& getForwardVector();
 
-  virtual void setName(const char* name);
-  virtual const std::string& getName();
+  void setName(const std::string& name);
+  const std::string& getName();
+  const std::string& getPreviousName();
 
-  virtual const EActorType& getTypeId();
+  const EActorType& getTypeId();
 
-  virtual void setVisibility(const bool isVisible);
-  virtual const bool isVisible();
+  const uint32_t getUID();
+
+  void setVisibility(const bool isVisible);
+  const bool isVisible();
 
   virtual void attachTo(ABase* pTarget, const bool toTranslation,
                         const bool toRotation, const bool toForwardVector);

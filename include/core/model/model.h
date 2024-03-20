@@ -107,7 +107,8 @@ class WModel {
     bool isClean = true;
   } staging;
 
-  std::string m_name = "$NONAMEMODEL$";
+  std::string m_name = "";
+  std::string m_filePath = "$GeneratedModel$";  // Will contain file path if the model is created from file
 
   uint32_t m_sceneVertexOffset = 0u;
   uint32_t m_sceneIndexOffset = 0u;
@@ -162,7 +163,7 @@ class WModel {
   // glTF
  private:
 
-  TResult createModel(const char* name, const tinygltf::Model* pInModel,
+  TResult createModel(const std::string& name, const tinygltf::Model* pInModel,
                       const WModelConfigInfo* pConfigInfo = nullptr);
 
   void prepareStagingData();

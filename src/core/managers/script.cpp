@@ -104,7 +104,7 @@ void core::MScript::jsonParseCameras(const json* pCameraData) noexcept {
       float rotation[3] = {0.0f, 0.0f, 0.0f};
       float upVector[3] = {0.0f, 1.0f, 0.0f};
 
-      ACamera* newCamera = core::actors.createCamera(name.c_str(), nullptr);
+      ACamera* newCamera = core::actors.createCamera(name, nullptr);
 
       // set camera position
       if (it.contains("translation")) {

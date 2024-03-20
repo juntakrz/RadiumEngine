@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "core/core.h"
+#include "core/managers/ref.h"
 #include "core/managers/time.h"
 #include "core/world/actors/base.h"
 #include "core/world/actors/camera.h"
@@ -168,11 +169,20 @@ glm::vec3& ABase::getForwardVector() {
   return m_transformationData.forwardVector;
 }
 
-void ABase::setName(const char* name) { m_name = name; }
+void ABase::setName(const std::string& name) {
+  m_previousName = m_name;
+  m_name = name;
+
+  core::ref.registerActor(this);
+}
 
 const std::string& ABase::getName() { return m_name; }
 
+const std::string& ABase::getPreviousName() { return m_previousName; }
+
 const EActorType& ABase::getTypeId() { return m_typeId; }
+
+const uint32_t ABase::getUID() { return m_UID; }
 
 void ABase::setVisibility(const bool isVisible) { m_isVisible = isVisible; }
 

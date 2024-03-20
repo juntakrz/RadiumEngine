@@ -59,7 +59,6 @@ class AEntity : public ABase {
   void updateTransformBuffers() noexcept;
 
  public:
-  AEntity() noexcept {};
   virtual ~AEntity() override{};
 
   virtual void setModel(WModel* pModel);

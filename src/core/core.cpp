@@ -58,23 +58,6 @@ void core::run() {
   //materialInfo.glowColor = glm::vec4(0.5);
   core::resources.createMaterial(&materialInfo);
 
-  // create map models
-  core::world.createModel(EPrimitiveType::Sphere, "mdlSphere", 16, false);
-  core::world.createModel(EPrimitiveType::Sphere, "mdlSphere1", 4, false);
-  core::world.createModel(EPrimitiveType::Cube, "mdlBox1", 1, false);
-
-  core::world.getModel(RMDL_SKYBOX)->setPrimitiveMaterial(0, 0, "skybox");
-
-  WModelConfigInfo modelConfigInfo{};
-  modelConfigInfo.animationLoadMode = EAnimationLoadMode::ExtractToManager;
-
-  core::world.loadModelFromFile("content/models/wc3guy/scene.gltf", "mdlGuy", &modelConfigInfo);
-  core::world.loadModelFromFile("content/models/castle/scene.gltf", "mdlCastle");
-  core::world.loadModelFromFile("content/models/tree/scene.gltf", "mdlTree");
-  core::world.loadModelFromFile("content/models/grass_02/scene.gltf", "mdlGrass");
-  //
-
-  // create entities
   materialInfo = RMaterialInfo{};
   materialInfo.name = "RMat_Light0";
   materialInfo.glowColor = glm::vec4(3.5f, 2.4f, 1.0f, 0.0f);
@@ -85,31 +68,56 @@ void core::run() {
   materialInfo.glowColor = glm::vec4(1.0f, 1.0f, 3.0f, 0.0f);
   core::resources.createMaterial(&materialInfo);
 
-  
-  APawn* pPawn = core::actors.createPawn("sphere0");
-  pPawn->setModel(core::world.getModel("mdlSphere"));
-  pPawn->setLocation(1.0f, -0.8f, 2.0f);
-  pPawn->setScale(0.18f);
-  pPawn->getModel()->setPrimitiveMaterial(0, 0, "RMat_Light0");
-  pPawn->bindToRenderer();
+  // create map models
+  core::world.createModel(EPrimitiveType::Sphere, "mdlSphere", 16, false);
+  core::world.createModel(EPrimitiveType::Sphere, "mdlSphere1", 4, false);
+  core::world.createModel(EPrimitiveType::Cube, "mdlBox1", 1, false);
 
-  pPawn = core::actors.createPawn("sphere1");
-  pPawn->setModel(core::world.getModel("mdlSphere"));
-  pPawn->setLocation(1.5f, 1.4f, 3.3f);
-  pPawn->setScale(0.1f);
-  pPawn->bindToRenderer();
+  core::world.getModel(RMDL_SKYBOX)->setPrimitiveMaterial(0, 0, "skybox");
+  core::world.getModel("mdlSphere")->setPrimitiveMaterial(0, 0, "RMat_Light0");
+
+  WModelConfigInfo modelConfigInfo{};
+  modelConfigInfo.animationLoadMode = EAnimationLoadMode::ExtractToManager;
+
+  core::world.loadModelFromFile("content/models/wc3guy/scene.gltf", "mdlGuy", &modelConfigInfo);
+  core::world.loadModelFromFile("content/models/castle/scene.gltf", "mdlCastle");
+  core::world.loadModelFromFile("content/models/tree/scene.gltf", "mdlTree");
+  core::world.loadModelFromFile("content/models/grass_02/scene.gltf", "mdlGrass");
+  //
+
+  // Create entities
+  WEntityCreateInfo entityInfo;
+  entityInfo.name = "glowingSphere0";
+  entityInfo.pModel = core::world.getModel("mdlSphere");
+  entityInfo.translation = glm::vec3(1.0f, -0.8f, 2.0f);
+  entityInfo.scale = glm::vec3(0.18f);
+  
+  APawn* pPawn = core::actors.createPawn(&entityInfo);
+  //pPawn->setInstancePrimitiveMaterial(0, 0, "RMat_Light0");
+
+  entityInfo = WEntityCreateInfo{};
+  entityInfo.name = "glowingSphere1";
+  entityInfo.pModel = core::world.getModel("mdlSphere");
+  entityInfo.translation = glm::vec3(1.5f, 1.4f, 3.3f);
+  entityInfo.scale = glm::vec3(0.1f);
+
+  pPawn = core::actors.createPawn(&entityInfo);
   pPawn->setInstancePrimitiveMaterial(0, 0, "RMat_Light1");
 
-  AStatic* pStatic = core::actors.createStatic("Skybox");
-  pStatic->setModel(core::world.getModel(RMDL_SKYBOX));
-  pStatic->bindToRenderer();
+  entityInfo = WEntityCreateInfo{};
+  entityInfo.name = "Skybox";
+  entityInfo.pModel = core::world.getModel(RMDL_SKYBOX);
+
+  AStatic* pStatic = core::actors.createStatic(&entityInfo);
+
+  entityInfo = WEntityCreateInfo{};
+  entityInfo.name = "Static01";
+  entityInfo.pModel = core::world.getModel("mdlGuy");
+  entityInfo.translation = glm::vec3(0.0f, -1.0f, -0.3f);
+  entityInfo.rotation = glm::vec4(0.0f, 1.0f, 0.0f, glm::radians(100.0f));
+  entityInfo.scale = glm::vec3(0.32f);
   
-  pStatic = core::actors.createStatic("Static01");
-  pStatic->setModel(core::world.getModel("mdlGuy"));
-  pStatic->bindToRenderer();
-  pStatic->setLocation(0.0f, -1.0f, -0.3f);
-  pStatic->setRotation({0.0f, 1.0f, 0.0f}, glm::radians(100.0f));
-  pStatic->setScale(0.32f);
+  pStatic = core::actors.createStatic(&entityInfo);
 
   //pStatic->getModel()->bindAnimation("Windy day");
   //pStatic->getModel()->playAnimation("Windy day");
@@ -119,49 +127,53 @@ void core::run() {
   pStatic->getModel()->bindAnimation("Idle");   // TODO: not used, fix or deprecate
   pStatic->playAnimation("Idle");
 
-  pStatic = core::actors.createStatic("Static02");
-  pStatic->setModel(core::world.getModel("mdlGuy"));
-  pStatic->bindToRenderer();
-  pStatic->setLocation(1.0f, -1.1f, 0.4f);
-  pStatic->setRotation({ 0.0f, 1.0f, 0.0f }, glm::radians(-150.0f));
-  pStatic->setScale(0.32f);
+  entityInfo.name = "Static02";
+  entityInfo.translation = glm::vec3(1.0f, -1.1f, 0.4f);
+  entityInfo.rotation = glm::vec4(0.0f, 1.0f, 0.0f, glm::radians(-150.0f));
+
+  pStatic = core::actors.createStatic(&entityInfo);
   pStatic->playAnimation("SwordAndShieldIdle");
 
-  pStatic = core::actors.createStatic("Static03");
-  pStatic->setModel(core::world.getModel("mdlGuy"));
-  pStatic->bindToRenderer();
-  pStatic->setLocation(2.5f, -1.38f, 2.1f);
-  pStatic->setRotation({ 0.0f, 1.0f, 0.0f }, glm::radians(180.0f));
-  pStatic->setScale(0.32f);
-  pStatic->playAnimation("SwordAndShieldIdle", 1.1f, true, true);
+  entityInfo.name = "Static03";
+  entityInfo.translation = glm::vec3(2.5f, -1.38f, 2.1f);
+  entityInfo.rotation = glm::vec4(0.0f, 1.0f, 0.0f, glm::radians(180.0f));
 
-  pStatic = core::actors.createStatic("StaticCastle");
-  pStatic->setModel(core::world.getModel("mdlCastle"));
-  pStatic->bindToRenderer();
-  pStatic->setLocation(0.0f, 6.17f, 12.0f);
-  pStatic->setRotation({-0.5f, -0.4f, 0.0f});
-  pStatic->setScale(2.0f);
+  pStatic = core::actors.createStatic(&entityInfo);
+  pStatic->playAnimation("SwordAndShieldIdle", 1.12f, true, true);
 
-  pStatic = core::actors.createStatic("StaticTree0");
-  pStatic->setModel(core::world.getModel("mdlTree"));
-  pStatic->bindToRenderer();
-  pStatic->setLocation(1.0f, -1.35f, -0.8f);
+  entityInfo = WEntityCreateInfo{};
+  entityInfo.name = "StaticCastle";
+  entityInfo.pModel = core::world.getModel("mdlCastle");
+  entityInfo.translation = glm::vec3(0.0f, 6.17f, 12.0f);
+  entityInfo.scale = glm::vec3(2.0f);
+
+  pStatic = core::actors.createStatic(&entityInfo);
+  pStatic->setRotation(glm::vec3(-0.5f, -0.4f, 0.0f));
+
+  entityInfo = WEntityCreateInfo{};
+  entityInfo.name = "StaticTree0";
+  entityInfo.pModel = core::world.getModel("mdlTree");
+  entityInfo.translation = glm::vec3(1.0f, -1.35f, -0.8f);
+  entityInfo.scale = glm::vec3(1.0f, 1.25f, 1.0f);
+
+  pStatic = core::actors.createStatic(&entityInfo);
   pStatic->setRotation({ 0.0f, 0.0f, 1.5f });
-  pStatic->setScale({ 1.0f, 1.25f, 1.0f });
 
-  pStatic = core::actors.createStatic("StaticGrass0");
-  pStatic->setModel(core::world.getModel("mdlGrass"));
-  pStatic->bindToRenderer();
-  pStatic->setLocation(-0.12f, -0.7f, -0.3f);
-  pStatic->setRotation({ -1.707f, 0.0f, 0.0f });
-  pStatic->setScale(0.4f);
+  entityInfo = WEntityCreateInfo{};
+  entityInfo.name = "StaticGrass0";
+  entityInfo.pModel = core::world.getModel("mdlGrass");
+  entityInfo.translation = glm::vec3(-0.12f, -0.7f, -0.3f);
+  entityInfo.scale = glm::vec3(0.4f);
 
-  pStatic = core::actors.createStatic("StaticGrass1");
-  pStatic->setModel(core::world.getModel("mdlGrass"));
-  pStatic->bindToRenderer();
-  pStatic->setLocation(0.3f, -0.68f, -0.4f);
+  pStatic = core::actors.createStatic(&entityInfo);
   pStatic->setRotation({ -1.707f, 0.0f, 0.0f });
-  pStatic->setScale(0.4f);
+
+  entityInfo.name = "StaticGrass1";
+  entityInfo.translation = glm::vec3(0.3f, -0.68f, -0.4f);
+  entityInfo.scale = glm::vec3(0.35f);
+
+  pStatic = core::actors.createStatic(&entityInfo);
+  pStatic->setRotation({ -1.757f, 0.0f, 0.0f });
 
   //core::animations.saveAnimation("SwordAndShieldIdle", "SwordAndShieldIdle");
   //

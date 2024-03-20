@@ -30,7 +30,7 @@ void core::MWorld::initialize() {
 }
 
 TResult core::MWorld::loadModelFromFile(const std::string& path,
-                                        const char* name,
+                                        std::string name,
                                         const WModelConfigInfo* pConfigInfo) {
   tinygltf::Model gltfModel;
   tinygltf::TinyGLTF gltfContext;
@@ -39,7 +39,7 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
   bool bIsBinary = false, bIsModelLoaded = false;
   TResult result;
 
-  RE_LOG(Log, "Loading model \"%s\" from \"%s\".", name, path.c_str());
+  RE_LOG(Log, "Loading model \"%s\" from \"%s\".", name.c_str(), path.c_str());
 
   gltfContext.SetImageLoader(core::callback::loadImageData, nullptr);
 
@@ -70,7 +70,7 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
         Error,
         "Failed to add model \"%s\" to the world - a model with the same name "
         "already exists.",
-        name);
+        name.c_str());
     return RE_ERROR;
   }
 
@@ -78,6 +78,7 @@ TResult core::MWorld::loadModelFromFile(const std::string& path,
   pModel = m_models.at(name).get();
 
   result = pModel->createModel(name, &gltfModel, pConfigInfo);
+  pModel->m_filePath = path;
 
   return result;
 }

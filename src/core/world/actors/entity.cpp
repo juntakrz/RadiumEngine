@@ -165,8 +165,6 @@ void AEntity::bindToRenderer() {
 
 void AEntity::unbindFromRenderer() {
   core::renderer.unbindEntity(m_bindIndex);
-  core::ref.unregisterInstance(this);
-
   m_bindIndex = -1;
 }
 

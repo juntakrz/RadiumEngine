@@ -3,10 +3,8 @@
 #include "core/world/actors/entity.h"
 
 class AStatic : public AEntity {
- protected:
-  EActorType m_typeId = EActorType::Static;
-
  public:
-  AStatic() noexcept {};
+  AStatic() = default;
+  AStatic(const uint32_t UID) { m_UID = UID; m_typeId = EActorType::Static; }
   virtual ~AStatic() override{};
 };
