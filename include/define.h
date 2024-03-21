@@ -1,5 +1,7 @@
 #pragma once
 
+#define NOMINMAX
+
 // global library definitions
 #define GLFW_INCLUDE_VULKAN
 #define GLM_FORCE_RADIANS

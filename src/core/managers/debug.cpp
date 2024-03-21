@@ -127,11 +127,19 @@ void core::MDebug::enableRenderDocOverlay(bool bEnable) {
 }
 
 bool core::MDebug::isRenderDocEnabled() {
+#ifndef NDEBUG
   return m_renderdoc.isEnabled;
+#else
+  return false;
+#endif
 }
 
 bool core::MDebug::isRenderDocOverlayVisible() { 
+#ifndef NDEBUG
   return m_renderdoc.isOverlayEnabled;
+#else
+  return false;
+#endif
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL

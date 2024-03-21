@@ -300,7 +300,7 @@ bool core::MGUI::drawTreeNode(const std::string& name, const bool isFolder) {
 void core::MGUI::drawFrameInfo() {
   // Show FPS and frame time counter at the right side of the main menu bar
   ImGui::SetCursorPosX(m_editorData.rightPanelPosition.x + 6.0f);
-  ImGui::Text("FPS: %.1f (%.3f ms) Ray: %d, %d",
+  ImGui::Text("FPS: %.1f (%.2f ms) Ray: %d, %d",
     m_util.FPS, m_util.frameTime, m_util.referenceRaycast.x, m_util.referenceRaycast.y);
 }
 

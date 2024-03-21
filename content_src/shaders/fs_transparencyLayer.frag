@@ -135,11 +135,11 @@ void main() {
     // Perform raycasting as it's the last instance rendering pass
     if (scene.raycastTarget.x > -1 && scene.raycastTarget.y > -1 && ivec2(gl_FragCoord.xy) == scene.raycastTarget) { 
         if (count > 0) {
-            raycastedUID = fragmentNodes[0].actorUID + 1;
+            raycastedUID = fragmentNodes[0].actorUID;
         } else {
-            raycastedUID = int(imageLoad(samplersInt[material.samplerIndex[EXTRAMAP2]], ivec2(gl_FragCoord.xy)).r);
+            raycastedUID = int(imageLoad(samplersInt[material.samplerIndex[EXTRAMAP2]], ivec2(gl_FragCoord.xy)).r) - 1;
         }
     } else if (ivec2(gl_FragCoord.xy) == ivec2(0, 0) && scene.raycastTarget.x < 0 && scene.raycastTarget.y < 0) {
-        raycastedUID = 0;
+        raycastedUID = -1;
     }
 }

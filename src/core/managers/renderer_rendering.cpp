@@ -115,8 +115,9 @@ void core::MRenderer::prepareFrameResources(VkCommandBuffer commandBuffer) {
   {
     std::mutex mtx;
     std::unique_lock<std::mutex> lock(mtx);
-    sync.cvInstanceDataReady.wait(lock, [this]() { return sync.isInstanceDataReady; });
+    sync.cvInstanceDataReady.wait(lock, [this]() { return sync.isInstanceDataReady && sync.isTransformDataReady; });
     sync.isInstanceDataReady = false;
+    sync.isTransformDataReady = false;
 
     const uint32_t bufferIndex = (renderView.frameInFlight + 1) % MAX_FRAMES_IN_FLIGHT;
 
@@ -591,6 +592,7 @@ void core::MRenderer::renderFrame() {
   vkResetFences(logicalDevice.device, fenceCount, fences);
 
   vkResetCommandBuffer(command.buffersGraphics[renderView.frameInFlight], NULL);
+  vkResetCommandBuffer(command.buffersTransfer[renderView.frameInFlight], NULL);
 
   prepareFrameComputeJobs();
   executeQueuedComputeJobs(command.buffersCompute[renderView.frameInFlight]);
@@ -612,7 +614,7 @@ void core::MRenderer::renderFrame() {
 
   // Start recording vulkan command buffer
   if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
-    RE_LOG(Error, "Failure when trying to record command buffer.");
+    RE_LOG(Error, "Failure when trying to record a graphics command buffer.");
     return;
   }
 
@@ -667,15 +669,17 @@ void core::MRenderer::renderFrame() {
 
   executeGUIPass(commandBuffer);
 
+  /* 6. Store the results of raycasting in a host-readable buffer */
+
   VkBufferCopy copyRegion;
   copyRegion.srcOffset = offsetof(RTransparencyLinkedListData, raycastedUID);
   copyRegion.size = sizeof(int32_t);
   copyRegion.dstOffset = 0;
-  copyBuffer(&scene.transparencyLinkedListDataBuffer, &scene.generalHostBuffer, &copyRegion);
+  vkCmdCopyBuffer(commandBuffer, scene.transparencyLinkedListDataBuffer.buffer, scene.generalHostBuffer.buffer, 1, &copyRegion);
 
   // End writing commands and prepare to submit buffer to rendering queue
   if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
-    RE_LOG(Critical, "Failed to end writing to command buffer.");
+    RE_LOG(Critical, "Failed to end writing to the graphics command buffer.");
   }
 
   // Wait until image to write color data to is acquired
@@ -689,7 +693,7 @@ void core::MRenderer::renderFrame() {
   submitInfo.pWaitSemaphores = waitSems;
   submitInfo.pWaitDstStageMask = waitStages;  // Each stage index corresponds to provided semaphore index
   submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &command.buffersGraphics[renderView.frameInFlight];  // Submit command buffer recorded previously
+  submitInfo.pCommandBuffers = &commandBuffer;  // Submit command buffers recorded previously
   submitInfo.signalSemaphoreCount = 1;
   submitInfo.pSignalSemaphores = signalSems;  // Signal these after rendering is finished
 
@@ -698,7 +702,7 @@ void core::MRenderer::renderFrame() {
   if (vkQueueSubmit(logicalDevice.queues.graphics, 1, &submitInfo,
                     sync.fenceInFlight[renderView.frameInFlight]) !=
       VK_SUCCESS) {
-    RE_LOG(Error, "Failed to submit data to graphics queue.");
+    RE_LOG(Error, "Failed to submit data to the graphics queue.");
   }
 
   VkSwapchainKHR swapChains[] = {swapChain};
@@ -713,15 +717,13 @@ void core::MRenderer::renderFrame() {
   presentInfo.pResults = nullptr;                             // For future use with more swapchains
 
   APIResult = vkQueuePresentKHR(logicalDevice.queues.present, &presentInfo);
-  
+
   // Update transform matrices
   sync.asyncUpdateEntities.update();
 
-  // Reset the screen position for raycasting
-  setRaycastPosition(glm::ivec2(-1, -1));
-
+  // Copy raycasting results and reset the screen position for raycasting
   memcpy(&renderView.selectedActorUID, scene.generalHostBuffer.allocInfo.pMappedData, sizeof(int32_t));
-  --renderView.selectedActorUID;
+  setRaycastPosition(glm::ivec2(-1, -1));
 
   renderView.frameInFlight = ++renderView.frameInFlight % MAX_FRAMES_IN_FLIGHT;
   ++renderView.framesRendered;

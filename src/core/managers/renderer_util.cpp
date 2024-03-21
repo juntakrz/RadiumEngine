@@ -299,6 +299,8 @@ void core::MRenderer::updateBoundEntities() {
 
   // Use this thread to also quickly process camera exposure level
   updateExposureLevel();
+
+  sync.isTransformDataReady = true;
 }
 
 void core::MRenderer::updateExposureLevel() {

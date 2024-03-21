@@ -177,6 +177,7 @@ class MRenderer {
 
     std::condition_variable cvInstanceDataReady;
     bool isInstanceDataReady = false;
+    bool isTransformDataReady = false;
   } sync;
 
   // render system data - passes, pipelines, mesh data to render

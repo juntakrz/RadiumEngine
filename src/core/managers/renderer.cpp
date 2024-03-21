@@ -580,11 +580,11 @@ TResult core::MRenderer::createCoreCommandBuffers() {
     }
   }
 
-  RE_LOG(Log, "Creating %d transfer command buffers.", MAX_TRANSFER_BUFFERS);
+  RE_LOG(Log, "Creating %d transfer command buffers.", MAX_FRAMES_IN_FLIGHT);
 
-  command.buffersTransfer.resize(MAX_TRANSFER_BUFFERS);
+  command.buffersTransfer.resize(MAX_FRAMES_IN_FLIGHT);
 
-  for (uint8_t k = 0; k < MAX_TRANSFER_BUFFERS; ++k) {
+  for (uint8_t k = 0; k < MAX_FRAMES_IN_FLIGHT; ++k) {
     command.buffersTransfer[k] = createCommandBuffer(
         ECmdType::Transfer, VK_COMMAND_BUFFER_LEVEL_PRIMARY, false);
 
@@ -631,8 +631,7 @@ TResult core::MRenderer::createSyncObjects() {
 
   VkFenceCreateInfo fenceInfo{};
   fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-  fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;  // signaled to skip waiting for
-                                                 // it on the first frame
+  fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
     if (vkCreateSemaphore(logicalDevice.device, &semInfo, nullptr,

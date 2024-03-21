@@ -140,7 +140,12 @@ void core::MInput::cursorPositionCallback(GLFWwindow* window, double x, double y
 void core::MInput::mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
   if (config::bDevMode) {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
-      core::renderer.setRaycastPosition(get().getMouseWindowPosition());
+      switch (get().m_controlMode) {
+        case EControlMode::Cursor: {
+          core::renderer.setRaycastPosition(get().getMouseWindowPosition());
+          break;
+        }
+      }
     }
   }
 }
