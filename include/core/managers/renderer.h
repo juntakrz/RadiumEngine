@@ -126,6 +126,8 @@ class MRenderer {
     VkImageSubresourceRange transparencySubRange;
     VkClearColorValue transparencyLinkedListClearColor;
 
+    RBuffer generalHostBuffer;
+
     // Per frame in flight buffered camera/lighting descriptor sets
     std::vector<VkDescriptorSet> descriptorSets;
 
@@ -208,6 +210,7 @@ class MRenderer {
     ACamera* pActiveCamera = nullptr;
     ACamera* pPrimaryCamera = nullptr;
     ACamera* pSunCamera = nullptr;
+    glm::ivec2 raycastTarget;
   } view;
 
  public:
@@ -235,6 +238,8 @@ class MRenderer {
     bool generateEnvironmentMapsImmediate = false;  // queue single pass environment map gen (slow)
     bool generateEnvironmentMaps = false;           // queue sequenced environment map gen (fast)
     bool isEnvironmentPass = false;                 // is in the process of generating
+
+    int32_t selectedActorUID = -1;
 
     void refresh() {
       pCurrentMaterial = nullptr;
@@ -448,6 +453,12 @@ public:
   void uploadModelToSceneBuffer(WModel* pModel);
 
   uint32_t getNewPrimitiveUID();
+
+  void setRaycastPosition(const glm::ivec2& newTarget);
+  const glm::ivec2& getRaycastPosition();
+
+  void setSelectedActorUID(const int32_t actorUID);
+  int32_t getSelectedActorUID();
 
   // set camera from create cameras by name
   void setCamera(const char* name, const bool setAsPrimary = false);

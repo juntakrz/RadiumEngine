@@ -35,6 +35,7 @@ layout (set = 0, binding = 4) uniform sampler2D BRDFLUTMap;
 layout (set = 1, binding = 3) buffer transparencyLinkedListData {
 	uint nodeCount;
 	uint maxNodeCount;
+	int raycastedUID;
 };
 
 layout (set = 1, binding = 4, r32ui) uniform coherent uimage2D headIndexImage; 

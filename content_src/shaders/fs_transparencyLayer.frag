@@ -16,11 +16,14 @@ struct transparencyNode{
 layout(location = 0) in vec2 inUV;
 
 layout (location = 0) out vec4 outColor;
-layout (location = 1) out int outActorUID;
 
 layout (set = 1, binding = 3) buffer transparencyLinkedListData {
 	uint nodeCount;
 	uint maxNodeCount;
+
+    // Since this is the last instance draw pass - it can also
+    // be used to retrieve the required UID from the raycast map
+    int raycastedUID;
 };
 
 layout (set = 1, binding = 4, r32ui) uniform coherent uimage2D headIndexImage; 
@@ -129,11 +132,14 @@ void main() {
     
     outColor = mix(sampleColor, color, color.a);
 
-    // Output actor UID adjusted by 1 to avoid writing index 0 or reuse index from previous deferred passes
-    if (count > 0) {
-        outActorUID = fragmentNodes[0].actorUID + 1;
-    } else {
-        int actorUID = int(imageLoad(samplersInt[material.samplerIndex[EXTRAMAP2]], ivec2(gl_FragCoord.xy)).r);
-        outActorUID = actorUID;
+    // Perform raycasting as it's the last instance rendering pass
+    if (scene.raycastTarget.x > -1 && scene.raycastTarget.y > -1 && ivec2(gl_FragCoord.xy) == scene.raycastTarget) { 
+        if (count > 0) {
+            raycastedUID = fragmentNodes[0].actorUID + 1;
+        } else {
+            raycastedUID = int(imageLoad(samplersInt[material.samplerIndex[EXTRAMAP2]], ivec2(gl_FragCoord.xy)).r);
+        }
+    } else if (ivec2(gl_FragCoord.xy) == ivec2(0, 0) && scene.raycastTarget.x < 0 && scene.raycastTarget.y < 0) {
+        raycastedUID = 0;
     }
 }

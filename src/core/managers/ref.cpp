@@ -26,6 +26,7 @@ bool core::MRef::registerActor(ABase* pActor) {
     }
 
     m_actorPointers[name] = pActor;
+    m_actorPointersByUID[pActor->getUID()] = pActor;
     return true;
   }
 
@@ -38,6 +39,7 @@ void core::MRef::unregisterActor(ABase* pActor) {
   const std::string& name = pActor->getName();
 
   if (getActor(name)) {
+    m_actorPointersByUID.erase(pActor->getUID());
     m_actorPointers.erase(name);
     return;
   }
@@ -46,7 +48,8 @@ void core::MRef::unregisterActor(ABase* pActor) {
 }
 
 void core::MRef::unregisterActor(const std::string& name) {
-  if (getActor(name)) {
+  if (ABase* pActor = getActor(name)) {
+    m_actorPointersByUID.erase(pActor->getUID());
     m_actorPointers.erase(name);
     return;
   }
@@ -57,6 +60,14 @@ void core::MRef::unregisterActor(const std::string& name) {
 ABase* core::MRef::getActor(const std::string& name) {
   if (m_actorPointers.contains(name)) {
     return m_actorPointers[name];
+  }
+
+  return nullptr;
+}
+
+ABase* core::MRef::getActor(const int32_t UID) {
+  if (m_actorPointersByUID.contains(UID)) {
+    return m_actorPointersByUID[UID];
   }
 
   return nullptr;

@@ -390,6 +390,7 @@ struct RTextureInfo {
 struct RTransparencyLinkedListData {
   uint32_t nodeCount;
   uint32_t maxNodeCount;
+  int32_t raycastedUID;
 };
 
 // An OIT linked node
@@ -539,6 +540,7 @@ struct RSceneUBO {
   alignas(16) glm::vec3 cameraPosition = glm::vec3(0.0f);
   alignas(16) glm::vec2 haltonJitter = glm::vec2(0.0f);
   glm::vec2 clipData = glm::vec2(0.0f);
+  glm::ivec2 raycastTarget = glm::vec2(-1, -1);
 };
 
 struct RSkinUBO {

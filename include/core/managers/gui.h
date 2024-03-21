@@ -59,6 +59,8 @@ private:
 
     int32_t sceneGraphNodeIndex = 0;
 
+    glm::ivec2 referenceRaycast = glm::ivec2(-1);
+
     char textBuffer[1024];
     size_t textBufferSize = 0u;
   } m_util;
@@ -73,6 +75,7 @@ private:
   void checkVulkanResult(VkResult result) {};
   
   void setupEditor();
+  void preprocessEditorData();
   void showEditor();
   void drawSceneGraph();
   void drawScenePanel();
@@ -80,8 +83,10 @@ private:
   void drawSceneProperties();
 
   bool drawTreeNode(const std::string& name, const bool isFolder = false);
+  void drawFrameInfo();
 
   void selectSceneGraphItem(const std::string& name, ESceneGraphItemType itemType);
+  void selectSceneGraphItem(const int32_t UID);
 
   void copyToTextBuffer(const std::string& text);
 

@@ -24,7 +24,8 @@ layout(binding = 0) uniform UBOView {
 	vec3 cameraPos;
 	vec2 haltonJitter;
 	vec2 clipData;			// x = near plane, y = far plane
-	float padding[8];
+	ivec2 raycastTarget;
+	float padding[6];
 } scene;
 
 layout (set = 1, binding = 0) buffer UBOMesh0 {

@@ -10,6 +10,25 @@
 #include "core/model/model.h"
 #include "core/managers/gui.h"
 
+void core::MGUI::preprocessEditorData() {
+  m_util.updateTime += core::renderer.getFrameTime();
+
+  if (m_util.updateTime > m_util.updateInterval) {
+    m_util.FPS = core::renderer.getFPS();
+    m_util.frameTime = core::renderer.getFrameTime();
+    m_util.updateTime = 0.0f;
+  }
+
+  const glm::ivec2& referenceRaycast = core::renderer.getRaycastPosition();
+  if (referenceRaycast.x > -1 && referenceRaycast.y > -1) {
+    m_util.referenceRaycast = referenceRaycast;
+  }
+
+  if (core::renderer.getSelectedActorUID() > -1) {
+    selectSceneGraphItem(core::renderer.getSelectedActorUID());
+  }
+}
+
 void core::MGUI::showEditor() {
 
   /* Main Menu */
@@ -72,17 +91,7 @@ void core::MGUI::showEditor() {
       }
 #endif
 
-      // Show FPS and frame time counter at the right side of the main menu bar
-      m_util.updateTime += core::renderer.getFrameTime();
-
-      if (m_util.updateTime > m_util.updateInterval) {
-        m_util.FPS = core::renderer.getFPS();
-        m_util.frameTime = core::renderer.getFrameTime();
-        m_util.updateTime = 0.0f;
-      }
-
-      ImGui::SetCursorPosX(m_editorData.rightPanelPosition.x + 6.0f);
-      ImGui::Text("FPS: %.1f (%.3f ms)", m_util.FPS, m_util.frameTime);
+      drawFrameInfo();
 
       ImGui::EndMainMenuBar();
     }
@@ -288,7 +297,36 @@ bool core::MGUI::drawTreeNode(const std::string& name, const bool isFolder) {
   return result;
 }
 
+void core::MGUI::drawFrameInfo() {
+  // Show FPS and frame time counter at the right side of the main menu bar
+  ImGui::SetCursorPosX(m_editorData.rightPanelPosition.x + 6.0f);
+  ImGui::Text("FPS: %.1f (%.3f ms) Ray: %d, %d",
+    m_util.FPS, m_util.frameTime, m_util.referenceRaycast.x, m_util.referenceRaycast.y);
+}
+
 void core::MGUI::selectSceneGraphItem(const std::string& name, ESceneGraphItemType itemType) {
   m_editorData.pSelectedActor = core::ref.getActor(name);
   m_editorData.actorType = itemType;
+
+  //core::renderer.setSelectedActorUID(m_editorData.pSelectedActor->getUID());
+}
+
+void core::MGUI::selectSceneGraphItem(const int32_t UID) {
+  m_editorData.pSelectedActor = core::ref.getActor(UID);
+
+  switch (m_editorData.pSelectedActor->getTypeId()) {
+    case EActorType::Entity:
+    case EActorType::Pawn:
+    case EActorType::Static:
+      m_editorData.actorType = ESceneGraphItemType::Instance;
+      return;
+
+    case EActorType::Camera:
+      m_editorData.actorType = ESceneGraphItemType::Camera;
+      return;
+
+    case EActorType::Light:
+      m_editorData.actorType = ESceneGraphItemType::Light;
+      return;
+  }
 }

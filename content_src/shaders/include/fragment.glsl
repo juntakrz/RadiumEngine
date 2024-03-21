@@ -20,6 +20,8 @@ layout(binding = 0) uniform UBOView {
 	vec3 cameraPos;
 	vec2 haltonJitter;
 	vec2 clipData;			// x = near plane, y = far plane
+	ivec2 raycastTarget;
+	float padding[6];
 } scene;
 
 layout (std430, set = 0, binding = 1) uniform UBOLighting {

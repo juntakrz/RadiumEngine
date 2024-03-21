@@ -1175,6 +1175,21 @@ uint32_t core::MRenderer::getNewPrimitiveUID() {
   return freeID;
 }
 
+void core::MRenderer::setRaycastPosition(const glm::ivec2& newTarget) {
+  view.raycastTarget = newTarget;
+}
+
+const glm::ivec2& core::MRenderer::getRaycastPosition() {
+  return view.raycastTarget;
+}
+
+void core::MRenderer::setSelectedActorUID(const int32_t actorUID) {
+  renderView.selectedActorUID = actorUID;
+}
+
+int32_t core::MRenderer::getSelectedActorUID() {
+  return renderView.selectedActorUID;
+}
 
 void core::MRenderer::setCamera(const char* name, const bool setAsPrimary) {
   ACamera* pCamera = core::actors.getCamera(name);

@@ -667,6 +667,12 @@ void core::MRenderer::renderFrame() {
 
   executeGUIPass(commandBuffer);
 
+  VkBufferCopy copyRegion;
+  copyRegion.srcOffset = offsetof(RTransparencyLinkedListData, raycastedUID);
+  copyRegion.size = sizeof(int32_t);
+  copyRegion.dstOffset = 0;
+  copyBuffer(&scene.transparencyLinkedListDataBuffer, &scene.generalHostBuffer, &copyRegion);
+
   // End writing commands and prepare to submit buffer to rendering queue
   if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to end writing to command buffer.");
@@ -707,8 +713,15 @@ void core::MRenderer::renderFrame() {
   presentInfo.pResults = nullptr;                             // For future use with more swapchains
 
   APIResult = vkQueuePresentKHR(logicalDevice.queues.present, &presentInfo);
-
+  
+  // Update transform matrices
   sync.asyncUpdateEntities.update();
+
+  // Reset the screen position for raycasting
+  setRaycastPosition(glm::ivec2(-1, -1));
+
+  memcpy(&renderView.selectedActorUID, scene.generalHostBuffer.allocInfo.pMappedData, sizeof(int32_t));
+  --renderView.selectedActorUID;
 
   renderView.frameInFlight = ++renderView.frameInFlight % MAX_FRAMES_IN_FLIGHT;
   ++renderView.framesRendered;

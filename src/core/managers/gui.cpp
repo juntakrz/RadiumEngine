@@ -166,6 +166,7 @@ void core::MGUI::render() {
   switch (config::bDevMode) {
     case true: {
       if (m_isEditorVisible) {
+        preprocessEditorData();
         showEditor();
       }
 

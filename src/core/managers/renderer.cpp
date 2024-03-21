@@ -196,11 +196,13 @@ TResult core::MRenderer::createSceneBuffers() {
                config::scene::getSkinTransformBufferSize(),
                scene.skinTransformBuffer, nullptr);
 
-  RE_LOG(Log, "Allocating scene instance buffer for %d instances.", config::scene::nodeBudget);
+  RE_LOG(Log, "Allocating scene instance and indirect draw command buffers for %d frames.", MAX_FRAMES_IN_FLIGHT);
 
   scene.instanceDataBuffers.resize(MAX_FRAMES_IN_FLIGHT);
   scene.drawIndirectBuffers.resize(MAX_FRAMES_IN_FLIGHT);
   scene.drawCountBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+  command.indirectCommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+
   for (int8_t instanceBufferId = 0; instanceBufferId < MAX_FRAMES_IN_FLIGHT; ++instanceBufferId) {
     createBuffer(EBufferType::CPU_VERTEX, sizeof(RInstanceData) * config::scene::nodeBudget,
       scene.instanceDataBuffers[instanceBufferId], nullptr);
@@ -208,6 +210,8 @@ TResult core::MRenderer::createSceneBuffers() {
       scene.drawIndirectBuffers[instanceBufferId], nullptr);
     createBuffer(EBufferType::CPU_STORAGE, sizeof(RDrawIndirectInfo),
       scene.drawCountBuffers[instanceBufferId], nullptr);
+    createBuffer(EBufferType::CPU_INDIRECT, sizeof(VkDrawIndexedIndirectCommand) * config::scene::nodeBudget * 10,
+      command.indirectCommandBuffers[instanceBufferId], nullptr);
   }
 
   createBuffer(EBufferType::DGPU_STORAGE, sizeof(WInstanceDataEntry) * config::scene::nodeBudget,
@@ -232,11 +236,8 @@ TResult core::MRenderer::createSceneBuffers() {
   createBuffer(EBufferType::DGPU_STORAGE, 32768, scene.generalBuffer, nullptr);
   copyDataToBuffer(system.occlusionOffsets.data(), sizeof(glm::vec4) * RE_OCCLUSIONSAMPLES, &scene.generalBuffer, 0u);
 
-  command.indirectCommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-  for (uint8_t indirectBufferId = 0; indirectBufferId < MAX_FRAMES_IN_FLIGHT; ++indirectBufferId) {
-    createBuffer(EBufferType::CPU_INDIRECT, sizeof(VkDrawIndexedIndirectCommand) * config::scene::nodeBudget * 10,
-      command.indirectCommandBuffers[indirectBufferId], nullptr);
-  }
+  RE_LOG(Log, "Creating a general host storage buffer.");
+  createBuffer(EBufferType::CPU_STORAGE, 1024, scene.generalHostBuffer, nullptr);
 
   return RE_OK;
 }
@@ -279,6 +280,7 @@ void core::MRenderer::destroySceneBuffers() {
   vmaDestroyBuffer(memAlloc, scene.transparencyLinkedListDataBuffer.buffer, scene.transparencyLinkedListDataBuffer.allocation);
 
   vmaDestroyBuffer(memAlloc, scene.generalBuffer.buffer, scene.generalBuffer.allocation);
+  vmaDestroyBuffer(memAlloc, scene.generalHostBuffer.buffer, scene.generalHostBuffer.allocation);
 }
 
 core::MRenderer::RLightingData* core::MRenderer::getLightingData() {
@@ -699,6 +701,7 @@ void core::MRenderer::updateSceneUBO(uint32_t currentImage) {
   scene.sceneBufferObject.cameraPosition = view.pActiveCamera->getLocation();
   scene.sceneBufferObject.haltonJitter = system.haltonJitter[renderView.framesRendered % core::vulkan::haltonSequenceCount];
   scene.sceneBufferObject.clipData = view.pActiveCamera->getNearAndFarPlane();
+  scene.sceneBufferObject.raycastTarget = view.raycastTarget;
 
   uint8_t* pSceneUBO = static_cast<uint8_t*>(scene.sceneBuffers[currentImage].allocInfo.pMappedData) +
                        config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();

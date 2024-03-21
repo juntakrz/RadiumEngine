@@ -59,6 +59,7 @@ TResult core::MInput::initialize(GLFWwindow* window) {
 
   glfwSetKeyCallback(window, keyEventCallback);
   glfwSetCursorPosCallback(window, cursorPositionCallback);
+  glfwSetMouseButtonCallback(window, mouseButtonCallback);
 
   bindFunction(GETKEY("devKey"), GLFW_PRESS, this, &MInput::actPressTest);
   bindFunction(GETKEY("devKey"), GLFW_RELEASE, this, &MInput::actReleaseTest);
@@ -98,6 +99,10 @@ const glm::vec2& core::MInput::getMouseDelta() {
   return m_cursorDelta;
 }
 
+const glm::ivec2& core::MInput::getMouseWindowPosition() {
+  return m_cursorWindowPosition;
+}
+
 void core::MInput::keyEventCallback(GLFWwindow* window, int key, int scancode,
                               int action, int mods) {
   // ImGui wants to capture keyboard input, block GLFW input
@@ -117,6 +122,9 @@ void core::MInput::cursorPositionCallback(GLFWwindow* window, double x, double y
   // Convert to screen space
   MInput& input = get();
 
+  input.m_cursorWindowPosition.x = static_cast<int32_t>(x);
+  input.m_cursorWindowPosition.y = static_cast<int32_t>(y);
+
   float cursorX = static_cast<float>(x / config::renderWidth * 2.0f - 1.0f);
   float cursorY = static_cast<float>(y / config::renderHeight * 2.0f - 1.0f);
 
@@ -127,6 +135,14 @@ void core::MInput::cursorPositionCallback(GLFWwindow* window, double x, double y
   input.m_cursorPosition.y = cursorY;
 
   //RE_LOG(Log, "Cursor delta X: %1.3f / Y: %1.3f", input.m_cursorDelta.x, input.m_cursorDelta.y);
+}
+
+void core::MInput::mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
+  if (config::bDevMode) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
+      core::renderer.setRaycastPosition(get().getMouseWindowPosition());
+    }
+  }
 }
 
 void core::MInput::actPressTest() { RE_LOG(Log, "Test key pressed."); }

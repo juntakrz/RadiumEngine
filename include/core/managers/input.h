@@ -42,6 +42,9 @@ class MInput {
   glm::vec2 m_cursorPosition;
   glm::vec2 m_cursorDelta;
 
+  // Window space cursor position [0 ... renderWidth/Height]
+  glm::ivec2 m_cursorWindowPosition;
+
   EControlMode m_controlMode;
 
   float m_mouseRawAcceleration = 1000.0f;
@@ -94,6 +97,7 @@ class MInput {
   void setMouseAcceleration(const float value);
   const glm::vec2& getMousePosition();
   const glm::vec2& getMouseDelta();
+  const glm::ivec2& getMouseWindowPosition();
 
   // Get either repeated or single input function bindings
   static TInputFuncs& getBindings(bool bRepeated);
@@ -103,5 +107,7 @@ class MInput {
 
   // GLFW cursor position is relative to the top right corner of the window
   static void cursorPositionCallback(GLFWwindow* window, double x, double y);
+
+  static void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 };
 }  // namespace core

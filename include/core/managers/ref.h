@@ -15,6 +15,7 @@ class MRef {
 
  private:
   std::unordered_map<std::string, ABase*> m_actorPointers;
+  std::unordered_map<int32_t, ABase*> m_actorPointersByUID;
 
   struct WSceneGraph {
     std::string sceneName;
@@ -50,6 +51,7 @@ class MRef {
 
   // Can be used to check if an actor is registered, will return nullptr if not
   ABase* getActor(const std::string& name);
+  ABase* getActor(const int32_t UID);
 
   bool registerInstance(AEntity* pEntity);
   bool unregisterInstance(AEntity* pEntity);
