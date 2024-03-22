@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "util/util.h"
+#include "util/math.h"
 #include "core/core.h"
 #include "core/managers/window.h"
 #include "core/managers/actors.h"
@@ -30,72 +31,7 @@ void core::MGUI::preprocessEditorData() {
 }
 
 void core::MGUI::showEditor() {
-
-  /* Main Menu */
-  {
-    if (ImGui::BeginMainMenuBar()) {
-      // File menu
-      if (ImGui::BeginMenu("File")) {
-        if (ImGui::MenuItem("New")) {
-          // Handle new
-        }
-
-        if (ImGui::MenuItem("Open")) {
-          m_fileDialog.SetTitle("Open scene");
-          m_fileDialog.SetTypeFilters({ ".rscene" });
-          m_fileDialog.Open();
-
-          RE_LOG(Log, "Opening file dialog.");
-        }
-
-        if (ImGui::MenuItem("Save")) {
-          // Handle map save
-        }
-
-        if (ImGui::MenuItem("Save as ...")) {
-          m_fileDialog.SetTitle("Save scene");
-          m_fileDialog.SetTypeFilters({ ".rscene" });
-          m_fileDialog.Open();
-
-          RE_LOG(Log, "Opening save file dialog.");
-        }
-
-        ImGui::Separator();
-
-        if (ImGui::MenuItem("Exit")) {
-          // Handle exit
-        }
-
-        ImGui::EndMenu();
-      }
-
-#ifndef NDEBUG
-      // Debug menu
-      if (ImGui::BeginMenu("Debug")) {
-        bool isRenderDocEnabled = core::debug.isRenderDocEnabled();
-        bool isRenderDocOverlayVisible = core::debug.isRenderDocOverlayVisible();
-
-        ImGui::Text(isRenderDocOverlayVisible ? "*" : "");
-        ImGui::SameLine();
-        if (ImGui::MenuItem("Show RenderDoc overlay", "", nullptr, isRenderDocEnabled)) {
-          core::debug.enableRenderDocOverlay(!isRenderDocOverlayVisible);
-        }
-
-        ImGui::Text(m_isImGUIDemoVisible ? "*" : "");
-        ImGui::SameLine();
-        if (ImGui::MenuItem("Show ImGui demo window")) {
-          m_isImGUIDemoVisible = !m_isImGUIDemoVisible;
-        }
-
-        ImGui::EndMenu();
-      }
-#endif
-
-      drawFrameInfo();
-
-      ImGui::EndMainMenuBar();
-    }
-  }
+  drawMainMenu();
 
   /* Right Panel */
   {
@@ -118,6 +54,83 @@ void core::MGUI::showEditor() {
   {
     RE_LOG(Log, "Selected file: %s", m_fileDialog.GetSelected().string().c_str());
     m_fileDialog.ClearSelected();
+  }
+}
+
+void core::MGUI::drawMainMenu() {
+  if (ImGui::BeginMainMenuBar()) {
+    // File menu
+    if (ImGui::BeginMenu("File")) {
+      if (ImGui::MenuItem("New")) {
+        // Handle new
+      }
+
+      if (ImGui::MenuItem("Open")) {
+        m_fileDialog.SetTitle("Open scene");
+        m_fileDialog.SetTypeFilters({ ".rscene" });
+        m_fileDialog.Open();
+
+        RE_LOG(Log, "Opening file dialog.");
+      }
+
+      if (ImGui::MenuItem("Save")) {
+        // Handle map save
+      }
+
+      if (ImGui::MenuItem("Save as ...")) {
+        m_fileDialog.SetTitle("Save scene");
+        m_fileDialog.SetTypeFilters({ ".rscene" });
+        m_fileDialog.Open();
+
+        RE_LOG(Log, "Opening save file dialog.");
+      }
+
+      ImGui::Separator();
+
+      if (ImGui::MenuItem("Exit")) {
+        // Handle exit
+      }
+
+      ImGui::EndMenu();
+    }
+
+    if (ImGui::BeginMenu("Create")) {
+      if (ImGui::MenuItem("Primitive")) {
+        // Handle new primitive
+      }
+
+      if (ImGui::MenuItem("Import GLTF file")) {
+        // Handle new primitive
+      }
+
+      ImGui::EndMenu();
+    }
+
+#ifndef NDEBUG
+    // Debug menu
+    if (ImGui::BeginMenu("Debug")) {
+      bool isRenderDocEnabled = core::debug.isRenderDocEnabled();
+      bool isRenderDocOverlayVisible = core::debug.isRenderDocOverlayVisible();
+
+      ImGui::Text(isRenderDocOverlayVisible ? "*" : "");
+      ImGui::SameLine();
+      if (ImGui::MenuItem("Show RenderDoc overlay", "", nullptr, isRenderDocEnabled)) {
+        core::debug.enableRenderDocOverlay(!isRenderDocOverlayVisible);
+      }
+
+      ImGui::Text(m_isImGUIDemoVisible ? "*" : "");
+      ImGui::SameLine();
+      if (ImGui::MenuItem("Show ImGui demo window")) {
+        m_isImGUIDemoVisible = !m_isImGUIDemoVisible;
+      }
+
+      ImGui::EndMenu();
+    }
+#endif
+
+    drawFrameInfo();
+
+    ImGui::EndMainMenuBar();
   }
 }
 
@@ -221,13 +234,21 @@ void core::MGUI::drawScenePanel() {
 }
 
 void core::MGUI::drawActorProperties() {
+  ABase* pActor = m_editorData.pSelectedActor;
+  if (!pActor) return;
+
+  glm::vec3 translation = pActor->getTranslation();
+  glm::vec3 rotation = pActor->getRotation();
+  glm::vec3 scale = pActor->getScale();
+  glm::vec3 deltaRotation = glm::degrees(rotation);// - math::PI);
+
   ImGui::BeginChild("##ActorPropertiesFrame", ImVec2(0, 0), ImGuiChildFlags_Border);
 
   ImGui::AlignTextToFramePadding();
   ImGui::Text("Name: ");
   ImGui::SameLine();
 
-  copyToTextBuffer(m_editorData.pSelectedActor->getName());
+  copyToTextBuffer(pActor->getName());
 
   // Name input field
   ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
@@ -237,14 +258,37 @@ void core::MGUI::drawActorProperties() {
   ImGui::SetNextItemWidth(inputTextWidth);
 
   if (ImGui::InputText("##SceneNameInput", m_util.textBuffer, 64, ImGuiInputTextFlags_EnterReturnsTrue)) {
-    m_editorData.pSelectedActor->setName(m_util.textBuffer);
+    pActor->setName(m_util.textBuffer);
   }
 
   ImGui::PopStyleColor();
   ImGui::PopStyleVar();
 
   // UID static field
-  ImGui::Text("UID: %d", m_editorData.pSelectedActor->getUID());
+  ImGui::Text("UID: %d", pActor->getUID());
+
+  {
+    ImGui::BeginChild("##TransformPanel", ImVec2(0, 148), ImGuiChildFlags_Border);
+    ImGui::Text("Transform");
+    ImGui::Separator();
+
+    drawVec3Control("Translation", translation, m_util.dragSensitivity);
+    ImGui::SameLine();
+    ImGui::Separator();
+
+    drawVec3Control("Rotation", deltaRotation, m_util.dragSensitivity * 10.0f);
+    drawVec3Control("Scale", scale, m_util.dragSensitivity);
+
+    pActor->setTranslation(translation);
+    pActor->setScale(scale);
+
+    deltaRotation = glm::radians(deltaRotation);// +math::PI;
+    deltaRotation -= rotation;
+
+    pActor->rotate(deltaRotation, true);
+
+    ImGui::EndChild();
+  }
 
   ImGui::EndChild();
 }
@@ -295,6 +339,61 @@ bool core::MGUI::drawTreeNode(const std::string& name, const bool isFolder) {
 
   ++m_util.sceneGraphNodeIndex;
   return result;
+}
+
+void core::MGUI::drawVec3Control(const char* label, glm::vec3& vector, float speed, float min, float max) {
+  //auto boldFont = io.Fonts->Fonts[0];
+
+  ImGui::PushID(label);
+
+  ImGui::Text(label);
+
+  const float controlWidth = m_editorData.rightPanelSize.x * 0.75f;
+
+  ImGui::PushMultiItemsWidths(3, controlWidth);
+  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
+
+  ImVec2 buttonSize = { 15, 20 };
+
+  ImGui::PushStyleColor(ImGuiCol_Button, { 0.8f, 0.0f, 0.0f, 1.0f });
+  ImGui::PushStyleColor(ImGuiCol_ButtonHovered, { 0.8f, 0.0f, 0.0f, 1.0f });
+  ImGui::PushStyleColor(ImGuiCol_ButtonActive, { 0.8f, 0.0f, 0.0f, 1.0f });
+  //ImGui::PushFont(boldFont);
+  ImGui::Button("X", buttonSize);
+  //ImGui::PopFont();
+  ImGui::PopStyleColor(3);
+
+  ImGui::SameLine();
+  ImGui::DragFloat("##X", &vector.x, speed, min, max, "%.2f");
+  ImGui::PopItemWidth();
+  ImGui::SameLine();
+
+  ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.0f, 0.8f, 0.0f, 1.0f });
+  ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.0f, 0.8f, 0.0f, 1.0f });
+  ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.0f, 0.8f, 0.0f, 1.0f });
+  ImGui::Button("Y", buttonSize);
+  ImGui::PopStyleColor(3);
+
+  ImGui::SameLine();
+  ImGui::DragFloat("##Y", &vector.y, speed, min, max, "%.2f");
+  ImGui::PopItemWidth();
+  ImGui::SameLine();
+
+  ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.0f, 0.0f, 0.8f, 1.0f });
+  ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.0f, 0.0f, 0.8f, 1.0f });
+  ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.0f, 0.0f, 0.8f, 1.0f });
+  ImGui::Button("Z", buttonSize);
+  ImGui::PopStyleColor(3);
+
+  ImGui::SameLine();
+  ImGui::DragFloat("##Z", &vector.z, speed, min, max, "%.2f");
+  ImGui::PopItemWidth();
+
+  ImGui::PopStyleVar();
+
+  ImGui::Columns(1);
+
+  ImGui::PopID();
 }
 
 void core::MGUI::drawFrameInfo() {

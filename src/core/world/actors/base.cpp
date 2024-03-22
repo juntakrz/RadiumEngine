@@ -18,11 +18,11 @@ void ABase::updateAttachments() {
   for (auto& pAttachment : m_pAttachments) {
     if (pAttachment.attachTranslation) {
       pAttachment.pAttached->setForwardVector(pAttachment.vector);
-      pAttachment.pAttached->setLocation(
+      pAttachment.pAttached->setTranslation(
           pAttachment.attachToForwardVector
-              ? this->getLocation() + this->getForwardVector() -
+              ? this->getTranslation() + this->getForwardVector() -
                     pAttachment.vector
-              : this->getLocation() - pAttachment.vector);
+              : this->getTranslation() - pAttachment.vector);
     }
   }
 }
@@ -32,8 +32,8 @@ glm::mat4& ABase::getRootTransformationMatrix() noexcept {
     // Scale Rotation Translation (SRT) order
 
     // rotate and scale translated matrix
-    m_transformationMatrix = glm::scale(m_transformationData.scaling) *
-                             glm::mat4_cast(m_transformationData.rotation);
+    m_transformationMatrix =
+      glm::scale(m_transformationData.scaling) * glm::mat4_cast(m_transformationData.orientation);
 
     // use SIMD to add translation data without creating the new matrix
     copyVec3ToMatrix(&m_transformationData.translation.x,
@@ -50,24 +50,21 @@ ABase::TransformationData& ABase::getTransformData() noexcept {
   return m_transformationData;
 }
 
-void ABase::setLocation(float x, float y, float z) noexcept {
+void ABase::setTranslation(float x, float y, float z) noexcept {
   m_transformationData.translation.x = x;
   m_transformationData.translation.y = y;
   m_transformationData.translation.z = z;
 
-  m_transformationData.initial.translation = m_transformationData.translation;
-
   m_transformationData.wasUpdated = true;
 }
 
-void ABase::setLocation(const glm::vec3& pos) noexcept {
+void ABase::setTranslation(const glm::vec3& pos) noexcept {
   m_transformationData.translation = pos;
-  m_transformationData.initial.translation = m_transformationData.translation;
 
   m_transformationData.wasUpdated = true;
 }
 
-glm::vec3& ABase::getLocation() noexcept { return m_transformationData.translation; }
+glm::vec3& ABase::getTranslation() noexcept { return m_transformationData.translation; }
 
 void ABase::translate(const glm::vec3& delta) noexcept {
   m_transformationData.translation +=
@@ -76,58 +73,34 @@ void ABase::translate(const glm::vec3& delta) noexcept {
   m_transformationData.wasUpdated = true;
 }
 
-void ABase::setRotation(const glm::vec3& delta) noexcept {
-  m_transformationData.rotation = glm::quat(delta);
-  m_transformationData.initial.rotation = m_transformationData.rotation;
+void ABase::setRotation(const glm::vec3& newRotation, const bool inRadians) noexcept {
+  m_transformationData.rotation = (inRadians) ? newRotation : glm::radians(newRotation);
+  m_transformationData.orientation = glm::quat(m_transformationData.rotation);
 
   m_transformationData.wasUpdated = true;
 }
 
-void ABase::setRotation(const glm::vec3& vector, float angle) noexcept {
-  m_transformationData.rotation = glm::angleAxis(angle, vector);
-  m_transformationData.initial.rotation = m_transformationData.rotation;
-
-  m_transformationData.wasUpdated = true;
-}
-
-void ABase::setRotation(const glm::quat& newRotation) noexcept {
-  m_transformationData.rotation = newRotation;
-  m_transformationData.initial.rotation = m_transformationData.rotation;
-
-  m_transformationData.wasUpdated = true;
-}
-
-glm::quat& ABase::getRotation() noexcept {
+const glm::vec3& ABase::getRotation() noexcept {
   return m_transformationData.rotation;
 }
 
-glm::vec3 ABase::getRotationAngles() noexcept {
-  return glm::eulerAngles(m_transformationData.rotation) * (180.0f / math::PI);
+const glm::quat& ABase::getOrientation() noexcept {
+  return m_transformationData.orientation;
 }
 
-void ABase::rotate(const glm::vec3& delta) noexcept {
-  m_transformationData.rotation =
-      glm::mod(delta * m_rotationModifier * core::time.getDeltaTime(),
-               math::twoPI);
+void ABase::rotate(const glm::vec3& delta, const bool ignoreFrameTime) noexcept {
+  const float modifier = (ignoreFrameTime) ? 1.0f : m_rotationModifier * core::time.getDeltaTime();
 
-  m_transformationData.wasUpdated = true;
-}
-
-void ABase::rotate(const glm::vec3& vector, float angle) noexcept {
-  m_transformationData.rotation *= glm::quat(angle, vector);
-
-  m_transformationData.wasUpdated = true;
-}
-
-void ABase::rotate(const glm::quat& delta) noexcept {
-  m_transformationData.rotation *= delta;
+  m_transformationData.rotation += delta;
+  m_transformationData.orientation *= glm::quat(delta);
+  //math::wrapAnglesGLM(m_transformationData.rotation);
+  //m_transformationData.rotation = glm::mod(m_transformationData.rotation, math::twoPI);
 
   m_transformationData.wasUpdated = true;
 }
 
 void ABase::setScale(const glm::vec3& scale) noexcept {
   m_transformationData.scaling = scale;
-  m_transformationData.initial.scaling = m_transformationData.scaling;
 
   m_transformationData.wasUpdated = true;
 }
@@ -136,12 +109,11 @@ void ABase::setScale(float scale) noexcept {
   m_transformationData.scaling.x = scale;
   m_transformationData.scaling.y = scale;
   m_transformationData.scaling.z = scale;
-  m_transformationData.initial.scaling = m_transformationData.scaling;
 
   m_transformationData.wasUpdated = true;
 }
 
-glm::vec3& ABase::getScale() noexcept { return m_transformationData.scaling; }
+const glm::vec3& ABase::getScale() noexcept { return m_transformationData.scaling; }
 
 void ABase::scale(const glm::vec3& delta) noexcept {
   m_transformationData.scaling *= delta * m_scalingModifier * core::time.getDeltaTime();
@@ -215,11 +187,11 @@ void ABase::attachTo(ABase* pTarget, const bool toTranslation,
   // get attachment vector that will keep attached object relative
   switch (info.attachToForwardVector) {
     case true: {
-      info.vector = pTarget->getForwardVector() - this->getLocation();
+      info.vector = pTarget->getForwardVector() - this->getTranslation();
       break;
     }
     case false: {
-      info.vector = pTarget->getLocation() - this->getLocation();
+      info.vector = pTarget->getTranslation() - this->getTranslation();
     }
   }
 

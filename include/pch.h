@@ -50,10 +50,12 @@
 #include <GLM/gtx/euler_angles.hpp>
 #include <GLM/gtc/matrix_access.hpp>
 #include <GLM/gtx/matrix_interpolation.hpp>
+#include <GLM/gtx/matrix_decompose.hpp>
 #include <ktxvulkan.h>
 
 // imGUI headers
 #include <imgui/imgui.h>
+#include <imgui/imgui_internal.h>
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_impl_vulkan.h>
 #include <imgui/imfilebrowser.h>

@@ -21,16 +21,13 @@ class ABase {
   struct TransformationData {
     // data used in actual transformation calculations
     // forward vector doubles as a 'look at' target
-    glm::vec3 translation = {0.0f, 0.0f, 0.0f};
-    glm::quat rotation = {0.0f, 0.0f, 0.0f, 0.0f};
-    glm::vec3 scaling = {1.0f, 1.0f, 1.0f};
+    glm::vec3 translation = glm::vec3(0.0f);
+    glm::vec3 rotation = glm::vec3(0.0f);
+    glm::vec3 scaling = glm::vec3(0.0f);
+    glm::quat orientation = glm::quat(rotation);
     glm::vec3 forwardVector = {0.0f, 0.0f, 1.0f};
 
     struct {
-      // initial data defined by Set* methods
-      glm::vec3 translation = {0.0f, 0.0f, 0.0f};
-      glm::quat rotation = {0.0f, 0.0f, 0.0f, 1.0f};
-      glm::vec3 scaling = {1.0f, 1.0f, 1.0f};
       glm::vec3 forwardVector = {0.0f, 0.0f, 1.0f};
     } initial;
 
@@ -71,9 +68,9 @@ class ABase {
   // data set used for transformation calculations
   virtual TransformationData& getTransformData() noexcept;
 
-  virtual void setLocation(float x, float y, float z) noexcept;
-  virtual void setLocation(const glm::vec3& newLocation) noexcept;
-  virtual glm::vec3& getLocation() noexcept;
+  virtual void setTranslation(float x, float y, float z) noexcept;
+  virtual void setTranslation(const glm::vec3& newLocation) noexcept;
+  virtual glm::vec3& getTranslation() noexcept;
 
   virtual void translate(const glm::vec3& delta) noexcept;
 
@@ -81,19 +78,16 @@ class ABase {
   virtual void setRotation(float x, float y, float z) noexcept {};
 
   // set absolute rotation in radians
-  virtual void setRotation(const glm::vec3& newRotation) noexcept;
-  virtual void setRotation(const glm::vec3& newVector, float newAngle) noexcept;
-  virtual void setRotation(const glm::quat& newRotation) noexcept;
-  virtual glm::quat& getRotation() noexcept;
-  virtual glm::vec3 getRotationAngles() noexcept;
+  virtual void setRotation(const glm::vec3& newRotation, const bool inRadians = false) noexcept;
+  const glm::vec3& getRotation() noexcept;
+  const glm::quat& getOrientation() noexcept;
 
-  virtual void rotate(const glm::vec3& delta) noexcept;
-  virtual void rotate(const glm::vec3& vector, float angle) noexcept;
-  virtual void rotate(const glm::quat& delta) noexcept;
+  virtual void rotate(const glm::vec3& delta, const bool ignoreFrameTime = false) noexcept;
+  virtual void rotate(const glm::vec3& vector, float angle) noexcept {};
 
-  virtual void setScale(const glm::vec3& scale) noexcept;
-  virtual void setScale(float scale) noexcept;
-  virtual glm::vec3& getScale() noexcept;
+  void setScale(const glm::vec3& scale) noexcept;
+  void setScale(float scale) noexcept;
+  const glm::vec3& getScale() noexcept;
 
   virtual void scale(const glm::vec3& delta) noexcept;
 

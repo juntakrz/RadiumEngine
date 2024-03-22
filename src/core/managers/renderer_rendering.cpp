@@ -115,7 +115,10 @@ void core::MRenderer::prepareFrameResources(VkCommandBuffer commandBuffer) {
   {
     std::mutex mtx;
     std::unique_lock<std::mutex> lock(mtx);
-    sync.cvInstanceDataReady.wait(lock, [this]() { return sync.isInstanceDataReady && sync.isTransformDataReady; });
+    auto timeout = std::chrono::duration<float>(0.016f);
+    if (!sync.cvInstanceDataReady.wait_for(lock, timeout, [this]() { return sync.isInstanceDataReady && sync.isTransformDataReady; })) {
+      RE_LOG(Warning, "Instance data ready task has timed out.");
+    }
     sync.isInstanceDataReady = false;
     sync.isTransformDataReady = false;
 

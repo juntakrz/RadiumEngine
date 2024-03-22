@@ -12,7 +12,6 @@ core::MInput::MInput() {
 }
 
 void core::MInput::scanInput() {
-  // ImGui wants keyboard focus - block GLFW input
   if (ImGui::GetIO().WantCaptureKeyboard) return;
 
   GLFWwindow* pWindow = core::window.getWindow();
@@ -105,7 +104,6 @@ const glm::ivec2& core::MInput::getMouseWindowPosition() {
 
 void core::MInput::keyEventCallback(GLFWwindow* window, int key, int scancode,
                               int action, int mods) {
-  // ImGui wants to capture keyboard input, block GLFW input
   if (ImGui::GetIO().WantCaptureKeyboard) return;
 
   // Get status for every bound single action key and call the proper function
@@ -138,6 +136,8 @@ void core::MInput::cursorPositionCallback(GLFWwindow* window, double x, double y
 }
 
 void core::MInput::mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
+  if (ImGui::GetIO().WantCaptureMouse) return;
+
   if (config::bDevMode) {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
       switch (get().m_controlMode) {

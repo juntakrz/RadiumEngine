@@ -24,7 +24,7 @@ void core::MActors::updateLightingUBO(RLightingUBO* pLightingBuffer) {
 
   // Index 0 is expected to be the directional 'sun' light
   if (m_pSunLight) {
-    pLightingBuffer->lightLocations[0] = glm::vec4(m_pSunLight->getLocation(), 1.0f);
+    pLightingBuffer->lightLocations[0] = glm::vec4(m_pSunLight->getTranslation(), 1.0f);
     pLightingBuffer->lightColors[0] = glm::vec4(m_pSunLight->getLightColor(), m_pSunLight->getLightIntensity());
     pLightingBuffer->lightViews[0] = m_pSunLight->getView();
     pLightingBuffer->lightOrthoMatrix = m_pSunLight->getProjection();
@@ -33,7 +33,7 @@ void core::MActors::updateLightingUBO(RLightingUBO* pLightingBuffer) {
   // Currently all other lights are expected to be point lights
   for (const auto& pLight : m_linearActors.pLights) {
     if (pLight->isVisible() && pLight != m_pSunLight) {
-      pLightingBuffer->lightLocations[lightCount] = glm::vec4(pLight->getLocation(), 1.0f);
+      pLightingBuffer->lightLocations[lightCount] = glm::vec4(pLight->getTranslation(), 1.0f);
       pLightingBuffer->lightColors[lightCount] = glm::vec4(pLight->getLightColor(), pLight->getLightIntensity());
 
       ++lightCount;
@@ -143,7 +143,7 @@ ALight* core::MActors::createLight(const std::string& name, RLightInfo* pInfo) {
       pNewLight->setLightType(pInfo->type);
       pNewLight->setLightColor(pInfo->color);
       pNewLight->setLightIntensity(pInfo->intensity);
-      pNewLight->setLocation(pInfo->translation);
+      pNewLight->setTranslation(pInfo->translation);
       pNewLight->setRotation(pInfo->direction);
 
       if (pInfo->isShadowCaster) {
@@ -259,8 +259,8 @@ APawn* core::MActors::createPawn(WEntityCreateInfo* pInfo) {
   pPawn->setModel(pInfo->pModel);
   pPawn->bindToRenderer();
 
-  pPawn->setLocation(pInfo->translation);
-  pPawn->setRotation(glm::vec3(pInfo->rotation.x, pInfo->rotation.y, pInfo->rotation.z), pInfo->rotation.w);
+  pPawn->setTranslation(pInfo->translation);
+  pPawn->setRotation(pInfo->rotation, false);
   pPawn->setScale(pInfo->scale);
 
   ++m_nextActorUID;
@@ -318,8 +318,8 @@ AStatic* core::MActors::createStatic(WEntityCreateInfo *pInfo) {
   pStatic->setModel(pInfo->pModel);
   pStatic->bindToRenderer();
 
-  pStatic->setLocation(pInfo->translation);
-  pStatic->setRotation(glm::vec3(pInfo->rotation.x, pInfo->rotation.y, pInfo->rotation.z), pInfo->rotation.w);
+  pStatic->setTranslation(pInfo->translation);
+  pStatic->setRotation(pInfo->rotation, false);
   pStatic->setScale(pInfo->scale);
 
   ++m_nextActorUID;

@@ -697,7 +697,7 @@ void core::MRenderer::updateSceneUBO(uint32_t currentImage) {
 
   scene.sceneBufferObject.view = view.pActiveCamera->getView();
   scene.sceneBufferObject.projection = view.pActiveCamera->getProjection();
-  scene.sceneBufferObject.cameraPosition = view.pActiveCamera->getLocation();
+  scene.sceneBufferObject.cameraPosition = view.pActiveCamera->getTranslation();
   scene.sceneBufferObject.haltonJitter = system.haltonJitter[renderView.framesRendered % core::vulkan::haltonSequenceCount];
   scene.sceneBufferObject.clipData = view.pActiveCamera->getNearAndFarPlane();
   scene.sceneBufferObject.raycastTarget = view.raycastTarget;

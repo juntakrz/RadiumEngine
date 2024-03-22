@@ -71,9 +71,7 @@ class ACamera : public ABase {
   virtual void translate(const glm::vec3& delta) noexcept override;
 
   // set rotation in degrees
-  virtual void setRotation(float x, float y, float z) noexcept override;
-  virtual void setRotation(const glm::vec3& newRotation) noexcept override;
-  virtual void setRotation(const glm::quat& newRotation) noexcept override;
+  virtual void setRotation(const glm::vec3& newRotation, const bool inRadians = false) noexcept override;
 
   virtual void rotate(const glm::vec3& vector, float angle) noexcept override;
 

@@ -1233,7 +1233,7 @@ void core::MRenderer::setSunCamera(const char* name) {
     }
 
     view.pSunCamera = pCamera;
-    view.pSunCamera->setLocation(core::actors.getLight(RLT_SUN)->getLocation());
+    view.pSunCamera->setTranslation(core::actors.getLight(RLT_SUN)->getTranslation());
     view.pSunCamera->setLookAtTarget(view.pActiveCamera, true, true);
     return;
   }

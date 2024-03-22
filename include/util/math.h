@@ -19,11 +19,14 @@ inline T wrapAngle(
 
 template <typename T>
 inline void wrapAnglesGLM(T& vector) {            // wrap angles of GLM vector to -180 .. 180 degrees (-PI .. PI)
-  constexpr float fPI2 = 2.0f * (float)PI64;
   const int max = vector.length();
   for (int i = 0; i < max; ++i) {
-    const float remainder = fmod(vector[i], fPI2);
-    vector[i] = (remainder > (float)PI64) ? remainder - fPI2 : remainder;
+    /*const float remainder = fmod(vector[i], math::PI);
+    vector[i] = (remainder > PI) ? math::PI - remainder : remainder;*/
+
+    vector[i] = (vector[i] > PI) ? -math::PI + fmod(vector[i], math::PI)
+      : (vector[i] < PI) ? math::PI - fmod(vector[i], math::PI)
+       : vector[i];
   }
 }
 
@@ -98,5 +101,29 @@ float random(float min, float max);
 uint32_t getMipLevels(uint32_t dimension);
 
 void getHaltonJitter(std::vector<glm::vec2>& outVector, const int32_t width, const int32_t height);
+
+bool decomposeTransform(const glm::mat4& transform, glm::vec3& outTranslation, glm::vec3& outRotation, glm::vec3& outScale);
+
+template <typename T>
+T modVector(const T& vector, const float value) {
+  __m128 SIMDVector = _mm_load_ps(vector.data.data);
+
+  float values[4] = { value, value, value, value };
+  __m128 SIMDValues = _mm_load_ps(values);
+
+  __m128 result = _mm_div_ps(SIMDVector, SIMDValues);
+  result = _mm_floor_ps(result);
+  result = _mm_mul_ps(SIMDValues, result);
+  result = _mm_sub_ps(SIMDVector, result);
+
+  glm::vec4 finalResult = glm::vec4(
+    (SIMDVector.m128_f32[0] >= 0.0f) ? result.m128_f32[0] : -(value - result.m128_f32[0]),
+    (SIMDVector.m128_f32[1] >= 0.0f) ? result.m128_f32[1] : -(value - result.m128_f32[1]),
+    (SIMDVector.m128_f32[2] >= 0.0f) ? result.m128_f32[2] : -(value - result.m128_f32[2]),
+    (SIMDVector.m128_f32[3] >= 0.0f) ? result.m128_f32[3] : -(value - result.m128_f32[3])
+  );
+
+  return T(finalResult);
+}
 
 }  // namespace math

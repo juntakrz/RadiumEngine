@@ -61,6 +61,8 @@ private:
 
     glm::ivec2 referenceRaycast = glm::ivec2(-1);
 
+    float dragSensitivity = 0.01f;
+
     char textBuffer[1024];
     size_t textBufferSize = 0u;
   } m_util;
@@ -77,12 +79,15 @@ private:
   void setupEditor();
   void preprocessEditorData();
   void showEditor();
+
+  void drawMainMenu();
   void drawSceneGraph();
   void drawScenePanel();
   void drawActorProperties();
   void drawSceneProperties();
 
   bool drawTreeNode(const std::string& name, const bool isFolder = false);
+  void drawVec3Control(const char* label, glm::vec3& vector, float speed = 0.01f, float min = 0.0f, float max = 0.0f);
   void drawFrameInfo();
 
   void selectSceneGraphItem(const std::string& name, ESceneGraphItemType itemType);

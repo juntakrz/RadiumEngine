@@ -398,14 +398,17 @@ void main() {
 	shadow = clamp(shadow, 0.0, 1.0);
 	color *= shadow;
 
-	// Process point lights within a reasonable fragment's distance to save performance
-	if (lighting.lightCount > 1) {
-		for (uint index = 1; index < lighting.lightCount; ++index) {
-			float lightDistance = length(lighting.lightLocations[index].xyz - worldPos.xyz);
-			float lightAttenuation = 1.0 / (lightDistance * lightDistance);
+	// Do not calculate lighting if emissive material
+    if (length(emissive.rgb) < 1.0) {
+		if (lighting.lightCount > 1) {
+			for (uint index = 1; index < lighting.lightCount; ++index) {
+				float lightDistance = length(lighting.lightLocations[index].xyz - worldPos.xyz);
+				float lightAttenuation = 1.0 / (lightDistance * lightDistance);
 			
-			if (lightAttenuation > 0.1) {
-				color += getLight(index, worldPos.xyz, diffuseColor, specularColor, V, normal, perceptualRoughness) * lightAttenuation;
+				// Process point lights within attenuation distance to save some performance
+				if (lightAttenuation > 0.02) {
+					color += getLight(index, worldPos.xyz, diffuseColor, specularColor, V, normal, perceptualRoughness) * lightAttenuation;
+				}
 			}
 		}
 	}
