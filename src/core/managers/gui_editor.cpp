@@ -237,11 +237,6 @@ void core::MGUI::drawActorProperties() {
   ABase* pActor = m_editorData.pSelectedActor;
   if (!pActor) return;
 
-  glm::vec3 translation = pActor->getTranslation();
-  glm::vec3 rotation = pActor->getRotation();
-  glm::vec3 scale = pActor->getScale();
-  glm::vec3 deltaRotation = glm::degrees(rotation);// - math::PI);
-
   ImGui::BeginChild("##ActorPropertiesFrame", ImVec2(0, 0), ImGuiChildFlags_Border);
 
   ImGui::AlignTextToFramePadding();
@@ -252,7 +247,7 @@ void core::MGUI::drawActorProperties() {
 
   // Name input field
   ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-  ImGui::PushStyleColor(ImGuiCol_FrameBg, m_style.panelTitle); // Darker background color
+  ImGui::PushStyleColor(ImGuiCol_FrameBg, m_style.black); // Darker background color
 
   float inputTextWidth = ImGui::GetContentRegionAvail().x;
   ImGui::SetNextItemWidth(inputTextWidth);
@@ -265,30 +260,10 @@ void core::MGUI::drawActorProperties() {
   ImGui::PopStyleVar();
 
   // UID static field
-  ImGui::Text("UID: %d", pActor->getUID());
+  ImGui::Text("UID: %d\tType: %s", pActor->getUID(), helper::actorTypeIdToText(pActor->getTypeId()).c_str());
+  ImGui::Separator();
 
-  {
-    ImGui::BeginChild("##TransformPanel", ImVec2(0, 148), ImGuiChildFlags_Border);
-    ImGui::Text("Transform");
-    ImGui::Separator();
-
-    drawVec3Control("Translation", translation, m_util.dragSensitivity);
-    ImGui::SameLine();
-    ImGui::Separator();
-
-    drawVec3Control("Rotation", deltaRotation, m_util.dragSensitivity * 10.0f);
-    drawVec3Control("Scale", scale, m_util.dragSensitivity);
-
-    pActor->setTranslation(translation);
-    pActor->setScale(scale);
-
-    deltaRotation = glm::radians(deltaRotation);// +math::PI;
-    deltaRotation -= rotation;
-
-    pActor->rotate(deltaRotation, true);
-
-    ImGui::EndChild();
-  }
+  pActor->drawComponentUIElements();
 
   ImGui::EndChild();
 }
@@ -304,7 +279,7 @@ void core::MGUI::drawSceneProperties() {
 
   // Push style for text input field
   ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-  ImGui::PushStyleColor(ImGuiCol_FrameBg, m_style.panelTitle); // Darker background color
+  ImGui::PushStyleColor(ImGuiCol_FrameBg, m_style.black); // Darker background color
 
   float inputTextWidth = ImGui::GetContentRegionAvail().x;
   ImGui::SetNextItemWidth(inputTextWidth);
@@ -317,6 +292,29 @@ void core::MGUI::drawSceneProperties() {
   ImGui::PopStyleColor();
   ImGui::PopStyleVar();
 
+  ImGui::Separator();
+  
+  // 3D model list
+  {
+    const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth
+      | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
+
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{ 4, 4 });
+    ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
+    ImGui::PushStyleColor(ImGuiCol_Header, m_style.greyLow);
+
+    if (ImGui::TreeNodeEx("Scene models", treeNodeFlags)) {
+      /*for (const auto& model : core::renderer.getModelReferences()) {
+        drawTreeNode(model->getName());
+      }*/
+
+      ImGui::TreePop();
+    }
+
+    ImGui::PopStyleVar(2);
+    ImGui::PopStyleColor();
+  }
+
   ImGui::EndChild();
 }
 
@@ -328,7 +326,7 @@ bool core::MGUI::drawTreeNode(const std::string& name, const bool isFolder) {
   const std::string format = (isFolder) ? "[%s]" : "%s";
 
   if (isFolder) {
-    ImGui::PushStyleColor(ImGuiCol_Text, m_style.nodeFolder);
+    ImGui::PushStyleColor(ImGuiCol_Text, m_style.orange);
   }
 
   bool result = ImGui::TreeNodeEx((void*)(intptr_t)m_util.sceneGraphNodeIndex, flags, format.c_str(), name.c_str());
@@ -341,57 +339,88 @@ bool core::MGUI::drawTreeNode(const std::string& name, const bool isFolder) {
   return result;
 }
 
-void core::MGUI::drawVec3Control(const char* label, glm::vec3& vector, float speed, float min, float max) {
+void core::MGUI::drawVec3Control(const char* label, glm::vec3& vector,
+  float speed, const bool locked, const char* format) {
   //auto boldFont = io.Fonts->Fonts[0];
 
-  ImGui::PushID(label);
+  glm::vec3 originalVector = vector;
 
+  ImGui::PushID(label);
   ImGui::Text(label);
 
-  const float controlWidth = m_editorData.rightPanelSize.x * 0.75f;
+  const float controlWidth = m_editorData.rightPanelSize.x * 0.78f;
+
+  ImGui::PushStyleColor(ImGuiCol_FrameBg, { 0.8f, 0.8f, 0.8f, 1.0f });
+  ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, { 1.0f, 1.0f, 1.0f, 1.0f });
+  ImGui::PushStyleColor(ImGuiCol_FrameBgActive, { 0.8f, 0.8f, 0.8f, 1.0f });
 
   ImGui::PushMultiItemsWidths(3, controlWidth);
   ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
+  ImVec2 buttonSize = { 15, 21 };
 
-  ImVec2 buttonSize = { 15, 20 };
-
-  ImGui::PushStyleColor(ImGuiCol_Button, { 0.8f, 0.0f, 0.0f, 1.0f });
-  ImGui::PushStyleColor(ImGuiCol_ButtonHovered, { 0.8f, 0.0f, 0.0f, 1.0f });
-  ImGui::PushStyleColor(ImGuiCol_ButtonActive, { 0.8f, 0.0f, 0.0f, 1.0f });
+  ImGui::PushStyleColor(ImGuiCol_Button, { 0.8f, 0.1f, 0.1f, 1.0f });
+  ImGui::PushStyleColor(ImGuiCol_ButtonHovered, { 0.8f, 0.1f, 0.1f, 1.0f });
+  ImGui::PushStyleColor(ImGuiCol_ButtonActive, { 0.8f, 0.1f, 0.1f, 1.0f });
   //ImGui::PushFont(boldFont);
   ImGui::Button("X", buttonSize);
   //ImGui::PopFont();
   ImGui::PopStyleColor(3);
 
-  ImGui::SameLine();
-  ImGui::DragFloat("##X", &vector.x, speed, min, max, "%.2f");
-  ImGui::PopItemWidth();
+  ImGui::PushStyleColor(ImGuiCol_Text, { 0.0f, 0.0f, 0.0f, 1.0f });
   ImGui::SameLine();
 
-  ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.0f, 0.8f, 0.0f, 1.0f });
-  ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.0f, 0.8f, 0.0f, 1.0f });
-  ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.0f, 0.8f, 0.0f, 1.0f });
+  if (ImGui::DragFloat("##X", &vector.x, speed, 0.0f, 0.0f, format) && locked) {
+    originalVector.x = vector.x - originalVector.x;
+    vector.y += originalVector.x;
+    vector.z += originalVector.x;
+  }
+
+  ImGui::PopItemWidth();
+  ImGui::SameLine();
+  ImGui::PopStyleColor();
+
+  ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.1f, 0.8f, 0.1f, 1.0f });
+  ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.1f, 0.8f, 0.1f, 1.0f });
+  ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.1f, 0.8f, 0.1f, 1.0f });
   ImGui::Button("Y", buttonSize);
   ImGui::PopStyleColor(3);
 
-  ImGui::SameLine();
-  ImGui::DragFloat("##Y", &vector.y, speed, min, max, "%.2f");
-  ImGui::PopItemWidth();
+  ImGui::PushStyleColor(ImGuiCol_Text, { 0.0f, 0.0f, 0.0f, 1.0f });
   ImGui::SameLine();
 
-  ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.0f, 0.0f, 0.8f, 1.0f });
-  ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.0f, 0.0f, 0.8f, 1.0f });
-  ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.0f, 0.0f, 0.8f, 1.0f });
+  if (ImGui::DragFloat("##Y", &vector.y, speed, 0.0f, 0.0f, format) && locked) {
+    originalVector.y = vector.y - originalVector.y;
+    vector.x += originalVector.y;
+    vector.z += originalVector.y;
+  }
+
+  ImGui::PopItemWidth();
+  ImGui::SameLine();
+  ImGui::PopStyleColor();
+
+  ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.1f, 0.1f, 0.8f, 1.0f });
+  ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.1f, 0.1f, 0.8f, 1.0f });
+  ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.1f, 0.1f, 0.8f, 1.0f });
   ImGui::Button("Z", buttonSize);
   ImGui::PopStyleColor(3);
 
+  ImGui::PushStyleColor(ImGuiCol_Text, { 0.0f, 0.0f, 0.0f, 1.0f });
   ImGui::SameLine();
-  ImGui::DragFloat("##Z", &vector.z, speed, min, max, "%.2f");
+
+  if (ImGui::DragFloat("##Z", &vector.z, speed, 0.0f, 0.0f, format) && locked) {
+    originalVector.z = vector.z - originalVector.z;
+    vector.x += originalVector.z;
+    vector.y += originalVector.z;
+  }
+
   ImGui::PopItemWidth();
+  ImGui::PopStyleColor();
 
   ImGui::PopStyleVar();
 
-  ImGui::Columns(1);
+  ImGui::PopStyleColor(3);
+
+  //ImGui::Columns(1);
 
   ImGui::PopID();
 }

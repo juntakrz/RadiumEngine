@@ -3,6 +3,7 @@
 #include "core/core.h"
 #include "core/managers/resources.h"
 #include "core/managers/world.h"
+#include "core/world/components/transform.h"
 #include "core/model/model.h"
 
 #define TINYGLTF_IMPLEMENTATION
@@ -16,7 +17,7 @@ bool loadImageData(tinygltf::Image* image, const int image_idx,
                    std::string* err, std::string* warn, int req_width,
                    int req_height, const unsigned char* bytes, int size,
                    void* user_data) {
-  // empty callback - because only external textures are used
+  // Empty callback - because only external textures are used
   return true;
 }
 }  // namespace callback
@@ -25,8 +26,11 @@ bool loadImageData(tinygltf::Image* image, const int image_idx,
 core::MWorld::MWorld() { RE_LOG(Log, "Initializing world manager."); }
 
 void core::MWorld::initialize() {
-  // create default skybox, will have its material set by load scripts
+  // Create default skybox, will have its material set by load scripts
   createModel(EPrimitiveType::Cube, RMDL_SKYBOX, 1, true);
+
+  // Create component templates
+  m_componentRegistry[typeid(WTransformComponent)] = std::make_unique<WTransformComponent>();
 }
 
 TResult core::MWorld::loadModelFromFile(const std::string& path,

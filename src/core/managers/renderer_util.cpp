@@ -1144,6 +1144,10 @@ void core::MRenderer::unbindEntity(uint32_t index) {
 
 void core::MRenderer::clearBoundEntities() { system.bindings.clear(); }
 
+const std::unordered_set<WModel*>& core::MRenderer::getModelReferences() {
+  return scene.pModelReferences;
+}
+
 void core::MRenderer::uploadModelToSceneBuffer(WModel* pModel) {
   // Copy vertex buffer
   VkBufferCopy copyInfo{};

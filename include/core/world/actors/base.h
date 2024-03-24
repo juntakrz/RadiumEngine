@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/objects.h"
+#include "core/managers/world.h"
 
 /*
  * Base class for manipulated engine objects like models, cameras and lights
@@ -9,6 +10,7 @@
  */
 
 class ACamera;
+class WComponent;
 
 class ABase {
  protected:
@@ -35,6 +37,7 @@ class ABase {
     bool wasUpdated = false;
   } m_transformationData;
 
+  std::unordered_map<std::type_index, WComponent*> m_pComponents;
   std::vector<WAttachmentInfo> m_pAttachments;
 
   glm::mat4 m_transformationMatrix = glm::mat4(1.0f);
@@ -102,7 +105,7 @@ class ABase {
   const std::string& getName();
   const std::string& getPreviousName();
 
-  const EActorType& getTypeId();
+  virtual const EActorType& getTypeId();
 
   const uint32_t getUID();
 
@@ -114,4 +117,23 @@ class ABase {
 
   // Were any of the actor transformations updated (clear update status if required)
   virtual bool wasUpdated(const bool clearStatus = false);
+
+  template<typename T>
+  bool addComponent() {
+    if (m_pComponents.contains(typeid(T))) {
+      RE_LOG(Error, "Failed to add component to '%s', it's already added.", m_name.c_str());
+      return false;
+    }
+
+    T* pComponent = core::MWorld::get().getComponent<T>();
+    if (!pComponent) {
+      RE_LOG(Error, "Failed to add component to '%s', no template for this type exists.", m_name.c_str());
+      return false;
+    }
+
+    m_pComponents[typeid(T)] = pComponent;
+    return true;
+  }
+
+  void drawComponentUIElements();
 };

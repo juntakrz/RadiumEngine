@@ -2,8 +2,8 @@
 
 namespace core {
 class MGUI {
-private:
-  enum ESceneGraphItemType {
+public:
+  enum class ESceneGraphItemType : uint8_t {
     Null,
     Instance,
     Camera,
@@ -23,28 +23,19 @@ private:
     // Currently selected scene graph entity
     ABase* pSelectedActor = nullptr;
     ESceneGraphItemType actorType = ESceneGraphItemType::Null;
+
+    bool isTransformScaleLocked = false;
   } m_editorData;
 
-  struct {
-    ImVec4 border = { 0.015f, 0.015f, 0.015f, 1.0f };
-
-    ImVec4 panelBackground = { 0.008f, 0.008f, 0.008f, 1.0f };
-    ImVec4 panelHovered = { 0.5f, 0.0f, 0.0f, 1.0f };
-    ImVec4 panelActive = { 0.8f, 0.0f, 0.0f, 1.0f };
-    ImVec4 panelTitle = { 0.0f, 0.0f, 0.0f, 1.0f };
-    ImVec4 panelTitleActive = { 0.0f, 0.0f, 0.0f, 1.0f };
-    ImVec4 panelTitleCollapsed = { 0.0f, 0.0f, 0.0f, 1.0f };
-
-    ImVec4 button = { 0.08f, 0.08f, 0.08f, 1.0 };
-    ImVec4 buttonHovered = { 0.5f, 0.00f, 0.00f, 1.0 };
-    ImVec4 buttonActive = { 0.8f, 0.00f, 0.00f, 1.0 };
-
-    ImVec4 nodeFolder = { 1.0f, 0.647f, 0.0f, 1.0f };
-
-    ImVec4 tab = { 0.02f, 0.02f, 0.02f, 1.0f };
-    ImVec4 tabActive = { 0.05f, 0.05f, 0.05f, 1.0f };
-
-    ImVec4 text = { 1.0f, 1.0f, 1.0f, 1.0f };
+  struct EditorStyle {
+    ImVec4 black = { 0.0f, 0.0f, 0.0f, 1.0f };
+    ImVec4 greyDark = { 0.008f, 0.008f, 0.008f, 1.0f };
+    ImVec4 greyMedium = { 0.08f, 0.08f, 0.08f, 1.0f };
+    ImVec4 greyLow = { 0.033f, 0.033f, 0.033f, 1.0f };
+    ImVec4 orange = { 1.0f, 0.647f, 0.0f, 1.0f };
+    ImVec4 redMedium = { 0.5f, 0.01f, 0.01f, 1.0f };
+    ImVec4 redBright = { 0.8f, 0.01f, 0.01f, 1.0f };
+    ImVec4 white = { 1.0f, 1.0f, 1.0f, 1.0f };
 
     float panelDisabledTextAlpha = 0.2f;
     float panelBorderSize = 1.0f;
@@ -87,7 +78,8 @@ private:
   void drawSceneProperties();
 
   bool drawTreeNode(const std::string& name, const bool isFolder = false);
-  void drawVec3Control(const char* label, glm::vec3& vector, float speed = 0.01f, float min = 0.0f, float max = 0.0f);
+  void drawVec3Control(const char* label, glm::vec3& vector,
+    float speed = 0.01f, const bool locked = false, const char* format = "%.3f");
   void drawFrameInfo();
 
   void selectSceneGraphItem(const std::string& name, ESceneGraphItemType itemType);

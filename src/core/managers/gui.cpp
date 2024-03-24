@@ -23,40 +23,41 @@ void core::MGUI::setupEditor() {
   m_pStyle = &ImGui::GetStyle();
 
   ImVec4* pColors = m_pStyle->Colors;
-  pColors[ImGuiCol_WindowBg] = m_style.panelBackground;
-  pColors[ImGuiCol_ChildBg] = m_style.panelBackground;
-  pColors[ImGuiCol_PopupBg] = m_style.panelBackground;
-  pColors[ImGuiCol_MenuBarBg] = m_style.panelTitle;
+  pColors[ImGuiCol_WindowBg] = m_style.greyDark;
+  pColors[ImGuiCol_ChildBg] = m_style.greyDark;
+  pColors[ImGuiCol_PopupBg] = m_style.greyDark;
+  pColors[ImGuiCol_MenuBarBg] = m_style.black;
 
-  pColors[ImGuiCol_TitleBg] = m_style.panelTitle;
-  pColors[ImGuiCol_TitleBgActive] = m_style.panelTitleActive;
-  pColors[ImGuiCol_TitleBgCollapsed] = m_style.panelTitleCollapsed;
-  pColors[ImGuiCol_Text] = m_style.text;
+  pColors[ImGuiCol_TitleBg] = m_style.black;
+  pColors[ImGuiCol_TitleBgActive] = m_style.greyMedium;
+  pColors[ImGuiCol_TitleBgCollapsed] = m_style.greyLow;
+  pColors[ImGuiCol_Text] = m_style.white;
 
-  pColors[ImGuiCol_Header] = m_style.panelBackground;
-  pColors[ImGuiCol_HeaderHovered] = m_style.panelHovered;
-  pColors[ImGuiCol_HeaderActive] = m_style.panelActive;
+  pColors[ImGuiCol_Header] = m_style.greyLow;
+  pColors[ImGuiCol_HeaderHovered] = m_style.greyMedium;
+  pColors[ImGuiCol_HeaderActive] = m_style.greyLow;
 
-  pColors[ImGuiCol_Button] = m_style.button;
-  pColors[ImGuiCol_ButtonHovered] = m_style.buttonHovered;
-  pColors[ImGuiCol_ButtonActive] = m_style.buttonActive;
+  pColors[ImGuiCol_Button] = m_style.greyLow;
+  pColors[ImGuiCol_ButtonHovered] = m_style.redBright;
+  pColors[ImGuiCol_ButtonActive] = m_style.redMedium;
 
-  pColors[ImGuiCol_FrameBg] = m_style.panelBackground;
-  pColors[ImGuiCol_FrameBgHovered] = m_style.panelHovered;
+  pColors[ImGuiCol_FrameBg] = m_style.greyDark;
+  pColors[ImGuiCol_FrameBgHovered] = m_style.greyMedium;
 
-  pColors[ImGuiCol_Tab] = m_style.tab;
-  pColors[ImGuiCol_TabHovered] = m_style.panelHovered;
-  pColors[ImGuiCol_TabActive] = m_style.tabActive;
+  pColors[ImGuiCol_Tab] = m_style.greyLow;
+  pColors[ImGuiCol_TabHovered] = m_style.redMedium;
+  pColors[ImGuiCol_TabActive] = m_style.greyMedium;
 
   m_pStyle->DisabledAlpha = m_style.panelDisabledTextAlpha;
 
   // Configure borders
-  pColors[ImGuiCol_Border] = m_style.border;
+  pColors[ImGuiCol_Border] = m_style.greyLow;
+  pColors[ImGuiCol_Separator] = m_style.greyMedium;
   m_pStyle->WindowBorderSize = m_style.panelBorderSize;
   m_pStyle->PopupBorderSize = m_style.panelBorderSize;
 
   m_pStyle->ScrollbarSize = 12.0f;
-  m_pStyle->ScrollbarRounding = 0.0f;
+  m_pStyle->ScrollbarRounding = 4.0f;
   m_pStyle->TabRounding = 0.0f;
   m_pStyle->WindowPadding = ImVec2(5, 5);
   m_pStyle->IndentSpacing = 24.0f;

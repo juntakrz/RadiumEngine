@@ -192,6 +192,9 @@
     <ClCompile Include="src\core\managers\gui_editor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\core\world\components\transform.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\pch.h">
@@ -318,6 +321,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\core\managers\gui.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\world\components\component.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\world\components\transform.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

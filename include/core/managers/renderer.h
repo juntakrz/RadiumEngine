@@ -451,6 +451,8 @@ public:
   // clear all primitive bindings
   void clearBoundEntities();
 
+  const std::unordered_set<WModel*>& getModelReferences();
+
   void uploadModelToSceneBuffer(WModel* pModel);
 
   uint32_t getNewPrimitiveUID();

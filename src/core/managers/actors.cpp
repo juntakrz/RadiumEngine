@@ -98,7 +98,7 @@ TResult core::MActors::destroyCamera(ACamera* pCamera) {
   const uint32_t UID = pCamera->getUID();
 
   if (m_actors.cameras.contains(UID)) {
-    ACamera* pCamera = m_actors.cameras.at(UID).get();
+    ACamera* pCamera = m_actors.cameras[UID].get();
     size_t index = 0;
     
     for (const auto& it : m_linearActors.pCameras) {

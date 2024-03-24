@@ -41,6 +41,7 @@ class ACamera : public ABase {
   ACamera() = default;
   ACamera(const uint32_t UID) { m_UID = UID; m_typeId = EActorType::Camera; };
   virtual ~ACamera() override {};
+  virtual const EActorType& getTypeId() override { return m_typeId; }
 
   // sets camera projection matrix as perspective
   void setPerspective(float FOV, float aspectRatio, float nearZ,

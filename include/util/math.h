@@ -1,33 +1,55 @@
 #pragma once
 
 namespace math {
-// precise enough definition of PI as a 64 bit float
 constexpr double PI64 = 3.1415926535897932384626433832795028841971693993751;
 constexpr float PI = static_cast<float>(PI64);
 constexpr double twoPI64 = PI64 * 2.0;
 constexpr float twoPI = static_cast<float>(PI64 * 2.0f);
 constexpr double halfPI64 = PI64 / 2.0;
 constexpr float halfPI =  static_cast<float>(PI64 / 2.0f);
+constexpr float SIMD_PI[4] = { math::PI, math::PI, math::PI, math::PI };
+constexpr float SIMD_2PI[4] = { math::twoPI, math::twoPI, math::twoPI, math::twoPI };
 
 template <typename T>
-inline T wrapAngle(
-    const T theta) {                              // wrap angle to -180 .. 180 degrees (-PI .. PI)
-  constexpr T PI2 = (T)2.0 * (T)PI64;
-  const T remainder = fmod(theta, PI2);
-  return (remainder > (T)PI64) ? remainder - PI2 : remainder;
+inline void wrapAngle(T& angle) {
+  constexpr T PI = (T)math::PI64;
+  constexpr T PI2 = (T)math::twoPI64;
+
+  angle += PI;
+  angle = fmod(angle, PI2);
+  if (angle < (T)0.0) angle += PI2;
+  angle -= PI;
 }
 
+// Wrap angles of GLM vector to -180 .. 180 degrees (-PI .. PI)
 template <typename T>
-inline void wrapAnglesGLM(T& vector) {            // wrap angles of GLM vector to -180 .. 180 degrees (-PI .. PI)
-  const int max = vector.length();
-  for (int i = 0; i < max; ++i) {
-    /*const float remainder = fmod(vector[i], math::PI);
-    vector[i] = (remainder > PI) ? math::PI - remainder : remainder;*/
+inline void wrapAnglesGLM(T& vector) {
+#if defined(GLM_FORCE_AVX) || defined(GLM_FORCE_SSE2)
+  __m128 mmVector = _mm_load_ps(vector.data.data);
+  __m128 mmPI = _mm_load_ps(SIMD_PI);
+  __m128 mm2PI = _mm_load_ps(SIMD_2PI);
+  mmVector = _mm_add_ps(mmVector, mmPI);
+  __m128 mmResult = _mm_floor_ps(_mm_div_ps(mmVector, mm2PI));
+  mmResult = _mm_mul_ps(mm2PI, mmResult);
+  mmResult = _mm_sub_ps(mmVector, mmResult);
 
-    vector[i] = (vector[i] > PI) ? -math::PI + fmod(vector[i], math::PI)
-      : (vector[i] < PI) ? math::PI - fmod(vector[i], math::PI)
-       : vector[i];
+  const int8_t count = vector.length();
+  for (int8_t i = 0; i < count; ++i) {
+    if (mmResult.m128_f32[i] < 0.0f) mmResult.m128_f32[i] += math::twoPI;
   }
+
+  mmResult = _mm_sub_ps(mmResult, mmPI);
+
+  memcpy(vector.data.data, mmResult.m128_f32, sizeof(float) * count);
+#else
+  const int8_t count = vector.length();
+  for (int8_t i = 0; i < count; ++i) {
+    vector.data.data[i] += math::PI;
+    vector.data.data[i] = fmod(vector.data.data[i], math::twoPI);
+    if (vector.data.data[i] < 0.0f) vector.data.data[i] += math::twoPI;
+    vector.data.data[i] -= math::PI;
+  }
+#endif
 }
 
 template <typename T>
@@ -95,6 +117,8 @@ glm::mat4 interpolate(const glm::mat4& first, const glm::mat4& second,
 void interpolate(const glm::mat4& first, const glm::mat4& second,
                       const float coefficient, glm::mat4& outMatrix);
 
+void multiply(glm::mat4& inOutMatrix, const glm::mat4& multiplier);
+
 float random(float min, float max);
 
 // calculate how many mip levels a square texture may fit
@@ -103,27 +127,5 @@ uint32_t getMipLevels(uint32_t dimension);
 void getHaltonJitter(std::vector<glm::vec2>& outVector, const int32_t width, const int32_t height);
 
 bool decomposeTransform(const glm::mat4& transform, glm::vec3& outTranslation, glm::vec3& outRotation, glm::vec3& outScale);
-
-template <typename T>
-T modVector(const T& vector, const float value) {
-  __m128 SIMDVector = _mm_load_ps(vector.data.data);
-
-  float values[4] = { value, value, value, value };
-  __m128 SIMDValues = _mm_load_ps(values);
-
-  __m128 result = _mm_div_ps(SIMDVector, SIMDValues);
-  result = _mm_floor_ps(result);
-  result = _mm_mul_ps(SIMDValues, result);
-  result = _mm_sub_ps(SIMDVector, result);
-
-  glm::vec4 finalResult = glm::vec4(
-    (SIMDVector.m128_f32[0] >= 0.0f) ? result.m128_f32[0] : -(value - result.m128_f32[0]),
-    (SIMDVector.m128_f32[1] >= 0.0f) ? result.m128_f32[1] : -(value - result.m128_f32[1]),
-    (SIMDVector.m128_f32[2] >= 0.0f) ? result.m128_f32[2] : -(value - result.m128_f32[2]),
-    (SIMDVector.m128_f32[3] >= 0.0f) ? result.m128_f32[3] : -(value - result.m128_f32[3])
-  );
-
-  return T(finalResult);
-}
 
 }  // namespace math

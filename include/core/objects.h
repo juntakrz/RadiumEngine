@@ -628,4 +628,6 @@ namespace helper {
   const uint32_t indirectPassCount = (uint32_t)EIndirectPassIndex::Count;
 
   uint32_t indirectPassFlagToIndex(uint32_t passFlag);
+
+  std::string actorTypeIdToText(EActorType typeId);
 };

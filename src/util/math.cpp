@@ -9,11 +9,10 @@ glm::mat4 math::interpolate(const glm::mat4& first, const glm::mat4& second,
 
   __m128 simdMultiplier = _mm_load_ps(multiplier);
 
-  for (int i = 0; i < 4; ++i) {
+  for (int8_t i = 0; i < 4; ++i) {
     __m128 nPass = _mm_fnmadd_ps(simdMultiplier, first[i].data, first[i].data);
     __m128 outPass = _mm_fmadd_ps(simdMultiplier, second[i].data, nPass);
-
-    outMatrix[i].data = outPass;
+    _mm_store_ps((float*)&outMatrix[i], outPass);
   }
 
   return outMatrix;
@@ -26,11 +25,16 @@ void math::interpolate(const glm::mat4& first, const glm::mat4& second,
 
   __m128 simdMultiplier = _mm_load_ps(multiplier);
 
-  for (int i = 0; i < 4; ++i) {
+  for (int8_t i = 0; i < 4; ++i) {
     __m128 passA = _mm_fnmadd_ps(simdMultiplier, first[i].data, first[i].data);
     __m128 outPass = _mm_fmadd_ps(simdMultiplier, second[i].data, passA);
+    _mm_store_ps((float*)&outMatrix[i], outPass);
+  }
+}
 
-    outMatrix[i].data = outPass;
+void math::multiply(glm::mat4& inOutMatrix, const glm::mat4& multiplier) {
+  for (int8_t i = 0; i < 4; ++i) {
+    _mm_store_ps((float*)&inOutMatrix[i], _mm_mul_ps(inOutMatrix[i].data, multiplier[i].data));
   }
 }
 

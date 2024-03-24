@@ -115,7 +115,7 @@ void core::run() {
   entityInfo.name = "Static01";
   entityInfo.pModel = core::world.getModel("mdlGuy");
   entityInfo.translation = glm::vec3(0.0f, -1.0f, -0.3f);
-  entityInfo.rotation = glm::vec4(0.0f, 1.0f, 0.0f, glm::radians(100.0f));
+  entityInfo.rotation = glm::vec3(0.0f, 100.0f, 0.0f);
   entityInfo.scale = glm::vec3(0.32f);
   
   pStatic = core::actors.createStatic(&entityInfo);
@@ -130,14 +130,14 @@ void core::run() {
 
   entityInfo.name = "Static02";
   entityInfo.translation = glm::vec3(1.0f, -1.1f, 0.4f);
-  entityInfo.rotation = glm::vec4(0.0f, 1.0f, 0.0f, glm::radians(-150.0f));
+  entityInfo.rotation = glm::vec3(0.0f, -150.0f, 0.0f);
 
   pStatic = core::actors.createStatic(&entityInfo);
   pStatic->playAnimation("SwordAndShieldIdle");
 
   entityInfo.name = "Static03";
   entityInfo.translation = glm::vec3(2.5f, -1.38f, 2.1f);
-  entityInfo.rotation = glm::vec4(0.0f, 1.0f, 0.0f, glm::radians(180.0f));
+  entityInfo.rotation = glm::vec3(0.0f, 180.0f, 0.0f);
 
   pStatic = core::actors.createStatic(&entityInfo);
   pStatic->playAnimation("SwordAndShieldIdle", 1.12f, true, true);
@@ -149,16 +149,16 @@ void core::run() {
   entityInfo.scale = glm::vec3(2.0f);
 
   pStatic = core::actors.createStatic(&entityInfo);
-  pStatic->setRotation(glm::vec3(-0.5f, -0.4f, 0.0f));
+  pStatic->setRotation(glm::vec3(-28.65f, -22.92f, 0.0f));
 
   entityInfo = WEntityCreateInfo{};
   entityInfo.name = "StaticTree0";
   entityInfo.pModel = core::world.getModel("mdlTree");
   entityInfo.translation = glm::vec3(1.0f, -1.35f, -0.8f);
-  entityInfo.scale = glm::vec3(1.0f, 1.25f, 1.0f);
+  entityInfo.scale = glm::vec3(1.25f, 1.0f, 1.0f);
 
   pStatic = core::actors.createStatic(&entityInfo);
-  pStatic->setRotation({ 0.0f, 0.0f, 1.5f });
+  pStatic->setRotation(glm::vec3(0.0f, 0.0f, 85.94f));
 
   entityInfo = WEntityCreateInfo{};
   entityInfo.name = "StaticGrass0";
@@ -167,14 +167,14 @@ void core::run() {
   entityInfo.scale = glm::vec3(0.4f);
 
   pStatic = core::actors.createStatic(&entityInfo);
-  pStatic->setRotation({ -1.707f, 0.0f, 0.0f });
+  pStatic->setRotation(glm::vec3(-90.0f, 0.0f, 0.0f));
 
   entityInfo.name = "StaticGrass1";
   entityInfo.translation = glm::vec3(0.3f, -0.68f, -0.4f);
   entityInfo.scale = glm::vec3(0.35f);
 
   pStatic = core::actors.createStatic(&entityInfo);
-  pStatic->setRotation({ -1.757f, 0.0f, 0.0f });
+  pStatic->setRotation(glm::vec3(-90.0f, 30.0f, 0.0f));
 
   //core::animations.saveAnimation("SwordAndShieldIdle", "SwordAndShieldIdle");
   //

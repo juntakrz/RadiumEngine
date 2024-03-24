@@ -4,6 +4,7 @@
 #include "core/managers/time.h"
 #include "core/world/actors/base.h"
 #include "core/world/actors/camera.h"
+#include "core/world/components/component.h"
 #include "util/math.h"
 #include "util/util.h"
 
@@ -29,15 +30,14 @@ void ABase::updateAttachments() {
 
 glm::mat4& ABase::getRootTransformationMatrix() noexcept {
   if (m_transformationData.wasUpdated) {
-    // Scale Rotation Translation (SRT) order
+    // Translation * Rotation * Scaling
+    m_transformationMatrix = glm::mat4(1.0f);
 
-    // rotate and scale translated matrix
-    m_transformationMatrix =
-      glm::scale(m_transformationData.scaling) * glm::mat4_cast(m_transformationData.orientation);
+    // Using SIMD copy instead of glm::translate
+    copyVec3ToMatrix(&m_transformationData.translation.x, &m_transformationMatrix[3][0]);
 
-    // use SIMD to add translation data without creating the new matrix
-    copyVec3ToMatrix(&m_transformationData.translation.x,
-                     &m_transformationMatrix[3][0]);
+    m_transformationMatrix *=
+      glm::mat4_cast(m_transformationData.orientation) * glm::scale(m_transformationData.scaling);
 
     updateAttachments();
 
@@ -93,8 +93,8 @@ void ABase::rotate(const glm::vec3& delta, const bool ignoreFrameTime) noexcept 
 
   m_transformationData.rotation += delta;
   m_transformationData.orientation *= glm::quat(delta);
-  //math::wrapAnglesGLM(m_transformationData.rotation);
-  //m_transformationData.rotation = glm::mod(m_transformationData.rotation, math::twoPI);
+
+  math::wrapAnglesGLM(m_transformationData.rotation);
 
   m_transformationData.wasUpdated = true;
 }
@@ -204,4 +204,10 @@ bool ABase::wasUpdated(const bool clearStatus) {
   if (clearStatus) m_transformationData.wasUpdated = false;
 
   return wasUpdated;
+}
+
+void ABase::drawComponentUIElements() {
+  for (auto& it : m_pComponents) {
+    it.second->showUIElement(this);
+  }
 }

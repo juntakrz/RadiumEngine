@@ -119,9 +119,9 @@ void core::MScript::jsonParseCameras(const json* pCameraData) noexcept {
         it.at("upVector").get_to(upVector);
       }
 
-      newCamera->setTranslation({translation[0], translation[1], translation[2]});
-      newCamera->setRotation({rotation[0], rotation[1], rotation[2]});
-      newCamera->setUpVector({upVector[0], upVector[1], upVector[2]});
+      newCamera->setTranslation(glm::vec3(translation[0], translation[1], translation[2]));
+      newCamera->setRotation(glm::degrees(glm::vec3(rotation[0], rotation[1], rotation[2])));
+      newCamera->setUpVector(glm::vec3(upVector[0], upVector[1], upVector[2]));
 
       // set camera mode
       /* vars:

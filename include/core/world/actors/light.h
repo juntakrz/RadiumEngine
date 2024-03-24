@@ -12,8 +12,9 @@ class ALight : public ACamera {
   bool m_isShadowCaster = false;
 
  public:
-   ALight() = default;
-   ALight(const uint32_t UID) { m_UID = UID; m_typeId = EActorType::Light; };
+  ALight() = default;
+  ALight(const uint32_t UID) { m_UID = UID; m_typeId = EActorType::Light; };
+  virtual const EActorType& getTypeId() override { return m_typeId; }
 
   void setLightColor(const glm::vec3& newColor);
   void setLightColor(float r, float g, float b);

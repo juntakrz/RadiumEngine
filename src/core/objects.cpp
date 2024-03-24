@@ -115,3 +115,22 @@ uint32_t helper::indirectPassFlagToIndex(uint32_t passFlag) {
     return -1;
   }
 }
+
+std::string helper::actorTypeIdToText(EActorType typeId) {
+  switch (typeId) {
+    case EActorType::Base:
+      return "Base";
+    case EActorType::Camera:
+      return "Camera";
+    case EActorType::Light:
+      return "Light";
+    case EActorType::Entity:
+      return "Entity";
+    case EActorType::Pawn:
+      return "Pawn";
+    case EActorType::Static:
+      return "Static";
+    default:
+      return "ERROR!";
+  }
+}
