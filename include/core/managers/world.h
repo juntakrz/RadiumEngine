@@ -8,7 +8,6 @@ namespace core {
 class MWorld {
  private:
   std::unordered_map<std::string, std::unique_ptr<WModel>> m_models;
-  std::unordered_map<std::type_index, std::unique_ptr<WComponent>> m_componentRegistry;
 
   MWorld();
 
@@ -32,15 +31,5 @@ class MWorld {
 
   // Call after objects (pawns, statics) using models are already destroyed
   void destroyAllModels();
-
-  // Retrieve a pointer to the component template from the registry
-  template<typename T>
-  T* getComponent() {
-    if (m_componentRegistry.contains(typeid(T))) {
-      return dynamic_cast<T*>(m_componentRegistry[typeid(T)].get());
-    }
-
-    return nullptr;
-  }
 };
 }  // namespace core

@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "util/util.h"
+#include "util/math.h"
 #include "core/objects.h"
 #include "core/core.h"
 #include "core/world/actors/base.h"
@@ -8,13 +9,13 @@
 #include "core/managers/gui.h"
 #include "core/world/components/transform.h"
 
-void WTransformComponent::showUIElement(ABase* pActor) {
-  if (!pActor) {
+void WTransformComponent::showUIElement() {
+  if (!pOwner) {
     RE_LOG(Error, "%s: nullptr error.", __FUNCTION__);
     return;
   }
 
-  const EActorType actorType = pActor->getTypeId();
+  const EActorType actorType = pOwner->getTypeId();
 
   switch (actorType) {
     case EActorType::Camera: {
@@ -24,9 +25,9 @@ void WTransformComponent::showUIElement(ABase* pActor) {
       break;
     }
     default: {
-      glm::vec3 translation = pActor->getTranslation();
-      glm::vec3 rotation = pActor->getRotation();
-      glm::vec3 scale = pActor->getScale();
+      glm::vec3 translation = data.translation;
+      glm::vec3 rotation = data.rotation;
+      glm::vec3 scale = data.scale;
       glm::vec3 deltaRotation = glm::degrees(rotation);
 
       const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed
@@ -38,9 +39,24 @@ void WTransformComponent::showUIElement(ABase* pActor) {
       bool open = ImGui::TreeNodeEx("Transform", treeNodeFlags);
 
       if (open) {
-        core::gui.drawVec3Control("Translation", translation, core::gui.m_util.dragSensitivity);
-        core::gui.drawVec3Control("Rotation", deltaRotation, core::gui.m_util.dragSensitivity * 10.0f, false, "%.2f");
-        core::gui.drawVec3Control("Scale", scale, core::gui.m_util.dragSensitivity, core::gui.m_editorData.isTransformScaleLocked);
+        if (core::gui.drawVec3Control("Translation", translation, core::gui.m_util.dragSensitivity)) {
+          data.translation = translation;
+          data.wasUpdated = true;
+        }
+
+        if (core::gui.drawVec3Control("Rotation", deltaRotation, core::gui.m_util.dragSensitivity * 10.0f, false, "%.2f")) {
+          deltaRotation = glm::radians(deltaRotation);
+          deltaRotation -= rotation;
+          data.rotation += deltaRotation;
+          data.orientation *= glm::quat(deltaRotation);
+          math::wrapAnglesGLM(data.rotation);
+          data.wasUpdated = true;
+        }
+
+        if (core::gui.drawVec3Control("Scale", scale, core::gui.m_util.dragSensitivity, core::gui.m_editorData.isTransformScaleLocked)) {
+          data.scale = scale;
+          data.wasUpdated = true;
+        }
 
         ImVec2 lockButtonSize = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::CalcTextSize("unlock").y + 5);
         ImGui::PushStyleColor(ImGuiCol_Button, (core::gui.m_editorData.isTransformScaleLocked)
@@ -49,14 +65,6 @@ void WTransformComponent::showUIElement(ABase* pActor) {
           core::gui.m_editorData.isTransformScaleLocked = !core::gui.m_editorData.isTransformScaleLocked;
         }
         ImGui::PopStyleColor();
-
-        pActor->setTranslation(translation);
-        pActor->setScale(scale);
-
-        deltaRotation = glm::radians(deltaRotation);
-        deltaRotation -= rotation;
-
-        pActor->rotate(deltaRotation, true);
 
         ImGui::Separator();
 
@@ -67,4 +75,24 @@ void WTransformComponent::showUIElement(ABase* pActor) {
       ImGui::PopStyleColor();
     }
   }
+}
+
+glm::mat4& WTransformComponent::TransformComponentData::getModelTransformationMatrix(bool* updateResult) {
+  if (wasUpdated) {
+    // Translation * Rotation * Scaling
+    transform = glm::mat4(1.0f);
+
+    // Using SIMD copy instead of glm::translate
+    util::copyVec3ToMatrix(&translation.x, transform, 3);
+
+    // Using SIMD to multiply translated matrix by rotation and scaling matrices
+    transform *= glm::mat4_cast(orientation) * glm::scale(scale);
+
+    // Tell the caller that transformations were performed this call
+    if (updateResult) *updateResult = true;
+
+    wasUpdated = false;
+  }
+
+  return transform;
 }

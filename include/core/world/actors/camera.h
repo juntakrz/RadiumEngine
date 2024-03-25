@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/world/components/components.h"
 #include "core/world/actors/base.h"
 
 class ACamera : public ABase {
@@ -39,7 +40,7 @@ class ACamera : public ABase {
 
  public:
   ACamera() = default;
-  ACamera(const uint32_t UID) { m_UID = UID; m_typeId = EActorType::Camera; };
+  ACamera(const uint32_t UID) { m_UID = UID; m_typeId = EActorType::Camera; addComponent<WTransformComponent>(); };
   virtual ~ACamera() override {};
   virtual const EActorType& getTypeId() override { return m_typeId; }
 

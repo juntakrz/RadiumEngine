@@ -28,9 +28,6 @@ core::MWorld::MWorld() { RE_LOG(Log, "Initializing world manager."); }
 void core::MWorld::initialize() {
   // Create default skybox, will have its material set by load scripts
   createModel(EPrimitiveType::Cube, RMDL_SKYBOX, 1, true);
-
-  // Create component templates
-  m_componentRegistry[typeid(WTransformComponent)] = std::make_unique<WTransformComponent>();
 }
 
 TResult core::MWorld::loadModelFromFile(const std::string& path,

@@ -114,7 +114,7 @@ void AEntity::updateModel() {
     // Copy previous frame transform
     memcpy(pPreviousDataAddress, pMemAddress, sizeof(glm::mat4));
 
-    const glm::mat4* pMatrix = &getRootTransformationMatrix(); 
+    const glm::mat4* pMatrix = &getModelTransformationMatrix(); 
     memcpy(pMemAddress, pMatrix, sizeof(glm::mat4));
 
     updateTransformBuffers();

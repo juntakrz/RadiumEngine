@@ -78,7 +78,7 @@ public:
   void drawSceneProperties();
 
   bool drawTreeNode(const std::string& name, const bool isFolder = false);
-  void drawVec3Control(const char* label, glm::vec3& vector,
+  bool drawVec3Control(const char* label, glm::vec3& vector,
     float speed = 0.01f, const bool locked = false, const char* format = "%.3f");
   void drawFrameInfo();
 

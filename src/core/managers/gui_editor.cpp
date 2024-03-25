@@ -339,10 +339,11 @@ bool core::MGUI::drawTreeNode(const std::string& name, const bool isFolder) {
   return result;
 }
 
-void core::MGUI::drawVec3Control(const char* label, glm::vec3& vector,
+bool core::MGUI::drawVec3Control(const char* label, glm::vec3& vector,
   float speed, const bool locked, const char* format) {
   //auto boldFont = io.Fonts->Fonts[0];
 
+  bool result = false;
   glm::vec3 originalVector = vector;
 
   ImGui::PushID(label);
@@ -369,10 +370,14 @@ void core::MGUI::drawVec3Control(const char* label, glm::vec3& vector,
   ImGui::PushStyleColor(ImGuiCol_Text, { 0.0f, 0.0f, 0.0f, 1.0f });
   ImGui::SameLine();
 
-  if (ImGui::DragFloat("##X", &vector.x, speed, 0.0f, 0.0f, format) && locked) {
-    originalVector.x = vector.x - originalVector.x;
-    vector.y += originalVector.x;
-    vector.z += originalVector.x;
+  if (ImGui::DragFloat("##X", &vector.x, speed, 0.0f, 0.0f, format)) {
+    result = true;
+
+    if (locked) {
+      originalVector.x = vector.x - originalVector.x;
+      vector.y += originalVector.x;
+      vector.z += originalVector.x;
+    }
   }
 
   ImGui::PopItemWidth();
@@ -388,10 +393,14 @@ void core::MGUI::drawVec3Control(const char* label, glm::vec3& vector,
   ImGui::PushStyleColor(ImGuiCol_Text, { 0.0f, 0.0f, 0.0f, 1.0f });
   ImGui::SameLine();
 
-  if (ImGui::DragFloat("##Y", &vector.y, speed, 0.0f, 0.0f, format) && locked) {
-    originalVector.y = vector.y - originalVector.y;
-    vector.x += originalVector.y;
-    vector.z += originalVector.y;
+  if (ImGui::DragFloat("##Y", &vector.y, speed, 0.0f, 0.0f, format)) {
+    result = true;
+
+    if (locked) {
+      originalVector.y = vector.y - originalVector.y;
+      vector.x += originalVector.y;
+      vector.z += originalVector.y;
+    }
   }
 
   ImGui::PopItemWidth();
@@ -407,10 +416,14 @@ void core::MGUI::drawVec3Control(const char* label, glm::vec3& vector,
   ImGui::PushStyleColor(ImGuiCol_Text, { 0.0f, 0.0f, 0.0f, 1.0f });
   ImGui::SameLine();
 
-  if (ImGui::DragFloat("##Z", &vector.z, speed, 0.0f, 0.0f, format) && locked) {
-    originalVector.z = vector.z - originalVector.z;
-    vector.x += originalVector.z;
-    vector.y += originalVector.z;
+  if (ImGui::DragFloat("##Z", &vector.z, speed, 0.0f, 0.0f, format)) {
+    result = true;
+
+    if (locked) {
+      originalVector.z = vector.z - originalVector.z;
+      vector.x += originalVector.z;
+      vector.y += originalVector.z;
+    }
   }
 
   ImGui::PopItemWidth();
@@ -423,6 +436,8 @@ void core::MGUI::drawVec3Control(const char* label, glm::vec3& vector,
   //ImGui::Columns(1);
 
   ImGui::PopID();
+
+  return result;
 }
 
 void core::MGUI::drawFrameInfo() {

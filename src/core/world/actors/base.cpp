@@ -4,16 +4,9 @@
 #include "core/managers/time.h"
 #include "core/world/actors/base.h"
 #include "core/world/actors/camera.h"
-#include "core/world/components/component.h"
+#include "core/world/components/components.h"
 #include "util/math.h"
 #include "util/util.h"
-
-void ABase::copyVec3ToMatrix(const float* vec3, float* matrixColumn) noexcept {
-  __m128 srcVector = _mm_set_ps(0.0f, vec3[2], vec3[1], vec3[0]);
-  __m128 dstColumn = _mm_loadu_ps(matrixColumn);
-  dstColumn = _mm_blend_ps(dstColumn, srcVector, 0b0111);
-  _mm_storeu_ps(matrixColumn, dstColumn);
-}
 
 void ABase::updateAttachments() {
   for (auto& pAttachment : m_pAttachments) {
@@ -28,97 +21,84 @@ void ABase::updateAttachments() {
   }
 }
 
-glm::mat4& ABase::getRootTransformationMatrix() noexcept {
-  if (m_transformationData.wasUpdated) {
-    // Translation * Rotation * Scaling
-    m_transformationMatrix = glm::mat4(1.0f);
-
-    // Using SIMD copy instead of glm::translate
-    copyVec3ToMatrix(&m_transformationData.translation.x, &m_transformationMatrix[3][0]);
-
-    m_transformationMatrix *=
-      glm::mat4_cast(m_transformationData.orientation) * glm::scale(m_transformationData.scaling);
-
-    updateAttachments();
-
-    m_transformationData.wasUpdated = false;
-  }
-  return m_transformationMatrix;
-}
-
-ABase::TransformationData& ABase::getTransformData() noexcept {
-  return m_transformationData;
+glm::mat4& ABase::getModelTransformationMatrix() noexcept {
+  return getComponent<WTransformComponent>()->data.getModelTransformationMatrix();
 }
 
 void ABase::setTranslation(float x, float y, float z) noexcept {
-  m_transformationData.translation.x = x;
-  m_transformationData.translation.y = y;
-  m_transformationData.translation.z = z;
+  auto& data = getComponent<WTransformComponent>()->data;
 
-  m_transformationData.wasUpdated = true;
+  data.translation.x = x;
+  data.translation.y = y;
+  data.translation.z = z;
+  data.wasUpdated = true;
 }
 
 void ABase::setTranslation(const glm::vec3& pos) noexcept {
-  m_transformationData.translation = pos;
+  auto& data = getComponent<WTransformComponent>()->data;
 
-  m_transformationData.wasUpdated = true;
+  data.translation = pos;
+  data.wasUpdated = true;
 }
 
-glm::vec3& ABase::getTranslation() noexcept { return m_transformationData.translation; }
+glm::vec3& ABase::getTranslation() noexcept { return getComponent<WTransformComponent>()->data.translation; }
 
 void ABase::translate(const glm::vec3& delta) noexcept {
-  m_transformationData.translation +=
-      delta * m_translationModifier * core::time.getDeltaTime();
-      
-  m_transformationData.wasUpdated = true;
+  auto& data = getComponent<WTransformComponent>()->data;
+
+  data.translation += delta * m_translationModifier * core::time.getDeltaTime();  
+  data.wasUpdated = true;
 }
 
 void ABase::setRotation(const glm::vec3& newRotation, const bool inRadians) noexcept {
-  m_transformationData.rotation = (inRadians) ? newRotation : glm::radians(newRotation);
-  m_transformationData.orientation = glm::quat(m_transformationData.rotation);
+  auto& data = getComponent<WTransformComponent>()->data;
 
-  m_transformationData.wasUpdated = true;
+  data.rotation = (inRadians) ? newRotation : glm::radians(newRotation);
+  data.orientation = glm::quat(data.rotation);
+  data.wasUpdated = true;
 }
 
 const glm::vec3& ABase::getRotation() noexcept {
-  return m_transformationData.rotation;
+  return getComponent<WTransformComponent>()->data.rotation;
 }
 
 const glm::quat& ABase::getOrientation() noexcept {
-  return m_transformationData.orientation;
+  return getComponent<WTransformComponent>()->data.orientation;
 }
 
 void ABase::rotate(const glm::vec3& delta, const bool ignoreFrameTime) noexcept {
+  auto& data = getComponent<WTransformComponent>()->data;
   const float modifier = (ignoreFrameTime) ? 1.0f : m_rotationModifier * core::time.getDeltaTime();
 
-  m_transformationData.rotation += delta;
-  m_transformationData.orientation *= glm::quat(delta);
-
-  math::wrapAnglesGLM(m_transformationData.rotation);
-
-  m_transformationData.wasUpdated = true;
+  data.rotation += delta;
+  data.orientation *= glm::quat(delta);
+  math::wrapAnglesGLM(data.rotation);
+  data.wasUpdated = true;
 }
 
 void ABase::setScale(const glm::vec3& scale) noexcept {
-  m_transformationData.scaling = scale;
+  auto& data = getComponent<WTransformComponent>()->data;
 
-  m_transformationData.wasUpdated = true;
+  data.scale = scale;
+  data.wasUpdated = true;
 }
 
 void ABase::setScale(float scale) noexcept {
-  m_transformationData.scaling.x = scale;
-  m_transformationData.scaling.y = scale;
-  m_transformationData.scaling.z = scale;
+  auto& data = getComponent<WTransformComponent>()->data;
 
-  m_transformationData.wasUpdated = true;
+  data.scale.x = scale;
+  data.scale.y = scale;
+  data.scale.z = scale;
+  data.wasUpdated = true;
 }
 
-const glm::vec3& ABase::getScale() noexcept { return m_transformationData.scaling; }
+const glm::vec3& ABase::getScale() noexcept { return getComponent<WTransformComponent>()->data.scale; }
 
 void ABase::scale(const glm::vec3& delta) noexcept {
-  m_transformationData.scaling *= delta * m_scalingModifier * core::time.getDeltaTime();
+  auto& data = getComponent<WTransformComponent>()->data;
 
-  m_transformationData.wasUpdated = true;
+  data.scale *= delta * m_scalingModifier * core::time.getDeltaTime();
+  data.wasUpdated = true;
 }
 
 void ABase::setTranslationModifier(float newModifier) {
@@ -134,11 +114,13 @@ void ABase::setScalingModifier(float newModifier) {
 }
 
 void ABase::setForwardVector(const glm::vec3& newVector) {
-  m_transformationData.forwardVector = newVector;
+  auto& data = getComponent<WTransformComponent>()->data;
+
+  data.forwardVector = newVector;
 }
 
 glm::vec3& ABase::getForwardVector() {
-  return m_transformationData.forwardVector;
+  return getComponent<WTransformComponent>()->data.forwardVector;
 }
 
 void ABase::setName(const std::string& name) {
@@ -199,15 +181,16 @@ void ABase::attachTo(ABase* pTarget, const bool toTranslation,
 }
 
 bool ABase::wasUpdated(const bool clearStatus) {
-  bool wasUpdated = m_transformationData.wasUpdated;
+  auto& data = getComponent<WTransformComponent>()->data;
+  bool wasUpdated = data.wasUpdated;
 
-  if (clearStatus) m_transformationData.wasUpdated = false;
+  if (clearStatus) data.wasUpdated = false;
 
   return wasUpdated;
 }
 
 void ABase::drawComponentUIElements() {
   for (auto& it : m_pComponents) {
-    it.second->showUIElement(this);
+    it.second->showUIElement();
   }
 }

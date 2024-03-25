@@ -82,6 +82,12 @@ enum class EControlMode {
   MouseLook
 };
 
+enum class EComponentType {
+  Base,
+  Transform,
+  LightSource
+};
+
 enum class EDescriptorSetLayout {
   Scene,
   MaterialEXT,

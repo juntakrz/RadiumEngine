@@ -12,6 +12,8 @@ std::wstring toWString(const char* string);
 const VkDeviceSize getVulkanAlignedSize(VkDeviceSize originalSize,
                                         VkDeviceSize minAlignmanet);
 
+void copyVec3ToMatrix(const float* vec3, glm::mat4& matrix, const uint8_t column) noexcept;
+
 template<typename T>
 size_t hash(T input) {
   std::hash<T> hasher;

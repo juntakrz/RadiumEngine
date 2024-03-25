@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/world/components/components.h"
 #include "core/world/actors/camera.h"
 
 class ALight : public ACamera {
@@ -13,7 +14,7 @@ class ALight : public ACamera {
 
  public:
   ALight() = default;
-  ALight(const uint32_t UID) { m_UID = UID; m_typeId = EActorType::Light; };
+  ALight(const uint32_t UID) { m_UID = UID; m_typeId = EActorType::Light; addComponent<WTransformComponent>(); };
   virtual const EActorType& getTypeId() override { return m_typeId; }
 
   void setLightColor(const glm::vec3& newColor);

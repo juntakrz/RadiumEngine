@@ -5,6 +5,7 @@
 #include "util/math.h"
 #include "core/managers/time.h"
 #include "core/model/primitive.h"
+#include "core/world/components/components.h"
 #include "core/world/actors/camera.h"
 
 void ACamera::setPerspective(float FOV, float aspectRatio, float nearZ,
@@ -44,20 +45,21 @@ glm::vec2 ACamera::getNearAndFarPlane() {
 }
 
 glm::mat4& ACamera::getView(const bool update) {
+  auto& data = getComponent<WTransformComponent>()->data;
+
   return (update)
-    ? m_view = glm::lookAt(
-      m_transformationData.translation,
-      m_transformationData.translation + m_transformationData.forwardVector,
-      m_viewData.upVector)
+    ? m_view = glm::lookAt(data.translation, data.translation + data.forwardVector, m_viewData.upVector)
     : m_view;
 }
 
 glm::mat4& ACamera::getProjection() { return m_projection; }
 
 const glm::mat4& ACamera::getProjectionView() {
-  if (m_transformationData.wasUpdated) {
+  auto& data = getComponent<WTransformComponent>()->data;
+
+  if (data.wasUpdated) {
     m_projectionView = getProjection() * getView();
-    m_transformationData.wasUpdated = false;
+    data.wasUpdated = false;
   }
 
   return m_projectionView;
@@ -81,8 +83,9 @@ void ACamera::setLookAtTarget(ABase* pTarget, const bool useForwardVector,
            m_name.c_str());
     return;
   }
+  auto& data = getComponent<WTransformComponent>()->data;
 
-  m_transformationData.forwardVector = pTarget->getTranslation() - m_transformationData.translation;
+  data.forwardVector = pTarget->getTranslation() - data.translation;
 
   if (attach) {
     attachTo(pTarget, true, false, true);
@@ -90,14 +93,17 @@ void ACamera::setLookAtTarget(ABase* pTarget, const bool useForwardVector,
 }
 
 void ACamera::translate(const glm::vec3& delta) noexcept {
-  glm::vec3 moveDirection = glm::rotate(m_transformationData.orientation, delta);
-  m_transformationData.translation +=
-      moveDirection * m_translationModifier * core::time.getDeltaTime();
+  auto& data = getComponent<WTransformComponent>()->data;
+
+  glm::vec3 moveDirection = glm::rotate(data.orientation, delta);
+  data.translation += moveDirection * m_translationModifier * core::time.getDeltaTime();
+  data.wasUpdated = true;
 
   updateAttachments();
 }
 
 void ACamera::setRotation(const glm::vec3& newRotation, const bool inRadians) noexcept {
+  auto& data = getComponent<WTransformComponent>()->data;
   glm::vec3 rotation = (inRadians) ? newRotation : glm::radians(newRotation);
 
   m_pitch = m_viewData.ignorePitchLimit ? rotation.x :
@@ -105,8 +111,8 @@ void ACamera::setRotation(const glm::vec3& newRotation, const bool inRadians) no
             : rotation.x > config::pitchLimit ? config::pitchLimit
                                                  : rotation.x;
 
-  m_transformationData.rotation = glm::vec3(m_pitch, rotation.y, rotation.z);
-  m_transformationData.orientation = glm::quat(m_transformationData.rotation);
+  data.rotation = glm::vec3(m_pitch, rotation.y, rotation.z);
+  data.orientation = glm::quat(data.rotation);
 
   switch (m_viewData.anchorFocusPoint) {
     case true: {
@@ -114,26 +120,26 @@ void ACamera::setRotation(const glm::vec3& newRotation, const bool inRadians) no
       break;
     }
     case false: {
-      m_transformationData.forwardVector = glm::rotate(m_transformationData.orientation,
-                                          m_transformationData.initial.forwardVector);
+      data.forwardVector = glm::rotate(data.orientation, data.initial.forwardVector);
     }
   }
 
+  data.wasUpdated = true;
   updateAttachments();
 }
 
 void ACamera::rotate(const glm::vec3& vector, float angle) noexcept {
   // When rotating around an axis similar to camera's up vector a pre-multiplication must be done
   // e.g. rotation = modifier * rotation
+  auto& data = getComponent<WTransformComponent>()->data;
   uint8_t direction = vector.x > 0.0f ? 0 : vector.y > 0.0f ? 1 : 2;
   float realAngle = angle * m_rotationModifier * core::time.getDeltaTime();
 
   switch (direction) {
     case 1: {
       glm::vec3 deltaRotation = vector * realAngle;
-      m_transformationData.rotation += deltaRotation;
-      m_transformationData.orientation =
-          glm::angleAxis(realAngle, vector) * m_transformationData.orientation;
+      data.rotation += deltaRotation;
+      data.orientation = glm::angleAxis(realAngle, vector) * data.orientation;
       break;
     }
     case 0: {
@@ -153,8 +159,8 @@ void ACamera::rotate(const glm::vec3& vector, float angle) noexcept {
     }
     default: {
       glm::vec3 deltaRotation = vector * realAngle;
-      m_transformationData.rotation += deltaRotation;
-      m_transformationData.orientation *= glm::angleAxis(realAngle, vector);
+      data.rotation += deltaRotation;
+      data.orientation *= glm::angleAxis(realAngle, vector);
       break;
     }
   }
@@ -165,12 +171,11 @@ void ACamera::rotate(const glm::vec3& vector, float angle) noexcept {
       break;
     }
     case false: {
-      m_transformationData.forwardVector =
-          glm::rotate(m_transformationData.orientation,
-                      m_transformationData.initial.forwardVector);
+      data.forwardVector = glm::rotate(data.orientation, data.initial.forwardVector);
     }
   }
 
+  data.wasUpdated = true;
   updateAttachments();
 }
 

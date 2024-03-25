@@ -329,6 +329,9 @@
     <ClInclude Include="include\core\world\components\transform.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\core\world\components\components.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include=".gitignore" />

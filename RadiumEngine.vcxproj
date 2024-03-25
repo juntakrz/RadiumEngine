@@ -385,6 +385,7 @@
     <ClInclude Include="include\core\model\sphere.h" />
     <ClInclude Include="include\core\model\primitivedata.h" />
     <ClInclude Include="include\core\world\components\component.h" />
+    <ClInclude Include="include\core\world\components\components.h" />
     <ClInclude Include="include\core\world\components\transform.h" />
     <ClInclude Include="include\define.h" />
     <ClInclude Include="include\define_input.h" />

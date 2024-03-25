@@ -10,7 +10,7 @@
  */
 
 class ACamera;
-class WComponent;
+struct WComponent;
 
 class ABase {
  protected:
@@ -20,27 +20,8 @@ class ABase {
   EActorType m_typeId = EActorType::Base;
   int32_t m_UID = -1;
 
-  struct TransformationData {
-    // data used in actual transformation calculations
-    // forward vector doubles as a 'look at' target
-    glm::vec3 translation = glm::vec3(0.0f);
-    glm::vec3 rotation = glm::vec3(0.0f);
-    glm::vec3 scaling = glm::vec3(0.0f);
-    glm::quat orientation = glm::quat(rotation);
-    glm::vec3 forwardVector = {0.0f, 0.0f, 1.0f};
-
-    struct {
-      glm::vec3 forwardVector = {0.0f, 0.0f, 1.0f};
-    } initial;
-
-    // was transformation data changed
-    bool wasUpdated = false;
-  } m_transformationData;
-
-  std::unordered_map<std::type_index, WComponent*> m_pComponents;
+  std::unordered_map<std::type_index, std::unique_ptr<WComponent>> m_pComponents;
   std::vector<WAttachmentInfo> m_pAttachments;
-
-  glm::mat4 m_transformationMatrix = glm::mat4(1.0f);
 
   float m_translationModifier = 1.0f;
   float m_rotationModifier = 1.0f;
@@ -48,9 +29,6 @@ class ABase {
   bool m_isVisible = true;
 
  protected:
-  // SIMD stuff, no error checks
-  void copyVec3ToMatrix(const float* vec3, float* matrixColumn) noexcept;
-
   virtual void updateAttachments();
 
  public:
@@ -65,15 +43,12 @@ class ABase {
     return dynamic_cast<T*>(this);
   };
 
-  // returns root matrix with all transformations applied
-  virtual glm::mat4& getRootTransformationMatrix() noexcept;
+  // returns model matrix with all transformations applied
+  glm::mat4& getModelTransformationMatrix() noexcept;
 
-  // data set used for transformation calculations
-  virtual TransformationData& getTransformData() noexcept;
-
-  virtual void setTranslation(float x, float y, float z) noexcept;
-  virtual void setTranslation(const glm::vec3& newLocation) noexcept;
-  virtual glm::vec3& getTranslation() noexcept;
+  void setTranslation(float x, float y, float z) noexcept;
+  void setTranslation(const glm::vec3& newLocation) noexcept;
+  glm::vec3& getTranslation() noexcept;
 
   virtual void translate(const glm::vec3& delta) noexcept;
 
@@ -119,19 +94,19 @@ class ABase {
   virtual bool wasUpdated(const bool clearStatus = false);
 
   template<typename T>
+  T* getComponent() {
+    if (m_pComponents.contains(typeid(T))) return dynamic_cast<T*>(m_pComponents[typeid(T)].get());
+    return nullptr;
+  }
+
+  template<typename T>
   bool addComponent() {
-    if (m_pComponents.contains(typeid(T))) {
+    if (getComponent<T>()) {
       RE_LOG(Error, "Failed to add component to '%s', it's already added.", m_name.c_str());
       return false;
     }
 
-    T* pComponent = core::MWorld::get().getComponent<T>();
-    if (!pComponent) {
-      RE_LOG(Error, "Failed to add component to '%s', no template for this type exists.", m_name.c_str());
-      return false;
-    }
-
-    m_pComponents[typeid(T)] = pComponent;
+    m_pComponents[typeid(T)] = std::make_unique<T>(this);
     return true;
   }
 

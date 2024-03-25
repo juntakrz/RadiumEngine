@@ -157,4 +157,10 @@ const VkDeviceSize getVulkanAlignedSize(VkDeviceSize originalSize,
   return (originalSize + minAlignment - 1) & ~(minAlignment - 1);
 }
 
+void copyVec3ToMatrix(const float* vec3, glm::mat4& matrix, const uint8_t column) noexcept {
+  __m128 srcVector = _mm_set_ps(0.0f, vec3[2], vec3[1], vec3[0]);
+  _mm_storeu_ps(matrix[column].data.m128_f32, _mm_blend_ps(matrix[column].data, srcVector, 0b0111));
+  //_mm_storeu_ps(matrix[column].data.m128_f32, srcVector);
+}
+
 }  // namespace util

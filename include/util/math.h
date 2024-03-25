@@ -117,8 +117,6 @@ glm::mat4 interpolate(const glm::mat4& first, const glm::mat4& second,
 void interpolate(const glm::mat4& first, const glm::mat4& second,
                       const float coefficient, glm::mat4& outMatrix);
 
-void multiply(glm::mat4& inOutMatrix, const glm::mat4& multiplier);
-
 float random(float min, float max);
 
 // calculate how many mip levels a square texture may fit

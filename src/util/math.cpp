@@ -32,12 +32,6 @@ void math::interpolate(const glm::mat4& first, const glm::mat4& second,
   }
 }
 
-void math::multiply(glm::mat4& inOutMatrix, const glm::mat4& multiplier) {
-  for (int8_t i = 0; i < 4; ++i) {
-    _mm_store_ps((float*)&inOutMatrix[i], _mm_mul_ps(inOutMatrix[i].data, multiplier[i].data));
-  }
-}
-
 float math::random(float min, float max) {
   std::random_device rd;
   std::mt19937 mt(rd());
