@@ -24,8 +24,6 @@ class ACamera : public ABase {
   glm::mat4 m_view;
   glm::mat4 m_projection;
   glm::mat4 m_projectionView;       // projection * view
-  float m_pitch = 0.0f;
-  float m_yaw = 0.0f;
 
   uint32_t m_viewBufferIndex = -1;
 
@@ -70,12 +68,11 @@ class ACamera : public ABase {
   void setLookAtTarget(ABase* pTarget, const bool useForwardVector,
                        const bool attach) noexcept;
 
-  virtual void translate(const glm::vec3& delta) noexcept override;
+  virtual void setTranslation(float x, float y, float z, bool isDelta = false) noexcept override;
+  virtual void setTranslation(const glm::vec3& newTranslation, bool isDelta = false) noexcept override;
 
   // set rotation in degrees
-  virtual void setRotation(const glm::vec3& newRotation, const bool inRadians = false) noexcept override;
-
-  virtual void rotate(const glm::vec3& vector, float angle) noexcept override;
+  virtual void setRotation(const glm::vec3& newRotation, bool isInRadians = false, bool isDelta = false) noexcept override;
 
   void setIgnorePitchLimit(const bool newValue);
 

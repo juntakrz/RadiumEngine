@@ -23,9 +23,6 @@ class ABase {
   std::unordered_map<std::type_index, std::unique_ptr<WComponent>> m_pComponents;
   std::vector<WAttachmentInfo> m_pAttachments;
 
-  float m_translationModifier = 1.0f;
-  float m_rotationModifier = 1.0f;
-  float m_scalingModifier = 1.0f;
   bool m_isVisible = true;
 
  protected:
@@ -43,38 +40,29 @@ class ABase {
     return dynamic_cast<T*>(this);
   };
 
-  // returns model matrix with all transformations applied
-  glm::mat4& getModelTransformationMatrix() noexcept;
+  /* Abstraction methods for transform component, which should always be present for every actor */
+  const glm::mat4& getModelTransformationMatrix() noexcept;
 
-  void setTranslation(float x, float y, float z) noexcept;
-  void setTranslation(const glm::vec3& newLocation) noexcept;
-  glm::vec3& getTranslation() noexcept;
+  virtual void setTranslation(float x, float y, float z, bool isDelta = false) noexcept;
+  virtual void setTranslation(const glm::vec3& newLocation, bool isDelta = false) noexcept;
+  virtual void setRotation(float x, float y, float z, bool isInRadians = false, bool isDelta = false) noexcept;
+  virtual void setRotation(const glm::vec3& newRotation, bool isInRadians = false, bool isDelta = false) noexcept;
+  void setScale(const glm::vec3& newScale, bool isDelta = false) noexcept;
+  void setScale(float newScale, bool isDelta = false) noexcept;
+  void setForwardVector(const glm::vec3& newVector);
+  void setAbsoluteForwardVector(const glm::vec3& newVector);
 
-  virtual void translate(const glm::vec3& delta) noexcept;
-
-  // set absolute rotation in degrees
-  virtual void setRotation(float x, float y, float z) noexcept {};
-
-  // set absolute rotation in radians
-  virtual void setRotation(const glm::vec3& newRotation, const bool inRadians = false) noexcept;
+  const glm::vec3& getTranslation() noexcept;
   const glm::vec3& getRotation() noexcept;
   const glm::quat& getOrientation() noexcept;
-
-  virtual void rotate(const glm::vec3& delta, const bool ignoreFrameTime = false) noexcept;
-  virtual void rotate(const glm::vec3& vector, float angle) noexcept {};
-
-  void setScale(const glm::vec3& scale) noexcept;
-  void setScale(float scale) noexcept;
   const glm::vec3& getScale() noexcept;
-
-  virtual void scale(const glm::vec3& delta) noexcept;
+  const glm::vec3& getForwardVector();
+  const glm::vec3& getAbsoluteForwardVector();
 
   virtual void setTranslationModifier(float newModifier);
   virtual void setRotationModifier(float newModifier);
   virtual void setScalingModifier(float newModifier);
-
-  virtual void setForwardVector(const glm::vec3& newVector);
-  virtual glm::vec3& getForwardVector();
+  /* End of transform component abstraction methods */
 
   void setName(const std::string& name);
   const std::string& getName();
@@ -100,14 +88,14 @@ class ABase {
   }
 
   template<typename T>
-  bool addComponent() {
+  T* addComponent() {
     if (getComponent<T>()) {
-      RE_LOG(Error, "Failed to add component to '%s', it's already added.", m_name.c_str());
-      return false;
+      RE_LOG(Warning, "Failed to add component to '%s', it's already added.", m_name.c_str());
+      return dynamic_cast<T*>(m_pComponents[typeid(T)].get());
     }
 
     m_pComponents[typeid(T)] = std::make_unique<T>(this);
-    return true;
+    return dynamic_cast<T*>(m_pComponents[typeid(T)].get());
   }
 
   void drawComponentUIElements();

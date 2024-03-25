@@ -25,16 +25,16 @@ void core::MPlayer::bindDefaultMethods() {
   core::input.bindFunction(core::MInput::get().bindingToKey("moveDown"),
                            GLFW_PRESS, this, &MPlayer::moveDown, true);
   
-  core::input.bindFunction(GETKEY("rollLeft"), GLFW_PRESS, this,
-                           &MPlayer::rollLeft, true);
-  core::input.bindFunction(GETKEY("rollRight"), GLFW_PRESS, this,
-                           &MPlayer::rollRight, true);
+  core::input.bindFunction(GETKEY("yawLeft"), GLFW_PRESS, this,
+                           &MPlayer::yawLeft, true);
+  core::input.bindFunction(GETKEY("yawRight"), GLFW_PRESS, this,
+                           &MPlayer::yawRight, true);
   core::input.bindFunction(GETKEY("pitchUp"), GLFW_PRESS, this,
                            &MPlayer::pitchUp, true);
   core::input.bindFunction(GETKEY("pitchDown"), GLFW_PRESS, this,
                            &MPlayer::pitchDown, true);
 
-  core::input.bindFunctionToMouseAxis(this, &MPlayer::rollMouse, false);
+  core::input.bindFunctionToMouseAxis(this, &MPlayer::yawMouse, false);
   core::input.bindFunctionToMouseAxis(this, &MPlayer::pitchMouse, true);
 }
 
@@ -70,61 +70,60 @@ void core::MPlayer::freeActor(ABase* pActor) {
 }
 
 void core::MPlayer::moveForward() {
-  m_pActor->translate({0.0f, 0.0f, m_movementData.translationDelta});
+  m_pActor->setTranslation(0.0f, 0.0f, m_movementData.translationDelta * core::time.getDeltaTime(), true);
 }
 
 void core::MPlayer::moveBack() {
-  m_pActor->translate({0.0f, 0.0f, -m_movementData.translationDelta});
+  m_pActor->setTranslation(0.0f, 0.0f, -m_movementData.translationDelta * core::time.getDeltaTime(), true);
 }
 
 void core::MPlayer::moveLeft() {
-  m_pActor->translate({-m_movementData.translationDelta, 0.0f, 0.0f});
+  m_pActor->setTranslation(-m_movementData.translationDelta * core::time.getDeltaTime(), 0.0f, 0.0f, true);
 }
 
 void core::MPlayer::moveRight() {
-  m_pActor->translate({m_movementData.translationDelta, 0.0f, 0.0f});
+  m_pActor->setTranslation(m_movementData.translationDelta * core::time.getDeltaTime(), 0.0f, 0.0f, true);
 }
 
 void core::MPlayer::moveUp() {
-  m_pActor->translate({0.0f, m_movementData.translationDelta, 0.0f});
+  m_pActor->setTranslation(0.0f, m_movementData.translationDelta * core::time.getDeltaTime(), 0.0f, true);
 }
 
 void core::MPlayer::moveDown() {
-  m_pActor->translate({0.0f, -m_movementData.translationDelta, 0.0f});
+  m_pActor->setTranslation(0.0f, -m_movementData.translationDelta * core::time.getDeltaTime(), 0.0f, true);
 }
 
-void core::MPlayer::rollLeft() {
-  m_pActor->rotate({0.0f, 1.0f, 0.0f}, -m_movementData.rotationDelta);
+void core::MPlayer::yawLeft() {
+  m_pActor->setRotation(glm::vec3(0.0f, -m_movementData.rotationDelta * core::time.getDeltaTime(), 0.0f), true, true);
 }
 
-void core::MPlayer::rollRight() {
-  m_pActor->rotate({0.0f, 1.0f, 0.0f}, m_movementData.rotationDelta);
+void core::MPlayer::yawRight() {
+  m_pActor->setRotation(glm::vec3(0.0f, m_movementData.rotationDelta * core::time.getDeltaTime(), 0.0f), true, true);
 }
 
-void core::MPlayer::rollMouse() {
+void core::MPlayer::yawMouse() {
   switch (core::input.getControlMode()) {
     case EControlMode::MouseLook: {
-        float rollDelta = core::input.getMouseDelta().x;
-        m_pActor->rotate({ 0.0f, 1.0f, 0.0f }, rollDelta);
+        float yawDelta = core::input.getMouseDelta().x * core::time.getDeltaTime();
+        m_pActor->setRotation(glm::vec3(0.0f, yawDelta, 0.0f), true, true);
         break;
     }
   }
 }
 
-
 void core::MPlayer::pitchUp() {
-  m_pActor->rotate({1.0f, 0.0f, 0.0f}, -m_movementData.rotationDelta);
+  m_pActor->setRotation(glm::vec3(-m_movementData.rotationDelta * core::time.getDeltaTime(), 0.0f, 0.0f), true, true);
 }
 
 void core::MPlayer::pitchDown() {
-  m_pActor->rotate({1.0f, 0.0f, 0.0f}, m_movementData.rotationDelta);
+  m_pActor->setRotation(glm::vec3(m_movementData.rotationDelta * core::time.getDeltaTime(), 0.0f, 0.0f), true, true);
 }
 
 void core::MPlayer::pitchMouse() {
   switch (core::input.getControlMode()) {
     case EControlMode::MouseLook: {
-      float pitchDelta = core::input.getMouseDelta().y;
-      m_pActor->rotate({ 1.0f, 0.0f, 0.0f }, -pitchDelta);
+      float pitchDelta = core::input.getMouseDelta().y * core::time.getDeltaTime();
+      m_pActor->setRotation(glm::vec3(-pitchDelta, 0.0f, 0.0f), true, true);
     }
   }
 }

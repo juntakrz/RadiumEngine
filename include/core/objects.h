@@ -61,6 +61,11 @@ enum class ECameraProjection {
   Orthogtaphic
 };
 
+enum class ECameraView {
+  LookAt,
+  Free
+};
+
 enum class ECmdType {
   Graphics,
   Compute,
@@ -85,6 +90,7 @@ enum class EControlMode {
 enum class EComponentType {
   Base,
   Transform,
+  Camera,
   LightSource
 };
 

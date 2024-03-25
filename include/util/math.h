@@ -24,7 +24,7 @@ inline void wrapAngle(T& angle) {
 // Wrap angles of GLM vector to -180 .. 180 degrees (-PI .. PI)
 template <typename T>
 inline void wrapAnglesGLM(T& vector) {
-#if defined(GLM_FORCE_AVX) || defined(GLM_FORCE_SSE2)
+#if defined(GLM_FORCE_AVX) || defined(GLM_FORCE_SSE2) || defined(GLM_FORCE_SSE42)
   __m128 mmVector = _mm_load_ps(vector.data.data);
   __m128 mmPI = _mm_load_ps(SIMD_PI);
   __m128 mm2PI = _mm_load_ps(SIMD_2PI);

@@ -337,6 +337,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\core\world\components\cameracomp.cpp" />
     <ClCompile Include="src\core\world\components\transform.cpp" />
     <ClCompile Include="src\pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -384,6 +385,7 @@
     <ClInclude Include="include\core\model\primitivegen_include.h" />
     <ClInclude Include="include\core\model\sphere.h" />
     <ClInclude Include="include\core\model\primitivedata.h" />
+    <ClInclude Include="include\core\world\components\cameracomp.h" />
     <ClInclude Include="include\core\world\components\component.h" />
     <ClInclude Include="include\core\world\components\components.h" />
     <ClInclude Include="include\core\world\components\transform.h" />

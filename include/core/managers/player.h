@@ -44,9 +44,9 @@ class MPlayer {
   void moveUp();
   void moveDown();
 
-  void rollLeft();
-  void rollRight();
-  void rollMouse();
+  void yawLeft();
+  void yawRight();
+  void yawMouse();
   void pitchUp();
   void pitchDown();
   void pitchMouse();

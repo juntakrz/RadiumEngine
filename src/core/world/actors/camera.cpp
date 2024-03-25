@@ -92,75 +92,56 @@ void ACamera::setLookAtTarget(ABase* pTarget, const bool useForwardVector,
   }
 }
 
-void ACamera::translate(const glm::vec3& delta) noexcept {
-  auto& data = getComponent<WTransformComponent>()->data;
-
-  glm::vec3 moveDirection = glm::rotate(data.orientation, delta);
-  data.translation += moveDirection * m_translationModifier * core::time.getDeltaTime();
-  data.wasUpdated = true;
-
-  updateAttachments();
+void ACamera::setTranslation(float x, float y, float z, bool isDelta) noexcept {
+  setTranslation(glm::vec3(x, y, z), isDelta);
 }
 
-void ACamera::setRotation(const glm::vec3& newRotation, const bool inRadians) noexcept {
-  auto& data = getComponent<WTransformComponent>()->data;
-  glm::vec3 rotation = (inRadians) ? newRotation : glm::radians(newRotation);
+void ACamera::setTranslation(const glm::vec3& newTranslation, bool isDelta) noexcept {
+  WTransformComponent* pComponent = getComponent<WTransformComponent>();
 
-  m_pitch = m_viewData.ignorePitchLimit ? rotation.x :
-    rotation.x < -config::pitchLimit  ? -config::pitchLimit
-            : rotation.x > config::pitchLimit ? config::pitchLimit
-                                                 : rotation.x;
-
-  data.rotation = glm::vec3(m_pitch, rotation.y, rotation.z);
-  data.orientation = glm::quat(data.rotation);
-
-  switch (m_viewData.anchorFocusPoint) {
+  switch (isDelta) {
     case true: {
-      // code for when the camera should be rotated around its focus point
+      glm::vec3 moveDirection = glm::rotate(pComponent->getOrientation(), newTranslation);
+      pComponent->setTranslation(moveDirection, true);
       break;
     }
+
     case false: {
-      data.forwardVector = glm::rotate(data.orientation, data.initial.forwardVector);
+      pComponent->setTranslation(newTranslation, false);
+      break;
     }
   }
 
-  data.wasUpdated = true;
   updateAttachments();
 }
 
-void ACamera::rotate(const glm::vec3& vector, float angle) noexcept {
-  // When rotating around an axis similar to camera's up vector a pre-multiplication must be done
-  // e.g. rotation = modifier * rotation
-  auto& data = getComponent<WTransformComponent>()->data;
-  uint8_t direction = vector.x > 0.0f ? 0 : vector.y > 0.0f ? 1 : 2;
-  float realAngle = angle * m_rotationModifier * core::time.getDeltaTime();
+void ACamera::setRotation(const glm::vec3& newRotation, bool isInRadians, bool isDelta) noexcept {
+  WTransformComponent* pComponent = getComponent<WTransformComponent>();
+  glm::vec3 rotation = (isInRadians) ? newRotation : glm::radians(newRotation);
 
-  switch (direction) {
-    case 1: {
-      glm::vec3 deltaRotation = vector * realAngle;
-      data.rotation += deltaRotation;
-      data.orientation = glm::angleAxis(realAngle, vector) * data.orientation;
-      break;
-    }
-    case 0: {
-      float newPitch = m_pitch + realAngle;
+  switch (isDelta) {
+    case true: {
+      bool isYaw = rotation.y != 0.0f ? true : false;
 
-      if (!m_viewData.ignorePitchLimit) {
-        if (newPitch < -config::pitchLimit) {
-          break;
-        }
-
-        if (newPitch > config::pitchLimit) {
-          break;
-        }
+      float newPitch = rotation.x + pComponent->getRotation().x;
+      if (!m_viewData.ignorePitchLimit && (newPitch < -config::pitchLimit || newPitch > config::pitchLimit)) {
+        break;
       }
 
-      m_pitch = newPitch;     // Case fall through is on purpose here
+      pComponent->data.rotation += rotation;
+      pComponent->data.orientation = (isYaw)
+        ? glm::quat(rotation) * pComponent->data.orientation
+        : pComponent->data.orientation * glm::quat(rotation);
+      break;
     }
-    default: {
-      glm::vec3 deltaRotation = vector * realAngle;
-      data.rotation += deltaRotation;
-      data.orientation *= glm::angleAxis(realAngle, vector);
+
+    case false: {
+      float newPitch = m_viewData.ignorePitchLimit ? rotation.x :
+        rotation.x < -config::pitchLimit ? -config::pitchLimit
+        : rotation.x > config::pitchLimit ? config::pitchLimit
+        : rotation.x;
+
+      pComponent->setRotation(glm::vec3(newPitch, rotation.y, rotation.z), true, false);
       break;
     }
   }
@@ -171,13 +152,64 @@ void ACamera::rotate(const glm::vec3& vector, float angle) noexcept {
       break;
     }
     case false: {
-      data.forwardVector = glm::rotate(data.orientation, data.initial.forwardVector);
+      pComponent->setForwardVector(
+        glm::rotate(pComponent->getOrientation(), pComponent->getAbsoluteForwardVector()));
     }
   }
 
-  data.wasUpdated = true;
   updateAttachments();
 }
+
+//void ACamera::rotate(const glm::vec3& vector, float angle) noexcept {
+//  // When rotating around an axis similar to camera's up vector a pre-multiplication must be done
+//  // e.g. rotation = modifier * rotation
+//  auto& data = getComponent<WTransformComponent>()->data;
+//  uint8_t direction = vector.x > 0.0f ? 0 : vector.y > 0.0f ? 1 : 2;
+//  float realAngle = angle * m_rotationModifier * core::time.getDeltaTime();
+//
+//  switch (direction) {
+//    case 1: {
+//      glm::vec3 deltaRotation = vector * realAngle;
+//      data.rotation += deltaRotation;
+//      data.orientation = glm::angleAxis(realAngle, vector) * data.orientation;
+//      break;
+//    }
+//    case 0: {
+//      float newPitch = m_pitch + realAngle;
+//
+//      if (!m_viewData.ignorePitchLimit) {
+//        if (newPitch < -config::pitchLimit) {
+//          break;
+//        }
+//
+//        if (newPitch > config::pitchLimit) {
+//          break;
+//        }
+//      }
+//
+//      m_pitch = newPitch;     // Case fall through is on purpose here
+//    }
+//    default: {
+//      glm::vec3 deltaRotation = vector * realAngle;
+//      data.rotation += deltaRotation;
+//      data.orientation *= glm::angleAxis(realAngle, vector);
+//      break;
+//    }
+//  }
+//
+//  switch (m_viewData.anchorFocusPoint) {
+//    case true: {
+//      // code for when the camera should be rotated around its focus point
+//      break;
+//    }
+//    case false: {
+//      data.forwardVector = glm::rotate(data.orientation, data.absoluteForwardVector);
+//    }
+//  }
+//
+//  data.wasUpdated = true;
+//  updateAttachments();
+//}
 
 void ACamera::setIgnorePitchLimit(const bool newValue) {
   m_viewData.ignorePitchLimit = newValue;
