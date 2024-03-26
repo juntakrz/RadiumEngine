@@ -6,11 +6,10 @@
 WCameraComponent::WCameraComponent(ABase* pActor) {
   typeId = EComponentType::Camera;
   pOwner = pActor;
+  pEvents = &pOwner->getEventSystem();
 
-  // This component requires an actor to have the transform component
-  if (!(pTransform = pOwner->getComponent<WTransformComponent>())) {
-    pTransform = pOwner->addComponent<WTransformComponent>();
-  }
+  // Subscribe to appropriate events
+  pEvents->addListener<TransformUpdateComponentEvent>(this);
 }
 
 void WCameraComponent::setProjectionMode(ECameraProjection newMode) {
@@ -57,6 +56,10 @@ const glm::mat4& WCameraComponent::getProjection() {
   return data.projection;
 }
 
+void WCameraComponent::onEvent(const ComponentEvent& event) {
+
+}
+
 void WCameraComponent::update() {
   if (data.projectionRequiresUpdate) {
     switch (data.projectionMode) {
@@ -78,8 +81,8 @@ void WCameraComponent::update() {
     switch (data.viewMode) {
       case ECameraView::LookAt: {
         data.view = glm::lookAt(
-          data.translation + pTransform->getTranslation(),
-          data.translation + pTransform->getTranslation() + data.forwardVector,
+          data.translation + data.transformTranslation,
+          data.translation + data.transformTranslation + data.forwardVector,
           data.upVector);
         break;
       }

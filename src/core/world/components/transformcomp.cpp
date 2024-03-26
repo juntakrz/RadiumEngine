@@ -7,7 +7,17 @@
 #include "core/world/actors/light.h"
 #include "core/world/actors/camera.h"
 #include "core/managers/gui.h"
+#include "core/world/components/componentevents.h"
 #include "core/world/components/transformcomp.h"
+
+WTransformComponent::WTransformComponent(ABase* pActor) {
+  typeId = EComponentType::Transform;
+  pOwner = pActor;
+  pEvents = &pOwner->getEventSystem();
+}
+
+void WTransformComponent::onEvent(const ComponentEvent& newEvent) {
+}
 
 void WTransformComponent::update() {
   if (data.requiresUpdate) {
@@ -21,6 +31,12 @@ void WTransformComponent::update() {
     data.transform *= glm::mat4_cast(data.orientation) * glm::scale(data.scale);
 
     data.requiresUpdate = false;
+
+    // Generate a new event
+    TransformUpdateComponentEvent newEvent;
+    newEvent.translation = data.translation;
+
+    pEvents->addEvent<TransformUpdateComponentEvent>(newEvent);
   }
 }
 

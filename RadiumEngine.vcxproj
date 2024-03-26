@@ -389,6 +389,7 @@
     <ClInclude Include="include\core\world\components\cameracomp.h" />
     <ClInclude Include="include\core\world\components\component.h" />
     <ClInclude Include="include\core\world\components\components.h" />
+    <ClInclude Include="include\core\world\components\componentevents.h" />
     <ClInclude Include="include\core\world\components\modelcomp.h" />
     <ClInclude Include="include\core\world\components\transformcomp.h" />
     <ClInclude Include="include\define.h" />

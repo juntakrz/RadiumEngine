@@ -151,6 +151,8 @@ void ABase::attachTo(ABase* pTarget, const bool toTranslation,
 }
 
 void ABase::updateComponents() {
+  m_eventSystem.processEvents();
+
   for (const auto& it : m_pComponents) {
     it.second->update();
   }

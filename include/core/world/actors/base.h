@@ -2,12 +2,7 @@
 
 #include "core/objects.h"
 #include "core/managers/world.h"
-
-/*
- * Base class for manipulated engine objects like models, cameras and lights
- * contains common variables and methods either used as is or overloaded by the
- * inheriting classes
- */
+#include "core/world/components/componentevents.h"
 
 class ACamera;
 struct WComponent;
@@ -19,6 +14,8 @@ class ABase {
   std::string m_previousName = "";
   EActorType m_typeId = EActorType::Base;
   int32_t m_UID = -1;
+
+  ComponentEventSystem m_eventSystem;
 
   std::unordered_map<std::type_index, std::unique_ptr<WComponent>> m_pComponents;
   std::vector<WAttachmentInfo> m_pAttachments;
@@ -77,6 +74,8 @@ class ABase {
 
   virtual void attachTo(ABase* pTarget, const bool toTranslation,
                         const bool toRotation, const bool toForwardVector);
+
+  ComponentEventSystem& getEventSystem() { return m_eventSystem; }
 
   template<typename T>
   T* getComponent() {

@@ -24,9 +24,9 @@ struct WCameraComponent : public WComponent {
 
     bool projectionRequiresUpdate = true;
     bool viewRequiresUpdate = true;
-  } data;
 
-  struct WTransformComponent* pTransform = nullptr;
+    glm::vec3 transformTranslation = glm::vec3(0.0f);
+  } data;
 
   WCameraComponent(ABase* pActor);
 
@@ -43,7 +43,7 @@ struct WCameraComponent : public WComponent {
   const glm::mat4& getView();
   const glm::mat4& getProjection();
 
+  void onEvent(const ComponentEvent& newEvent) override;
   void update() override;
-
   void drawComponentUI() override;
 };

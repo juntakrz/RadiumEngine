@@ -24,7 +24,7 @@ struct WTransformComponent : public WComponent {
     bool requiresUpdate = false;
   } data;
 
-  WTransformComponent(ABase* pActor) { typeId = EComponentType::Transform; pOwner = pActor; }
+  WTransformComponent(ABase* pActor);
 
   const glm::mat4& getModelTransformationMatrix();
 
@@ -55,6 +55,7 @@ struct WTransformComponent : public WComponent {
 
   const glm::vec3& getDeltaModifiers();
 
+  void onEvent(const ComponentEvent& newEvent) override;
   void update() override;
   void drawComponentUI() override;
 };
