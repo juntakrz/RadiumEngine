@@ -192,10 +192,13 @@
     <ClCompile Include="src\core\managers\gui_editor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\world\components\transform.cpp">
+    <ClCompile Include="src\core\world\components\transformcomp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\world\components\cameracomp.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\world\components\modelcomp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -329,13 +332,16 @@
     <ClInclude Include="include\core\world\components\component.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\components\transform.h">
+    <ClInclude Include="include\core\world\components\transformcomp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\core\world\components\components.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\core\world\components\cameracomp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\world\components\modelcomp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

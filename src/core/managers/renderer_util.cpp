@@ -295,6 +295,7 @@ void core::MRenderer::updateBoundEntities() {
 
     // Update model matrices
     pEntity->updateModel();
+    pEntity->updateComponents();
   }
 
   // Use this thread to also quickly process camera exposure level

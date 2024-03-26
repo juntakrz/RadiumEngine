@@ -91,6 +91,7 @@ enum class EComponentType {
   Base,
   Transform,
   Camera,
+  Model,
   LightSource
 };
 

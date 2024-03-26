@@ -3,4 +3,5 @@
 // Common header referencing all components
 
 #include "cameracomp.h"
-#include "transform.h"
+#include "modelcomp.h"
+#include "transformcomp.h"

@@ -7,9 +7,24 @@
 #include "core/world/actors/light.h"
 #include "core/world/actors/camera.h"
 #include "core/managers/gui.h"
-#include "core/world/components/transform.h"
+#include "core/world/components/transformcomp.h"
 
-void WTransformComponent::showUIElement() {
+void WTransformComponent::update() {
+  if (data.requiresUpdate) {
+    // Translation * Rotation * Scaling
+    data.transform = glm::mat4(1.0f);
+
+    // Using SIMD copy instead of glm::translate
+    util::copyVec3ToMatrix(&data.translation.x, data.transform, 3);
+
+    // Using SIMD to multiply translated matrix by rotation and scaling matrices
+    data.transform *= glm::mat4_cast(data.orientation) * glm::scale(data.scale);
+
+    data.requiresUpdate = false;
+  }
+}
+
+void WTransformComponent::drawComponentUI() {
   if (!pOwner) {
     RE_LOG(Error, "%s: nullptr error.", __FUNCTION__);
     return;
@@ -41,7 +56,7 @@ void WTransformComponent::showUIElement() {
       if (open) {
         if (core::gui.drawVec3Control("Translation", translation, core::gui.m_util.dragSensitivity)) {
           data.translation = translation;
-          data.wasUpdated = true;
+          data.requiresUpdate = true;
         }
 
         if (core::gui.drawVec3Control("Rotation", deltaRotation, core::gui.m_util.dragSensitivity * 10.0f, false, "%.2f")) {
@@ -50,12 +65,12 @@ void WTransformComponent::showUIElement() {
           data.rotation += deltaRotation;
           data.orientation *= glm::quat(deltaRotation);
           math::wrapAnglesGLM(data.rotation);
-          data.wasUpdated = true;
+          data.requiresUpdate = true;
         }
 
         if (core::gui.drawVec3Control("Scale", scale, core::gui.m_util.dragSensitivity, core::gui.m_editorData.isTransformScaleLocked)) {
           data.scale = scale;
-          data.wasUpdated = true;
+          data.requiresUpdate = true;
         }
 
         ImVec2 lockButtonSize = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::CalcTextSize("unlock").y + 5);
@@ -77,23 +92,7 @@ void WTransformComponent::showUIElement() {
   }
 }
 
-const glm::mat4& WTransformComponent::getModelTransformationMatrix(bool* updateResult) {
-  if (data.wasUpdated) {
-    // Translation * Rotation * Scaling
-    data.transform = glm::mat4(1.0f);
-
-    // Using SIMD copy instead of glm::translate
-    util::copyVec3ToMatrix(&data.translation.x, data.transform, 3);
-
-    // Using SIMD to multiply translated matrix by rotation and scaling matrices
-    data.transform *= glm::mat4_cast(data.orientation) * glm::scale(data.scale);
-
-    // Tell the caller that transformations were performed this call
-    if (updateResult) *updateResult = true;
-
-    data.wasUpdated = false;
-  }
-
+const glm::mat4& WTransformComponent::getModelTransformationMatrix() {
   return data.transform;
 }
 
@@ -102,13 +101,13 @@ void WTransformComponent::setTranslation(float x, float y, float z, bool isDelta
   data.translation.y = (isDelta) ? data.translation.y + y * data.deltaModifiers.y : y;
   data.translation.z = (isDelta) ? data.translation.z + z * data.deltaModifiers.z : z;
 
-  data.wasUpdated = true;
+  data.requiresUpdate = true;
 }
 
 void WTransformComponent::setTranslation(const glm::vec3& newTranslation, bool isDelta) {
   data.translation = (isDelta) ? data.translation + newTranslation * data.deltaModifiers.x : newTranslation;
 
-  data.wasUpdated = true;
+  data.requiresUpdate = true;
 }
 
 void WTransformComponent::setRotation(float x, float y, float z, bool isInRadians, bool isDelta) {
@@ -126,7 +125,7 @@ void WTransformComponent::setRotation(const glm::vec3& newRotation, bool isInRad
     ? data.orientation * glm::quat(((isInRadians) ? newRotation : glm::radians(newRotation)) * data.deltaModifiers.y)
     : glm::quat(data.rotation);
 
-  data.wasUpdated = true;
+  data.requiresUpdate = true;
 }
 
 void WTransformComponent::setScale(float newScale, bool isDelta) {
@@ -134,7 +133,7 @@ void WTransformComponent::setScale(float newScale, bool isDelta) {
   data.scale.y = (isDelta) ? data.scale.y + newScale * data.deltaModifiers.z : newScale;
   data.scale.z = (isDelta) ? data.scale.z + newScale * data.deltaModifiers.z : newScale;
 
-  data.wasUpdated = true;
+  data.requiresUpdate = true;
 }
 
 void WTransformComponent::setScale(float x, float y, float z, bool isDelta) {
@@ -142,25 +141,25 @@ void WTransformComponent::setScale(float x, float y, float z, bool isDelta) {
   data.scale.y = (isDelta) ? data.scale.y + y * data.deltaModifiers.z : y;
   data.scale.z = (isDelta) ? data.scale.z + z * data.deltaModifiers.z : z;
 
-  data.wasUpdated = true;
+  data.requiresUpdate = true;
 }
 
 void WTransformComponent::setScale(const glm::vec3& newScale, bool isDelta) {
   data.scale = (isDelta) ? data.scale + newScale * data.deltaModifiers.z : newScale;
 
-  data.wasUpdated = true;
+  data.requiresUpdate = true;
 }
 
 void WTransformComponent::setForwardVector(const glm::vec3& newForwardVector) {
   data.forwardVector = newForwardVector;
 
-  data.wasUpdated = true;
+  data.requiresUpdate = true;
 }
 
 void WTransformComponent::setAbsoluteForwardVector(const glm::vec3& newForwardVector) {
   data.absoluteForwardVector = newForwardVector;
 
-  data.wasUpdated = true;
+  data.requiresUpdate = true;
 }
 
 void WTransformComponent::setTranslationDeltaModifier(float newModifier) {

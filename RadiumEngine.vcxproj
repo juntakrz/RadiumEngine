@@ -338,7 +338,8 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\core\world\components\cameracomp.cpp" />
-    <ClCompile Include="src\core\world\components\transform.cpp" />
+    <ClCompile Include="src\core\world\components\modelcomp.cpp" />
+    <ClCompile Include="src\core\world\components\transformcomp.cpp" />
     <ClCompile Include="src\pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
@@ -388,7 +389,8 @@
     <ClInclude Include="include\core\world\components\cameracomp.h" />
     <ClInclude Include="include\core\world\components\component.h" />
     <ClInclude Include="include\core\world\components\components.h" />
-    <ClInclude Include="include\core\world\components\transform.h" />
+    <ClInclude Include="include\core\world\components\modelcomp.h" />
+    <ClInclude Include="include\core\world\components\transformcomp.h" />
     <ClInclude Include="include\define.h" />
     <ClInclude Include="include\define_input.h" />
     <ClInclude Include="include\imconfig.h" />

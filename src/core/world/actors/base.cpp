@@ -150,17 +150,14 @@ void ABase::attachTo(ABase* pTarget, const bool toTranslation,
   pTarget->updateAttachments();
 }
 
-bool ABase::wasUpdated(const bool clearStatus) {
-  auto& data = getComponent<WTransformComponent>()->data;
-  bool wasUpdated = data.wasUpdated;
-
-  if (clearStatus) data.wasUpdated = false;
-
-  return wasUpdated;
+void ABase::updateComponents() {
+  for (const auto& it : m_pComponents) {
+    it.second->update();
+  }
 }
 
 void ABase::drawComponentUIElements() {
   for (auto& it : m_pComponents) {
-    it.second->showUIElement();
+    it.second->drawComponentUI();
   }
 }

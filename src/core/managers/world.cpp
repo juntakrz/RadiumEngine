@@ -3,7 +3,7 @@
 #include "core/core.h"
 #include "core/managers/resources.h"
 #include "core/managers/world.h"
-#include "core/world/components/transform.h"
+#include "core/world/components/components.h"
 #include "core/model/model.h"
 
 #define TINYGLTF_IMPLEMENTATION

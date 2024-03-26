@@ -45,5 +45,5 @@ struct WCameraComponent : public WComponent {
 
   void update() override;
 
-  void showUIElement() override;
+  void drawComponentUI() override;
 };

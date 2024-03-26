@@ -21,12 +21,12 @@ struct WTransformComponent : public WComponent {
     glm::vec3 deltaModifiers = glm::vec3(1.0f);
 
     // was transformation data changed
-    bool wasUpdated = false;
+    bool requiresUpdate = false;
   } data;
 
   WTransformComponent(ABase* pActor) { typeId = EComponentType::Transform; pOwner = pActor; }
 
-  const glm::mat4& getModelTransformationMatrix(bool* updateResult = nullptr);
+  const glm::mat4& getModelTransformationMatrix();
 
   void setTranslation(float x, float y, float z, bool isDelta = false);
   void setTranslation(const glm::vec3& newTranslation, bool isDelta = false);
@@ -55,5 +55,6 @@ struct WTransformComponent : public WComponent {
 
   const glm::vec3& getDeltaModifiers();
 
-  void showUIElement() override;
+  void update() override;
+  void drawComponentUI() override;
 };

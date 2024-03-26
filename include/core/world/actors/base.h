@@ -78,9 +78,6 @@ class ABase {
   virtual void attachTo(ABase* pTarget, const bool toTranslation,
                         const bool toRotation, const bool toForwardVector);
 
-  // Were any of the actor transformations updated (clear update status if required)
-  virtual bool wasUpdated(const bool clearStatus = false);
-
   template<typename T>
   T* getComponent() {
     if (m_pComponents.contains(typeid(T))) return dynamic_cast<T*>(m_pComponents[typeid(T)].get());
@@ -98,5 +95,6 @@ class ABase {
     return dynamic_cast<T*>(m_pComponents[typeid(T)].get());
   }
 
+  void updateComponents();
   void drawComponentUIElements();
 };

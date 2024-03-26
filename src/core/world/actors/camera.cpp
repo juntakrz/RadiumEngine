@@ -57,9 +57,9 @@ glm::mat4& ACamera::getProjection() { return m_projection; }
 const glm::mat4& ACamera::getProjectionView() {
   auto& data = getComponent<WTransformComponent>()->data;
 
-  if (data.wasUpdated) {
+  if (data.requiresUpdate) {
     m_projectionView = getProjection() * getView();
-    data.wasUpdated = false;
+    data.requiresUpdate = false;
   }
 
   return m_projectionView;

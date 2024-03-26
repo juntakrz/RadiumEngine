@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "core/world/actors/base.h"
-#include "core/world/components/transform.h"
+#include "core/world/components/transformcomp.h"
 #include "core/world/components/cameracomp.h"
 
 WCameraComponent::WCameraComponent(ABase* pActor) {
@@ -92,5 +92,5 @@ void WCameraComponent::update() {
   }
 }
 
-void WCameraComponent::showUIElement() {
+void WCameraComponent::drawComponentUI() {
 }

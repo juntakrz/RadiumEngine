@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/world/components/transform.h"
+#include "core/world/components/transformcomp.h"
 #include "core/world/actors/entity.h"
 
 class APawn : public AEntity {
