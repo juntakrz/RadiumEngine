@@ -2,6 +2,7 @@
 #include "core/core.h"
 #include "core/managers/actors.h"
 #include "core/managers/gui.h"
+#include "core/managers/ref.h"
 #include "core/managers/time.h"
 #include "core/managers/world.h"
 #include "core/world/actors/entity.h"
@@ -65,7 +66,7 @@ void core::MRenderer::renderEnvironmentMaps(
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::EnvSkybox);
   renderView.pCurrentPass = pRenderPass;
 
-  setCamera(RCAM_ENV);
+  setCamera(core::ref.getActor(RCAM_ENV));
   getCamera()->setRotation(environment.cameraTransformVectors[environment.tracking.layer]);
   updateSceneUBO(renderView.frameInFlight);
 

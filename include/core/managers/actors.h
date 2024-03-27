@@ -15,14 +15,14 @@ class MActors {
 
  private:
   struct {
-    std::unordered_map<uint32_t, std::unique_ptr<ACamera>> cameras;
+    std::unordered_map<uint32_t, std::unique_ptr<ABase>> cameras;
     std::unordered_map<uint32_t, std::unique_ptr<ALight>> lights;
     std::unordered_map<uint32_t, std::unique_ptr<APawn>> pawns;
     std::unordered_map<uint32_t, std::unique_ptr<AStatic>> statics;
   } m_actors;
 
   struct {
-    std::vector<ACamera*> pCameras;
+    std::vector<ABase*> pCameras;
     std::vector<ALight*> pLights;
   } m_linearActors;
 
@@ -47,7 +47,6 @@ class MActors {
   // CAMERA
 
   ABase* createCamera(const std::string& name, RCameraInfo* cameraSettings = nullptr);
-  TResult destroyCamera(ACamera *pCamera);
   ABase* getCamera(const std::string& name);
 
   // LIGHT

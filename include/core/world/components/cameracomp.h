@@ -17,7 +17,7 @@ struct WCameraComponent : public WComponent {
 
     float FOV = 75.0f;
     float orthoFOV = 1.0f;
-    float nearPlane = 0.0001f;
+    float nearPlane = RE_NEARZ;
     float viewDistance = 1000.0f;
     float aspectRatio = 1.0f;
 
@@ -51,6 +51,10 @@ struct WCameraComponent : public WComponent {
   void setFOV(float newFOV);
   void setOrthoFOV(float newFOV);
   void setViewDistance(float newViewDistance);
+  void setAspectRatio(float newValue) noexcept;
+
+  // Aspect ratio will be ignored if orthographic mode is selected
+  void setCameraParameters(ECameraProjection newMode, float newFOV, float aspectRatio, float newViewDistance);
 
   // Target actor must have transform component. Set focus mode to 'None' to free the camera.
   void setFocus(ECameraFocusMode newFocusMode, ABase* pTargetActor = nullptr);
@@ -60,15 +64,21 @@ struct WCameraComponent : public WComponent {
   const float getOrthoFOV();
   const float getViewDistance();
   const glm::vec2 getClipPlanes();
+  float getAspectRatio() noexcept;
 
   const glm::mat4& getView();
   const glm::mat4& getProjection();
 
+  void setForwardVector(const glm::vec3& newVector);
+  void setAbsoluteForwardVector(const glm::vec3& newVector);
+  void setUpVector(const glm::vec3& newVector);
+
+  const glm::vec3& getForwardVector();
+  const glm::vec3& getAbsoluteForwardVector();
+  const glm::vec3& getUpVector();
+
   void setIgnorePitchLimit(const bool newValue);
   bool getIsIgnoringPitchLimit();
-
-  void setAspectRatio(float newValue) noexcept;
-  float getAspectRatio() noexcept;
 
   void setViewBufferIndex(const uint32_t newIndex);
   uint32_t getViewBufferIndex();

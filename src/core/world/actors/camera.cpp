@@ -25,7 +25,7 @@ void ACamera::setOrthographic(float horizontal, float vertical, float nearZ,
                               float farZ) noexcept {
   m_viewData.orthographicData = {horizontal, vertical, nearZ, farZ};
   m_projection = glm::ortho(-horizontal, horizontal, -vertical, vertical, nearZ, farZ);
-  m_projectionType = ECameraProjection::Orthogtaphic;
+  m_projectionType = ECameraProjection::Orthographic;
 }
 
 float ACamera::getNearPlane() {
@@ -205,7 +205,7 @@ void ACamera::setIgnorePitchLimit(const bool newValue) {
 }
 
 void ACamera::setFOV(float FOV) noexcept {
-  if (m_projectionType == ECameraProjection::Orthogtaphic) return;
+  if (m_projectionType == ECameraProjection::Orthographic) return;
 
   m_viewData.perspectiveData.x = FOV;
   m_projection = glm::perspective(
@@ -218,7 +218,7 @@ float ACamera::getFOV() noexcept {
 }
 
 void ACamera::setAspectRatio(float ratio) noexcept {
-  if (m_projectionType == ECameraProjection::Orthogtaphic) return;
+  if (m_projectionType == ECameraProjection::Orthographic) return;
 
   m_viewData.perspectiveData.y = ratio;
   m_projection = glm::perspective(

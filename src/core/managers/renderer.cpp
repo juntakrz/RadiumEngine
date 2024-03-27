@@ -397,7 +397,7 @@ TResult core::MRenderer::setRendererDefaults() {
   cameraInfo.FOV = 90.0f;
   cameraInfo.aspectRatio = 1.0f;
   cameraInfo.nearZ = RE_NEARZ;
-  cameraInfo.farZ = config::viewDistance;
+  cameraInfo.viewDistance = config::viewDistance;
 
   ABase* pCameraActor = core::actors.createCamera(RCAM_ENV, &cameraInfo);
 
@@ -820,9 +820,9 @@ void core::MRenderer::updateAspectRatio() {
 
 void core::MRenderer::setFOV(float FOV) { view.pActiveCamera->setFOV(FOV); }
 
-void core::MRenderer::setViewDistance(float farZ) { view.cameraSettings.farZ; }
+void core::MRenderer::setViewDistance(float farZ) { view.cameraSettings.viewDistance; }
 
 void core::MRenderer::setViewDistance(float nearZ, float farZ) {
   view.cameraSettings.nearZ = nearZ;
-  view.cameraSettings.farZ = farZ;
+  view.cameraSettings.viewDistance = farZ;
 }

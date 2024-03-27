@@ -104,7 +104,7 @@ void core::MScript::jsonParseCameras(const json* pCameraData) noexcept {
       float rotation[3] = {0.0f, 0.0f, 0.0f};
       float upVector[3] = {0.0f, 1.0f, 0.0f};
 
-      ACamera* newCamera = core::actors.createCamera(name, nullptr);
+      ABase* newCamera = core::actors.createCamera(name, nullptr);
 
       // set camera position
       if (it.contains("translation")) {
@@ -121,7 +121,7 @@ void core::MScript::jsonParseCameras(const json* pCameraData) noexcept {
 
       newCamera->setTranslation(glm::vec3(translation[0], translation[1], translation[2]));
       newCamera->setRotation(glm::degrees(glm::vec3(rotation[0], rotation[1], rotation[2])));
-      newCamera->setUpVector(glm::vec3(upVector[0], upVector[1], upVector[2]));
+      newCamera->getComponent<WCameraComponent>()->setUpVector(glm::vec3(upVector[0], upVector[1], upVector[2]));
 
       // set camera mode
       /* vars:
@@ -134,22 +134,24 @@ void core::MScript::jsonParseCameras(const json* pCameraData) noexcept {
         it.at("mode").at("variables").get_to(vars);
 
         if (it.at("mode").at("view") == "perspective") {
-          newCamera->setPerspective(vars[0], vars[1] * config::getAspectRatio(),
-                                    vars[2], vars[3]);
+          newCamera->getComponent<WCameraComponent>()->setCameraParameters(
+            ECameraProjection::Perspective, vars[0], vars[1], vars[3]);
         }
 
         if (it.at("mode").at("view") == "orthographic") {
-          newCamera->setOrthographic(vars[0], vars[1], vars[2], vars[3]);
+          newCamera->getComponent<WCameraComponent>()->setCameraParameters(
+            ECameraProjection::Orthographic, vars[0], 1.0f, vars[3]);
         }
       }
     }
   }
 
   if (activatedCamera != "") {
-    core::renderer.setCamera(activatedCamera.c_str(), true);
+    ABase* pActor = core::ref.getActor(activatedCamera);
+    core::renderer.setCamera(pActor, true);
 
     // TODO: make this a separate thing in a map config
-    core::player.controlActor(core::renderer.getCamera());
+    core::player.controlActor(pActor);
   }
 }
 

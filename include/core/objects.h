@@ -64,7 +64,7 @@ enum class ECameraFocusMode {
 
 enum class ECameraProjection {
   Perspective,
-  Orthogtaphic
+  Orthographic
 };
 
 enum class ECameraView {
@@ -183,10 +183,11 @@ struct RBuffer {
 };
 
 struct RCameraInfo {
+  ECameraProjection projectionMode = ECameraProjection::Perspective;
   float FOV = config::FOV;
-  float aspectRatio = 1.0f; // ratio 1.0 corresponds to resolution
+  float aspectRatio = config::aspectRatio;
   float nearZ = RE_NEARZ;
-  float farZ = config::viewDistance;
+  float viewDistance = config::viewDistance;
 };
 
 struct RComputePCB {

@@ -46,45 +46,40 @@ void core::MActors::updateLightingUBO(RLightingUBO* pLightingBuffer) {
   pLightingBuffer->lightCount = lightCount;
 }
 
-ABase* core::MActors::createCamera(const std::string& name, RCameraInfo* cameraSettings) {
+ABase* core::MActors::createCamera(const std::string& name, RCameraInfo* pInfo) {
   if (!core::ref.getActor(name)) {
     m_actors.cameras[m_nextActorUID] = std::make_unique<ACamera>(m_nextActorUID);
-    ABase* pCamera = m_actors.cameras[m_nextActorUID].get();
+    ABase* pCameraActor = m_actors.cameras[m_nextActorUID].get();
 
-    pCamera->setName(name);
+    pCameraActor->setName(name);
+    WCameraComponent* pComponent = pCameraActor->addComponent<WCameraComponent>();
 
-    if (cameraSettings) {
-      pCamera->setPerspective(
-          cameraSettings->FOV, cameraSettings->aspectRatio,
-          cameraSettings->nearZ, cameraSettings->farZ);
-    } else {
-      pCamera->setPerspective(
-          config::FOV, config::getAspectRatio(),
-          RE_NEARZ, config::viewDistance);
-    }
+    const RCameraInfo& cameraInfo = (pInfo) ? *pInfo : RCameraInfo();
+    pComponent->setCameraParameters(
+      cameraInfo.projectionMode, cameraInfo.FOV, cameraInfo.aspectRatio, cameraInfo.viewDistance);
 
     // get free camera offset index into the dynamic buffer
     uint32_t index = 0;
     
     for (const auto& it : m_linearActors.pCameras) {
-      if (it->getViewBufferIndex() != index) {
+      if (it->getComponent<WCameraComponent>()->getViewBufferIndex() != index) {
         break;
       }
 
       ++index;
     }
 
-    pCamera->setViewBufferIndex(index);
-    m_linearActors.pCameras.emplace_back(pCamera);
+    pComponent->setViewBufferIndex(index);
+    m_linearActors.pCameras.emplace_back(pCameraActor);
 
-    core::ref.registerCamera(pCamera);
+    core::ref.registerActor(pCameraActor);
 
 #ifndef NDEBUG
     RE_LOG(Log, "Created camera '%s'.", name.c_str());
 #endif
 
     ++m_nextActorUID;
-    return pCamera;
+    return pCameraActor;
   }
 
 #ifndef NDEBUG
@@ -94,38 +89,8 @@ ABase* core::MActors::createCamera(const std::string& name, RCameraInfo* cameraS
   return getCamera(name);
 }
 
-TResult core::MActors::destroyCamera(ACamera* pCamera) {
-  const uint32_t UID = pCamera->getUID();
-
-  if (m_actors.cameras.contains(UID)) {
-    ACamera* pCamera = m_actors.cameras[UID].get();
-    size_t index = 0;
-    
-    for (const auto& it : m_linearActors.pCameras) {
-      if (it == pCamera) {
-        break;
-      }
-
-      ++index;
-    }
-
-    // Remove the camera from the scene graph
-    core::ref.unregisterCamera(pCamera);
-
-    m_linearActors.pCameras.erase(m_linearActors.pCameras.begin() + index);
-    m_actors.cameras.erase(UID);
-
-    return RE_OK;
-  }
-
-#ifndef NDEBUG
-  RE_LOG(Error, "Failed to destroy camera at %d.", pCamera);
-#endif
-  return RE_ERROR;
-}
-
-ACamera* core::MActors::getCamera(const std::string& name) {
-  if (ACamera* pCamera = core::ref.getActor(name)->getAs<ACamera>()) {
+ABase* core::MActors::getCamera(const std::string& name) {
+  if (ABase* pCamera = core::ref.getActor(name)) {
     return pCamera;
   }
 
@@ -154,7 +119,7 @@ ALight* core::MActors::createLight(const std::string& name, RLightInfo* pInfo) {
         uint32_t index = 0;
 
         for (const auto& it : m_linearActors.pCameras) {
-          if (it->getViewBufferIndex() != index) {
+          if (it->getComponent<WCameraComponent>()->getViewBufferIndex() != index) {
             break;
           }
 

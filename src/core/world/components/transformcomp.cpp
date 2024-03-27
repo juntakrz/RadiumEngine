@@ -127,8 +127,8 @@ const glm::vec3& WTransformComponent::getDeltaModifiers() {
 }
 
 void WTransformComponent::onOwnerPossessed() {
-  pEvents->addDelegate<ControllerTranslationComponentEvent>(this, &handleControllerTranslation);
-  pEvents->addDelegate<ControllerRotationComponentEvent>(this, &handleControllerRotation);
+  pEvents->addDelegate<ControllerTranslationComponentEvent>(this, &WTransformComponent::handleControllerTranslation);
+  pEvents->addDelegate<ControllerRotationComponentEvent>(this, &WTransformComponent::handleControllerRotation);
 }
 
 void WTransformComponent::update() {

@@ -100,6 +100,25 @@ void WCameraComponent::setViewDistance(float newVideDistance) {
   data.projectionRequiresUpdate = true;
 }
 
+void WCameraComponent::setAspectRatio(float newValue) noexcept {
+  data.aspectRatio = newValue;
+
+  data.projectionRequiresUpdate = true;
+}
+
+void WCameraComponent::setCameraParameters(ECameraProjection newMode, float newFOV, float aspectRatio, float newViewDistance) {
+  (newMode == ECameraProjection::Perspective) ? data.FOV = newFOV : data.orthoFOV = newFOV;
+
+  if (newMode ==ECameraProjection::Perspective) {
+    data.aspectRatio = aspectRatio;
+  }
+
+  data.projectionMode = newMode;
+  data.viewDistance = newViewDistance;
+
+  data.projectionRequiresUpdate = true;
+}
+
 void WCameraComponent::setFocus(ECameraFocusMode newFocusMode, ABase* pTargetActor) {
   if ((data.focusMode = newFocusMode) == ECameraFocusMode::None) return;
 
@@ -134,6 +153,10 @@ const glm::vec2 WCameraComponent::getClipPlanes() {
   return { data.nearPlane, data.viewDistance };
 }
 
+float WCameraComponent::getAspectRatio() noexcept {
+  return data.aspectRatio;
+}
+
 const glm::mat4& WCameraComponent::getView() {
   return data.view;
 }
@@ -142,22 +165,39 @@ const glm::mat4& WCameraComponent::getProjection() {
   return data.projection;
 }
 
+void WCameraComponent::setForwardVector(const glm::vec3& newVector) {
+  data.forwardVector = newVector;
+  data.viewRequiresUpdate = true;
+}
+
+void WCameraComponent::setAbsoluteForwardVector(const glm::vec3& newVector) {
+  data.absoluteForwardVector = newVector;
+  data.viewRequiresUpdate = true;
+}
+
+void WCameraComponent::setUpVector(const glm::vec3& newVector) {
+  data.upVector = newVector;
+  data.viewRequiresUpdate = true;
+}
+
+const glm::vec3& WCameraComponent::getForwardVector() {
+  return data.forwardVector;
+}
+
+const glm::vec3& WCameraComponent::getAbsoluteForwardVector() {
+  return data.absoluteForwardVector;
+}
+
+const glm::vec3& WCameraComponent::getUpVector() {
+  return data.upVector;
+}
+
 void WCameraComponent::setIgnorePitchLimit(const bool newValue) {
   data.isIgnoringPitchLimit = newValue;
 }
 
 bool WCameraComponent::getIsIgnoringPitchLimit() {
   return data.isIgnoringPitchLimit;
-}
-
-void WCameraComponent::setAspectRatio(float newValue) noexcept {
-  data.aspectRatio = newValue;
-
-  data.projectionRequiresUpdate = true;
-}
-
-float WCameraComponent::getAspectRatio() noexcept {
-  return data.aspectRatio;
 }
 
 void WCameraComponent::setViewBufferIndex(const uint32_t newIndex) {
@@ -169,7 +209,7 @@ uint32_t WCameraComponent::getViewBufferIndex() {
 }
 
 void WCameraComponent::onOwnerPossessed() {
-  pEvents->addDelegate<ControllerRotationComponentEvent>(this, &handleControllerRotation);
+  pEvents->addDelegate<ControllerRotationComponentEvent>(this, &WCameraComponent::handleControllerRotation);
 }
 
 void WCameraComponent::update() {
@@ -180,7 +220,7 @@ void WCameraComponent::update() {
         break;
       }
 
-      case ECameraProjection::Orthogtaphic: {
+      case ECameraProjection::Orthographic: {
         data.projection = glm::ortho(-data.orthoFOV, data.orthoFOV, -data.orthoFOV, data.orthoFOV);
         break;
       }
