@@ -30,8 +30,6 @@ class MPlayer {
   void initialize();
 
   void controlActor(ABase* pActor);
-  void controlCamera(const char* name);
-
   void freeActor(ABase* pActor);
 
   MovementData& getMovementData() { return m_movementData; };

@@ -73,9 +73,11 @@ struct WCameraComponent : public WComponent {
   void setViewBufferIndex(const uint32_t newIndex);
   uint32_t getViewBufferIndex();
 
+  void onOwnerPossessed() override;
   void update() override;
   void drawComponentUI() override;
 
   // Event delegates
   void handleTransformUpdateEvent(const ComponentEvent& newEvent);
+  void handleControllerRotation(const ComponentEvent& newEvent);
 };

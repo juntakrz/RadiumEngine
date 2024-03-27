@@ -55,6 +55,11 @@ struct WTransformComponent : public WComponent {
 
   const glm::vec3& getDeltaModifiers();
 
+  void onOwnerPossessed() override;
   void update() override;
   void drawComponentUI() override;
+
+  // Event delegates
+  void handleControllerTranslation(const ComponentEvent& newEvent);
+  void handleControllerRotation(const ComponentEvent& newEvent);
 };

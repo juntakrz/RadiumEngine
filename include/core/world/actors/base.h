@@ -61,6 +61,10 @@ class ABase {
   virtual void setScalingModifier(float newModifier);
   /* End of transform component abstraction methods */
 
+  // Should only be used by MPlayer class controller methods
+  void onControllerMovement(const glm::vec3& vector, const bool isRotation);
+  void onPossessed();
+
   void setName(const std::string& name);
   const std::string& getName();
   const std::string& getPreviousName();

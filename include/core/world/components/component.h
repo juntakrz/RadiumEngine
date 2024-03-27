@@ -13,6 +13,7 @@ struct WComponent {
 
   WComponent(ABase* pActor = nullptr) : pOwner(pActor) {};
 
+  virtual void onOwnerPossessed() {};
   virtual void drawComponentUI() { ImGui::Text("Error. Base WComponent is a parent template and should never be used as is."); };
   virtual void update() {};
 };

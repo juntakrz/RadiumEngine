@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "util/math.h"
 #include "core/world/actors/base.h"
 #include "core/world/components/transformcomp.h"
 #include "core/world/components/cameracomp.h"
@@ -27,7 +28,44 @@ void WCameraComponent::setTranslationOffset(const glm::vec3& newTranslation, boo
 }
 
 void WCameraComponent::setRotation(const glm::vec3& newRotation, bool isInRadians, bool isDelta) {
+  glm::vec3 rotation = (isInRadians) ? newRotation : glm::radians(newRotation);
 
+  switch (isDelta) {
+    case true: {
+      bool isYaw = rotation.y != 0.0f ? true : false;
+
+      float newPitch = rotation.x + data.rotation.x;
+      if (!data.isIgnoringPitchLimit && (newPitch < -config::pitchLimit || newPitch > config::pitchLimit)) {
+        break;
+      }
+
+      data.rotation += rotation;
+      math::wrapAnglesGLM(data.rotation);
+      data.orientation = (isYaw)
+        ? glm::quat(rotation) * data.orientation
+        : data.orientation * glm::quat(rotation);
+      break;
+    }
+
+    case false: {
+      float newPitch = data.isIgnoringPitchLimit ? rotation.x :
+        rotation.x < -config::pitchLimit ? -config::pitchLimit
+        : rotation.x > config::pitchLimit ? config::pitchLimit
+        : rotation.x;
+
+      data.rotation.x = newPitch;
+      data.rotation.y = rotation.y;
+      data.rotation.z = rotation.z;
+      math::wrapAnglesGLM(data.rotation);
+      data.orientation = glm::quat(data.rotation);
+
+      break;
+    }
+  }
+
+  data.forwardVector = glm::rotate(data.orientation, data.absoluteForwardVector);
+
+  data.viewRequiresUpdate = true;
 }
 
 const glm::vec3& WCameraComponent::getTranslation() {
@@ -130,6 +168,10 @@ uint32_t WCameraComponent::getViewBufferIndex() {
   return data.bufferViewIndex;
 }
 
+void WCameraComponent::onOwnerPossessed() {
+  pEvents->addDelegate<ControllerRotationComponentEvent>(this, &handleControllerRotation);
+}
+
 void WCameraComponent::update() {
   if (data.projectionRequiresUpdate) {
     switch (data.projectionMode) {
@@ -188,7 +230,8 @@ void WCameraComponent::handleTransformUpdateEvent(const ComponentEvent& newEvent
     return;
   }
 
-  const TransformUpdateComponentEvent& componentEvent = static_cast<const TransformUpdateComponentEvent&>(newEvent);
+  const TransformUpdateComponentEvent& componentEvent =
+    static_cast<const TransformUpdateComponentEvent&>(newEvent);
 
   // Determine if this event was sent by this component's owner or another actor entirely
   (componentEvent.pEventOwner == pOwner)
@@ -196,4 +239,14 @@ void WCameraComponent::handleTransformUpdateEvent(const ComponentEvent& newEvent
     : data.focusTranslation = componentEvent.translation;
 
   data.viewRequiresUpdate = true;
+}
+
+void WCameraComponent::handleControllerRotation(const ComponentEvent& newEvent) {
+  if (typeid(newEvent) != typeid(ControllerRotationComponentEvent)
+    || newEvent.pEventOwner != pOwner) return;
+
+  const ControllerRotationComponentEvent componentEvent =
+    static_cast<const ControllerRotationComponentEvent&>(newEvent);
+
+  setRotation(componentEvent.controllerRotationDelta, true, true);
 }

@@ -41,71 +41,64 @@ void core::MPlayer::bindDefaultMethods() {
 void core::MPlayer::initialize() { bindDefaultMethods(); }
 
 void core::MPlayer::controlActor(ABase* pActor) {
-  /* for (const auto it : m_inputActors) {
-    if (it == pActor) {
-      RE_LOG(Warning,
-             "Actor at %d seems to be already receiving input, won't assign.",
-             pActor);
-      return;
-    }
-  }
-
-  m_inputActors.emplace_back(pActor);*/
-
   m_pActor = pActor;
+  m_pActor->onPossessed();
 }
 
-void core::MPlayer::controlCamera(const char* name) {}
-
 void core::MPlayer::freeActor(ABase* pActor) {
-  /*for (const auto it : m_inputActors) {
-    if (it == pActor) {
-      // m_inputActors.erase(it);
-      return;
-    }
+  if (!m_pActor) {
+    RE_LOG(Error, "No actor is currently possesed.");
+    return;
   }
-
-  RE_LOG(Warning, "Actor at %d is not receiving input, won't unassign.",
-         pActor);*/
+  
+  // Code to unpossess currently controlled actor
 }
 
 void core::MPlayer::moveForward() {
-  m_pActor->setTranslation(0.0f, 0.0f, m_movementData.translationDelta * core::time.getDeltaTime(), true);
+  m_pActor->onControllerMovement(
+    glm::vec3(0.0f, 0.0f, m_movementData.translationDelta * core::time.getDeltaTime()), false);
 }
 
 void core::MPlayer::moveBack() {
-  m_pActor->setTranslation(0.0f, 0.0f, -m_movementData.translationDelta * core::time.getDeltaTime(), true);
+  m_pActor->onControllerMovement(
+    glm::vec3(0.0f, 0.0f, -m_movementData.translationDelta * core::time.getDeltaTime()), false);
 }
 
 void core::MPlayer::moveLeft() {
-  m_pActor->setTranslation(-m_movementData.translationDelta * core::time.getDeltaTime(), 0.0f, 0.0f, true);
+  m_pActor->onControllerMovement(
+    glm::vec3(-m_movementData.translationDelta * core::time.getDeltaTime(), 0.0f, 0.0f), false);
 }
 
 void core::MPlayer::moveRight() {
-  m_pActor->setTranslation(m_movementData.translationDelta * core::time.getDeltaTime(), 0.0f, 0.0f, true);
+  m_pActor->onControllerMovement(
+    glm::vec3(m_movementData.translationDelta * core::time.getDeltaTime(), 0.0f, 0.0f), false);
 }
 
 void core::MPlayer::moveUp() {
-  m_pActor->setTranslation(0.0f, m_movementData.translationDelta * core::time.getDeltaTime(), 0.0f, true);
+  m_pActor->onControllerMovement(
+    glm::vec3(0.0f, m_movementData.translationDelta * core::time.getDeltaTime(), 0.0f), false);
 }
 
 void core::MPlayer::moveDown() {
-  m_pActor->setTranslation(0.0f, -m_movementData.translationDelta * core::time.getDeltaTime(), 0.0f, true);
+  m_pActor->onControllerMovement(
+    glm::vec3(0.0f, -m_movementData.translationDelta * core::time.getDeltaTime(), 0.0f), false);
 }
 
 void core::MPlayer::yawLeft() {
-  m_pActor->setRotation(glm::vec3(0.0f, -m_movementData.rotationDelta * core::time.getDeltaTime(), 0.0f), true, true);
+  m_pActor->onControllerMovement(
+    glm::vec3(0.0f, -m_movementData.rotationDelta * core::time.getDeltaTime(), 0.0f), true);
 }
 
 void core::MPlayer::yawRight() {
-  m_pActor->setRotation(glm::vec3(0.0f, m_movementData.rotationDelta * core::time.getDeltaTime(), 0.0f), true, true);
+  m_pActor->onControllerMovement(
+    glm::vec3(0.0f, m_movementData.rotationDelta * core::time.getDeltaTime(), 0.0f), true);
 }
 
 void core::MPlayer::yawMouse() {
   switch (core::input.getControlMode()) {
     case EControlMode::MouseLook: {
         float yawDelta = core::input.getMouseDelta().x * core::time.getDeltaTime();
-        m_pActor->setRotation(glm::vec3(0.0f, yawDelta, 0.0f), true, true);
+        m_pActor->onControllerMovement(glm::vec3(0.0f, yawDelta, 0.0f), true);
         break;
     }
   }
@@ -123,7 +116,7 @@ void core::MPlayer::pitchMouse() {
   switch (core::input.getControlMode()) {
     case EControlMode::MouseLook: {
       float pitchDelta = core::input.getMouseDelta().y * core::time.getDeltaTime();
-      m_pActor->setRotation(glm::vec3(-pitchDelta, 0.0f, 0.0f), true, true);
+      m_pActor->onControllerMovement(glm::vec3(-pitchDelta, 0.0f, 0.0f), true);
     }
   }
 }

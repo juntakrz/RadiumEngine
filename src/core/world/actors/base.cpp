@@ -93,6 +93,32 @@ const glm::vec3& ABase::getAbsoluteForwardVector() {
   return getComponent<WTransformComponent>()->getAbsoluteForwardVector();
 }
 
+void ABase::onControllerMovement(const glm::vec3& vector, const bool isRotation) {
+  switch (isRotation) {
+    case true: {
+      ControllerRotationComponentEvent newEvent;
+      newEvent.pEventOwner = this;
+      newEvent.controllerRotationDelta = vector;
+
+      m_eventSystem.addEvent<ControllerRotationComponentEvent>(newEvent);
+      break;
+    }
+
+    case false: {
+      ControllerTranslationComponentEvent newEvent;
+      newEvent.pEventOwner = this;
+      newEvent.controllerTranslationDelta = vector;
+
+      m_eventSystem.addEvent<ControllerTranslationComponentEvent>(newEvent);
+      break;
+    }
+  }
+}
+
+void ABase::onPossessed() {
+
+}
+
 void ABase::setName(const std::string& name) {
   m_previousName = m_name;
   m_name = name;

@@ -17,6 +17,14 @@ struct TransformUpdateComponentEvent : public ComponentEvent {
   glm::vec3 translation;
 };
 
+struct ControllerTranslationComponentEvent : public ComponentEvent {
+  glm::vec3 controllerTranslationDelta;
+};
+
+struct ControllerRotationComponentEvent : public ComponentEvent {
+  glm::vec3 controllerRotationDelta;
+};
+
 class ComponentEventSystem {
   using ComponentDelegate = std::function<void(const ComponentEvent&)>;
 
