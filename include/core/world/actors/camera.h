@@ -27,15 +27,6 @@ class ACamera : public ABase {
 
   uint32_t m_viewBufferIndex = -1;
 
- private:
-  // uses pitch limit set in config.h
-  template<typename T>
-  T clampCameraPitch(T pitch) {
-    return pitch < -config::pitchLimit  ? -config::pitchLimit
-           : pitch > config::pitchLimit ? config::pitchLimit
-                                        : pitch;
-  }
-
  public:
   ACamera() = default;
   ACamera(const uint32_t UID) { m_UID = UID; m_typeId = EActorType::Camera; addComponent<WTransformComponent>(); };
@@ -58,7 +49,6 @@ class ACamera : public ABase {
   // instead of calculating a new one
   glm::mat4& getView(const bool update = true);
   glm::mat4& getProjection();
-  const glm::mat4& getProjectionView();
 
   ECameraProjection getProjectionType();
 

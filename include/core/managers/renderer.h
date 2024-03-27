@@ -208,10 +208,11 @@ class MRenderer {
   // current camera view data
   struct {
     RCameraInfo cameraSettings;
-    ACamera* pActiveCamera = nullptr;
-    ACamera* pPrimaryCamera = nullptr;
-    ACamera* pSunCamera = nullptr;
+    WCameraComponent* pActiveCamera = nullptr;
+    WCameraComponent* pPrimaryCamera = nullptr;
+    WCameraComponent* pSunCamera = nullptr;
     glm::ivec2 raycastTarget;
+    glm::mat4 previousCameraView = glm::mat4(1.0f);
   } view;
 
  public:
@@ -464,14 +465,13 @@ public:
   int32_t getSelectedActorUID();
 
   // set camera from create cameras by name
-  void setCamera(const char* name, const bool setAsPrimary = false);
-  void setCamera(ACamera* pCamera, const bool setAsPrimary = false);
-
-  void setSunCamera(const char* name);
-  void setSunCamera(ACamera* pCamera);
+  void setCamera(ABase* pCameraOwner, const bool setAsPrimary = false);
+  void setCamera(WCameraComponent* pCamera, const bool setAsPrimary = false);
+  void setSunCamera(ABase* pCameraOwner);
+  void setSunCamera(WCameraComponent* pCamera);
 
   // get current renderer camera
-  ACamera* getCamera();
+  WCameraComponent* getCamera();
 
   void setIBLScale(float newScale);
   void setShadowColor(const glm::vec3& color);

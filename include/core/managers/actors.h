@@ -46,9 +46,9 @@ class MActors {
 
   // CAMERA
 
-  ACamera* createCamera(const std::string& name, RCameraInfo* cameraSettings = nullptr);
+  ABase* createCamera(const std::string& name, RCameraInfo* cameraSettings = nullptr);
   TResult destroyCamera(ACamera *pCamera);
-  ACamera* getCamera(const std::string& name);
+  ABase* getCamera(const std::string& name);
 
   // LIGHT
 

@@ -399,7 +399,7 @@ TResult core::MRenderer::setRendererDefaults() {
   cameraInfo.nearZ = RE_NEARZ;
   cameraInfo.farZ = config::viewDistance;
 
-  ACamera* pCamera = core::actors.createCamera(RCAM_ENV, &cameraInfo);
+  ABase* pCameraActor = core::actors.createCamera(RCAM_ENV, &cameraInfo);
 
   // Set transformation array for the environment camera
   environment.cameraTransformVectors[0] = glm::vec3(0.0f, glm::radians(90.0f), 0.0f);   // X+
@@ -410,17 +410,17 @@ TResult core::MRenderer::setRendererDefaults() {
   environment.cameraTransformVectors[5] = glm::vec3(0.0f, glm::radians(180.0f), 0.0f);  // Z-
 
   // Make environment camera ignore pitch limit
-  pCamera->setIgnorePitchLimit(true);
+  pCameraActor->getComponent<WCameraComponent>()->setIgnorePitchLimit(true);
 
   // RCAM_MAIN
   cameraInfo.FOV = config::FOV;
-  pCamera = core::actors.createCamera(RCAM_MAIN, &cameraInfo);
+  pCameraActor = core::actors.createCamera(RCAM_MAIN, &cameraInfo);
 
-  if (!pCamera) {
+  if (!pCameraActor) {
     return RE_CRITICAL;
   }
 
-  setCamera(pCamera, true);
+  setCamera(pCameraActor, true);
 
   // Set default lighting UBO data
   lighting.data.prefilteredCubeMipLevels = (float)math::getMipLevels(core::vulkan::envFilterExtent);
@@ -693,13 +693,17 @@ void core::MRenderer::destroySyncObjects() {
 }
 
 void core::MRenderer::updateSceneUBO(uint32_t currentImage) {
-  scene.sceneBufferObject.prevView = view.pActiveCamera->getView(false);
+  // Update previous view only if this is player's camera, ignore light/shadow casting cameras
+  if (view.pActiveCamera == view.pPrimaryCamera) {
+    scene.sceneBufferObject.prevView = view.previousCameraView;
+    view.previousCameraView = view.pActiveCamera->getView();
+  }
 
   scene.sceneBufferObject.view = view.pActiveCamera->getView();
   scene.sceneBufferObject.projection = view.pActiveCamera->getProjection();
   scene.sceneBufferObject.cameraPosition = view.pActiveCamera->getTranslation();
   scene.sceneBufferObject.haltonJitter = system.haltonJitter[renderView.framesRendered % core::vulkan::haltonSequenceCount];
-  scene.sceneBufferObject.clipData = view.pActiveCamera->getNearAndFarPlane();
+  scene.sceneBufferObject.clipData = view.pActiveCamera->getClipPlanes();
   scene.sceneBufferObject.raycastTarget = view.raycastTarget;
 
   uint8_t* pSceneUBO = static_cast<uint8_t*>(scene.sceneBuffers[currentImage].allocInfo.pMappedData) +

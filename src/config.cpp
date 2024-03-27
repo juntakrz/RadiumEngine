@@ -7,6 +7,7 @@ const char* config::appTitle = "Radium Engine";
 const char* config::engineTitle = "Radium Engine";
 uint32_t config::renderWidth = 1280u;
 uint32_t config::renderHeight = 720u;
+float config::aspectRatio = config::renderWidth / config::renderHeight;
 float config::viewDistance = 1000.0f;
 float config::FOV = 90.0f;
 bool config::bDevMode = false;
@@ -15,8 +16,6 @@ uint32_t config::shadowResolution = 4096u;
 uint32_t config::shadowCascades = 4u;
 float config::maxAnisotropy = 16.0f;
 uint32_t config::ambientOcclusionMode = (uint32_t)EAOMode::HBAO;
-
-float config::getAspectRatio() { return renderWidth / (float)renderHeight; }
 
 size_t config::scene::getVertexBufferSize() {
   return sizeof(RVertex) * vertexBudget;

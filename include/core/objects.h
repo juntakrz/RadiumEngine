@@ -56,6 +56,12 @@ enum class EBufferType {  // VkBuffer creation mode
   DGPU_RESOURCE,      // Dedicated GPU storage buffer for resource descriptors
 };
 
+enum class ECameraFocusMode {
+  None,           // Do not focus on anything, free camera mode
+  Translation,    // Actor's main transform translation is used as a focus point
+  ForwardVector   // Actor's forward vector is used as a focus point
+};
+
 enum class ECameraProjection {
   Perspective,
   Orthogtaphic

@@ -1198,22 +1198,22 @@ int32_t core::MRenderer::getSelectedActorUID() {
   return renderView.selectedActorUID;
 }
 
-void core::MRenderer::setCamera(const char* name, const bool setAsPrimary) {
-  ACamera* pCamera = core::actors.getCamera(name);
+void core::MRenderer::setCamera(ABase* pCameraOwner, const bool setAsPrimary) {
+  WCameraComponent* pComponent = nullptr;
 
-  if (!pCamera) {
-    RE_LOG(Error, "Failed to set camera '%s' - not found.", name);
+  if (!pCameraOwner || !(pComponent = pCameraOwner->getComponent<WCameraComponent>())) {
+    RE_LOG(Error, "Failed to set camera, the received actor has no camera component.");
     return;
   }
 
-  view.pActiveCamera = pCamera;
+  view.pActiveCamera = pComponent;
 
   if (setAsPrimary) {
-    view.pPrimaryCamera = pCamera;
+    view.pPrimaryCamera = pComponent;
   }
 }
 
-void core::MRenderer::setCamera(ACamera* pCamera, const bool setAsPrimary) {
+void core::MRenderer::setCamera(WCameraComponent* pCamera, const bool setAsPrimary) {
   if (!pCamera) {
     RE_LOG(Error, "Failed to set camera, received nullptr.");
     return;
@@ -1226,42 +1226,29 @@ void core::MRenderer::setCamera(ACamera* pCamera, const bool setAsPrimary) {
   }
 }
 
-void core::MRenderer::setSunCamera(const char* name) {
-  if (ACamera* pCamera = core::ref.getActor(name)->getAs<ACamera>()) {
-#ifndef NDEBUG
-    RE_LOG(Log, "Selecting camera '%s' as sun camera / shadow projector.", name);
-#endif
-    if (pCamera->getProjectionType() != ECameraProjection::Orthogtaphic) {
-      RE_LOG(Error, "Failed to set camera '%s' as sun camera. Camera must have an orthographic projection.", name);
+void core::MRenderer::setSunCamera(ABase* pCameraOwner) {
+  WCameraComponent* pComponent = nullptr;
 
-      return;
-    }
-
-    view.pSunCamera = pCamera;
-    view.pSunCamera->setTranslation(core::actors.getLight(RLT_SUN)->getTranslation());
-    view.pSunCamera->setLookAtTarget(view.pActiveCamera, true, true);
+  if (!pCameraOwner || !(pComponent = pCameraOwner->getComponent<WCameraComponent>())) {
+    RE_LOG(Error, "Failed to set camera, the received actor has no camera component.");
     return;
   }
 
-  RE_LOG(Error, "Failed to set sun / shadow projection camera '%s' - not found.", name);
+  view.pSunCamera = pComponent;
+  view.pSunCamera->setFocus(ECameraFocusMode::Translation, view.pPrimaryCamera->pOwner);
 }
 
-void core::MRenderer::setSunCamera(ACamera* pCamera) {
-  if (pCamera != nullptr) {
-    if (pCamera->getProjectionType() != ECameraProjection::Orthogtaphic) {
-      RE_LOG(Error, "Failed to set camera '%s' as sun camera. Camera must have an orthographic projection.", pCamera->getName());
-      return;
-    }
-
-    view.pSunCamera = pCamera;
-    view.pSunCamera->setLookAtTarget(view.pActiveCamera, true, true);
+void core::MRenderer::setSunCamera(WCameraComponent* pCamera) {
+  if (!pCamera) {
+    RE_LOG(Error, "Failed to set camera, received nullptr.");
     return;
   }
 
-  RE_LOG(Error, "Failed to set sun / shadow projection camera, received nullptr.");
+  view.pSunCamera = pCamera;
+  view.pSunCamera->setFocus(ECameraFocusMode::Translation, view.pPrimaryCamera->pOwner);
 }
 
-ACamera* core::MRenderer::getCamera() { return view.pActiveCamera; }
+WCameraComponent* core::MRenderer::getCamera() { return view.pActiveCamera; }
 
 void core::MRenderer::setIBLScale(float newScale) {
   lighting.data.scaleIBLAmbient = newScale;

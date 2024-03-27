@@ -10,6 +10,7 @@ extern const char* appTitle;
 extern const char* engineTitle;
 extern uint32_t renderWidth;
 extern uint32_t renderHeight;
+extern float aspectRatio;
 extern float viewDistance;                      // aka FarZ
 extern float FOV;
 extern bool bDevMode;
@@ -51,8 +52,6 @@ size_t getNodeTransformBufferSize();
 size_t getSkinTransformBufferSize();                    // ~82 MBs for joint transformation matrices
 size_t getMaxCameraCount();
 };  // namespace scene
-
-float getAspectRatio();
 };  // namespace config
 
 namespace core {

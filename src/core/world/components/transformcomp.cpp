@@ -16,9 +16,6 @@ WTransformComponent::WTransformComponent(ABase* pActor) {
   pEvents = &pOwner->getEventSystem();
 }
 
-void WTransformComponent::onEvent(const ComponentEvent& newEvent) {
-}
-
 void WTransformComponent::update() {
   if (data.requiresUpdate) {
     // Translation * Rotation * Scaling
@@ -34,6 +31,7 @@ void WTransformComponent::update() {
 
     // Generate a new event
     TransformUpdateComponentEvent newEvent;
+    newEvent.pEventOwner = pOwner;
     newEvent.translation = data.translation;
 
     pEvents->addEvent<TransformUpdateComponentEvent>(newEvent);

@@ -54,17 +54,6 @@ glm::mat4& ACamera::getView(const bool update) {
 
 glm::mat4& ACamera::getProjection() { return m_projection; }
 
-const glm::mat4& ACamera::getProjectionView() {
-  auto& data = getComponent<WTransformComponent>()->data;
-
-  if (data.requiresUpdate) {
-    m_projectionView = getProjection() * getView();
-    data.requiresUpdate = false;
-  }
-
-  return m_projectionView;
-}
-
 ECameraProjection ACamera::getProjectionType() { return m_projectionType; }
 
 void ACamera::setUpVector(float x, float y, float z) noexcept {

@@ -280,6 +280,7 @@ void core::loadCoreConfig(const wchar_t* path) {
       coreData.at("resolution").get_to(resolution);
       config::renderWidth = resolution[0];
       config::renderHeight = resolution[1];
+      config::aspectRatio = config::renderWidth / config::renderHeight;
       --requirements;
     }
 
