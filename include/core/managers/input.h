@@ -8,7 +8,7 @@ enum class EControlMode;
 
 // stores function calls for a given input
 // structure is: { key , funcPtr[keyState] }
-typedef std::unordered_map<int, std::array<TFuncPtr, 3>>
+typedef std::unordered_map<int32_t, std::array<TFuncPtr, 3>>
     TInputFuncs;
 
 // stores string aliases for GLFW keys
@@ -78,10 +78,10 @@ class MInput {
   void setInputBinding(std::string name, std::string key);
 
   template <typename C>
-  void bindFunction(int key, int action, C* owner, void (C::*function)(),
-                    bool bRepeated = false) {
+  void bindFunction(int32_t key, int32_t action, C* owner, void (C::*function)(),
+                    bool isRepeated = false) {
     auto& keyBind =
-        (bRepeated) ? m_inputFuncsRepeated[key] : m_inputFuncsSingle[key];
+        (isRepeated) ? m_inputFuncsRepeated[key] : m_inputFuncsSingle[key];
     keyBind[action] = std::make_unique<OFuncPtr<C>>(owner, function);
   }
 
@@ -89,6 +89,25 @@ class MInput {
   void bindFunctionToMouseAxis(C* owner, void (C::* function)(), const bool isVerticalAxis) {
     (isVerticalAxis) ? m_mouseYAxisFunctions.emplace_back(std::make_unique<OFuncPtr<C>>(owner, function))
                      : m_mouseYAxisFunctions.emplace_back(std::make_unique<OFuncPtr<C>>(owner, function));
+  }
+
+  void unbindFunction(int32_t key, int32_t action, bool isRepeated) {
+    switch (isRepeated) {
+      case true: {
+        if (m_inputFuncsRepeated.contains(key)) {
+          m_inputFuncsRepeated[key][action].reset();
+        }
+
+        break;
+      }
+      case false: {
+        if (m_inputFuncsSingle.contains(key)) {
+          m_inputFuncsSingle[key][action].reset();
+        }
+
+        break;
+      }
+    }
   }
 
   EControlMode getControlMode();

@@ -18,7 +18,7 @@ void core::MInput::scanInput() {
 
   // Get status for every bound repeated action key and call the proper function
   for (const auto& it : m_inputBinds) {
-    int keyState = glfwGetKey(pWindow, it.second);
+    int32_t keyState = glfwGetKey(pWindow, it.second);
 
     if (m_inputFuncsRepeated.contains(it.second)) {
       const auto& keyStateVector = m_inputFuncsRepeated.at(it.second);
@@ -49,7 +49,7 @@ uint32_t core::MInput::bindingToKey(const char* bindingName) {
     return m_inputBinds.at(bindingName);
   }
 
-  RE_LOG(Error, "Failed to find binding '%s'.", bindingName);
+  RE_LOG(Error, "Failed to find input binding for '%s'. Probably was not added yet", bindingName);
   return -1;
 }
 

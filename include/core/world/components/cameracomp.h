@@ -8,12 +8,6 @@ struct WCameraComponent : public WComponent {
     glm::mat4 projection = glm::mat4(1.0f);
 
     glm::vec3 translation = glm::vec3(0.0f);      // Translation from origin
-    glm::vec3 rotation = glm::vec3(1.0f);
-    glm::quat orientation = glm::quat(rotation);
-
-    glm::vec3 upVector = { 0.0f, 1.0f, 0.0f };
-    glm::vec3 forwardVector = { 0.0f, 0.0f, 1.0f };
-    glm::vec3 absoluteForwardVector = { 0.0f, 0.0f, 1.0f };
 
     float FOV = 75.0f;
     float orthoFOV = 1.0f;
@@ -21,10 +15,7 @@ struct WCameraComponent : public WComponent {
     float viewDistance = 1000.0f;
     float aspectRatio = 1.0f;
 
-    bool isIgnoringPitchLimit = false;
-
     ECameraFocusMode focusMode = ECameraFocusMode::None;
-    ECameraView viewMode = ECameraView::LookAt;
     ECameraProjection projectionMode = ECameraProjection::Perspective;
 
     bool projectionRequiresUpdate = true;
@@ -41,11 +32,10 @@ struct WCameraComponent : public WComponent {
 
   void setTranslationOffset(float x, float y, float z, bool isDelta = false);
   void setTranslationOffset(const glm::vec3& newTranslation, bool isDelta = false);
-  void setRotation(const glm::vec3& newRotation, bool isInRadians = false, bool isDelta = false);
 
+  // Current camera location in the world, a sum of transform position and local camera offset
   const glm::vec3 getTranslation();
   const glm::vec3& getTranslationOffset();
-  const glm::vec3& getRotation();
 
   void setProjectionMode(ECameraProjection newMode);
   void setFOV(float newFOV);
@@ -69,25 +59,13 @@ struct WCameraComponent : public WComponent {
   const glm::mat4& getView();
   const glm::mat4& getProjection();
 
-  void setForwardVector(const glm::vec3& newVector);
-  void setAbsoluteForwardVector(const glm::vec3& newVector);
-  void setUpVector(const glm::vec3& newVector);
-
-  const glm::vec3& getForwardVector();
-  const glm::vec3& getAbsoluteForwardVector();
-  const glm::vec3& getUpVector();
-
-  void setIgnorePitchLimit(const bool newValue);
-  bool getIsIgnoringPitchLimit();
-
   void setViewBufferIndex(const uint32_t newIndex);
   uint32_t getViewBufferIndex();
 
-  void onOwnerPossessed() override;
+  //void onOwnerControlled() override;
   void update() override;
   void drawComponentUI() override;
 
   // Event delegates
   void handleTransformUpdateEvent(const ComponentEvent& newEvent);
-  void handleControllerRotation(const ComponentEvent& newEvent);
 };

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include "core/objects.h"
 #include "util/math.h"
 
 class ABase;
@@ -9,8 +10,9 @@ namespace core {
 class MPlayer {
  private:
   ABase* m_pActor = nullptr;
+  WPlayerInfo m_info;
 
-  struct MovementData {
+  struct {
     float translationDelta = 1.0f;
     float rotationDelta = 1.0f;
   } m_movementData;
@@ -31,8 +33,9 @@ class MPlayer {
 
   void controlActor(ABase* pActor);
   void freeActor(ABase* pActor);
+  void setActorControlMode(EActorControlMode newMode);
 
-  MovementData& getMovementData() { return m_movementData; };
+  const WPlayerInfo& getProperties();
 
   // standard movement methods which control currently selected actors
   void moveForward();
@@ -48,5 +51,7 @@ class MPlayer {
   void pitchUp();
   void pitchDown();
   void pitchMouse();
+  void rollLeft();
+  void rollRight();
 };
 }  // namespace core

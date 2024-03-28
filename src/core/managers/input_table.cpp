@@ -62,7 +62,6 @@ void core::MInput::setDefaultInputs() {
   m_inputAliases["A"] = GLFW_KEY_A;
   m_inputAliases["S"] = GLFW_KEY_S;
   m_inputAliases["D"] = GLFW_KEY_D;
-  m_inputAliases["E"] = GLFW_KEY_F;
   m_inputAliases["F"] = GLFW_KEY_G;
   m_inputAliases["G"] = GLFW_KEY_H;
   m_inputAliases["H"] = GLFW_KEY_J;

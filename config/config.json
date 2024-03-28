@@ -20,10 +20,12 @@
 	"moveUp" : "LShift",
 	"moveDown" : "LCtrl",
 	"mouseMode" : "Space",
-	"rollLeft" : "Left",
-	"rollRight" : "Right",
+	"yawLeft" : "Left",
+	"yawRight" : "Right",
 	"pitchUp" : "Up",
 	"pitchDown" : "Down",
+	"rollLeft" : "Q",
+	"rollRight" : "E",
 	"devKey" : "`"
   }
 }

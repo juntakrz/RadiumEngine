@@ -33,16 +33,27 @@ void core::MPlayer::bindDefaultMethods() {
                            &MPlayer::pitchUp, true);
   core::input.bindFunction(GETKEY("pitchDown"), GLFW_PRESS, this,
                            &MPlayer::pitchDown, true);
+  core::input.bindFunction(GETKEY("rollLeft"), GLFW_PRESS, this,
+                           &MPlayer::rollLeft, true);
+  core::input.bindFunction(GETKEY("rollRight"), GLFW_PRESS, this,
+                           &MPlayer::rollRight, true);
 
   core::input.bindFunctionToMouseAxis(this, &MPlayer::yawMouse, false);
   core::input.bindFunctionToMouseAxis(this, &MPlayer::pitchMouse, true);
+
+  setActorControlMode(EActorControlMode::FirstPerson);
 }
 
 void core::MPlayer::initialize() { bindDefaultMethods(); }
 
 void core::MPlayer::controlActor(ABase* pActor) {
+  if (!pActor) {
+    RE_LOG(Error, "Couldn't control actor - nullptr was received.");
+    return;
+  }
+
   m_pActor = pActor;
-  m_pActor->onPossessed();
+  m_pActor->onControlled(this);
 }
 
 void core::MPlayer::freeActor(ABase* pActor) {
@@ -51,7 +62,39 @@ void core::MPlayer::freeActor(ABase* pActor) {
     return;
   }
   
-  // Code to unpossess currently controlled actor
+  m_pActor = nullptr;
+}
+
+void core::MPlayer::setActorControlMode(EActorControlMode newMode) {
+  if (m_info.controlMode == newMode) return;
+
+  m_info.controlMode = newMode;
+
+  switch (newMode) {
+    case EActorControlMode::FirstPerson: {
+      core::input.unbindFunction(GETKEY("rollLeft"), GLFW_PRESS, true);
+      core::input.unbindFunction(GETKEY("rollRight"), GLFW_PRESS, true);
+      break;
+    }
+    
+    case EActorControlMode::ThirdPerson: {
+      break;
+    }
+    
+    case EActorControlMode::Spacecraft: {
+      core::input.bindFunction(GETKEY("rollLeft"), GLFW_PRESS, this, &core::MPlayer::rollLeft, true);
+      core::input.bindFunction(GETKEY("rollRight"), GLFW_PRESS, this, &core::MPlayer::rollRight, true);
+      break;
+    }
+  }
+
+  if (m_pActor) {
+    m_pActor->setControlMode(m_info.controlMode);
+  }
+}
+
+const WPlayerInfo& core::MPlayer::getProperties() {
+  return m_info;
 }
 
 void core::MPlayer::moveForward() {
@@ -105,11 +148,11 @@ void core::MPlayer::yawMouse() {
 }
 
 void core::MPlayer::pitchUp() {
-  m_pActor->setRotation(glm::vec3(-m_movementData.rotationDelta * core::time.getDeltaTime(), 0.0f, 0.0f), true, true);
+  m_pActor->onControllerMovement(glm::vec3(-m_movementData.rotationDelta * core::time.getDeltaTime(), 0.0f, 0.0f), true);
 }
 
 void core::MPlayer::pitchDown() {
-  m_pActor->setRotation(glm::vec3(m_movementData.rotationDelta * core::time.getDeltaTime(), 0.0f, 0.0f), true, true);
+  m_pActor->onControllerMovement(glm::vec3(m_movementData.rotationDelta * core::time.getDeltaTime(), 0.0f, 0.0f), true);
 }
 
 void core::MPlayer::pitchMouse() {
@@ -119,4 +162,12 @@ void core::MPlayer::pitchMouse() {
       m_pActor->onControllerMovement(glm::vec3(-pitchDelta, 0.0f, 0.0f), true);
     }
   }
+}
+
+void core::MPlayer::rollLeft() {
+  m_pActor->onControllerMovement(glm::vec3(0.0f, 0.0f, m_movementData.rotationDelta * core::time.getDeltaTime()), true);
+}
+
+void core::MPlayer::rollRight() {
+  m_pActor->onControllerMovement(glm::vec3(0.0f, 0.0f, -m_movementData.rotationDelta * core::time.getDeltaTime()), true);
 }

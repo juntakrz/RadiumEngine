@@ -47,9 +47,11 @@ glm::vec2 ACamera::getNearAndFarPlane() {
 glm::mat4& ACamera::getView(const bool update) {
   auto& data = getComponent<WTransformComponent>()->data;
 
-  return (update)
+  /*return (update)
     ? m_view = glm::lookAt(data.translation, data.translation + data.forwardVector, m_viewData.upVector)
-    : m_view;
+    : m_view;*/
+
+  return m_view;
 }
 
 glm::mat4& ACamera::getProjection() { return m_projection; }
@@ -74,7 +76,7 @@ void ACamera::setLookAtTarget(ABase* pTarget, const bool useForwardVector,
   }
   auto& data = getComponent<WTransformComponent>()->data;
 
-  data.forwardVector = pTarget->getTranslation() - data.translation;
+  //data.forwardVector = pTarget->getTranslation() - data.translation;
 
   if (attach) {
     attachTo(pTarget, true, false, true);
@@ -141,8 +143,8 @@ void ACamera::setRotation(const glm::vec3& newRotation, bool isInRadians, bool i
       break;
     }
     case false: {
-      pComponent->setForwardVector(
-        glm::rotate(pComponent->getOrientation(), pComponent->getAbsoluteForwardVector()));
+      /*pComponent->setForwardVector(
+        glm::rotate(pComponent->getOrientation(), pComponent->getAbsoluteForwardVector()));*/
     }
   }
 

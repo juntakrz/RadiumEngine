@@ -49,14 +49,6 @@ void ABase::setScale(float newScale, bool isDelta) noexcept {
   getComponent<WTransformComponent>()->setScale(newScale, isDelta);
 }
 
-void ABase::setForwardVector(const glm::vec3& newVector) {
-  getComponent<WTransformComponent>()->setForwardVector(newVector);
-}
-
-void ABase::setAbsoluteForwardVector(const glm::vec3& newVector) {
-  getComponent<WTransformComponent>()->setAbsoluteForwardVector(newVector);
-}
-
 const glm::vec3& ABase::getTranslation() noexcept {
   return getComponent<WTransformComponent>()->getTranslation();
 }
@@ -85,12 +77,44 @@ void ABase::setScalingModifier(float newModifier) {
   getComponent<WTransformComponent>()->setScaleDeltaModifier(newModifier);
 }
 
-const glm::vec3& ABase::getForwardVector() {
-  return getComponent<WTransformComponent>()->getForwardVector();
+void ABase::setForwardVector(const glm::vec3& newVector) {
+  m_forwardVector = newVector;
 }
 
-const glm::vec3& ABase::getAbsoluteForwardVector() {
-  return getComponent<WTransformComponent>()->getAbsoluteForwardVector();
+const glm::vec3& ABase::getForwardVector() {
+  return m_forwardVector;
+}
+
+const glm::vec3& ABase::getDefaultForwardVector() {
+  return m_defaultForwardVector;
+}
+
+void ABase::setUpVector(const glm::vec3& newVector) {
+  m_upVector = newVector;
+}
+
+const glm::vec3& ABase::getUpVector() {
+  return m_upVector;
+}
+
+const glm::vec3& ABase::getDefaultUpVector() {
+  return m_defaultUpVector;
+}
+
+void ABase::setControlMode(EActorControlMode newMode) {
+  m_controlMode = newMode;
+
+  if (m_controlMode == EActorControlMode::FirstPerson) {
+    setUpVector(glm::vec3(0.0f, 1.0f, 0.0f));
+  }
+
+  for (auto& it : m_pComponents) {
+    it.second->onOwnerUpdated();
+  }
+}
+
+EActorControlMode ABase::getControlMode() {
+  return m_controlMode;
 }
 
 void ABase::onControllerMovement(const glm::vec3& vector, const bool isRotation) {
@@ -115,8 +139,27 @@ void ABase::onControllerMovement(const glm::vec3& vector, const bool isRotation)
   }
 }
 
-void ABase::onPossessed() {
+void ABase::onControlled(core::MPlayer* pController) {
+  if (!pController || m_pController == pController) return;
+  
+  onFreed();
 
+  m_pController = pController;
+  m_controlMode = m_pController->getProperties().controlMode;
+
+  for (const auto& it : m_pComponents) {
+    it.second->onOwnerControlled();
+  }
+}
+
+void ABase::onFreed() {
+  for (auto& it : m_pComponents) {
+    it.second->onOwnerFreed();
+  }
+}
+
+core::MPlayer* ABase::getController() {
+  return m_pController;
 }
 
 void ABase::setName(const std::string& name) {
@@ -177,8 +220,6 @@ void ABase::attachTo(ABase* pTarget, const bool toTranslation,
 }
 
 void ABase::updateComponents() {
-  //m_eventSystem.processEvents();
-
   for (const auto& it : m_pComponents) {
     it.second->update();
   }

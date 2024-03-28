@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/objects.h"
+#include "core/managers/player.h"
 #include "core/managers/world.h"
 #include "core/world/components/componentevents.h"
 
@@ -12,7 +13,8 @@ class ABase {
   // Names must be set using setName method
   std::string m_name = "";
   std::string m_previousName = "";
-  EActorType m_typeId = EActorType::Base;
+  EActorType m_typeId = EActorType::Base;       // TODO: DEPRECATED
+  EActorControlMode m_controlMode = EActorControlMode::Spacecraft;
   int32_t m_UID = -1;
 
   ComponentEventSystem m_eventSystem;
@@ -21,6 +23,13 @@ class ABase {
   std::vector<WAttachmentInfo> m_pAttachments;
 
   bool m_isVisible = true;
+
+  glm::vec3 m_forwardVector = glm::vec3(0.0f, 0.0f, 1.0f);
+  glm::vec3 m_upVector = glm::vec3(0.0f, 1.0f, 0.0f);
+  const glm::vec3 m_defaultForwardVector = glm::vec3(0.0f, 0.0f, 1.0f);
+  const glm::vec3 m_defaultUpVector = glm::vec3(0.0f, 1.0f, 0.0f);
+
+  core::MPlayer* m_pController = nullptr;
 
  protected:
   virtual void updateAttachments();
@@ -46,24 +55,34 @@ class ABase {
   virtual void setRotation(const glm::vec3& newRotation, bool isInRadians = false, bool isDelta = false) noexcept;
   void setScale(const glm::vec3& newScale, bool isDelta = false) noexcept;
   void setScale(float newScale, bool isDelta = false) noexcept;
-  void setForwardVector(const glm::vec3& newVector);
-  void setAbsoluteForwardVector(const glm::vec3& newVector);
 
   const glm::vec3& getTranslation() noexcept;
   const glm::vec3& getRotation() noexcept;
   const glm::quat& getOrientation() noexcept;
   const glm::vec3& getScale() noexcept;
-  const glm::vec3& getForwardVector();
-  const glm::vec3& getAbsoluteForwardVector();
 
   virtual void setTranslationModifier(float newModifier);
   virtual void setRotationModifier(float newModifier);
   virtual void setScalingModifier(float newModifier);
   /* End of transform component abstraction methods */
 
+  void setForwardVector(const glm::vec3& newVector);
+  const glm::vec3& getForwardVector();
+  const glm::vec3& getDefaultForwardVector();
+
+  void setUpVector(const glm::vec3& newVector);
+  const glm::vec3& getUpVector();
+  const glm::vec3& getDefaultUpVector();
+
+  void setControlMode(EActorControlMode newMode);
+  EActorControlMode getControlMode();
+
   // Should only be used by MPlayer class controller methods
   void onControllerMovement(const glm::vec3& vector, const bool isRotation);
-  void onPossessed();
+  void onControlled(core::MPlayer* pController);
+  void onFreed();
+
+  core::MPlayer* getController();
 
   void setName(const std::string& name);
   const std::string& getName();

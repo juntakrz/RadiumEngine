@@ -11,7 +11,6 @@ WCameraComponent::WCameraComponent(ABase* pActor) {
 
   // Subscribe to appropriate events
   pEvents->addDelegate<TransformUpdateComponentEvent>(this, &WCameraComponent::handleTransformUpdateEvent);
-  pEvents->addDelegate<ControllerRotationComponentEvent>(this, &WCameraComponent::handleControllerRotation);
 }
 
 void WCameraComponent::setTranslationOffset(float x, float y, float z, bool isDelta) {
@@ -28,57 +27,12 @@ void WCameraComponent::setTranslationOffset(const glm::vec3& newTranslation, boo
   data.viewRequiresUpdate = true;
 }
 
-void WCameraComponent::setRotation(const glm::vec3& newRotation, bool isInRadians, bool isDelta) {
-  glm::vec3 rotation = (isInRadians) ? newRotation : glm::radians(newRotation);
-
-  switch (isDelta) {
-    case true: {
-      bool isYaw = rotation.y != 0.0f ? true : false;
-
-      float newPitch = rotation.x + data.rotation.x;
-      if (!data.isIgnoringPitchLimit && (newPitch < -config::pitchLimit || newPitch > config::pitchLimit)) {
-        break;
-      }
-
-      data.rotation += rotation;
-      math::wrapAnglesGLM(data.rotation);
-      data.orientation = (isYaw)
-        ? glm::quat(rotation) * data.orientation
-        : data.orientation * glm::quat(rotation);
-      break;
-    }
-
-    case false: {
-      float newPitch = data.isIgnoringPitchLimit ? rotation.x :
-        rotation.x < -config::pitchLimit ? -config::pitchLimit
-        : rotation.x > config::pitchLimit ? config::pitchLimit
-        : rotation.x;
-
-      data.rotation.x = newPitch;
-      data.rotation.y = rotation.y;
-      data.rotation.z = rotation.z;
-      math::wrapAnglesGLM(data.rotation);
-      data.orientation = glm::quat(data.rotation);
-
-      break;
-    }
-  }
-
-  data.forwardVector = glm::rotate(data.orientation, data.absoluteForwardVector);
-
-  data.viewRequiresUpdate = true;
-}
-
 const glm::vec3 WCameraComponent::getTranslation() {
   return data.ownerTranslation + data.translation;
 }
 
 const glm::vec3& WCameraComponent::getTranslationOffset() {
   return data.translation;
-}
-
-const glm::vec3& WCameraComponent::getRotation() {
-  return data.rotation;
 }
 
 void WCameraComponent::setProjectionMode(ECameraProjection newMode) {
@@ -174,51 +128,12 @@ const glm::mat4& WCameraComponent::getProjection() {
   return data.projection;
 }
 
-void WCameraComponent::setForwardVector(const glm::vec3& newVector) {
-  data.forwardVector = newVector;
-  data.viewRequiresUpdate = true;
-}
-
-void WCameraComponent::setAbsoluteForwardVector(const glm::vec3& newVector) {
-  data.absoluteForwardVector = newVector;
-  data.viewRequiresUpdate = true;
-}
-
-void WCameraComponent::setUpVector(const glm::vec3& newVector) {
-  data.upVector = newVector;
-  data.viewRequiresUpdate = true;
-}
-
-const glm::vec3& WCameraComponent::getForwardVector() {
-  return data.forwardVector;
-}
-
-const glm::vec3& WCameraComponent::getAbsoluteForwardVector() {
-  return data.absoluteForwardVector;
-}
-
-const glm::vec3& WCameraComponent::getUpVector() {
-  return data.upVector;
-}
-
-void WCameraComponent::setIgnorePitchLimit(const bool newValue) {
-  data.isIgnoringPitchLimit = newValue;
-}
-
-bool WCameraComponent::getIsIgnoringPitchLimit() {
-  return data.isIgnoringPitchLimit;
-}
-
 void WCameraComponent::setViewBufferIndex(const uint32_t newIndex) {
   data.bufferViewIndex = newIndex;
 }
 
 uint32_t WCameraComponent::getViewBufferIndex() {
   return data.bufferViewIndex;
-}
-
-void WCameraComponent::onOwnerPossessed() {
-  pEvents->addDelegate<ControllerRotationComponentEvent>(this, &WCameraComponent::handleControllerRotation);
 }
 
 void WCameraComponent::update() {
@@ -239,29 +154,20 @@ void WCameraComponent::update() {
   }
 
   if (data.viewRequiresUpdate) {
-    switch (data.viewMode) {
-      case ECameraView::LookAt: {
-        switch (data.focusMode) {
-          case ECameraFocusMode::Translation: {
-            data.view = glm::lookAt(
-              data.translation + data.ownerTranslation,
-              data.translation + data.ownerTranslation + data.focusTranslation,
-              data.upVector);
-            break;
-          }
-
-          default: {
-            data.view = glm::lookAt(
-              data.translation + data.ownerTranslation,
-              data.translation + data.ownerTranslation + data.forwardVector,
-              data.upVector);
-            break;
-          }
-        }
-
+    switch (data.focusMode) {
+      case ECameraFocusMode::Translation: {
+        data.view = glm::lookAt(
+          data.translation + data.ownerTranslation,
+          data.translation + data.ownerTranslation + data.focusTranslation,
+          pOwner->getUpVector());
         break;
       }
-      case ECameraView::Free: {
+
+      default: {
+        data.view = glm::lookAt(
+          data.translation + data.ownerTranslation,
+          data.translation + data.ownerTranslation + pOwner->getForwardVector(),
+          pOwner->getUpVector());
         break;
       }
     }
@@ -288,14 +194,4 @@ void WCameraComponent::handleTransformUpdateEvent(const ComponentEvent& newEvent
     : data.focusTranslation = componentEvent.translation;
 
   data.viewRequiresUpdate = true;
-}
-
-void WCameraComponent::handleControllerRotation(const ComponentEvent& newEvent) {
-  if (typeid(newEvent) != typeid(ControllerRotationComponentEvent)
-    || newEvent.pEventOwner != pOwner) return;
-
-  const ControllerRotationComponentEvent componentEvent =
-    static_cast<const ControllerRotationComponentEvent&>(newEvent);
-
-  setRotation(componentEvent.controllerRotationDelta, true, true);
 }

@@ -411,8 +411,8 @@ TResult core::MRenderer::setRendererDefaults() {
   environment.cameraTransformVectors[5] = glm::vec3(0.0f, glm::radians(180.0f), 0.0f);  // Z-
 
   // Make environment camera ignore pitch limit
-  pCameraActor->getComponent<WCameraComponent>()->setIgnorePitchLimit(true);
   view.pEnvironmentCamera = pCameraActor->getComponent<WCameraComponent>();
+  pCameraActor->setControlMode(EActorControlMode::FirstPerson);
 
   // RCAM_MAIN
   cameraInfo.FOV = config::FOV;

@@ -14,10 +14,6 @@ WTransformComponent::WTransformComponent(ABase* pActor) {
   typeId = EComponentType::Transform;
   pOwner = pActor;
   pEvents = &pOwner->getEventSystem();
-
-  // Subscribe to appropriate events
-  pEvents->addDelegate<ControllerTranslationComponentEvent>(this, &WTransformComponent::handleControllerTranslation);
-  pEvents->addDelegate<ControllerRotationComponentEvent>(this, &WTransformComponent::handleControllerRotation);
 }
 
 const glm::mat4& WTransformComponent::getModelTransformationMatrix() {
@@ -25,17 +21,25 @@ const glm::mat4& WTransformComponent::getModelTransformationMatrix() {
 }
 
 void WTransformComponent::setTranslation(float x, float y, float z, bool isDelta) {
-  data.translation.x = (isDelta) ? data.translation.x + x * data.deltaModifiers.x : x;
-  data.translation.y = (isDelta) ? data.translation.y + y * data.deltaModifiers.y : y;
-  data.translation.z = (isDelta) ? data.translation.z + z * data.deltaModifiers.z : z;
-
-  data.requiresUpdate = true;
+  setTranslation(glm::vec3(x, y, z), isDelta);
 }
 
 void WTransformComponent::setTranslation(const glm::vec3& newTranslation, bool isDelta) {
-  data.translation = (isDelta) ? data.translation + newTranslation * data.deltaModifiers.x : newTranslation;
+  // If delta - the actor is moving - so use orientation to translate
+  switch (isDelta) {
+    case true: {
+      //glm::vec3 testVector = data.orientation * newTranslation;
+      data.translation += data.orientation * newTranslation * data.deltaModifiers.x;
+      break;
+    }
 
-  data.requiresUpdate = true;
+    case false: {
+      data.translation = newTranslation;
+      break;
+    }
+  }
+
+  data.transformRequiresUpdate = true;
 }
 
 void WTransformComponent::setRotation(float x, float y, float z, bool isInRadians, bool isDelta) {
@@ -43,17 +47,65 @@ void WTransformComponent::setRotation(float x, float y, float z, bool isInRadian
 }
 
 void WTransformComponent::setRotation(const glm::vec3& newRotation, bool isInRadians, bool isDelta) {
-  data.rotation = (isDelta)
-    ? data.rotation + (((isInRadians) ? newRotation : glm::radians(newRotation)) * data.deltaModifiers.y)
-    : (isInRadians) ? newRotation : glm::radians(newRotation);
+  switch (data.controlMode) {
+    case EActorControlMode::Spacecraft: {
+      data.rotation = (isDelta)
+        ? data.rotation + (((isInRadians) ? newRotation : glm::radians(newRotation)) * data.deltaModifiers.y)
+        : (isInRadians) ? newRotation : glm::radians(newRotation);
 
-  math::wrapAnglesGLM(data.rotation);
+      math::wrapAnglesGLM(data.rotation);
 
-  data.orientation = (isDelta)
-    ? data.orientation * glm::quat(((isInRadians) ? newRotation : glm::radians(newRotation)) * data.deltaModifiers.y)
-    : glm::quat(data.rotation);
+      data.orientation = (isDelta)
+        ? data.orientation * glm::quat(((isInRadians) ? newRotation : glm::radians(newRotation)) * data.deltaModifiers.y)
+        : glm::quat(data.rotation);
 
-  data.requiresUpdate = true;
+      pOwner->setForwardVector(data.orientation * pOwner->getDefaultForwardVector());
+      pOwner->setUpVector(data.orientation * pOwner->getDefaultUpVector());
+      break;
+    }
+
+    case EActorControlMode::FirstPerson:
+    case EActorControlMode::ThirdPerson: {
+      switch (isDelta) {
+        case true: {
+          float newPitch = data.rotation.x;
+          newPitch += (isInRadians) ? newRotation.x : glm::radians(newRotation.x);
+
+          // Do not apply any changes if delta rotation reaches pitch limit to avoid abrupt camera jumps
+          if (newPitch > config::pitchLimit || newPitch < -config::pitchLimit) return;
+
+          int8_t direction = (newRotation.x != 0.0f) ? 0 : 1;
+
+          data.rotation += (isInRadians) ? newRotation : glm::radians(newRotation);
+          math::wrapAnglesGLM(data.rotation);
+          data.orientation = (direction == 0)
+            ? data.orientation * glm::quat((isInRadians) ? newRotation : glm::radians(newRotation)) * data.deltaModifiers.y
+            : glm::quat((isInRadians) ? newRotation : glm::radians(newRotation))* data.deltaModifiers.y* data.orientation;
+
+          pOwner->setForwardVector(data.orientation * pOwner->getDefaultForwardVector());
+          break;
+        }
+
+        case false: {
+          glm::vec3 rotation = (isInRadians) ? newRotation : glm::radians(newRotation);
+          
+          (rotation.x > config::pitchLimit)
+            ? rotation.x = config::pitchLimit : (rotation.x < -config::pitchLimit)
+              ? rotation.x = -config::pitchLimit : 0;
+
+          data.rotation = rotation;
+          math::wrapAnglesGLM(data.rotation);
+          data.orientation = glm::quat(data.rotation);
+          pOwner->setForwardVector(data.orientation * pOwner->getDefaultForwardVector());
+          break;
+        }
+      }
+
+      break;
+    }
+  }
+
+  data.transformRequiresUpdate = true;
 }
 
 void WTransformComponent::setScale(float newScale, bool isDelta) {
@@ -61,7 +113,7 @@ void WTransformComponent::setScale(float newScale, bool isDelta) {
   data.scale.y = (isDelta) ? data.scale.y + newScale * data.deltaModifiers.z : newScale;
   data.scale.z = (isDelta) ? data.scale.z + newScale * data.deltaModifiers.z : newScale;
 
-  data.requiresUpdate = true;
+  data.transformRequiresUpdate = true;
 }
 
 void WTransformComponent::setScale(float x, float y, float z, bool isDelta) {
@@ -69,25 +121,13 @@ void WTransformComponent::setScale(float x, float y, float z, bool isDelta) {
   data.scale.y = (isDelta) ? data.scale.y + y * data.deltaModifiers.z : y;
   data.scale.z = (isDelta) ? data.scale.z + z * data.deltaModifiers.z : z;
 
-  data.requiresUpdate = true;
+  data.transformRequiresUpdate = true;
 }
 
 void WTransformComponent::setScale(const glm::vec3& newScale, bool isDelta) {
   data.scale = (isDelta) ? data.scale + newScale * data.deltaModifiers.z : newScale;
 
-  data.requiresUpdate = true;
-}
-
-void WTransformComponent::setForwardVector(const glm::vec3& newForwardVector) {
-  data.forwardVector = newForwardVector;
-
-  data.requiresUpdate = true;
-}
-
-void WTransformComponent::setAbsoluteForwardVector(const glm::vec3& newForwardVector) {
-  data.absoluteForwardVector = newForwardVector;
-
-  data.requiresUpdate = true;
+  data.transformRequiresUpdate = true;
 }
 
 void WTransformComponent::setTranslationDeltaModifier(float newModifier) {
@@ -118,25 +158,28 @@ const glm::vec3& WTransformComponent::getScale() {
   return data.scale;
 }
 
-const glm::vec3& WTransformComponent::getForwardVector() {
-  return data.forwardVector;
-}
-
-const glm::vec3& WTransformComponent::getAbsoluteForwardVector() {
-  return data.absoluteForwardVector;
-}
-
 const glm::vec3& WTransformComponent::getDeltaModifiers() {
   return data.deltaModifiers;
 }
 
-void WTransformComponent::onOwnerPossessed() {
+void WTransformComponent::onOwnerControlled() {
   pEvents->addDelegate<ControllerTranslationComponentEvent>(this, &WTransformComponent::handleControllerTranslation);
   pEvents->addDelegate<ControllerRotationComponentEvent>(this, &WTransformComponent::handleControllerRotation);
+
+  data.controlMode = pOwner->getControlMode();
+}
+
+void WTransformComponent::onOwnerFreed() {
+  pEvents->removeDelegate<ControllerTranslationComponentEvent>(&WTransformComponent::handleControllerTranslation);
+  pEvents->removeDelegate<ControllerRotationComponentEvent>(&WTransformComponent::handleControllerRotation);
+}
+
+void WTransformComponent::onOwnerUpdated() {
+  data.controlMode = pOwner->getControlMode();
 }
 
 void WTransformComponent::update() {
-  if (data.requiresUpdate) {
+  if (data.transformRequiresUpdate) {
     // Translation * Rotation * Scaling
     data.transform = glm::mat4(1.0f);
 
@@ -146,7 +189,7 @@ void WTransformComponent::update() {
     // Using SIMD to multiply translated matrix by rotation and scaling matrices
     data.transform *= glm::mat4_cast(data.orientation) * glm::scale(data.scale);
 
-    data.requiresUpdate = false;
+    data.transformRequiresUpdate = false;
 
     // Generate a new event
     TransformUpdateComponentEvent newEvent;
@@ -189,7 +232,7 @@ void WTransformComponent::drawComponentUI() {
     if (open) {
       if (core::gui.drawVec3Control("Translation", translation, core::gui.m_util.dragSensitivity)) {
         data.translation = translation;
-        data.requiresUpdate = true;
+        data.transformRequiresUpdate = true;
       }
 
       if (core::gui.drawVec3Control("Rotation", deltaRotation, core::gui.m_util.dragSensitivity * 10.0f, false, "%.2f")) {
@@ -198,12 +241,12 @@ void WTransformComponent::drawComponentUI() {
         data.rotation += deltaRotation;
         data.orientation *= glm::quat(deltaRotation);
         math::wrapAnglesGLM(data.rotation);
-        data.requiresUpdate = true;
+        data.transformRequiresUpdate = true;
       }
 
       if (core::gui.drawVec3Control("Scale", scale, core::gui.m_util.dragSensitivity, core::gui.m_editorData.isTransformScaleLocked)) {
         data.scale = scale;
-        data.requiresUpdate = true;
+        data.transformRequiresUpdate = true;
       }
 
       ImVec2 lockButtonSize = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::CalcTextSize("unlock").y + 5);

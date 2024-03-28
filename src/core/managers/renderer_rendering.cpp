@@ -67,7 +67,7 @@ void core::MRenderer::renderEnvironmentMaps(
   renderView.pCurrentPass = pRenderPass;
 
   setCamera(view.pEnvironmentCamera);
-  getCamera()->setRotation(environment.cameraTransformVectors[environment.tracking.layer], true);
+  getCamera()->getOwner()->setRotation(environment.cameraTransformVectors[environment.tracking.layer], true);
   updateSceneUBO(renderView.frameInFlight);
 
   // start rendering an appropriate camera view / layer
@@ -632,12 +632,12 @@ void core::MRenderer::renderFrame() {
 
   /* 2. Cascaded shadows */
 
-  /*setCamera(view.pSunCamera);
+  setCamera(view.pSunCamera);
   updateSceneUBO(renderView.frameInFlight);
 
   for (uint8_t cascadeIndex = 0; cascadeIndex < config::shadowCascades; ++cascadeIndex) {
     executeShadowPass(commandBuffer, cascadeIndex);
-  }*/
+  }
 
   /* 3. Main scene */
   setCamera(view.pPrimaryCamera);

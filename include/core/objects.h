@@ -6,7 +6,13 @@
 class ABase;
 class AEntity;
 
-enum class EActorType {  // actor type
+enum class EActorControlMode : uint8_t {
+  FirstPerson,
+  ThirdPerson,
+  Spacecraft
+};
+
+enum class EActorType {       // TODO: DEPRECATED
   Base,
   Camera,
   Light,
@@ -65,11 +71,6 @@ enum class ECameraFocusMode {
 enum class ECameraProjection {
   Perspective,
   Orthographic
-};
-
-enum class ECameraView {
-  LookAt,
-  Free
 };
 
 enum class ECmdType {
@@ -620,6 +621,10 @@ struct WModelConfigInfo {
   float framerate = 15.0f;
   // speed up extracted animations while sampling, will apply to all
   float speed = 1.0f;
+};
+
+struct WPlayerInfo {
+  EActorControlMode controlMode = EActorControlMode::Spacecraft;
 };
 
 struct WPrimitiveInstanceData {

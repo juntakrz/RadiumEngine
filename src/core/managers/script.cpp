@@ -121,7 +121,7 @@ void core::MScript::jsonParseCameras(const json* pCameraData) noexcept {
 
       newCamera->setTranslation(glm::vec3(translation[0], translation[1], translation[2]));
       newCamera->setRotation(glm::degrees(glm::vec3(rotation[0], rotation[1], rotation[2])));
-      newCamera->getComponent<WCameraComponent>()->setUpVector(glm::vec3(upVector[0], upVector[1], upVector[2]));
+      //newCamera->setUpVector(glm::vec3(upVector[0], upVector[1], upVector[2]));
 
       // set camera mode
       /* vars:
@@ -133,13 +133,9 @@ void core::MScript::jsonParseCameras(const json* pCameraData) noexcept {
         float vars[4];
         it.at("mode").at("variables").get_to(vars);
 
-        if (vars[1] < 0.0f) {
-          vars[1] = (float)config::renderWidth / config::renderHeight;
-        }
-
         if (it.at("mode").at("view") == "perspective") {
           newCamera->getComponent<WCameraComponent>()->setCameraParameters(
-            ECameraProjection::Perspective, vars[0], vars[1], vars[3]);
+            ECameraProjection::Perspective, vars[0], vars[1] * config::aspectRatio, vars[3]);
         }
 
         if (it.at("mode").at("view") == "orthographic") {
