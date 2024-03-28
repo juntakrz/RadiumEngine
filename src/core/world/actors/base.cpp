@@ -100,7 +100,7 @@ void ABase::onControllerMovement(const glm::vec3& vector, const bool isRotation)
       newEvent.pEventOwner = this;
       newEvent.controllerRotationDelta = vector;
 
-      m_eventSystem.addEvent<ControllerRotationComponentEvent>(newEvent);
+      m_eventSystem.sendEvent<ControllerRotationComponentEvent>(newEvent);
       break;
     }
 
@@ -109,7 +109,7 @@ void ABase::onControllerMovement(const glm::vec3& vector, const bool isRotation)
       newEvent.pEventOwner = this;
       newEvent.controllerTranslationDelta = vector;
 
-      m_eventSystem.addEvent<ControllerTranslationComponentEvent>(newEvent);
+      m_eventSystem.sendEvent<ControllerTranslationComponentEvent>(newEvent);
       break;
     }
   }
@@ -177,7 +177,7 @@ void ABase::attachTo(ABase* pTarget, const bool toTranslation,
 }
 
 void ABase::updateComponents() {
-  m_eventSystem.processEvents();
+  //m_eventSystem.processEvents();
 
   for (const auto& it : m_pComponents) {
     it.second->update();

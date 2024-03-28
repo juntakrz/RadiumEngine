@@ -301,6 +301,10 @@ void core::MRenderer::updateBoundEntities() {
   // Use this thread to also quickly process camera exposure level
   updateExposureLevel();
 
+  for (auto& actor : core::actors.m_actors.cameras) {
+    actor.second->updateComponents();
+  }
+
   sync.isTransformDataReady = true;
 }
 

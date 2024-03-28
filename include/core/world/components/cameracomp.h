@@ -43,7 +43,7 @@ struct WCameraComponent : public WComponent {
   void setTranslationOffset(const glm::vec3& newTranslation, bool isDelta = false);
   void setRotation(const glm::vec3& newRotation, bool isInRadians = false, bool isDelta = false);
 
-  const glm::vec3& getTranslation();
+  const glm::vec3 getTranslation();
   const glm::vec3& getTranslationOffset();
   const glm::vec3& getRotation();
 

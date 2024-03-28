@@ -14,6 +14,10 @@ WTransformComponent::WTransformComponent(ABase* pActor) {
   typeId = EComponentType::Transform;
   pOwner = pActor;
   pEvents = &pOwner->getEventSystem();
+
+  // Subscribe to appropriate events
+  pEvents->addDelegate<ControllerTranslationComponentEvent>(this, &WTransformComponent::handleControllerTranslation);
+  pEvents->addDelegate<ControllerRotationComponentEvent>(this, &WTransformComponent::handleControllerRotation);
 }
 
 const glm::mat4& WTransformComponent::getModelTransformationMatrix() {
@@ -149,7 +153,7 @@ void WTransformComponent::update() {
     newEvent.pEventOwner = pOwner;
     newEvent.translation = data.translation;
 
-    pEvents->addEvent<TransformUpdateComponentEvent>(newEvent);
+    pEvents->sendEvent<TransformUpdateComponentEvent>(newEvent);
   }
 }
 

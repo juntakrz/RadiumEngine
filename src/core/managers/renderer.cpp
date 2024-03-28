@@ -394,6 +394,7 @@ TResult core::MRenderer::setRendererDefaults() {
 
   // RCAM_ENV
   RCameraInfo cameraInfo{};
+  cameraInfo.projectionMode = ECameraProjection::Perspective;
   cameraInfo.FOV = 90.0f;
   cameraInfo.aspectRatio = 1.0f;
   cameraInfo.nearZ = RE_NEARZ;
@@ -411,6 +412,7 @@ TResult core::MRenderer::setRendererDefaults() {
 
   // Make environment camera ignore pitch limit
   pCameraActor->getComponent<WCameraComponent>()->setIgnorePitchLimit(true);
+  view.pEnvironmentCamera = pCameraActor->getComponent<WCameraComponent>();
 
   // RCAM_MAIN
   cameraInfo.FOV = config::FOV;

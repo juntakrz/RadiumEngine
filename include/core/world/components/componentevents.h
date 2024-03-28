@@ -2,8 +2,6 @@
 
 #include "pch.h"
 
-#define MAX_COMPONENT_EVENTS 64
-
 class ABase;
 struct WComponent;
 
@@ -31,8 +29,6 @@ class ComponentEventSystem {
 private:
   // Map: [event type] - vector of [WComponent]
   std::unordered_map<std::type_index, std::vector<ComponentDelegate>> m_delegates;
-  std::array<ComponentEvent, MAX_COMPONENT_EVENTS> m_queuedEvents;
-  uint32_t m_eventIndex = 0u;
 
 public:
   template<typename EventType, typename ClassType>
@@ -45,24 +41,12 @@ public:
   }
 
   template<typename EventType>
-  void addEvent(const EventType& newEvent) {
-    if (m_eventIndex < MAX_COMPONENT_EVENTS) {
-      m_queuedEvents[m_eventIndex] = newEvent;
-      ++m_eventIndex;
-      return;
-    }
+  void sendEvent(const EventType& newEvent) {
+    std::type_index eventTypeId = typeid(EventType);
 
-    RE_LOG(Error, "Maximum component events reached.");
-  }
-
-  void processEvents() {
-    for (; m_eventIndex > 0; --m_eventIndex) {
-      std::type_index eventTypeId = typeid(m_queuedEvents[m_eventIndex - 1]);
-
-      if (m_delegates.contains(eventTypeId)) {
-        for (auto& func : m_delegates[eventTypeId]) {
-          func(m_queuedEvents[m_eventIndex - 1]);
-        }
+    if (m_delegates.contains(eventTypeId)) {
+      for (auto& func : m_delegates[eventTypeId]) {
+        func(newEvent);
       }
     }
   }

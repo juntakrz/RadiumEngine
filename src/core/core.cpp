@@ -87,7 +87,7 @@ void core::run() {
 
   // Create entities
   WEntityCreateInfo entityInfo;
-  entityInfo.name = "glowingSphere0";
+  /*entityInfo.name = "glowingSphere0";
   entityInfo.pModel = core::world.getModel("mdlSphere");
   entityInfo.translation = glm::vec3(1.0f, -0.8f, 2.0f);
   entityInfo.scale = glm::vec3(0.18f);
@@ -103,7 +103,7 @@ void core::run() {
   entityInfo.scale = glm::vec3(0.1f);
 
   pPawn = core::actors.createPawn(&entityInfo);
-  pPawn->setInstancePrimitiveMaterial(0, 0, "RMat_Light1");
+  pPawn->setInstancePrimitiveMaterial(0, 0, "RMat_Light1");*/
 
   entityInfo = WEntityCreateInfo{};
   entityInfo.name = "Skybox";
@@ -111,7 +111,7 @@ void core::run() {
 
   AStatic* pStatic = core::actors.createStatic(&entityInfo);
 
-  entityInfo = WEntityCreateInfo{};
+  /*entityInfo = WEntityCreateInfo{};
   entityInfo.name = "Static01";
   entityInfo.pModel = core::world.getModel("mdlGuy");
   entityInfo.translation = glm::vec3(0.0f, -1.0f, -0.3f);
@@ -174,7 +174,7 @@ void core::run() {
   entityInfo.scale = glm::vec3(0.35f);
 
   pStatic = core::actors.createStatic(&entityInfo);
-  pStatic->setRotation(glm::vec3(-90.0f, 30.0f, 0.0f));
+  pStatic->setRotation(glm::vec3(-90.0f, 30.0f, 0.0f));*/
 
   //core::animations.saveAnimation("SwordAndShieldIdle", "SwordAndShieldIdle");
   //

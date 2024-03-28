@@ -11,6 +11,7 @@ WCameraComponent::WCameraComponent(ABase* pActor) {
 
   // Subscribe to appropriate events
   pEvents->addDelegate<TransformUpdateComponentEvent>(this, &WCameraComponent::handleTransformUpdateEvent);
+  pEvents->addDelegate<ControllerRotationComponentEvent>(this, &WCameraComponent::handleControllerRotation);
 }
 
 void WCameraComponent::setTranslationOffset(float x, float y, float z, bool isDelta) {
@@ -68,7 +69,7 @@ void WCameraComponent::setRotation(const glm::vec3& newRotation, bool isInRadian
   data.viewRequiresUpdate = true;
 }
 
-const glm::vec3& WCameraComponent::getTranslation() {
+const glm::vec3 WCameraComponent::getTranslation() {
   return data.ownerTranslation + data.translation;
 }
 
@@ -158,10 +159,18 @@ float WCameraComponent::getAspectRatio() noexcept {
 }
 
 const glm::mat4& WCameraComponent::getView() {
+  if (data.viewRequiresUpdate) {
+    update();
+  }
+
   return data.view;
 }
 
 const glm::mat4& WCameraComponent::getProjection() {
+  if (data.projectionRequiresUpdate) {
+    update();
+  }
+
   return data.projection;
 }
 
@@ -216,7 +225,7 @@ void WCameraComponent::update() {
   if (data.projectionRequiresUpdate) {
     switch (data.projectionMode) {
       case ECameraProjection::Perspective: {
-        data.projection = glm::perspective(data.FOV, data.aspectRatio, data.nearPlane, data.viewDistance);
+        data.projection = glm::perspective(glm::radians(data.FOV), data.aspectRatio, data.nearPlane, data.viewDistance);
         break;
       }
 

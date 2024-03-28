@@ -133,6 +133,10 @@ void core::MScript::jsonParseCameras(const json* pCameraData) noexcept {
         float vars[4];
         it.at("mode").at("variables").get_to(vars);
 
+        if (vars[1] < 0.0f) {
+          vars[1] = (float)config::renderWidth / config::renderHeight;
+        }
+
         if (it.at("mode").at("view") == "perspective") {
           newCamera->getComponent<WCameraComponent>()->setCameraParameters(
             ECameraProjection::Perspective, vars[0], vars[1], vars[3]);

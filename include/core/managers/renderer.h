@@ -211,6 +211,7 @@ class MRenderer {
     WCameraComponent* pActiveCamera = nullptr;
     WCameraComponent* pPrimaryCamera = nullptr;
     WCameraComponent* pSunCamera = nullptr;
+    WCameraComponent* pEnvironmentCamera = nullptr;
     glm::ivec2 raycastTarget;
     glm::mat4 previousCameraView = glm::mat4(1.0f);
   } view;
