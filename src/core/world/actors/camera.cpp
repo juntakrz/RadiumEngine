@@ -68,19 +68,19 @@ void ACamera::setUpVector(const glm::vec3& upVector) noexcept {
 
 void ACamera::setLookAtTarget(ABase* pTarget, const bool useForwardVector,
                               const bool attach) noexcept {
-  if (!pTarget) {
-    RE_LOG(Error,
-           "Failed to set lookAt target for '%s'. No target was provided.",
-           m_name.c_str());
-    return;
-  }
-  auto& data = getComponent<WTransformComponent>()->data;
+  //if (!pTarget) {
+  //  RE_LOG(Error,
+  //         "Failed to set lookAt target for '%s'. No target was provided.",
+  //         m_name.c_str());
+  //  return;
+  //}
+  //auto& data = getComponent<WTransformComponent>()->data;
 
-  //data.forwardVector = pTarget->getTranslation() - data.translation;
+  ////data.forwardVector = pTarget->getTranslation() - data.translation;
 
-  if (attach) {
-    attachTo(pTarget, true, false, true);
-  }
+  //if (attach) {
+  //  attachTo(pTarget, true, false, true);
+  //}
 }
 
 void ACamera::setTranslation(float x, float y, float z, bool isDelta) noexcept {
@@ -88,7 +88,7 @@ void ACamera::setTranslation(float x, float y, float z, bool isDelta) noexcept {
 }
 
 void ACamera::setTranslation(const glm::vec3& newTranslation, bool isDelta) noexcept {
-  WTransformComponent* pComponent = getComponent<WTransformComponent>();
+  /*WTransformComponent* pComponent = getComponent<WTransformComponent>();
 
   switch (isDelta) {
     case true: {
@@ -103,52 +103,52 @@ void ACamera::setTranslation(const glm::vec3& newTranslation, bool isDelta) noex
     }
   }
 
-  updateAttachments();
+  updateAttachments();*/
 }
 
 void ACamera::setRotation(const glm::vec3& newRotation, bool isInRadians, bool isDelta) noexcept {
-  WTransformComponent* pComponent = getComponent<WTransformComponent>();
-  glm::vec3 rotation = (isInRadians) ? newRotation : glm::radians(newRotation);
+  //WTransformComponent* pComponent = getComponent<WTransformComponent>();
+  //glm::vec3 rotation = (isInRadians) ? newRotation : glm::radians(newRotation);
 
-  switch (isDelta) {
-    case true: {
-      bool isYaw = rotation.y != 0.0f ? true : false;
+  //switch (isDelta) {
+  //  case true: {
+  //    bool isYaw = rotation.y != 0.0f ? true : false;
 
-      float newPitch = rotation.x + pComponent->getRotation().x;
-      if (!m_viewData.ignorePitchLimit && (newPitch < -config::pitchLimit || newPitch > config::pitchLimit)) {
-        break;
-      }
+  //    float newPitch = rotation.x + pComponent->getRotation().x;
+  //    if (!m_viewData.ignorePitchLimit && (newPitch < -config::pitchLimit || newPitch > config::pitchLimit)) {
+  //      break;
+  //    }
 
-      pComponent->data.rotation += rotation;
-      pComponent->data.orientation = (isYaw)
-        ? glm::quat(rotation) * pComponent->data.orientation
-        : pComponent->data.orientation * glm::quat(rotation);
-      break;
-    }
+  //    pComponent->data.rotation += rotation;
+  //    pComponent->data.orientation = (isYaw)
+  //      ? glm::quat(rotation) * pComponent->data.orientation
+  //      : pComponent->data.orientation * glm::quat(rotation);
+  //    break;
+  //  }
 
-    case false: {
-      float newPitch = m_viewData.ignorePitchLimit ? rotation.x :
-        rotation.x < -config::pitchLimit ? -config::pitchLimit
-        : rotation.x > config::pitchLimit ? config::pitchLimit
-        : rotation.x;
+  //  case false: {
+  //    float newPitch = m_viewData.ignorePitchLimit ? rotation.x :
+  //      rotation.x < -config::pitchLimit ? -config::pitchLimit
+  //      : rotation.x > config::pitchLimit ? config::pitchLimit
+  //      : rotation.x;
 
-      pComponent->setRotation(glm::vec3(newPitch, rotation.y, rotation.z), true, false);
-      break;
-    }
-  }
+  //    pComponent->setRotation(glm::vec3(newPitch, rotation.y, rotation.z), true, false);
+  //    break;
+  //  }
+  //}
 
-  switch (m_viewData.anchorFocusPoint) {
-    case true: {
-      // code for when the camera should be rotated around its focus point
-      break;
-    }
-    case false: {
-      /*pComponent->setForwardVector(
-        glm::rotate(pComponent->getOrientation(), pComponent->getAbsoluteForwardVector()));*/
-    }
-  }
+  //switch (m_viewData.anchorFocusPoint) {
+  //  case true: {
+  //    // code for when the camera should be rotated around its focus point
+  //    break;
+  //  }
+  //  case false: {
+  //    /*pComponent->setForwardVector(
+  //      glm::rotate(pComponent->getOrientation(), pComponent->getAbsoluteForwardVector()));*/
+  //  }
+  //}
 
-  updateAttachments();
+  //updateAttachments();
 }
 
 //void ACamera::rotate(const glm::vec3& vector, float angle) noexcept {

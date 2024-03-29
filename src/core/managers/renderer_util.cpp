@@ -1238,8 +1238,7 @@ void core::MRenderer::setSunCamera(ABase* pCameraOwner) {
     return;
   }
 
-  view.pSunCamera = pComponent;
-  view.pSunCamera->setFocus(ECameraFocusMode::Translation, view.pPrimaryCamera->pOwner);
+  setSunCamera(pComponent);
 }
 
 void core::MRenderer::setSunCamera(WCameraComponent* pCamera) {
@@ -1248,8 +1247,9 @@ void core::MRenderer::setSunCamera(WCameraComponent* pCamera) {
     return;
   }
 
+  pCamera->getOwner()->detach();
   view.pSunCamera = pCamera;
-  view.pSunCamera->setFocus(ECameraFocusMode::Translation, view.pPrimaryCamera->pOwner);
+  view.pSunCamera->getOwner()->attachTo(view.pPrimaryCamera->pOwner, EAttachmentMode::Translation);
 }
 
 WCameraComponent* core::MRenderer::getCamera() { return view.pActiveCamera; }

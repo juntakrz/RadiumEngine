@@ -4,6 +4,8 @@
 
 struct WCameraComponent : public WComponent {
   struct {
+    ECameraProjection projectionMode = ECameraProjection::Perspective;
+
     glm::mat4 view = glm::mat4(1.0f);
     glm::mat4 projection = glm::mat4(1.0f);
 
@@ -15,9 +17,6 @@ struct WCameraComponent : public WComponent {
     float viewDistance = 1000.0f;
     float aspectRatio = 1.0f;
 
-    ECameraFocusMode focusMode = ECameraFocusMode::None;
-    ECameraProjection projectionMode = ECameraProjection::Perspective;
-
     bool projectionRequiresUpdate = true;
     bool viewRequiresUpdate = true;
 
@@ -25,7 +24,7 @@ struct WCameraComponent : public WComponent {
 
     // Event based data
     glm::vec3 ownerTranslation = glm::vec3(0.0f);
-    glm::vec3 focusTranslation = glm::vec3(0.0f);
+    glm::vec3 focusVector = glm::vec3(0.0f);
   } data;
 
   WCameraComponent(ABase* pActor);
@@ -45,9 +44,6 @@ struct WCameraComponent : public WComponent {
 
   // Aspect ratio will be ignored if orthographic mode is selected
   void setCameraParameters(ECameraProjection newMode, float newFOV, float aspectRatio, float newViewDistance);
-
-  // Target actor must have transform component. Set focus mode to 'None' to free the camera.
-  void setFocus(ECameraFocusMode newFocusMode, ABase* pTargetActor = nullptr);
 
   const ECameraProjection getProjectionMode();
   const float getFOV();

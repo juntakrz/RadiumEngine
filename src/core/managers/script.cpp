@@ -104,7 +104,7 @@ void core::MScript::jsonParseCameras(const json* pCameraData) noexcept {
       float rotation[3] = {0.0f, 0.0f, 0.0f};
       float upVector[3] = {0.0f, 1.0f, 0.0f};
 
-      ABase* newCamera = core::actors.createCamera(name, nullptr);
+      ABase* pCameraActor = core::actors.createCamera(name, nullptr);
 
       // set camera position
       if (it.contains("translation")) {
@@ -115,13 +115,8 @@ void core::MScript::jsonParseCameras(const json* pCameraData) noexcept {
         it.at("rotation").get_to(rotation);
       }
 
-      if (it.contains("upVector")) {
-        it.at("upVector").get_to(upVector);
-      }
-
-      newCamera->setTranslation(glm::vec3(translation[0], translation[1], translation[2]));
-      newCamera->setRotation(glm::degrees(glm::vec3(rotation[0], rotation[1], rotation[2])));
-      //newCamera->setUpVector(glm::vec3(upVector[0], upVector[1], upVector[2]));
+      pCameraActor->setTranslation(glm::vec3(translation[0], translation[1], translation[2]));
+      pCameraActor->setRotation(glm::vec3(rotation[0], rotation[1], rotation[2]), true);
 
       // set camera mode
       /* vars:
@@ -134,12 +129,12 @@ void core::MScript::jsonParseCameras(const json* pCameraData) noexcept {
         it.at("mode").at("variables").get_to(vars);
 
         if (it.at("mode").at("view") == "perspective") {
-          newCamera->getComponent<WCameraComponent>()->setCameraParameters(
+          pCameraActor->getComponent<WCameraComponent>()->setCameraParameters(
             ECameraProjection::Perspective, vars[0], vars[1] * config::aspectRatio, vars[3]);
         }
 
         if (it.at("mode").at("view") == "orthographic") {
-          newCamera->getComponent<WCameraComponent>()->setCameraParameters(
+          pCameraActor->getComponent<WCameraComponent>()->setCameraParameters(
             ECameraProjection::Orthographic, vars[0], 1.0f, vars[3]);
         }
       }

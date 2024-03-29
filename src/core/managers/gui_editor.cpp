@@ -146,6 +146,20 @@ void core::MGUI::drawSceneGraph() {
   ImGui::BeginChild("##TreeNodeList", ImVec2(0, 0), ImGuiChildFlags_Border);
 
   if (drawTreeNode(core::ref.getSceneName(), true)) {
+    if (drawTreeNode("Actors", true)) {
+      for (const auto& actor : sceneGraph.actors) {
+        if (drawTreeNode(actor->getName())) {
+          if (ImGui::IsItemClicked()) {
+            selectSceneGraphItem(actor->getName(), ESceneGraphItemType::Actor);
+          }
+
+          ImGui::TreePop();
+        }
+      }
+
+      ImGui::TreePop();
+    }
+
     if (drawTreeNode("Instances", true)) {
       // Models
       for (const auto& model : sceneGraph.instances) {
@@ -450,8 +464,6 @@ void core::MGUI::drawFrameInfo() {
 void core::MGUI::selectSceneGraphItem(const std::string& name, ESceneGraphItemType itemType) {
   m_editorData.pSelectedActor = core::ref.getActor(name);
   m_editorData.actorType = itemType;
-
-  //core::renderer.setSelectedActorUID(m_editorData.pSelectedActor->getUID());
 }
 
 void core::MGUI::selectSceneGraphItem(const int32_t UID) {

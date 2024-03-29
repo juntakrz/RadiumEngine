@@ -20,7 +20,7 @@ class ABase {
   ComponentEventSystem m_eventSystem;
 
   std::unordered_map<std::type_index, std::unique_ptr<WComponent>> m_pComponents;
-  std::vector<WAttachmentInfo> m_pAttachments;
+  WAttachmentInfo attachmentInfo;
 
   bool m_isVisible = true;
 
@@ -31,12 +31,9 @@ class ABase {
 
   core::MPlayer* m_pController = nullptr;
 
- protected:
-  virtual void updateAttachments();
-
  public:
   ABase() = default;
-  ABase(const uint32_t UID) { m_UID = UID; };
+  ABase(const uint32_t UID);
   virtual ~ABase() {};
 
   // try to get this actor as its real subclass
@@ -95,8 +92,8 @@ class ABase {
   void setVisibility(const bool isVisible);
   const bool isVisible();
 
-  virtual void attachTo(ABase* pTarget, const bool toTranslation,
-                        const bool toRotation, const bool toForwardVector);
+  void attachTo(ABase* pTarget, EAttachmentMode newMode);
+  void detach();
 
   ComponentEventSystem& getEventSystem() { return m_eventSystem; }
 

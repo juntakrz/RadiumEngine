@@ -48,7 +48,7 @@ void core::MActors::updateLightingUBO(RLightingUBO* pLightingBuffer) {
 
 ABase* core::MActors::createCamera(const std::string& name, RCameraInfo* pInfo) {
   if (!core::ref.getActor(name)) {
-    m_actors.cameras[m_nextActorUID] = std::make_unique<ACamera>(m_nextActorUID);
+    m_actors.cameras[m_nextActorUID] = std::make_unique<ABase>(m_nextActorUID);
     ABase* pCameraActor = m_actors.cameras[m_nextActorUID].get();
 
     pCameraActor->setName(name);

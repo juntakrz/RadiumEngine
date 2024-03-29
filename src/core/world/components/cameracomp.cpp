@@ -74,20 +74,6 @@ void WCameraComponent::setCameraParameters(ECameraProjection newMode, float newF
   data.projectionRequiresUpdate = true;
 }
 
-void WCameraComponent::setFocus(ECameraFocusMode newFocusMode, ABase* pTargetActor) {
-  if ((data.focusMode = newFocusMode) == ECameraFocusMode::None) return;
-
-  if (!pTargetActor || !(pTargetActor->getComponent<WTransformComponent>())) {
-    RE_LOG(Error, "Focus mode has been selected for camera component belonging to the"
-      "actor '%s', but no target was provided or the target does not have a transform component.");
-    data.focusMode = ECameraFocusMode::None;
-    return;
-  }
-
-  // Add delegate to track target actor's transformation changes
-  pTargetActor->getEventSystem().addDelegate<WTransformComponent>(this, &WCameraComponent::handleTransformUpdateEvent);
-}
-
 const ECameraProjection WCameraComponent::getProjectionMode() {
   return data.projectionMode;
 }
@@ -154,11 +140,11 @@ void WCameraComponent::update() {
   }
 
   if (data.viewRequiresUpdate) {
-    switch (data.focusMode) {
-      case ECameraFocusMode::Translation: {
+    switch (attachmentMode) {
+      case EAttachmentMode::Translation: {
         data.view = glm::lookAt(
           data.translation + data.ownerTranslation,
-          data.translation + data.ownerTranslation + data.focusTranslation,
+          data.translation + data.ownerTranslation - data.focusVector,
           pOwner->getUpVector());
         break;
       }
@@ -181,17 +167,15 @@ void WCameraComponent::drawComponentUI() {
 
 void WCameraComponent::handleTransformUpdateEvent(const ComponentEvent& newEvent) {
   if (typeid(newEvent) != typeid(TransformUpdateComponentEvent)) {
-    RE_LOG(Error, "Invalid component event type for '%s'.", pOwner->getName().c_str());
+    invalidComponentErrorMessage();
     return;
   }
 
   const TransformUpdateComponentEvent& componentEvent =
     static_cast<const TransformUpdateComponentEvent&>(newEvent);
 
-  // Determine if this event was sent by this component's owner or another actor entirely
-  (componentEvent.pEventOwner == pOwner)
-    ? data.ownerTranslation = componentEvent.translation
-    : data.focusTranslation = componentEvent.translation;
+  data.ownerTranslation = componentEvent.translation;
+  data.focusVector = componentEvent.attachmentVector;
 
   data.viewRequiresUpdate = true;
 }

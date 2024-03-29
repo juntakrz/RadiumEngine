@@ -28,7 +28,6 @@ void WTransformComponent::setTranslation(const glm::vec3& newTranslation, bool i
   // If delta - the actor is moving - so use orientation to translate
   switch (isDelta) {
     case true: {
-      //glm::vec3 testVector = data.orientation * newTranslation;
       data.translation += data.orientation * newTranslation * data.deltaModifiers.x;
       break;
     }
@@ -162,6 +161,65 @@ const glm::vec3& WTransformComponent::getDeltaModifiers() {
   return data.deltaModifiers;
 }
 
+void WTransformComponent::setAttachmentVectorRotation(const glm::vec3& newRotation, const bool isInRadians, const bool isDelta) {
+  data.attachmentRotation = (isDelta)
+    ? data.attachmentRotation + (((isInRadians) ? newRotation : glm::radians(newRotation)) * data.deltaModifiers.y)
+    : (isInRadians) ? newRotation : glm::radians(newRotation);
+
+  math::wrapAnglesGLM(data.attachmentRotation);
+
+  data.attachmentOrientation = (isDelta)
+    ? data.attachmentOrientation * glm::quat(((isInRadians) ? newRotation : glm::radians(newRotation)) * data.deltaModifiers.y)
+    : glm::quat(data.attachmentRotation);
+
+  data.attachmentVector = data.attachmentOrientation * data.baseAttachmentVector;
+
+  data.transformRequiresUpdate = true;
+}
+
+void WTransformComponent::setBaseAttachmentVectorLength(const float newLength) {
+  data.baseAttachmentVector.z = newLength;
+
+  setAttachmentVectorRotation(glm::vec3(0.0f), true, true);
+}
+
+const glm::vec3& WTransformComponent::getAttachmentVector() {
+  return data.attachmentVector;
+}
+
+void WTransformComponent::onAttachmentModeChanged(ABase* pNewTarget, EAttachmentMode newMode) {
+  if (attachmentMode == newMode || (newMode != EAttachmentMode::None && !pNewTarget)) return;
+
+  switch (newMode) {
+    case EAttachmentMode::None: {
+      if (pTarget) {
+          pTarget->getEventSystem().removeDelegate<TransformUpdateComponentEvent>(&WTransformComponent::handleAttachmentTargetTransformUpdated);
+          pTarget->getEventSystem().removeDelegate<ActorDestroyedComponentEvent>(&WTransformComponent::handleAttachmentTargetDestroyed);
+          pTarget = nullptr;
+          data.attachmentVector = glm::vec3(0.0f);
+      }
+
+      break;
+    }
+    case EAttachmentMode::Translation:
+    case EAttachmentMode::TranslationAndRotation: {
+      pTarget = pNewTarget;
+      pTarget->getEventSystem().addDelegate<TransformUpdateComponentEvent>(this, &WTransformComponent::handleAttachmentTargetTransformUpdated);
+      pTarget->getEventSystem().addDelegate<ActorDestroyedComponentEvent>(this, &WTransformComponent::handleAttachmentTargetDestroyed);
+
+      // Initialize attachment transform data
+      data.baseAttachmentVector = glm::vec3(0.0f, 0.0f, -1.0f) * glm::compMax(pTarget->getScale());
+      data.attachmentVector = data.baseAttachmentVector;
+      data.attachmentRotation = glm::vec3(0.0f);
+      data.attachmentOrientation = glm::quat(data.attachmentRotation);
+      data.translation = pTarget->getTranslation() + data.attachmentVector;
+      break;
+    }
+  }
+
+  attachmentMode = newMode;
+}
+
 void WTransformComponent::onOwnerControlled() {
   pEvents->addDelegate<ControllerTranslationComponentEvent>(this, &WTransformComponent::handleControllerTranslation);
   pEvents->addDelegate<ControllerRotationComponentEvent>(this, &WTransformComponent::handleControllerRotation);
@@ -195,6 +253,10 @@ void WTransformComponent::update() {
     TransformUpdateComponentEvent newEvent;
     newEvent.pEventOwner = pOwner;
     newEvent.translation = data.translation;
+    newEvent.rotation = data.rotation;
+    newEvent.orientation = data.orientation;
+    newEvent.scale = data.scale;
+    newEvent.attachmentVector = data.attachmentVector;
 
     pEvents->sendEvent<TransformUpdateComponentEvent>(newEvent);
   }
@@ -270,9 +332,12 @@ void WTransformComponent::drawComponentUI() {
 
 void WTransformComponent::handleControllerTranslation(const ComponentEvent& newEvent) {
   if (typeid(newEvent) != typeid(ControllerTranslationComponentEvent)
-    || newEvent.pEventOwner != pOwner) return;
+    || newEvent.pEventOwner != pOwner) {
+    invalidComponentErrorMessage();
+    return;
+  }
 
-  const ControllerTranslationComponentEvent componentEvent =
+  const ControllerTranslationComponentEvent& componentEvent =
     static_cast<const ControllerTranslationComponentEvent&>(newEvent);
 
   setTranslation(componentEvent.controllerTranslationDelta, true);
@@ -280,10 +345,37 @@ void WTransformComponent::handleControllerTranslation(const ComponentEvent& newE
 
 void WTransformComponent::handleControllerRotation(const ComponentEvent& newEvent) {
   if (typeid(newEvent) != typeid(ControllerRotationComponentEvent)
-    || newEvent.pEventOwner != pOwner) return;
+    || newEvent.pEventOwner != pOwner) {
+    invalidComponentErrorMessage();
+    return;
+  }
 
-  const ControllerRotationComponentEvent componentEvent =
+  const ControllerRotationComponentEvent& componentEvent =
     static_cast<const ControllerRotationComponentEvent&>(newEvent);
 
   setRotation(componentEvent.controllerRotationDelta, true, true);
+}
+
+void WTransformComponent::handleAttachmentTargetTransformUpdated(const ComponentEvent& newEvent) {
+  if (typeid(newEvent) != typeid(TransformUpdateComponentEvent)) {
+    invalidComponentErrorMessage();
+    return;
+  }
+
+  const TransformUpdateComponentEvent& componentEvent =
+    static_cast<const TransformUpdateComponentEvent&>(newEvent);
+
+  switch (attachmentMode) {
+    case EAttachmentMode::Translation: {
+      setTranslation(componentEvent.translation + data.attachmentVector, false);
+      return;
+    }
+  }
+}
+
+void WTransformComponent::handleAttachmentTargetDestroyed(const ComponentEvent& newEvent) {
+  if (pTarget) {
+    attachmentMode = EAttachmentMode::None;
+    pTarget = nullptr;
+  }
 }

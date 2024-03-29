@@ -338,6 +338,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\core\world\components\cameracomp.cpp" />
+    <ClCompile Include="src\core\world\components\component.cpp" />
     <ClCompile Include="src\core\world\components\modelcomp.cpp" />
     <ClCompile Include="src\core\world\components\transformcomp.cpp" />
     <ClCompile Include="src\pch.cpp">

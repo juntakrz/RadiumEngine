@@ -23,6 +23,7 @@ class MRef {
     // A map of WModel name maps that contain instances of any given model
     std::unordered_map<WModel*, std::unordered_set<AEntity*>> instances;
 
+    std::unordered_set<ABase*> actors;
     std::unordered_set<ACamera*> cameras;
     std::unordered_set<ALight*> lights;
   } m_sceneGraph;

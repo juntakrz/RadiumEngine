@@ -5,6 +5,7 @@ class MGUI {
 public:
   enum class ESceneGraphItemType : uint8_t {
     Null,
+    Actor,
     Instance,
     Camera,
     Light

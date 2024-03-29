@@ -13,6 +13,10 @@ struct ComponentEvent {
 
 struct TransformUpdateComponentEvent : public ComponentEvent {
   glm::vec3 translation;
+  glm::vec3 rotation;
+  glm::quat orientation;
+  glm::vec3 scale;
+  glm::vec3 attachmentVector;
 };
 
 struct ControllerTranslationComponentEvent : public ComponentEvent {
@@ -21,6 +25,10 @@ struct ControllerTranslationComponentEvent : public ComponentEvent {
 
 struct ControllerRotationComponentEvent : public ComponentEvent {
   glm::vec3 controllerRotationDelta;
+};
+
+struct ActorDestroyedComponentEvent : public ComponentEvent {
+  ABase* pActor = nullptr;
 };
 
 class ComponentEventSystem {

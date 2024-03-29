@@ -8,17 +8,11 @@
 #include "util/math.h"
 #include "util/util.h"
 
-void ABase::updateAttachments() {
-  for (auto& pAttachment : m_pAttachments) {
-    if (pAttachment.attachTranslation) {
-      pAttachment.pAttached->setForwardVector(pAttachment.vector);
-      pAttachment.pAttached->setTranslation(
-          pAttachment.attachToForwardVector
-              ? this->getTranslation() + this->getForwardVector() -
-                    pAttachment.vector
-              : this->getTranslation() - pAttachment.vector);
-    }
-  }
+ABase::ABase(const uint32_t UID) {
+  m_UID = UID;
+
+  // An actor always has transform component
+  addComponent<WTransformComponent>();
 }
 
 const glm::mat4& ABase::getModelTransformationMatrix() noexcept {
@@ -181,42 +175,36 @@ void ABase::setVisibility(const bool isVisible) { m_isVisible = isVisible; }
 
 const bool ABase::isVisible() { return m_isVisible; }
 
-void ABase::attachTo(ABase* pTarget, const bool toTranslation,
-                     const bool toRotation, const bool toForwardVector) {
+void ABase::attachTo(ABase* pTarget, EAttachmentMode newMode) {
   if (!pTarget) {
-    RE_LOG(Error, "Failed to attach '%s' to target. No target was provided.",
-           m_name.c_str());
+    RE_LOG(Error, "Failed to attach '%s' to target, nullptr was received.", getName().c_str());
     return;
   }
 
-  if (!toTranslation && !toRotation) {
-    RE_LOG(Error,
-           "Unable to attach '%s' to '%s' because no valid attachment "
-           "parameters were provided.",
-           m_name.c_str(), pTarget->m_name.c_str());
-    return;
-  }
+  attachmentInfo.attachmentMode = newMode;
 
-  pTarget->m_pAttachments.emplace_back();
-
-  WAttachmentInfo& info = pTarget->m_pAttachments.back();
-  info.pAttached = this;
-  info.attachTranslation = toTranslation;
-  info.attachRotation = toRotation;
-  info.attachToForwardVector = toForwardVector;
-
-  // get attachment vector that will keep attached object relative
-  switch (info.attachToForwardVector) {
-    case true: {
-      info.vector = pTarget->getForwardVector() - this->getTranslation();
+  switch (newMode) {
+    case EAttachmentMode::None: {
+      attachmentInfo.pTarget = nullptr;
       break;
     }
-    case false: {
-      info.vector = pTarget->getTranslation() - this->getTranslation();
+    case EAttachmentMode::Translation: {
+      attachmentInfo.pTarget = pTarget;
+      break;
+    }
+    case EAttachmentMode::TranslationAndRotation: {
+      attachmentInfo.pTarget = pTarget;
+      break;
     }
   }
 
-  pTarget->updateAttachments();
+  for (auto& it : m_pComponents) {
+    it.second->onAttachmentModeChanged(attachmentInfo.pTarget, attachmentInfo.attachmentMode);
+  }
+}
+
+void ABase::detach() {
+  attachTo(nullptr, EAttachmentMode::None);
 }
 
 void ABase::updateComponents() {

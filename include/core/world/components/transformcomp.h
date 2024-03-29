@@ -3,7 +3,7 @@
 #include "component.h"
 
 struct WTransformComponent : public WComponent {
-  struct TransformComponentData {
+  struct {
     EComponentType typeId = EComponentType::Transform;
     EActorControlMode controlMode = EActorControlMode::Spacecraft;
 
@@ -18,6 +18,16 @@ struct WTransformComponent : public WComponent {
     
     // x - translation delta, y - rotation delta, z - scale delta
     glm::vec3 deltaModifiers = glm::vec3(1.0f);
+
+    // Origin attachment vector from which rotated attachment vector is calculated
+    glm::vec3 baseAttachmentVector = glm::vec3(0.0f, 0.0f, -1.0f);
+
+    // Vector to attachment target
+    glm::vec3 attachmentVector = glm::vec3(0.0f);
+
+    // Rotation data for attachment vector
+    glm::vec3 attachmentRotation = glm::vec3(0.0f);
+    glm::quat attachmentOrientation = glm::quat(attachmentRotation);
 
     // was transformation data changed
     bool transformRequiresUpdate = false;
@@ -46,18 +56,23 @@ struct WTransformComponent : public WComponent {
   const glm::quat& getOrientation();
   const glm::vec3& getScale();
 
-  const glm::vec3& getForwardVector();
-  const glm::vec3& getAbsoluteForwardVector();
-
   const glm::vec3& getDeltaModifiers();
 
+  void setAttachmentVectorRotation(const glm::vec3& newRotation, const bool isInRadians, const bool isDelta);
+  void setBaseAttachmentVectorLength(const float newLength);
+  const glm::vec3& getAttachmentVector();
+
+  void onAttachmentModeChanged(ABase* pNewTarget, EAttachmentMode newMode) override;
   void onOwnerControlled() override;
   void onOwnerFreed() override;
   void onOwnerUpdated() override;
+
   void update() override;
   void drawComponentUI() override;
 
   // Event delegates
   void handleControllerTranslation(const ComponentEvent& newEvent);
   void handleControllerRotation(const ComponentEvent& newEvent);
+  void handleAttachmentTargetTransformUpdated(const ComponentEvent& newEvent);
+  void handleAttachmentTargetDestroyed(const ComponentEvent& newEvent);
 };

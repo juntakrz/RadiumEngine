@@ -27,6 +27,11 @@ bool core::MRef::registerActor(ABase* pActor) {
 
     m_actorPointers[name] = pActor;
     m_actorPointersByUID[pActor->getUID()] = pActor;
+
+    if (!m_sceneGraph.actors.contains(pActor)) {
+      m_sceneGraph.actors.insert(pActor);
+    }
+
     return true;
   }
 
@@ -41,10 +46,16 @@ void core::MRef::unregisterActor(ABase* pActor) {
   if (getActor(name)) {
     m_actorPointersByUID.erase(pActor->getUID());
     m_actorPointers.erase(name);
+
+    // TODO: when actor class rework is done - remove if statement
+    if (m_sceneGraph.actors.contains(pActor)) {
+      m_sceneGraph.actors.erase(pActor);
+    }
+
     return;
   }
 
-  RE_LOG(Error, "Failed to unregister actor '%s'. Isn't registered with the reference manager.", name.c_str());
+  RE_LOG(Error, "Failed to unregister actor '%s'. It isn't registered with the reference manager.", name.c_str());
 }
 
 void core::MRef::unregisterActor(const std::string& name) {

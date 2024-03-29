@@ -45,6 +45,12 @@ enum class EAOMode {
   HBAO
 };
 
+enum class EAttachmentMode : uint8_t {
+  None,                     // Detach
+  Translation,              // Always keep a constant distance (other translation - this translation)
+  TranslationAndRotation,   // Rotate together with the target at a constant distance
+};
+
 enum class EBufferType {  // VkBuffer creation mode
   NONE,
   STAGING,            // CPU staging buffer
@@ -60,12 +66,6 @@ enum class EBufferType {  // VkBuffer creation mode
   DGPU_INDIRECT,
   DGPU_SAMPLER,       // Dedicated GPU storage buffer for sampler descriptors
   DGPU_RESOURCE,      // Dedicated GPU storage buffer for resource descriptors
-};
-
-enum class ECameraFocusMode {
-  None,           // Do not focus on anything, free camera mode
-  Translation,    // Actor's main transform translation is used as a focus point
-  ForwardVector   // Actor's forward vector is used as a focus point
 };
 
 enum class ECameraProjection {
@@ -579,11 +579,8 @@ struct WAnimationInfo {
 };
 
 struct WAttachmentInfo {
-  ABase* pAttached = nullptr;
-  glm::vec3 vector = glm::vec3(0.0f);
-  bool attachTranslation = true;
-  bool attachRotation = true;
-  bool attachToForwardVector = false;
+  ABase* pTarget = nullptr;
+  EAttachmentMode attachmentMode;
 };
 
 struct WEntityCreateInfo {
