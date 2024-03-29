@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include "core/model/primitive.h"
+#include "core/world/components/components.h"
 #include "core/world/actors/light.h"
 #include "core/world/actors/pawn.h"
 #include "core/world/actors/static.h"
@@ -15,18 +16,20 @@ class MActors {
 
  private:
   struct {
-    std::unordered_map<uint32_t, std::unique_ptr<ABase>> cameras;
-    std::unordered_map<uint32_t, std::unique_ptr<ALight>> lights;
     std::unordered_map<uint32_t, std::unique_ptr<APawn>> pawns;
     std::unordered_map<uint32_t, std::unique_ptr<AStatic>> statics;
   } m_actors;
 
   struct {
     std::vector<ABase*> pCameras;
-    std::vector<ALight*> pLights;
   } m_linearActors;
 
-  ALight* m_pSunLight = nullptr;
+  struct {
+    WLightComponent* pDirectLight = nullptr;
+    std::vector<WLightComponent*> pPointLights;
+  } m_lights;
+
+  std::unordered_map<uint32_t, std::unique_ptr<ABase>> m_sceneActors;
   int32_t m_nextActorUID = 0;
 
  private:
@@ -50,13 +53,10 @@ class MActors {
   ABase* getCamera(const std::string& name);
 
   // LIGHT
-
-  ALight* createLight(const std::string& name, RLightInfo* pInfo = nullptr);
-  TResult destroyLight(ALight *pLight);
-  ALight* getLight(const std::string& name);
-  bool setSunLight(const std::string& name);
-  bool setSunLight(ALight* pLight);
-  ALight* getSunLight();
+  void setDirectLight(WLightComponent* pDirectLight);
+  WLightComponent* getDirectLight();
+  void addPointLight(WLightComponent* pPointLight);
+  void removePointLight(WLightComponent* pPointLight);
 
   // PAWN
 

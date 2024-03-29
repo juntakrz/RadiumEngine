@@ -22,19 +22,19 @@ void core::MActors::updateLightingUBO(RLightingUBO* pLightingBuffer) {
   uint32_t lightCount = 1;
   float lightType = 1.0f;
 
-  // Index 0 is expected to be the directional 'sun' light
-  if (m_pSunLight) {
-    pLightingBuffer->lightLocations[0] = glm::vec4(m_pSunLight->getTranslation(), 1.0f);
-    pLightingBuffer->lightColors[0] = glm::vec4(m_pSunLight->getLightColor(), m_pSunLight->getLightIntensity());
-    pLightingBuffer->lightViews[0] = m_pSunLight->getView();
-    pLightingBuffer->lightOrthoMatrix = m_pSunLight->getProjection();
+  // Index 0 is expected to always be the directional light
+  if (m_lights.pDirectLight) {
+    ABase* pActor = m_lights.pDirectLight->getOwner();
+    pLightingBuffer->lightLocations[0] = glm::vec4(pActor->getTranslation(), 1.0f);
+    pLightingBuffer->lightColors[0] = m_lights.pDirectLight->getColor();
+    //pLightingBuffer->lightViews[0] = m_pSunLight->getView();
+    //pLightingBuffer->lightOrthoMatrix = m_pSunLight->getProjection();
   }
 
-  // Currently all other lights are expected to be point lights
-  for (const auto& pLight : m_linearActors.pLights) {
-    if (pLight->isVisible() && pLight != m_pSunLight) {
-      pLightingBuffer->lightLocations[lightCount] = glm::vec4(pLight->getTranslation(), 1.0f);
-      pLightingBuffer->lightColors[lightCount] = glm::vec4(pLight->getLightColor(), pLight->getLightIntensity());
+  for (const auto& pLight : m_lights.pPointLights) {
+    if (pLight->getIsEnabled() && pLight->getLightType() != ELightType::Directional) {
+      pLightingBuffer->lightLocations[lightCount] = glm::vec4(pLight->getWorldTranslation(), 1.0f);
+      pLightingBuffer->lightColors[lightCount] = pLight->getColor();
 
       ++lightCount;
     }
@@ -48,8 +48,8 @@ void core::MActors::updateLightingUBO(RLightingUBO* pLightingBuffer) {
 
 ABase* core::MActors::createCamera(const std::string& name, RCameraInfo* pInfo) {
   if (!core::ref.getActor(name)) {
-    m_actors.cameras[m_nextActorUID] = std::make_unique<ABase>(m_nextActorUID);
-    ABase* pCameraActor = m_actors.cameras[m_nextActorUID].get();
+    m_sceneActors[m_nextActorUID] = std::make_unique<ABase>(m_nextActorUID);
+    ABase* pCameraActor = m_sceneActors[m_nextActorUID].get();
 
     pCameraActor->setName(name);
     WCameraComponent* pComponent = pCameraActor->addComponent<WCameraComponent>();
@@ -97,112 +97,47 @@ ABase* core::MActors::getCamera(const std::string& name) {
   return nullptr;
 }
 
-ALight* core::MActors::createLight(const std::string& name, RLightInfo* pInfo) {
-  if (!core::ref.getActor(name)) {
-    m_actors.lights[m_nextActorUID] = std::make_unique<ALight>(m_nextActorUID);
-    ALight* pNewLight = m_actors.lights.at(m_nextActorUID).get();
-
-    pNewLight->setName(name);
-
-    if (pInfo) {
-      pNewLight->setLightType(pInfo->type);
-      pNewLight->setLightColor(pInfo->color);
-      pNewLight->setLightIntensity(pInfo->intensity);
-      pNewLight->setTranslation(pInfo->translation);
-      pNewLight->setRotation(pInfo->direction);
-
-      if (pInfo->isShadowCaster) {
-        pNewLight->setAsShadowCaster(true);
-        pNewLight->setOrthographic(2.0f, 2.0f, 0.001f, 1000.0f);
-
-        // get free camera offset index into the dynamic buffer
-        uint32_t index = 0;
-
-        for (const auto& it : m_linearActors.pCameras) {
-          if (it->getComponent<WCameraComponent>()->getViewBufferIndex() != index) {
-            break;
-          }
-
-          ++index;
-        }
-
-        pNewLight->setViewBufferIndex(index);
-        m_linearActors.pCameras.emplace_back(pNewLight);
-      }
-    }
-
-    core::ref.registerLight(pNewLight);
-    m_linearActors.pLights.emplace_back(pNewLight);
-
-#ifndef NDEBUG
-    RE_LOG(Log, "Created light '%s'.", name.c_str());
-#endif
-
-    ++m_nextActorUID;
-    return pNewLight;
+void core::MActors::setDirectLight(WLightComponent* pDirectLight) {
+  if (pDirectLight && pDirectLight->getLightType() == ELightType::Directional) {
+    m_lights.pDirectLight = pDirectLight;
+    return;
   }
 
-#ifndef NDEBUG
-  RE_LOG(Warning, "Failed to create light '%s'. Probably already exists.",
-    name.c_str());
-#endif
-  return getLight(name);
+  RE_LOG(Error, "Failed to set direct light caster.");
 }
 
-TResult core::MActors::destroyLight(ALight* pLight) {
-  const uint32_t UID = pLight->getUID();
+WLightComponent* core::MActors::getDirectLight() {
+  return m_lights.pDirectLight;
+}
+
+void core::MActors::addPointLight(WLightComponent* pPointLight) {
+  if (!pPointLight) {
+    RE_LOG(Error, "Failed to add point light to scene manager, received nullptr.");
+    return;
+  }
+
+  // Not checked for duplicates
+  m_lights.pPointLights.emplace_back(pPointLight);
+}
+
+void core::MActors::removePointLight(WLightComponent* pPointLight) {
+  if (!pPointLight) {
+    RE_LOG(Error, "Failed to remove point light from the scene manager, received nullptr.");
+    return;
+  }
 
   uint32_t index = 0;
-  if (m_actors.lights.contains(UID)) {
-    for (const auto& it : m_linearActors.pLights) {
-      if (it == pLight) {
-        break;
-      }
-
-      ++index;
+  for (auto& it : m_lights.pPointLights) {
+    if (it == pPointLight) {
+      m_lights.pPointLights.erase(m_lights.pPointLights.begin() + index);
+      return;
     }
 
-    core::ref.unregisterLight(pLight);
-
-    m_linearActors.pLights.erase(m_linearActors.pLights.begin() + index);
-
-    m_actors.lights[UID].reset();
-    m_actors.lights.erase(UID);
-
-    return RE_OK;
+    ++index;
   }
 
-#ifndef NDEBUG
-  RE_LOG(Error, "Failed to destroy light at %d.", pLight);
-#endif
-
-  return RE_ERROR;
-}
-
-ALight* core::MActors::getLight(const std::string& name) {
-  if (ALight* pLight = core::ref.getActor(name)->getAs<ALight>()) {
-    return pLight;
-  }
-
-  return nullptr;
-}
-
-bool core::MActors::setSunLight(const std::string& name) {
-  return setSunLight(core::ref.getActor(name)->getAs<ALight>());
-}
-
-bool core::MActors::setSunLight(ALight* pLight) {
-  if (pLight && pLight->isShadowCaster() && pLight->getLightType() == ELightType::Directional) {
-    m_pSunLight = pLight;
-    return true;
-  }
-
-  RE_LOG(Error, "Failed to set sun light. Either received a nullptr or it isn't a directional caster.");
-  return false;
-}
-
-ALight* core::MActors::getSunLight() {
-  return m_pSunLight;
+  RE_LOG(Error, "Failed to remove point light belonging to '%s' from the scene manager, was never registered.",
+    pPointLight->getOwner()->getName().c_str());
 }
 
 APawn* core::MActors::createPawn(WEntityCreateInfo* pInfo) {

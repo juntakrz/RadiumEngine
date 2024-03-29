@@ -99,7 +99,7 @@ enum class EComponentType {
   Transform,
   Camera,
   Model,
-  LightSource
+  Light
 };
 
 enum class EDescriptorSetLayout {

@@ -102,8 +102,10 @@ void ABase::setControlMode(EActorControlMode newMode) {
     setUpVector(glm::vec3(0.0f, 1.0f, 0.0f));
   }
 
-  for (auto& it : m_pComponents) {
-    it.second->onOwnerUpdated();
+  for (auto& componentType : m_pComponents) {
+    for (auto& component : componentType.second) {
+      component->onOwnerUpdated();
+    }
   }
 }
 
@@ -141,14 +143,18 @@ void ABase::onControlled(core::MPlayer* pController) {
   m_pController = pController;
   m_controlMode = m_pController->getProperties().controlMode;
 
-  for (const auto& it : m_pComponents) {
-    it.second->onOwnerControlled();
+  for (auto& componentType : m_pComponents) {
+    for (auto& component : componentType.second) {
+      component->onOwnerControlled();
+    }
   }
 }
 
 void ABase::onFreed() {
-  for (auto& it : m_pComponents) {
-    it.second->onOwnerFreed();
+  for (auto& componentType : m_pComponents) {
+    for (auto& component : componentType.second) {
+      component->onOwnerFreed();
+    }
   }
 }
 
@@ -198,8 +204,10 @@ void ABase::attachTo(ABase* pTarget, EAttachmentMode newMode) {
     }
   }
 
-  for (auto& it : m_pComponents) {
-    it.second->onAttachmentModeChanged(attachmentInfo.pTarget, attachmentInfo.attachmentMode);
+  for (auto& componentType : m_pComponents) {
+    for (auto& component : componentType.second) {
+      component->onAttachmentModeChanged(attachmentInfo.pTarget, attachmentInfo.attachmentMode);
+    }
   }
 }
 
@@ -208,13 +216,17 @@ void ABase::detach() {
 }
 
 void ABase::updateComponents() {
-  for (const auto& it : m_pComponents) {
-    it.second->update();
+  for (auto& componentType : m_pComponents) {
+    for (auto& component : componentType.second) {
+      component->update();
+    }
   }
 }
 
 void ABase::drawComponentUIElements() {
-  for (auto& it : m_pComponents) {
-    it.second->drawComponentUI();
+  for (auto& componentType : m_pComponents) {
+    for (auto& component : componentType.second) {
+      component->drawComponentUI();
+    }
   }
 }

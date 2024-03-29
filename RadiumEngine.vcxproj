@@ -339,6 +339,7 @@
     </ClCompile>
     <ClCompile Include="src\core\world\components\cameracomp.cpp" />
     <ClCompile Include="src\core\world\components\component.cpp" />
+    <ClCompile Include="src\core\world\components\lightcomp.cpp" />
     <ClCompile Include="src\core\world\components\modelcomp.cpp" />
     <ClCompile Include="src\core\world\components\transformcomp.cpp" />
     <ClCompile Include="src\pch.cpp">
@@ -391,6 +392,7 @@
     <ClInclude Include="include\core\world\components\component.h" />
     <ClInclude Include="include\core\world\components\components.h" />
     <ClInclude Include="include\core\world\components\componentevents.h" />
+    <ClInclude Include="include\core\world\components\lightcomp.h" />
     <ClInclude Include="include\core\world\components\modelcomp.h" />
     <ClInclude Include="include\core\world\components\transformcomp.h" />
     <ClInclude Include="include\define.h" />

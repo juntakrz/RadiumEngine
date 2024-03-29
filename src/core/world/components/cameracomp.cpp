@@ -14,25 +14,25 @@ WCameraComponent::WCameraComponent(ABase* pActor) {
 }
 
 void WCameraComponent::setTranslationOffset(float x, float y, float z, bool isDelta) {
-  data.translation.x = (isDelta) ? data.translation.x + x  : x;
-  data.translation.y = (isDelta) ? data.translation.y + y  : y;
-  data.translation.z = (isDelta) ? data.translation.z + z  : z;
+  data.translationOffset.x = (isDelta) ? data.translationOffset.x + x  : x;
+  data.translationOffset.y = (isDelta) ? data.translationOffset.y + y  : y;
+  data.translationOffset.z = (isDelta) ? data.translationOffset.z + z  : z;
 
   data.viewRequiresUpdate = true;
 }
 
 void WCameraComponent::setTranslationOffset(const glm::vec3& newTranslation, bool isDelta) {
-  data.translation = (isDelta) ? data.translation + newTranslation : newTranslation;
+  data.translationOffset = (isDelta) ? data.translationOffset + newTranslation : newTranslation;
 
   data.viewRequiresUpdate = true;
 }
 
-const glm::vec3 WCameraComponent::getTranslation() {
-  return data.ownerTranslation + data.translation;
+const glm::vec3 WCameraComponent::getWorldTranslation() {
+  return data.ownerTranslation + data.translationOffset;
 }
 
 const glm::vec3& WCameraComponent::getTranslationOffset() {
-  return data.translation;
+  return data.translationOffset;
 }
 
 void WCameraComponent::setProjectionMode(ECameraProjection newMode) {
@@ -143,16 +143,14 @@ void WCameraComponent::update() {
     switch (attachmentMode) {
       case EAttachmentMode::Translation: {
         data.view = glm::lookAt(
-          data.translation + data.ownerTranslation,
-          data.translation + data.ownerTranslation - data.focusVector,
+          getWorldTranslation(), getWorldTranslation() - data.focusVector,
           pOwner->getUpVector());
         break;
       }
 
       default: {
         data.view = glm::lookAt(
-          data.translation + data.ownerTranslation,
-          data.translation + data.ownerTranslation + pOwner->getForwardVector(),
+          getWorldTranslation(), getWorldTranslation() + pOwner->getForwardVector(),
           pOwner->getUpVector());
         break;
       }
@@ -175,6 +173,7 @@ void WCameraComponent::handleTransformUpdateEvent(const ComponentEvent& newEvent
     static_cast<const TransformUpdateComponentEvent&>(newEvent);
 
   data.ownerTranslation = componentEvent.translation;
+  data.ownerOrientation = componentEvent.orientation;
   data.focusVector = componentEvent.attachmentVector;
 
   data.viewRequiresUpdate = true;

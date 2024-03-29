@@ -301,7 +301,7 @@ void core::MRenderer::updateBoundEntities() {
   // Use this thread to also quickly process camera exposure level
   updateExposureLevel();
 
-  for (auto& actor : core::actors.m_actors.cameras) {
+  for (auto& actor : core::actors.m_sceneActors) {
     actor.second->updateComponents();
   }
 

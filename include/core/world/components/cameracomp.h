@@ -9,7 +9,7 @@ struct WCameraComponent : public WComponent {
     glm::mat4 view = glm::mat4(1.0f);
     glm::mat4 projection = glm::mat4(1.0f);
 
-    glm::vec3 translation = glm::vec3(0.0f);      // Translation from origin
+    glm::vec3 translationOffset = glm::vec3(0.0f);
 
     float FOV = 75.0f;
     float orthoFOV = 1.0f;
@@ -24,6 +24,7 @@ struct WCameraComponent : public WComponent {
 
     // Event based data
     glm::vec3 ownerTranslation = glm::vec3(0.0f);
+    glm::quat ownerOrientation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
     glm::vec3 focusVector = glm::vec3(0.0f);
   } data;
 
@@ -33,7 +34,7 @@ struct WCameraComponent : public WComponent {
   void setTranslationOffset(const glm::vec3& newTranslation, bool isDelta = false);
 
   // Current camera location in the world, a sum of transform position and local camera offset
-  const glm::vec3 getTranslation();
+  const glm::vec3 getWorldTranslation();
   const glm::vec3& getTranslationOffset();
 
   void setProjectionMode(ECameraProjection newMode);

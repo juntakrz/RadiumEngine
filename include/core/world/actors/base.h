@@ -3,6 +3,7 @@
 #include "core/objects.h"
 #include "core/managers/player.h"
 #include "core/managers/world.h"
+#include "core/world/components/components.h"
 #include "core/world/components/componentevents.h"
 
 class ACamera;
@@ -19,7 +20,7 @@ class ABase {
 
   ComponentEventSystem m_eventSystem;
 
-  std::unordered_map<std::type_index, std::unique_ptr<WComponent>> m_pComponents;
+  std::unordered_map<std::type_index, std::vector<std::unique_ptr<WComponent>>> m_pComponents;
   WAttachmentInfo attachmentInfo;
 
   bool m_isVisible = true;
@@ -98,20 +99,39 @@ class ABase {
   ComponentEventSystem& getEventSystem() { return m_eventSystem; }
 
   template<typename T>
-  T* getComponent() {
-    if (m_pComponents.contains(typeid(T))) return dynamic_cast<T*>(m_pComponents[typeid(T)].get());
+  T* getComponent(const size_t index = 0) {
+    if (m_pComponents.contains(typeid(T))) {
+      if (index >= m_pComponents[typeid(T)].size()) {
+        RE_LOG(Error, "Index %d is out of bounds when trying to retrieve component for '%s'."
+          "Maximum number of components of this type is %d.",
+          index, getName().c_str(), m_pComponents[typeid(T)].size());
+        return nullptr;
+      }
+
+      return dynamic_cast<T*>(m_pComponents[typeid(T)][index].get());
+    }
     return nullptr;
   }
 
   template<typename T>
-  T* addComponent() {
-    if (getComponent<T>()) {
-      RE_LOG(Warning, "Failed to add component to '%s', it's already added.", m_name.c_str());
-      return dynamic_cast<T*>(m_pComponents[typeid(T)].get());
+  size_t getComponentCount() {
+    if (m_pComponents.contains(typeid(T))) {
+      return m_pComponents[typeid(T)].size();
     }
 
-    m_pComponents[typeid(T)] = std::make_unique<T>(this);
-    return dynamic_cast<T*>(m_pComponents[typeid(T)].get());
+    return 0;
+  }
+
+  template<typename T>
+  T* addComponent() {
+    if (getComponent<T>() && (typeid(T) == typeid(WTransformComponent) || typeid(T) == typeid(WCameraComponent))) {
+      RE_LOG(Warning, "Failed to add component to '%s', only one component of requested type is allowed per actor.",
+        m_name.c_str());
+      return dynamic_cast<T*>(m_pComponents[typeid(T)][0].get());
+    }
+
+    m_pComponents[typeid(T)].emplace_back(std::move(std::make_unique<T>(this)));
+    return dynamic_cast<T*>(m_pComponents[typeid(T)].back().get());
   }
 
   void updateComponents();
