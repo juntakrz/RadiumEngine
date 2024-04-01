@@ -371,14 +371,17 @@ bool core::MGUI::drawFloatControl(const char* label, float& inOutValue, float wi
   ImGui::SameLine();
 
   ImGui::PushStyleColor(ImGuiCol_Text, m_style.black);
-  ImGui::PushItemWidth(width - textSize.x - textPadding);
+  ImGui::PushItemWidth((width > 0.0f)
+                        ? width - textSize.x - textPadding
+                        : ImGui::GetContentRegionAvail().x - textPadding);
+
   if (ImGui::DragFloat("##X", &inOutValue, speed, 0.0f, 0.0f, format)) {
     result = true;
   }
 
+  ImGui::PopItemWidth();
   ImGui::PopStyleVar();
   ImGui::PopStyleColor(4);
-  ImGui::PopItemWidth();
   ImGui::PopID();
 
   return result;

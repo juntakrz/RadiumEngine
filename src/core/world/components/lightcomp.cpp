@@ -23,6 +23,7 @@ void WLightComponent::setLightMode(ELightMode newType) {
   if (data.lightMode == newType) return;
 
   removeLightFromBuffer();
+  data.lightMode = newType;
 
   switch (newType) {
     case ELightMode::Directional: {
@@ -33,8 +34,6 @@ void WLightComponent::setLightMode(ELightMode newType) {
       break;
     }
   }
-
-  data.lightMode = newType;
 }
 
 ELightMode WLightComponent::getLightMode() {
@@ -161,6 +160,27 @@ void WLightComponent::drawComponentUI() {
     ImVec2 buttonSize = ImVec2(ImGui::GetContentRegionAvail().x, 20);
     if (ImGui::Button("Reset translation", buttonSize)) {
       setLocalTranslation(glm::vec3(0.0f), false);
+    }
+
+    float lightColor[4];
+    memcpy(lightColor, data.color.data.m128_f32, sizeof(float) * 4);
+    float intensity = lightColor[3];
+    bool changedColor = false;
+
+    ImGui::PushStyleColor(ImGuiCol_Text, core::gui.m_style.black);
+
+    if (ImGui::ColorPicker3("##Light color", lightColor, ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_NoTooltip)) {
+      changedColor = true;
+    }
+
+    ImGui::PopStyleColor();
+
+    if (core::gui.drawFloatControl("Light intensity", intensity, 0.0f, 0.1f, "%.1f")) {
+      changedColor = true;
+    }
+
+    if (changedColor) {
+      setColor(glm::vec4(lightColor[0], lightColor[1], lightColor[2], intensity));
     }
 
     ImGui::Separator();
