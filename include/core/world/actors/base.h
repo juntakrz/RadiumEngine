@@ -134,6 +134,33 @@ class ABase {
     return dynamic_cast<T*>(m_pComponents[typeid(T)].back().get());
   }
 
+  template<typename T>
+  bool removeComponent(T* pComponent) {
+    if (!pComponent) {
+      RE_LOG(Error, "Failed to remove a component of '%s', nullptr was received.", getName().c_str());
+      return false;
+    }
+
+    const std::type_index typeIndex = typeid(T);
+    if (!m_pComponents.contains(typeIndex)) {
+      RE_LOG(Error, "Failed to remove a component of '%s', it was not found.", getName().c_str());
+      return false;
+    }
+
+    uint32_t componentIndex = 0;
+    for (auto& it : m_pComponents[typeIndex]) {
+      if (it.get() == pComponent) {
+        m_pComponents[typeIndex].erase(m_pComponents[typeIndex].begin() + componentIndex);
+        return true;
+      }
+
+      ++componentIndex;
+    }
+
+    return false;
+  }
+
   void updateComponents();
+  void forceUpdateTransform();
   void drawComponentUIElements();
 };

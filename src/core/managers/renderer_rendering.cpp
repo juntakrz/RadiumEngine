@@ -66,7 +66,7 @@ void core::MRenderer::renderEnvironmentMaps(
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::EnvSkybox);
   renderView.pCurrentPass = pRenderPass;
 
-  setCamera(view.pEnvironmentCamera);
+  setCamera(view.pEnvironmentCamera, false);
   getCamera()->getOwner()->setRotation(environment.cameraTransformVectors[environment.tracking.layer], true);
   updateSceneUBO(renderView.frameInFlight);
 
@@ -632,7 +632,7 @@ void core::MRenderer::renderFrame() {
 
   /* 2. Cascaded shadows */
 
-  setCamera(view.pSunCamera);
+  setCamera(view.pSunCamera, false);
   updateSceneUBO(renderView.frameInFlight);
 
   for (uint8_t cascadeIndex = 0; cascadeIndex < config::shadowCascades; ++cascadeIndex) {
@@ -640,7 +640,7 @@ void core::MRenderer::renderFrame() {
   }
 
   /* 3. Main scene */
-  setCamera(view.pPrimaryCamera);
+  setCamera(view.pPrimaryCamera, false);
   updateSceneUBO(renderView.frameInFlight);
 
   // G-Buffer passes

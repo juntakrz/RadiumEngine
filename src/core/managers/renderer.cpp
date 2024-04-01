@@ -423,6 +423,7 @@ TResult core::MRenderer::setRendererDefaults() {
   }
 
   setCamera(pCameraActor, true);
+  setMainCamera(pCameraActor->getComponent<WCameraComponent>());
 
   // Set default lighting UBO data
   lighting.data.prefilteredCubeMipLevels = (float)math::getMipLevels(core::vulkan::envFilterExtent);
@@ -695,6 +696,8 @@ void core::MRenderer::destroySyncObjects() {
 }
 
 void core::MRenderer::updateSceneUBO(uint32_t currentImage) {
+  if (!view.pActiveCamera) return;
+
   // Update previous view only if this is player's camera, ignore light/shadow casting cameras
   if (view.pActiveCamera == view.pPrimaryCamera) {
     scene.sceneBufferObject.prevView = view.previousCameraView;

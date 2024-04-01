@@ -23,6 +23,9 @@ void core::MGUI::setupEditor() {
   m_pStyle = &ImGui::GetStyle();
 
   ImVec4* pColors = m_pStyle->Colors;
+
+  pColors[ImGuiCol_Text] = m_style.whiteBright;
+
   pColors[ImGuiCol_WindowBg] = m_style.greyDark;
   pColors[ImGuiCol_ChildBg] = m_style.greyDark;
   pColors[ImGuiCol_PopupBg] = m_style.greyDark;
@@ -31,9 +34,8 @@ void core::MGUI::setupEditor() {
   pColors[ImGuiCol_TitleBg] = m_style.black;
   pColors[ImGuiCol_TitleBgActive] = m_style.greyMedium;
   pColors[ImGuiCol_TitleBgCollapsed] = m_style.greyLow;
-  pColors[ImGuiCol_Text] = m_style.white;
 
-  pColors[ImGuiCol_Header] = m_style.greyLow;
+  pColors[ImGuiCol_Header] = m_style.greyMedium;
   pColors[ImGuiCol_HeaderHovered] = m_style.greyMedium;
   pColors[ImGuiCol_HeaderActive] = m_style.greyLow;
 
@@ -41,8 +43,9 @@ void core::MGUI::setupEditor() {
   pColors[ImGuiCol_ButtonHovered] = m_style.redBright;
   pColors[ImGuiCol_ButtonActive] = m_style.redMedium;
 
-  pColors[ImGuiCol_FrameBg] = m_style.greyDark;
-  pColors[ImGuiCol_FrameBgHovered] = m_style.greyMedium;
+  pColors[ImGuiCol_FrameBg] = m_style.whiteMedium;
+  pColors[ImGuiCol_FrameBgHovered] = m_style.whiteBright;
+  pColors[ImGuiCol_FrameBgActive] = m_style.whiteBright;
 
   pColors[ImGuiCol_Tab] = m_style.greyLow;
   pColors[ImGuiCol_TabHovered] = m_style.redMedium;

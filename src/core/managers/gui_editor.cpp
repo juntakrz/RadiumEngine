@@ -251,7 +251,8 @@ void core::MGUI::drawActorProperties() {
   ABase* pActor = m_editorData.pSelectedActor;
   if (!pActor) return;
 
-  ImGui::BeginChild("##ActorPropertiesFrame", ImVec2(0, 0), ImGuiChildFlags_Border);
+  ImGui::BeginChild("##ActorPropertiesFrame", ImVec2(0, ImGui::GetContentRegionAvail().y - 16),
+    NULL, ImGuiWindowFlags_AlwaysVerticalScrollbar);
 
   ImGui::AlignTextToFramePadding();
   ImGui::Text("Name: ");
@@ -277,13 +278,25 @@ void core::MGUI::drawActorProperties() {
   ImGui::Text("UID: %d\tType: %s", pActor->getUID(), helper::actorTypeIdToText(pActor->getTypeId()).c_str());
   ImGui::Separator();
 
+  if (ImGui::Button("Edit actor", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+
+  }
+
+  if (ImGui::Button("Add component", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+    ImGui::OpenPopup("##ComponentPopup");
+  }
+
+  drawAddComponent();
+
+  ImGui::Separator();
+
   pActor->drawComponentUIElements();
 
   ImGui::EndChild();
 }
 
 void core::MGUI::drawSceneProperties() {
-  ImGui::BeginChild("##ScenePropertiesFrame", ImVec2(0, 0), ImGuiChildFlags_Border);
+  ImGui::BeginChild("##ScenePropertiesFrame", ImVec2(0, 0));
 
   ImGui::AlignTextToFramePadding();
   ImGui::Text("Name: ");
@@ -332,6 +345,25 @@ void core::MGUI::drawSceneProperties() {
   ImGui::EndChild();
 }
 
+void core::MGUI::drawAddComponent() {
+  ABase* pActor = m_editorData.pSelectedActor;
+  if (!pActor) return;
+
+  if (ImGui::BeginPopup("##ComponentPopup")) {
+    if (ImGui::Selectable("Add new camera")) {
+      pActor->addComponent<WCameraComponent>();
+    }
+    if (ImGui::Selectable("Add new light")) {
+      pActor->addComponent<WLightComponent>();
+    }
+    if (ImGui::Selectable("Add new model")) {
+
+    }
+
+    ImGui::EndPopup();
+  }
+}
+
 bool core::MGUI::drawTreeNode(const std::string& name, const bool isFolder) {
   ImGuiTreeNodeFlags flags = (isFolder)
     ? ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_DefaultOpen
@@ -353,6 +385,35 @@ bool core::MGUI::drawTreeNode(const std::string& name, const bool isFolder) {
   return result;
 }
 
+bool core::MGUI::drawFloatControl(const char* label, float& inOutValue, float width, float speed, const char* format) {
+  bool result = false;
+  const float textPadding = 10.0f;
+
+  ImGui::PushID(label);
+  ImVec2 textSize = ImGui::CalcTextSize(label);
+
+  ImGui::PushStyleColor(ImGuiCol_Button, core::gui.m_style.greyMedium);
+  ImGui::PushStyleColor(ImGuiCol_ButtonHovered, core::gui.m_style.greyMedium);
+  ImGui::PushStyleColor(ImGuiCol_ButtonActive, core::gui.m_style.greyMedium);
+  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 4 });
+
+  ImGui::Button(label, { textSize.x + textPadding, 21 });
+  ImGui::SameLine();
+
+  ImGui::PushStyleColor(ImGuiCol_Text, m_style.black);
+  ImGui::PushItemWidth(width - textSize.x - textPadding);
+  if (ImGui::DragFloat("##X", &inOutValue, speed, 0.0f, 0.0f, format)) {
+    result = true;
+  }
+
+  ImGui::PopStyleVar();
+  ImGui::PopStyleColor(4);
+  ImGui::PopItemWidth();
+  ImGui::PopID();
+
+  return result;
+}
+
 bool core::MGUI::drawVec3Control(const char* label, glm::vec3& vector,
   float speed, const bool locked, const char* format) {
   //auto boldFont = io.Fonts->Fonts[0];
@@ -364,10 +425,6 @@ bool core::MGUI::drawVec3Control(const char* label, glm::vec3& vector,
   ImGui::Text(label);
 
   const float controlWidth = m_editorData.rightPanelSize.x * 0.78f;
-
-  ImGui::PushStyleColor(ImGuiCol_FrameBg, { 0.8f, 0.8f, 0.8f, 1.0f });
-  ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, { 1.0f, 1.0f, 1.0f, 1.0f });
-  ImGui::PushStyleColor(ImGuiCol_FrameBgActive, { 0.8f, 0.8f, 0.8f, 1.0f });
 
   ImGui::PushMultiItemsWidths(3, controlWidth);
   ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
@@ -444,8 +501,6 @@ bool core::MGUI::drawVec3Control(const char* label, glm::vec3& vector,
   ImGui::PopStyleColor();
 
   ImGui::PopStyleVar();
-
-  ImGui::PopStyleColor(3);
 
   //ImGui::Columns(1);
 

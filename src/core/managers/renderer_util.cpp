@@ -1252,6 +1252,18 @@ void core::MRenderer::setSunCamera(WCameraComponent* pCamera) {
   view.pSunCamera->getOwner()->attachTo(view.pPrimaryCamera->pOwner, EAttachmentMode::Translation);
 }
 
+void core::MRenderer::setMainCamera(WCameraComponent* pNewMainCamera) {
+  view.pMainCamera = pNewMainCamera;
+}
+
+WCameraComponent* core::MRenderer::getMainCamera() {
+  return view.pMainCamera;
+}
+
+WCameraComponent* core::MRenderer::getEnvironmentCamera() {
+  return view.pEnvironmentCamera;
+}
+
 WCameraComponent* core::MRenderer::getCamera() { return view.pActiveCamera; }
 
 void core::MRenderer::setIBLScale(float newScale) {

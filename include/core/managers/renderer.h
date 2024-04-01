@@ -208,6 +208,7 @@ class MRenderer {
   // current camera view data
   struct {
     RCameraInfo cameraSettings;
+    WCameraComponent* pMainCamera = nullptr;    // Must always exist
     WCameraComponent* pActiveCamera = nullptr;
     WCameraComponent* pPrimaryCamera = nullptr;
     WCameraComponent* pSunCamera = nullptr;
@@ -466,10 +467,13 @@ public:
   int32_t getSelectedActorUID();
 
   // set camera from create cameras by name
-  void setCamera(ABase* pCameraOwner, const bool setAsPrimary = false);
-  void setCamera(WCameraComponent* pCamera, const bool setAsPrimary = false);
+  void setCamera(ABase* pCameraOwner, const bool setAsPrimary);
+  void setCamera(WCameraComponent* pCamera, const bool setAsPrimary);
   void setSunCamera(ABase* pCameraOwner);
   void setSunCamera(WCameraComponent* pCamera);
+  void setMainCamera(WCameraComponent* pNewMainCamera);
+  WCameraComponent* getMainCamera();
+  WCameraComponent* getEnvironmentCamera();
 
   // get current renderer camera
   WCameraComponent* getCamera();

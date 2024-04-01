@@ -4,34 +4,39 @@
 
 struct WLightComponent : public WComponent {
   struct {
-    ELightType lightType = ELightType::Point;
+    ELightMode lightMode = ELightMode::Directional;
     glm::vec4 color = glm::vec4(1.0f);
-    glm::vec3 translationOffset = glm::vec3(0.0f);
+    glm::vec3 localTranslation = glm::vec3(0.0f);
+    glm::vec3 relativeTranslation = localTranslation;
     bool isShadowCaster = false;
     bool isEnabled = true;
 
     // Event based data
     glm::vec3 ownerTranslation = glm::vec3(0.0f);
     glm::quat ownerOrientation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+    glm::vec3 ownerScale = glm::vec3(1.0f);
   } data;
 
   WLightComponent(ABase* pActor);
   ~WLightComponent();
 
-  void setLightType(ELightType newType);
-  ELightType getLightType();
+  void setLightMode(ELightMode newMode);
+  ELightMode getLightMode();
 
   void setColor(const glm::vec4& newColor);
   const glm::vec4& getColor();
 
-  void setTranslationOffset(const glm::vec3& newTranslation, const bool isDelta);
-  const glm::vec3& getTranslationOffset();
+  void setLocalTranslation(float x, float y, float z, const bool isDelta);
+  void setLocalTranslation(const glm::vec3& newTranslation, const bool isDelta);
+  const glm::vec3& getLocalTranslation();
+  const glm::vec3& getRelativeTranslation();
   const glm::vec3 getWorldTranslation();
 
   void setIsEnabled(const bool newValue);
   bool getIsEnabled();
 
-  void update() override;
+  void removeLightFromBuffer();
+
   void drawComponentUI() override;
 
   // Event delegates

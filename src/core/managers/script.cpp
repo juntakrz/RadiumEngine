@@ -176,7 +176,7 @@ void core::MScript::jsonParseLights(const json* pLightData) noexcept {
         it.at("type").type();   // invalid type detected unless this is called
         it.at("type").get_to(type);
 
-        info.type = ELightType(type);
+        info.type = ELightMode(type);
       }
 
       if (it.contains("translation")) {
@@ -210,7 +210,7 @@ void core::MScript::jsonParseLights(const json* pLightData) noexcept {
   for (int32_t i = 0; i < lightNames.size(); ++i) {
     /*ALight* pNewLight = core::actors.createLight(lightNames[i].c_str(), &lightInfo[i]);
 
-    if (pNewLight->isShadowCaster() && pNewLight->getLightType() == ELightType::Directional) {
+    if (pNewLight->isShadowCaster() && pNewLight->getLightMode() == ELightMode::Directional) {
       core::renderer.setSunCamera(pNewLight);
       core::actors.setSunLight(pNewLight);
     }*/

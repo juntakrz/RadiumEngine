@@ -5,7 +5,7 @@
 
 class ALight : public ACamera {
  protected:
-  ELightType m_lightType = ELightType::Directional;
+  ELightMode m_lightType = ELightMode::Directional;
 
   // r, g, b = color, a = intensity
   glm::vec4 m_lightProperties;
@@ -29,6 +29,6 @@ class ALight : public ACamera {
   void setAsShadowCaster(const bool isShadowCaster);
   bool isShadowCaster();
 
-  void setLightType(ELightType newType);
-  ELightType getLightType();
+  void setLightMode(ELightMode newType);
+  ELightMode getLightMode();
 };

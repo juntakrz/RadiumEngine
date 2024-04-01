@@ -32,7 +32,7 @@ void core::MActors::updateLightingUBO(RLightingUBO* pLightingBuffer) {
   }
 
   for (const auto& pLight : m_lights.pPointLights) {
-    if (pLight->getIsEnabled() && pLight->getLightType() != ELightType::Directional) {
+    if (pLight->getIsEnabled() && pLight->getLightMode() != ELightMode::Directional) {
       pLightingBuffer->lightLocations[lightCount] = glm::vec4(pLight->getWorldTranslation(), 1.0f);
       pLightingBuffer->lightColors[lightCount] = pLight->getColor();
 
@@ -98,7 +98,7 @@ ABase* core::MActors::getCamera(const std::string& name) {
 }
 
 void core::MActors::setDirectLight(WLightComponent* pDirectLight) {
-  if (pDirectLight && pDirectLight->getLightType() == ELightType::Directional) {
+  if (!pDirectLight || pDirectLight->getLightMode() == ELightMode::Directional) {
     m_lights.pDirectLight = pDirectLight;
     return;
   }

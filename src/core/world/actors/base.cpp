@@ -223,6 +223,10 @@ void ABase::updateComponents() {
   }
 }
 
+void ABase::forceUpdateTransform() {
+  getComponent<WTransformComponent>()->forceUpdateTransform();
+}
+
 void ABase::drawComponentUIElements() {
   for (auto& componentType : m_pComponents) {
     for (auto& component : componentType.second) {

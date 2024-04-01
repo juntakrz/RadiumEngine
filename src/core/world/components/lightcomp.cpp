@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "core/core.h"
 #include "core/managers/actors.h"
+#include "core/managers/gui.h"
 #include "core/world/actors/base.h"
 #include "core/world/components/lightcomp.h"
 
@@ -9,36 +10,35 @@ WLightComponent::WLightComponent(ABase* pActor) {
   pOwner = pActor;
   pEvents = &pOwner->getEventSystem();
   pEvents->addDelegate<TransformUpdateComponentEvent>(this, &WLightComponent::handleTransformUpdateEvent);
-  setLightType(ELightType::Point);
+  setLightMode(ELightMode::Point);
+  pOwner->forceUpdateTransform();
 }
 
 WLightComponent::~WLightComponent() {
-  if (getLightType() == ELightType::Point) {
-    core::actors.removePointLight(this);
-  }
-
+  removeLightFromBuffer();
   pEvents->removeDelegate<TransformUpdateComponentEvent>(&WLightComponent::handleTransformUpdateEvent);
 }
 
-void WLightComponent::setLightType(ELightType newType) {
-  if (data.lightType == newType) return;
+void WLightComponent::setLightMode(ELightMode newType) {
+  if (data.lightMode == newType) return;
 
-  data.lightType = newType;
+  removeLightFromBuffer();
 
   switch (newType) {
-    case ELightType::Directional: {
-      //
-      return;
+    case ELightMode::Directional: {
+      break;
     }
-    case ELightType::Point: {
+    case ELightMode::Point: {
       core::actors.addPointLight(this);
-      return;
+      break;
     }
   }
+
+  data.lightMode = newType;
 }
 
-ELightType WLightComponent::getLightType() {
-  return data.lightType;
+ELightMode WLightComponent::getLightMode() {
+  return data.lightMode;
 }
 
 void WLightComponent::setColor(const glm::vec4& newColor) {
@@ -49,16 +49,25 @@ const glm::vec4& WLightComponent::getColor() {
   return data.color;
 }
 
-void WLightComponent::setTranslationOffset(const glm::vec3& newTranslation, const bool isDelta) {
-  (isDelta) ? data.translationOffset += newTranslation : data.translationOffset = newTranslation;
+void WLightComponent::setLocalTranslation(float x, float y, float z, const bool isDelta) {
+  setLocalTranslation(glm::vec3(x, y, z), isDelta);
 }
 
-const glm::vec3& WLightComponent::getTranslationOffset() {
-  return data.translationOffset;
+void WLightComponent::setLocalTranslation(const glm::vec3& newTranslation, const bool isDelta) {
+  data.localTranslation = (isDelta) ? data.localTranslation + newTranslation : newTranslation;
+  data.relativeTranslation = (data.ownerOrientation * data.localTranslation) * data.ownerScale;
+}
+
+const glm::vec3& WLightComponent::getLocalTranslation() {
+  return data.localTranslation;
+}
+
+const glm::vec3& WLightComponent::getRelativeTranslation() {
+  return data.relativeTranslation;
 }
 
 const glm::vec3 WLightComponent::getWorldTranslation() {
-  return data.ownerTranslation + data.translationOffset;
+  return data.ownerTranslation + data.relativeTranslation;
 }
 
 void WLightComponent::setIsEnabled(const bool newValue) {
@@ -69,11 +78,113 @@ bool WLightComponent::getIsEnabled() {
   return data.isEnabled;
 }
 
-void WLightComponent::update() {
+void WLightComponent::removeLightFromBuffer() {
+  switch (data.lightMode) {
+    case ELightMode::Directional: {
+      if (this == core::actors.getDirectLight()) {
+        core::actors.setDirectLight(nullptr);
+      }
+      return;
+    }
+    case ELightMode::Point: {
+      core::actors.removePointLight(this);
+      return;
+    }
+  }
 }
 
 void WLightComponent::drawComponentUI() {
+  const float availableWidth = ImGui::GetContentRegionAvail().x;
+  bool removeComponent = false;
+
+  glm::vec3 translation = getLocalTranslation();
+
+  const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed
+    | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
+
+  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{ 4, 4 });
+  ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
+
+  bool open = ImGui::TreeNodeEx("Light", treeNodeFlags);
+
+  {
+    ImGui::SameLine(availableWidth - 15.0f);
+
+    ImGui::PushStyleColor(ImGuiCol_Button, core::gui.m_style.greyMedium);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, core::gui.m_style.greyLow);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, core::gui.m_style.greyLow);
+
+
+    if (ImGui::Button("+")) {
+      ImGui::OpenPopup("##ComponentOptions");
+    }
+
+    if (ImGui::BeginPopup("##ComponentOptions", ImGuiWindowFlags_NoMove)) {
+      if (ImGui::Selectable("Remove component")) {
+        removeComponent = true;
+      }
+
+      ImGui::EndPopup();
+    }
+
+    ImGui::PopStyleColor(3);
+  }
+
+  if (open) {
+    const char* lightModes[] = { "Directional", "Point" };
+    const uint8_t currentItem = (uint8_t)data.lightMode;
+
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, core::gui.m_style.black);
+    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, core::gui.m_style.black);
+    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, core::gui.m_style.black);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+
+    if (ImGui::BeginCombo("##LightMode", lightModes[currentItem], ImGuiComboFlags_None)) {
+      for (uint8_t mode = 0; mode < IM_ARRAYSIZE(lightModes); ++mode) {
+        if (ImGui::Selectable(lightModes[mode])) {
+          setLightMode((ELightMode)mode);
+        }
+      }
+
+      ImGui::EndCombo();
+    }
+
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor(3);
+
+    if (core::gui.drawVec3Control("Local translation", translation, core::gui.m_util.dragSensitivity)) {
+      setLocalTranslation(translation, false);
+    }
+
+    ImVec2 buttonSize = ImVec2(ImGui::GetContentRegionAvail().x, 20);
+    if (ImGui::Button("Reset translation", buttonSize)) {
+      setLocalTranslation(glm::vec3(0.0f), false);
+    }
+
+    ImGui::Separator();
+    ImGui::TreePop();
+  }
+
+  ImGui::PopStyleVar(2);
+
+  if (removeComponent) {
+    pOwner->removeComponent(this);
+  }
 }
 
 void WLightComponent::handleTransformUpdateEvent(const ComponentEvent& newEvent) {
+  if (typeid(newEvent) != typeid(TransformUpdateComponentEvent)) {
+    invalidComponentErrorMessage();
+    return;
+  }
+
+  const TransformUpdateComponentEvent& componentEvent =
+    static_cast<const TransformUpdateComponentEvent&>(newEvent);
+
+  data.ownerTranslation = componentEvent.translation;
+  data.ownerOrientation = componentEvent.orientation;
+  data.ownerScale = componentEvent.scale;
+  data.relativeTranslation = (data.ownerOrientation * data.localTranslation) * data.ownerScale;
 }

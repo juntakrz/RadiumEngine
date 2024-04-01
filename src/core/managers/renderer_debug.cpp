@@ -13,9 +13,9 @@ void core::MRenderer::debug_initialize() {
 
 void core::MRenderer::debug_viewMainCamera() {
   RE_LOG(Log, "Viewing main camera.");
-  setCamera(core::actors.getCamera(RCAM_MAIN));
+  setCamera(core::actors.getCamera(RCAM_MAIN), true);
 }
 void core::MRenderer::debug_viewSunCamera() {
   RE_LOG(Log, "Viewing sun camera.");
-  setCamera(core::actors.getCamera(RCAM_SUN));
+  setCamera(core::actors.getCamera(RCAM_SUN), true);
 }

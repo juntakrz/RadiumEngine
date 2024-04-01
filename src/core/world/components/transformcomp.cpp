@@ -3,10 +3,10 @@
 #include "util/math.h"
 #include "core/objects.h"
 #include "core/core.h"
+#include "core/managers/gui.h"
 #include "core/world/actors/base.h"
 #include "core/world/actors/light.h"
 #include "core/world/actors/camera.h"
-#include "core/managers/gui.h"
 #include "core/world/components/componentevents.h"
 #include "core/world/components/transformcomp.h"
 
@@ -187,6 +187,10 @@ const glm::vec3& WTransformComponent::getAttachmentVector() {
   return data.attachmentVector;
 }
 
+void WTransformComponent::forceUpdateTransform() {
+  data.transformRequiresUpdate = true;
+}
+
 void WTransformComponent::onAttachmentModeChanged(ABase* pNewTarget, EAttachmentMode newMode) {
   if (attachmentMode == newMode || (newMode != EAttachmentMode::None && !pNewTarget)) return;
 
@@ -263,71 +267,48 @@ void WTransformComponent::update() {
 }
 
 void WTransformComponent::drawComponentUI() {
-  if (!pOwner) {
-    RE_LOG(Error, "%s: nullptr error.", __FUNCTION__);
-    return;
-  }
+  glm::vec3 translation = data.translation;
+  glm::vec3 rotation = data.rotation;
+  glm::vec3 scale = data.scale;
+  glm::vec3 deltaRotation = glm::degrees(rotation);
 
-  const EActorType actorType = pOwner->getTypeId();
+  const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed
+    | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
 
-  switch (actorType) {
-  case EActorType::Camera: {
-    break;
-  }
-  case EActorType::Light: {
-    break;
-  }
-  default: {
-    glm::vec3 translation = data.translation;
-    glm::vec3 rotation = data.rotation;
-    glm::vec3 scale = data.scale;
-    glm::vec3 deltaRotation = glm::degrees(rotation);
+  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{ 4, 4 });
+  ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
 
-    const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed
-      | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
+  bool open = ImGui::TreeNodeEx("Transform", treeNodeFlags);
 
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{ 4, 4 });
-    ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
-    ImGui::PushStyleColor(ImGuiCol_Header, core::gui.m_style.greyLow);
-    bool open = ImGui::TreeNodeEx("Transform", treeNodeFlags);
-
-    if (open) {
-      if (core::gui.drawVec3Control("Translation", translation, core::gui.m_util.dragSensitivity)) {
-        data.translation = translation;
-        data.transformRequiresUpdate = true;
-      }
-
-      if (core::gui.drawVec3Control("Rotation", deltaRotation, core::gui.m_util.dragSensitivity * 10.0f, false, "%.2f")) {
-        deltaRotation = glm::radians(deltaRotation);
-        deltaRotation -= rotation;
-        data.rotation += deltaRotation;
-        data.orientation *= glm::quat(deltaRotation);
-        math::wrapAnglesGLM(data.rotation);
-        data.transformRequiresUpdate = true;
-      }
-
-      if (core::gui.drawVec3Control("Scale", scale, core::gui.m_util.dragSensitivity, core::gui.m_editorData.isTransformScaleLocked)) {
-        data.scale = scale;
-        data.transformRequiresUpdate = true;
-      }
-
-      ImVec2 lockButtonSize = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::CalcTextSize("unlock").y + 5);
-      ImGui::PushStyleColor(ImGuiCol_Button, (core::gui.m_editorData.isTransformScaleLocked)
-        ? core::gui.m_style.redMedium : core::gui.m_style.greyLow);
-      if (ImGui::Button((core::gui.m_editorData.isTransformScaleLocked) ? "Unlock scale" : "Lock scale", lockButtonSize)) {
-        core::gui.m_editorData.isTransformScaleLocked = !core::gui.m_editorData.isTransformScaleLocked;
-      }
-      ImGui::PopStyleColor();
-
-      ImGui::Separator();
-
-      ImGui::TreePop();
+  if (open) {
+    if (core::gui.drawVec3Control("Translation", translation, core::gui.m_util.dragSensitivity)) {
+      setTranslation(translation, false);
     }
 
-    ImGui::PopStyleVar(2);
+    if (core::gui.drawVec3Control("Rotation", deltaRotation, core::gui.m_util.dragSensitivity * 10.0f, false, "%.2f")) {
+      deltaRotation = glm::radians(deltaRotation);
+      deltaRotation -= rotation;
+      setRotation(deltaRotation, true, true);
+    }
+
+    if (core::gui.drawVec3Control("Scale", scale, core::gui.m_util.dragSensitivity, core::gui.m_editorData.isTransformScaleLocked)) {
+      setScale(scale, false);
+    }
+
+    ImVec2 lockButtonSize = ImVec2(ImGui::GetContentRegionAvail().x, 20);
+    ImGui::PushStyleColor(ImGuiCol_Button, (core::gui.m_editorData.isTransformScaleLocked)
+      ? core::gui.m_style.redMedium : core::gui.m_style.greyLow);
+    if (ImGui::Button((core::gui.m_editorData.isTransformScaleLocked) ? "Unlock scale" : "Lock scale", lockButtonSize)) {
+      core::gui.m_editorData.isTransformScaleLocked = !core::gui.m_editorData.isTransformScaleLocked;
+    }
     ImGui::PopStyleColor();
+
+    ImGui::Separator();
+
+    ImGui::TreePop();
   }
-  }
+
+  ImGui::PopStyleVar(2);
 }
 
 void WTransformComponent::handleControllerTranslation(const ComponentEvent& newEvent) {

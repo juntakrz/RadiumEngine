@@ -22,7 +22,7 @@ public:
     float rightPanelScale = 0.2f;
 
     // Currently selected scene graph entity
-    ABase* pSelectedActor = nullptr;
+    class ABase* pSelectedActor = nullptr;
     ESceneGraphItemType actorType = ESceneGraphItemType::Null;
 
     bool isTransformScaleLocked = false;
@@ -36,7 +36,8 @@ public:
     ImVec4 orange = { 1.0f, 0.647f, 0.0f, 1.0f };
     ImVec4 redMedium = { 0.5f, 0.01f, 0.01f, 1.0f };
     ImVec4 redBright = { 0.8f, 0.01f, 0.01f, 1.0f };
-    ImVec4 white = { 1.0f, 1.0f, 1.0f, 1.0f };
+    ImVec4 whiteMedium = { 0.88f, 0.88f, 0.88f, 1.0f };
+    ImVec4 whiteBright = { 1.0f, 1.0f, 1.0f, 1.0f };
 
     float panelDisabledTextAlpha = 0.2f;
     float panelBorderSize = 1.0f;
@@ -78,9 +79,13 @@ public:
   void drawActorProperties();
   void drawSceneProperties();
 
+  void drawAddComponent();
+
   bool drawTreeNode(const std::string& name, const bool isFolder = false);
+  bool drawFloatControl(const char* label, float& inOutValue, float width = 0.0f,
+                        float speed = 0.01f, const char* format = "%.3f");
   bool drawVec3Control(const char* label, glm::vec3& vector,
-    float speed = 0.01f, const bool locked = false, const char* format = "%.3f");
+                       float speed = 0.01f, const bool locked = false, const char* format = "%.3f");
   void drawFrameInfo();
 
   void selectSceneGraphItem(const std::string& name, ESceneGraphItemType itemType);

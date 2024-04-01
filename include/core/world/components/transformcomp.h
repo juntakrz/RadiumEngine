@@ -13,7 +13,7 @@ struct WTransformComponent : public WComponent {
     // Forward vector doubles as a 'look at' target for cameras
     glm::vec3 translation = glm::vec3(0.0f);
     glm::vec3 rotation = glm::vec3(0.0f);
-    glm::vec3 scale = glm::vec3(0.0f);
+    glm::vec3 scale = glm::vec3(1.0f);
     glm::quat orientation = glm::quat(rotation);
     
     // x - translation delta, y - rotation delta, z - scale delta
@@ -61,6 +61,8 @@ struct WTransformComponent : public WComponent {
   void setAttachmentVectorRotation(const glm::vec3& newRotation, const bool isInRadians, const bool isDelta);
   void setBaseAttachmentVectorLength(const float newLength);
   const glm::vec3& getAttachmentVector();
+
+  void forceUpdateTransform();
 
   void onAttachmentModeChanged(ABase* pNewTarget, EAttachmentMode newMode) override;
   void onOwnerControlled() override;

@@ -35,6 +35,6 @@ bool ALight::isShadowCaster() {
   return m_isShadowCaster;
 }
 
-void ALight::setLightType(ELightType newType) { m_lightType = newType; }
+void ALight::setLightMode(ELightMode newType) { m_lightType = newType; }
 
-ELightType ALight::getLightType() { return m_lightType; }
+ELightMode ALight::getLightMode() { return m_lightType; }

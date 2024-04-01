@@ -1,5 +1,8 @@
 #include "pch.h"
 #include "util/math.h"
+#include "core/core.h"
+#include "core/managers/gui.h"
+#include "core/managers/renderer.h"
 #include "core/world/actors/base.h"
 #include "core/world/components/transformcomp.h"
 #include "core/world/components/cameracomp.h"
@@ -13,26 +16,26 @@ WCameraComponent::WCameraComponent(ABase* pActor) {
   pEvents->addDelegate<TransformUpdateComponentEvent>(this, &WCameraComponent::handleTransformUpdateEvent);
 }
 
-void WCameraComponent::setTranslationOffset(float x, float y, float z, bool isDelta) {
-  data.translationOffset.x = (isDelta) ? data.translationOffset.x + x  : x;
-  data.translationOffset.y = (isDelta) ? data.translationOffset.y + y  : y;
-  data.translationOffset.z = (isDelta) ? data.translationOffset.z + z  : z;
-
-  data.viewRequiresUpdate = true;
+void WCameraComponent::setLocalTranslation(float x, float y, float z, bool isDelta) {
+  setLocalTranslation(glm::vec3(x, y, z), isDelta);
 }
 
-void WCameraComponent::setTranslationOffset(const glm::vec3& newTranslation, bool isDelta) {
-  data.translationOffset = (isDelta) ? data.translationOffset + newTranslation : newTranslation;
-
+void WCameraComponent::setLocalTranslation(const glm::vec3& newTranslation, bool isDelta) {
+  data.localTranslation = (isDelta) ? data.localTranslation + newTranslation : newTranslation;
+  data.relativeTranslation = (data.ownerOrientation * data.localTranslation) * data.ownerScale;
   data.viewRequiresUpdate = true;
 }
 
 const glm::vec3 WCameraComponent::getWorldTranslation() {
-  return data.ownerTranslation + data.translationOffset;
+  return data.ownerTranslation + data.relativeTranslation;
 }
 
-const glm::vec3& WCameraComponent::getTranslationOffset() {
-  return data.translationOffset;
+const glm::vec3& WCameraComponent::getLocalTranslation() {
+  return data.localTranslation;
+}
+
+const glm::vec3& WCameraComponent::getRelativeTranslation() {
+  return data.relativeTranslation;
 }
 
 void WCameraComponent::setProjectionMode(ECameraProjection newMode) {
@@ -161,6 +164,107 @@ void WCameraComponent::update() {
 }
 
 void WCameraComponent::drawComponentUI() {
+  const float availableWidth = ImGui::GetContentRegionAvail().x;
+  bool removeComponent = false;
+
+  glm::vec3 translation = getLocalTranslation();
+
+  const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed
+    | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
+
+  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{ 4, 4 });
+  ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
+
+  bool open = ImGui::TreeNodeEx("Camera", treeNodeFlags);
+
+  if (this != core::renderer.getMainCamera() && this != core::renderer.getEnvironmentCamera()) {
+    ImGui::SameLine(availableWidth - 15.0f);
+
+    ImGui::PushStyleColor(ImGuiCol_Button, core::gui.m_style.greyMedium);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, core::gui.m_style.greyLow);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, core::gui.m_style.greyLow);
+
+    if (ImGui::Button("+")) {
+      ImGui::OpenPopup("##ComponentOptions");
+    }
+
+    if (ImGui::BeginPopup("##ComponentOptions", ImGuiWindowFlags_NoMove)) {
+      if (ImGui::Selectable("Remove component")) {
+        removeComponent = true;
+      }
+
+      ImGui::EndPopup();
+    }
+
+    ImGui::PopStyleColor(3);
+  }
+
+  if (open) {
+    const char* projectionModes[] = { "Perspective", "Orthographic" };
+    const uint8_t currentItem = (uint8_t)data.projectionMode;
+
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, core::gui.m_style.black);
+    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, core::gui.m_style.black);
+    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, core::gui.m_style.black);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+
+    if (ImGui::BeginCombo("##Projection", projectionModes[currentItem], ImGuiComboFlags_None)) {
+      for (uint8_t mode = 0; mode < IM_ARRAYSIZE(projectionModes); ++mode) {
+        if (ImGui::Selectable(projectionModes[mode])) {
+          setProjectionMode((ECameraProjection)mode);
+        }
+      }
+
+      ImGui::EndCombo();
+    }
+
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor(3);
+
+    if (core::gui.drawVec3Control("Local translation", translation, core::gui.m_util.dragSensitivity)) {
+      setLocalTranslation(translation, false);
+    }
+
+    ImVec2 buttonSize = ImVec2(ImGui::GetContentRegionAvail().x, 20);
+    if (ImGui::Button("Reset translation", buttonSize)) {
+      setLocalTranslation(glm::vec3(0.0f), false);
+    }
+
+    const float controlWidth = ImGui::GetContentRegionAvail().x * 0.5f;
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 4 });
+
+    if (core::gui.drawFloatControl("FOV", (data.projectionMode == ECameraProjection::Perspective)
+                                   ? data.FOV : data.orthoFOV, controlWidth, 1.0f, "%.0f")) {
+      data.projectionRequiresUpdate = true;
+    }
+
+    ImGui::SameLine();
+
+    if (core::gui.drawFloatControl("VD", data.viewDistance, controlWidth, 1.0f, "%.0f")) {
+      data.projectionRequiresUpdate = true;
+    }
+
+    ImGui::PopStyleVar();
+
+    if (ImGui::Button("View this camera", {ImGui::GetContentRegionAvail().x, 0})) {
+      core::renderer.setCamera(this, true);
+    }
+
+    ImGui::Separator();
+    ImGui::TreePop();
+  }
+
+  ImGui::PopStyleVar(2);
+
+  if (removeComponent) {
+    if (core::renderer.getCamera() == this) {
+      core::renderer.setCamera(core::renderer.getMainCamera(), true);
+    }
+
+    pOwner->removeComponent(this);
+  }
 }
 
 void WCameraComponent::handleTransformUpdateEvent(const ComponentEvent& newEvent) {
@@ -174,7 +278,9 @@ void WCameraComponent::handleTransformUpdateEvent(const ComponentEvent& newEvent
 
   data.ownerTranslation = componentEvent.translation;
   data.ownerOrientation = componentEvent.orientation;
+  data.ownerScale = componentEvent.scale;
   data.focusVector = componentEvent.attachmentVector;
+  data.relativeTranslation = (data.ownerOrientation * data.localTranslation) * data.ownerScale;
 
   data.viewRequiresUpdate = true;
 }

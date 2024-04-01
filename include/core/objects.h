@@ -144,7 +144,7 @@ enum class EIndirectPassIndex : uint32_t {
   Count
 };
 
-enum class ELightType {
+enum class ELightMode {
   Directional,
   Point
 };
@@ -323,7 +323,7 @@ struct RInstanceData {
 };
 
 struct RLightInfo {
-  ELightType type = ELightType::Point;
+  ELightMode type = ELightMode::Point;
   glm::vec3 color = {1.0f, 1.0f, 1.0f};
   float intensity = 1.0f;
   glm::vec3 direction = {0.0f, 0.0f, 0.0f};   // used by directional light only
