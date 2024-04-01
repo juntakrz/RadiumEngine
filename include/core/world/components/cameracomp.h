@@ -31,6 +31,7 @@ struct WCameraComponent : public WComponent {
   } data;
 
   WCameraComponent(ABase* pActor);
+  ~WCameraComponent();
 
   void setLocalTranslation(float x, float y, float z, bool isDelta = false);
   void setLocalTranslation(const glm::vec3& newTranslation, bool isDelta = false);

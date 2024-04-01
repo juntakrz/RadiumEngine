@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "core/core.h"
 #include "core/managers/animations.h"
-#include "core/managers/ref.h"
+#include "core/managers/scene.h"
 #include "core/managers/renderer.h"
 #include "core/model/model.h"
 #include "core/world/actors/entity.h"
@@ -160,7 +160,7 @@ void AEntity::bindToRenderer() {
   m_instanceIndex = m_pModel->m_instanceCount - 1;
 
   // Register entity with the scene graph
-  core::ref.registerInstance(this);
+  core::scene.registerInstance(this);
 }
 
 void AEntity::unbindFromRenderer() {

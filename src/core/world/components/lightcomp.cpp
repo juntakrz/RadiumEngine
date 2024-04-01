@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "core/core.h"
-#include "core/managers/actors.h"
 #include "core/managers/gui.h"
+#include "core/managers/scene.h"
 #include "core/world/actors/base.h"
 #include "core/world/components/lightcomp.h"
 
@@ -29,7 +29,7 @@ void WLightComponent::setLightMode(ELightMode newType) {
       break;
     }
     case ELightMode::Point: {
-      core::actors.addPointLight(this);
+      core::scene.registerPointLight(this);
       break;
     }
   }
@@ -81,13 +81,13 @@ bool WLightComponent::getIsEnabled() {
 void WLightComponent::removeLightFromBuffer() {
   switch (data.lightMode) {
     case ELightMode::Directional: {
-      if (this == core::actors.getDirectLight()) {
-        core::actors.setDirectLight(nullptr);
+      if (this == core::scene.getDirectLight()) {
+        core::scene.setDirectLight(nullptr);
       }
       return;
     }
     case ELightMode::Point: {
-      core::actors.removePointLight(this);
+      core::scene.unregisterPointLight(this);
       return;
     }
   }

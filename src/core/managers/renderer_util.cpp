@@ -2,9 +2,8 @@
 #include "vk_mem_alloc.h"
 #include "core/core.h"
 #include "core/managers/animations.h"
-#include "core/managers/ref.h"
 #include "core/managers/renderer.h"
-#include "core/managers/actors.h"
+#include "core/managers/scene.h"
 #include "core/managers/time.h"
 #include "core/material/texture.h"
 #include "core/model/model.h"
@@ -301,7 +300,7 @@ void core::MRenderer::updateBoundEntities() {
   // Use this thread to also quickly process camera exposure level
   updateExposureLevel();
 
-  for (auto& actor : core::actors.m_sceneActors) {
+  for (auto& actor : core::scene.m_sceneActors) {
     actor.second->updateComponents();
   }
 

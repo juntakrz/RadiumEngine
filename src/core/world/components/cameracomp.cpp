@@ -3,6 +3,7 @@
 #include "core/core.h"
 #include "core/managers/gui.h"
 #include "core/managers/renderer.h"
+#include "core/managers/scene.h"
 #include "core/world/actors/base.h"
 #include "core/world/components/transformcomp.h"
 #include "core/world/components/cameracomp.h"
@@ -14,6 +15,12 @@ WCameraComponent::WCameraComponent(ABase* pActor) {
 
   // Subscribe to appropriate events
   pEvents->addDelegate<TransformUpdateComponentEvent>(this, &WCameraComponent::handleTransformUpdateEvent);
+
+  core::scene.registerCamera(this);
+}
+
+WCameraComponent::~WCameraComponent() {
+  core::scene.unregisterCamera(this);
 }
 
 void WCameraComponent::setLocalTranslation(float x, float y, float z, bool isDelta) {

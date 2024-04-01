@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "core/core.h"
 #include "core/managers/input.h"
-#include "core/managers/actors.h"
+#include "core/managers/scene.h"
 #include "core/managers/renderer.h"
 
 void core::MRenderer::debug_initialize() {
@@ -13,9 +13,9 @@ void core::MRenderer::debug_initialize() {
 
 void core::MRenderer::debug_viewMainCamera() {
   RE_LOG(Log, "Viewing main camera.");
-  setCamera(core::actors.getCamera(RCAM_MAIN), true);
+  setCamera(core::scene.getCamera(RCAM_MAIN), true);
 }
 void core::MRenderer::debug_viewSunCamera() {
   RE_LOG(Log, "Viewing sun camera.");
-  setCamera(core::actors.getCamera(RCAM_SUN), true);
+  setCamera(core::scene.getCamera(RCAM_SUN), true);
 }

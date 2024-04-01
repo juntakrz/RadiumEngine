@@ -1,11 +1,10 @@
 #include "pch.h"
-#include "core/core.h"
-#include "core/managers/script.h"
-#include "core/managers/renderer.h"
-#include "core/managers/actors.h"
-#include "core/managers/player.h"
-#include "core/managers/ref.h"
 #include "util/util.h"
+#include "core/core.h"
+#include "core/managers/player.h"
+#include "core/managers/renderer.h"
+#include "core/managers/scene.h"
+#include "core/managers/script.h"
 
 using json = nlohmann::json;
 
@@ -104,7 +103,7 @@ void core::MScript::jsonParseCameras(const json* pCameraData) noexcept {
       float rotation[3] = {0.0f, 0.0f, 0.0f};
       float upVector[3] = {0.0f, 1.0f, 0.0f};
 
-      ABase* pCameraActor = core::actors.createCamera(name, nullptr);
+      ABase* pCameraActor = core::scene.createCamera(name, nullptr);
 
       // set camera position
       if (it.contains("translation")) {
@@ -142,7 +141,7 @@ void core::MScript::jsonParseCameras(const json* pCameraData) noexcept {
   }
 
   if (activatedCamera != "") {
-    ABase* pActor = core::ref.getActor(activatedCamera);
+    ABase* pActor = core::scene.getActor(activatedCamera);
     core::renderer.setCamera(pActor, true);
 
     // TODO: make this a separate thing in a map config
@@ -208,11 +207,11 @@ void core::MScript::jsonParseLights(const json* pLightData) noexcept {
   }
 
   for (int32_t i = 0; i < lightNames.size(); ++i) {
-    /*ALight* pNewLight = core::actors.createLight(lightNames[i].c_str(), &lightInfo[i]);
+    /*ALight* pNewLight = core::scene.createLight(lightNames[i].c_str(), &lightInfo[i]);
 
     if (pNewLight->isShadowCaster() && pNewLight->getLightMode() == ELightMode::Directional) {
       core::renderer.setSunCamera(pNewLight);
-      core::actors.setSunLight(pNewLight);
+      core::scene.setSunLight(pNewLight);
     }*/
   }
 }

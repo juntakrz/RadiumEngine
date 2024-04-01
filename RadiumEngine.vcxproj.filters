@@ -54,9 +54,6 @@
     <ClCompile Include="src\core\managers\input.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\actors.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\core\model\primitive.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -84,7 +81,7 @@
     <ClCompile Include="src\core\managers\script.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\managers\ref.cpp">
+    <ClCompile Include="src\core\managers\scene.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\managers\resources_material.cpp">
@@ -260,9 +257,6 @@
     <ClInclude Include="include\core\model\cube.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\managers\actors.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\core\model\primitive.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -281,7 +275,7 @@
     <ClInclude Include="include\core\managers\script.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\managers\ref.h">
+    <ClInclude Include="include\core\managers\scene.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\core\managers\resources.h">

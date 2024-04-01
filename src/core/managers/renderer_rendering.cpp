@@ -2,7 +2,7 @@
 #include "core/core.h"
 #include "core/managers/actors.h"
 #include "core/managers/gui.h"
-#include "core/managers/ref.h"
+#include "core/managers/scene.h"
 #include "core/managers/time.h"
 #include "core/managers/world.h"
 #include "core/world/actors/entity.h"

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/world/actors/base.h"
+
 namespace core {
 class MGUI {
 public:

@@ -1,9 +1,6 @@
 #pragma once
 
 namespace core {
-// Actors manager, manages interactive entities in the 3D world
-extern class MActors& actors;
-
 // Animations manager, provides animations to models
 extern class MAnimations& animations;
 
@@ -19,14 +16,14 @@ extern class MInput& input;
 // Player manager, provides interaction between the player and everything else
 extern class MPlayer& player;
 
-// Reference manager, stores fast references to various kinds of objects
-extern class MRef& ref;
-
 // Rendering manager, directly communicates with Vulkan API
 extern class MRenderer& renderer;
 
 // Materials manager, manages textures, shaders and materials
 extern class MResources& resources;
+
+// Scene manager for all actors and scene graph
+extern class MScene& scene;
 
 // Script manager, parses data from JSON
 extern class MScript& script;

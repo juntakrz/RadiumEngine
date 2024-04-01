@@ -3,9 +3,8 @@
 #include "util/math.h"
 #include "core/core.h"
 #include "core/managers/window.h"
-#include "core/managers/actors.h"
 #include "core/managers/debug.h"
-#include "core/managers/ref.h"
+#include "core/managers/scene.h"
 #include "core/managers/renderer.h"
 #include "core/managers/resources.h"
 #include "core/model/model.h"
@@ -135,7 +134,7 @@ void core::MGUI::drawMainMenu() {
 }
 
 void core::MGUI::drawSceneGraph() {
-  const auto& sceneGraph = core::ref.getSceneGraph();
+  const auto& sceneGraph = core::scene.getSceneGraph();
   m_util.sceneGraphNodeIndex = 0;
 
   // Begin border area
@@ -145,7 +144,7 @@ void core::MGUI::drawSceneGraph() {
   ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
   ImGui::BeginChild("##TreeNodeList", ImVec2(0, 0), ImGuiChildFlags_Border);
 
-  if (drawTreeNode(core::ref.getSceneName(), true)) {
+  if (drawTreeNode(core::scene.getSceneName(), true)) {
     if (drawTreeNode("Actors", true)) {
       for (const auto& actor : sceneGraph.actors) {
         if (drawTreeNode(actor->getName())) {
@@ -181,35 +180,6 @@ void core::MGUI::drawSceneGraph() {
 
       ImGui::TreePop();
     }
-
-    if (drawTreeNode("Cameras", true)) {
-      for (const auto& camera : sceneGraph.cameras) {
-        if (drawTreeNode(camera->getName())) {
-          if (ImGui::IsItemClicked()) {
-            selectSceneGraphItem(camera->getName(), ESceneGraphItemType::Camera);
-          }
-
-          ImGui::TreePop();
-        }
-      }
-
-      ImGui::TreePop();
-    }
-
-    if (drawTreeNode("Lights", true)) {
-      for (const auto& light : sceneGraph.lights) {
-        if (drawTreeNode(light->getName())) {
-          if (ImGui::IsItemClicked()) {
-            selectSceneGraphItem(light->getName(), ESceneGraphItemType::Light);
-          }
-
-          ImGui::TreePop();
-        }
-      }
-
-      ImGui::TreePop();
-    }
-
 
     ImGui::TreePop();
   }
@@ -302,7 +272,7 @@ void core::MGUI::drawSceneProperties() {
   ImGui::Text("Name: ");
   ImGui::SameLine();
 
-  copyToTextBuffer(core::ref.getSceneName());
+  copyToTextBuffer(core::scene.getSceneName());
 
   // Push style for text input field
   ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
@@ -312,7 +282,7 @@ void core::MGUI::drawSceneProperties() {
   ImGui::SetNextItemWidth(inputTextWidth);
 
   if (ImGui::InputText("##SceneNameInput", m_util.textBuffer, 32, ImGuiInputTextFlags_EnterReturnsTrue)) {
-    core::ref.setSceneName(m_util.textBuffer);
+    core::scene.setSceneName(m_util.textBuffer);
   }
 
   // Pop style for text input field
@@ -517,12 +487,12 @@ void core::MGUI::drawFrameInfo() {
 }
 
 void core::MGUI::selectSceneGraphItem(const std::string& name, ESceneGraphItemType itemType) {
-  m_editorData.pSelectedActor = core::ref.getActor(name);
+  m_editorData.pSelectedActor = core::scene.getActor(name);
   m_editorData.actorType = itemType;
 }
 
 void core::MGUI::selectSceneGraphItem(const int32_t UID) {
-  m_editorData.pSelectedActor = core::ref.getActor(UID);
+  m_editorData.pSelectedActor = core::scene.getActor(UID);
 
   switch (m_editorData.pSelectedActor->getTypeId()) {
     case EActorType::Entity:

@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "core/core.h"
-#include "core/managers/ref.h"
+#include "core/managers/scene.h"
 #include "core/managers/time.h"
 #include "core/world/actors/base.h"
 #include "core/world/actors/camera.h"
@@ -166,7 +166,7 @@ void ABase::setName(const std::string& name) {
   m_previousName = m_name;
   m_name = name;
 
-  core::ref.registerActor(this);
+  core::scene.registerActor(this);
 }
 
 const std::string& ABase::getName() { return m_name; }

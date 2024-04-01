@@ -3,8 +3,8 @@
 #include "util/math.h"
 #include "core/core.h"
 #include "core/managers/debug.h"
+#include "core/managers/scene.h"
 #include "core/managers/window.h"
-#include "core/managers/actors.h"
 #include "core/managers/world.h"
 #include "core/managers/renderer.h"
 
@@ -400,7 +400,7 @@ TResult core::MRenderer::setRendererDefaults() {
   cameraInfo.nearZ = RE_NEARZ;
   cameraInfo.viewDistance = config::viewDistance;
 
-  ABase* pCameraActor = core::actors.createCamera(RCAM_ENV, &cameraInfo);
+  ABase* pCameraActor = core::scene.createCamera(RCAM_ENV, &cameraInfo);
 
   // Set transformation array for the environment camera
   environment.cameraTransformVectors[0] = glm::vec3(0.0f, glm::radians(90.0f), 0.0f);   // X+
@@ -416,7 +416,7 @@ TResult core::MRenderer::setRendererDefaults() {
 
   // RCAM_MAIN
   cameraInfo.FOV = config::FOV;
-  pCameraActor = core::actors.createCamera(RCAM_MAIN, &cameraInfo);
+  pCameraActor = core::scene.createCamera(RCAM_MAIN, &cameraInfo);
 
   if (!pCameraActor) {
     return RE_CRITICAL;
@@ -775,7 +775,7 @@ void core::MRenderer::deinitialize() {
   destroyDynamicRenderingPasses();
   destroySceneBuffers();
   destroySurface();
-  core::actors.destroyAllPawns();
+  core::scene.destroyAllPawns();            // TODO: Deprecated
   core::world.destroyAllModels();
   core::resources.destroyAllTextures();
   destroySamplers();
@@ -806,7 +806,7 @@ bool core::MRenderer::isLayoutTransitionEnabled() {
 }
 
 void core::MRenderer::updateLightingUBO(const int32_t frameIndex) {
-  core::actors.updateLightingUBO(&lighting.data);
+  core::scene.updateLightingBuffer(&lighting.data);
 
   lighting.data.aoMode = config::ambientOcclusionMode;
 

@@ -4,23 +4,21 @@
 #include "core/managers/renderer.h"
 #include "core/managers/debug.h"
 #include "core/managers/input.h"
-#include "core/managers/actors.h"
 #include "core/managers/animations.h"
 #include "core/managers/gui.h"
 #include "core/managers/player.h"
 #include "core/managers/script.h"
-#include "core/managers/ref.h"
+#include "core/managers/scene.h"
 #include "core/managers/time.h"
 #include "core/managers/resources.h"
 #include "core/managers/world.h"
 
-class core::MActors& core::actors = MActors::get();
 class core::MAnimations& core::animations = MAnimations::get();
 class core::MDebug& core::debug = MDebug::get();
 class core::MGUI& core::gui = MGUI::get();
 class core::MInput& core::input = MInput::get();
 class core::MPlayer& core::player = MPlayer::get();
-class core::MRef& core::ref = MRef::get();
+class core::MScene& core::scene = MScene::get();
 class core::MRenderer& core::renderer = MRenderer::get();
 class core::MResources& core::resources = MResources::get();
 class core::MScript& core::script = MScript::get();
@@ -44,7 +42,7 @@ void core::run() {
   RE_LOG(Log, "Successfully initialized engine core.");
 
   core::script.loadMap("default");
-  core::ref.setSceneName("Default Scene");
+  core::scene.setSceneName("Default Scene");
 
   // remove this after loadMap improvements -------- //
   RSamplerInfo samplerInfo{};
@@ -92,7 +90,7 @@ void core::run() {
   entityInfo.translation = glm::vec3(1.0f, -0.8f, 2.0f);
   entityInfo.scale = glm::vec3(0.18f);
   
-  APawn* pPawn = core::actors.createPawn(&entityInfo);
+  APawn* pPawn = core::scene.createPawn(&entityInfo);
   //pPawn->changeRenderPass(EDynamicRenderingPass::BlendCullNone);
   //pPawn->setInstancePrimitiveMaterial(0, 0, "RMat_Light0");
   
@@ -102,14 +100,14 @@ void core::run() {
   entityInfo.translation = glm::vec3(1.5f, 1.4f, 3.3f);
   entityInfo.scale = glm::vec3(0.1f);
 
-  pPawn = core::actors.createPawn(&entityInfo);
+  pPawn = core::scene.createPawn(&entityInfo);
   pPawn->setInstancePrimitiveMaterial(0, 0, "RMat_Light1");
 
   entityInfo = WEntityCreateInfo{};
   entityInfo.name = "Skybox";
   entityInfo.pModel = core::world.getModel(RMDL_SKYBOX);
 
-  AStatic* pStatic = core::actors.createStatic(&entityInfo);
+  AStatic* pStatic = core::scene.createStatic(&entityInfo);
 
   entityInfo = WEntityCreateInfo{};
   entityInfo.name = "Static01";
@@ -118,7 +116,7 @@ void core::run() {
   entityInfo.rotation = glm::vec3(0.0f, 100.0f, 0.0f);
   entityInfo.scale = glm::vec3(0.32f);
   
-  pStatic = core::actors.createStatic(&entityInfo);
+  pStatic = core::scene.createStatic(&entityInfo);
 
   //pStatic->getModel()->bindAnimation("Windy day");
   //pStatic->getModel()->playAnimation("Windy day");
@@ -132,14 +130,14 @@ void core::run() {
   entityInfo.translation = glm::vec3(1.0f, -1.1f, 0.4f);
   entityInfo.rotation = glm::vec3(0.0f, -150.0f, 0.0f);
 
-  pStatic = core::actors.createStatic(&entityInfo);
+  pStatic = core::scene.createStatic(&entityInfo);
   pStatic->playAnimation("SwordAndShieldIdle");
 
   entityInfo.name = "Static03";
   entityInfo.translation = glm::vec3(2.5f, -1.38f, 2.1f);
   entityInfo.rotation = glm::vec3(0.0f, 180.0f, 0.0f);
 
-  pStatic = core::actors.createStatic(&entityInfo);
+  pStatic = core::scene.createStatic(&entityInfo);
   pStatic->playAnimation("SwordAndShieldIdle", 1.12f, true, true);
 
   entityInfo = WEntityCreateInfo{};
@@ -148,7 +146,7 @@ void core::run() {
   entityInfo.translation = glm::vec3(0.0f, 6.17f, 12.0f);
   entityInfo.scale = glm::vec3(2.0f);
 
-  pStatic = core::actors.createStatic(&entityInfo);
+  pStatic = core::scene.createStatic(&entityInfo);
   pStatic->setRotation(glm::vec3(-28.65f, -22.92f, 0.0f));
 
   entityInfo = WEntityCreateInfo{};
@@ -157,7 +155,7 @@ void core::run() {
   entityInfo.translation = glm::vec3(1.0f, -1.35f, -0.8f);
   entityInfo.scale = glm::vec3(1.25f, 1.0f, 1.0f);
 
-  pStatic = core::actors.createStatic(&entityInfo);
+  pStatic = core::scene.createStatic(&entityInfo);
   pStatic->setRotation(glm::vec3(0.0f, 0.0f, 85.94f));
 
   entityInfo = WEntityCreateInfo{};
@@ -166,14 +164,14 @@ void core::run() {
   entityInfo.translation = glm::vec3(-0.12f, -0.7f, -0.3f);
   entityInfo.scale = glm::vec3(0.4f);
 
-  pStatic = core::actors.createStatic(&entityInfo);
+  pStatic = core::scene.createStatic(&entityInfo);
   pStatic->setRotation(glm::vec3(-90.0f, 0.0f, 0.0f));
 
   entityInfo.name = "StaticGrass1";
   entityInfo.translation = glm::vec3(0.3f, -0.68f, -0.4f);
   entityInfo.scale = glm::vec3(0.35f);
 
-  pStatic = core::actors.createStatic(&entityInfo);
+  pStatic = core::scene.createStatic(&entityInfo);
   pStatic->setRotation(glm::vec3(-90.0f, 30.0f, 0.0f));
 
   //core::animations.saveAnimation("SwordAndShieldIdle", "SwordAndShieldIdle");

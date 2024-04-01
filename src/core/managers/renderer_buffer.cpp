@@ -3,7 +3,7 @@
 #include "core/material/texture.h"
 #include "core/model/model.h"
 #include "core/world/actors/entity.h"
-#include "core/managers/actors.h"
+#include "core/managers/scene.h"
 #include "core/managers/renderer.h"
 
 TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuffer& outBuffer, void* inData) {
