@@ -1,11 +1,12 @@
 #include "pch.h"
 #include "util/util.h"
 #include "core/core.h"
-#include "core/managers/window.h"
 #include "core/managers/debug.h"
+#include "core/managers/input.h"
 #include "core/managers/scene.h"
 #include "core/managers/renderer.h"
 #include "core/managers/resources.h"
+#include "core/managers/window.h"
 #include "core/model/model.h"
 #include "core/managers/gui.h"
 
@@ -73,16 +74,44 @@ void core::MGUI::setupEditor() {
 
   // ImGuizmo setup
   ImGuizmo::Style& imGuizmoStyle = ImGuizmo::GetStyle();
-  imGuizmoStyle.RotationLineThickness = 5.0f;
-  imGuizmoStyle.RotationOuterLineThickness = 3.0f;
+  imGuizmoStyle.TranslationLineThickness = 6.0f;
+  imGuizmoStyle.TranslationLineArrowSize = 6.0f;
+  imGuizmoStyle.RotationLineThickness = 6.0f;
+  imGuizmoStyle.RotationOuterLineThickness = 4.0f;
+  imGuizmoStyle.ScaleLineThickness = 6.0f;
+  imGuizmoStyle.ScaleLineCircleSize = 6.0f;
 
-  ImGuizmo::SetGizmoSizeClipSpace(0.082f);
+  // Keyboard shortcuts
+  core::input.bindFunction(GLFW_KEY_1, GLFW_PRESS, this, &MGUI::setTransformModeNone, false);
+  core::input.bindFunction(GLFW_KEY_2, GLFW_PRESS, this, &MGUI::setTransformModeTranslate, false);
+  core::input.bindFunction(GLFW_KEY_3, GLFW_PRESS, this, &MGUI::setTransformModeRotate, false);
+  core::input.bindFunction(GLFW_KEY_4, GLFW_PRESS, this, &MGUI::setTransformModeScale, false);
 }
 
 void core::MGUI::copyToTextBuffer(const std::string& text) {
   m_util.textBufferSize = (text.size() > 1024) ? 1024 : text.size();
   memset(m_util.textBuffer, 0, 1024);
   memcpy(m_util.textBuffer, text.data(), m_util.textBufferSize);
+}
+
+void core::MGUI::setTransformMode(ImGuizmo::OPERATION newMode) {
+  m_editorData.transformMode = newMode;
+}
+
+void core::MGUI::setTransformModeNone() {
+  setTransformMode(ImGuizmo::OPERATION::UNIVERSAL);
+}
+
+void core::MGUI::setTransformModeTranslate() {
+  setTransformMode(ImGuizmo::OPERATION::TRANSLATE);
+}
+
+void core::MGUI::setTransformModeRotate() {
+  setTransformMode(ImGuizmo::OPERATION::ROTATE);
+}
+
+void core::MGUI::setTransformModeScale() {
+  setTransformMode(ImGuizmo::OPERATION::SCALE);
 }
 
 void core::MGUI::initialize() {

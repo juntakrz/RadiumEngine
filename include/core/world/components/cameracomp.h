@@ -33,8 +33,8 @@ struct WCameraComponent : public WComponent {
   WCameraComponent(ABase* pActor);
   ~WCameraComponent();
 
-  void setLocalTranslation(float x, float y, float z, bool isDelta = false);
-  void setLocalTranslation(const glm::vec3& newTranslation, bool isDelta = false);
+  void setLocalTranslation(float x, float y, float z, bool isDelta);
+  void setLocalTranslation(const glm::vec3& newTranslation, bool isDelta);
 
   // Current camera location in the world, a sum of transform position and local camera offset
   const glm::vec3 getWorldTranslation();

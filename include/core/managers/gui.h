@@ -19,6 +19,10 @@ public:
     class ABase* pSelectedActor = nullptr;
 
     bool isTransformScaleLocked = false;
+
+    // 'Universal' operation acts as 'None'
+    ImGuizmo::OPERATION transformMode = ImGuizmo::OPERATION::UNIVERSAL;
+    float guizmoScale = 1.0f;
   } m_editorData;
 
   struct EditorStyle {
@@ -87,6 +91,13 @@ public:
   void selectSceneGraphItem(const int32_t UID);
 
   void copyToTextBuffer(const std::string& text);
+
+  void setTransformMode(ImGuizmo::OPERATION newMode);
+
+  void setTransformModeNone();
+  void setTransformModeTranslate();
+  void setTransformModeRotate();
+  void setTransformModeScale();
 
 public:
   static MGUI& get() {

@@ -41,6 +41,12 @@ void WTransformComponent::setTranslation(const glm::vec3& newTranslation, bool i
   data.transformRequiresUpdate = true;
 }
 
+void WTransformComponent::setWorldTranslation(const glm::vec3& newTranslation, bool isDelta) {
+  data.translation = (isDelta) ? data.translation + newTranslation : newTranslation;
+
+  data.transformRequiresUpdate = true;
+}
+
 void WTransformComponent::setRotation(float x, float y, float z, bool isInRadians, bool isDelta) {
   setRotation(glm::vec3(x, y, z), isInRadians, isDelta);
 }
@@ -113,6 +119,13 @@ void WTransformComponent::setRotation(const glm::vec3& newRotation, bool isInRad
       break;
     }
   }
+
+  data.transformRequiresUpdate = true;
+}
+
+void WTransformComponent::setOrientation(const glm::quat& newQuat, const bool isDelta) {
+  data.orientation = (isDelta) ? data.orientation * newQuat : newQuat;
+  data.rotation = glm::eulerAngles(data.orientation);
 
   data.transformRequiresUpdate = true;
 }
@@ -258,7 +271,7 @@ void WTransformComponent::update() {
     // Using SIMD copy instead of glm::translate
     util::copyVec3ToMatrix(&data.translation.x, data.transform, 3);
 
-    // Using SIMD to multiply translated matrix by rotation and scaling matrices
+    data.scale = glm::max(data.scale, glm::vec3(0.001f));
     data.transform = data.transform * glm::mat4_cast(data.orientation) * glm::scale(data.scale);
 
     data.transformRequiresUpdate = false;

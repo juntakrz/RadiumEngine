@@ -37,15 +37,19 @@ struct WTransformComponent : public WComponent {
 
   glm::mat4& getModelTransformationMatrix();
 
-  void setTranslation(float x, float y, float z, bool isDelta = false);
-  void setTranslation(const glm::vec3& newTranslation, bool isDelta = false);
+  void setTranslation(float x, float y, float z, bool isDelta);
+  void setTranslation(const glm::vec3& newTranslation, bool isDelta);
+  
+  void setWorldTranslation(const glm::vec3& newTranslation, bool isDelta);
 
-  void setRotation(float x, float y, float z, bool isInRadians = false, bool isDelta = false);
-  void setRotation(const glm::vec3& newRotation, bool isInRadians = false, bool isDelta = false);
+  void setRotation(float x, float y, float z, bool isInRadians, bool isDelta);
+  void setRotation(const glm::vec3& newRotation, bool isInRadians, bool isDelta);
 
-  void setScale(float newScale, bool isDelta = false);
-  void setScale(float x, float y, float z, bool isDelta = false);
-  void setScale(const glm::vec3& newScale, bool isDelta = false);
+  void setOrientation(const glm::quat& newQuat, const bool isDelta);
+
+  void setScale(float newScale, bool isDelta);
+  void setScale(float x, float y, float z, bool isDelta);
+  void setScale(const glm::vec3& newScale, bool isDelta);
 
   void setTranslationDeltaModifier(float newModifier);
   void setRotationDeltaModifier(float newModifier);

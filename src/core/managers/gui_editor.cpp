@@ -497,22 +497,61 @@ void core::MGUI::drawImGuizmo() {
   ECameraProjection projectionMode = pCamera->getProjectionMode();
   WTransformComponent* pTransform = m_editorData.pSelectedActor->getComponent<WTransformComponent>();
 
-  ImGuizmo::Enable(true);
-
   ImGuizmo::SetOrthographic(projectionMode == ECameraProjection::Orthographic);
   ImGuizmo::SetDrawlist(ImGui::GetBackgroundDrawList());
   ImGuizmo::SetRect(0.0f, 0.0f, (float)config::renderWidth, (float)config::renderHeight);
-
-  glm::vec3 result;
 
   if (ImGuizmo::IsUsing()) {
     ImGui::SetNextFrameWantCaptureKeyboard(true);
   }
 
-  if (ImGuizmo::Manipulate_RE(glm::value_ptr(pCamera->getView()), glm::value_ptr(pCamera->getProjection()), ImGuizmo::ROTATE,
-    ImGuizmo::LOCAL, glm::value_ptr(pTransform->getModelTransformationMatrix()), result)) {
+  switch (m_editorData.transformMode) {
+    case ImGuizmo::OPERATION::TRANSLATE: {
+      glm::vec3 translation;
 
-    pTransform->setRotation(result, true, true);
+      ImGuizmo::SetGizmoSizeClipSpace(0.1f * m_editorData.guizmoScale);
+      ImGuizmo::Enable(true);
+
+      if (ImGuizmo::Manipulate_RE(glm::value_ptr(pCamera->getView()), glm::value_ptr(pCamera->getProjection()), ImGuizmo::TRANSLATE,
+        ImGuizmo::WORLD, glm::value_ptr(pTransform->getModelTransformationMatrix()), &translation)) {
+
+        pTransform->setWorldTranslation(translation, true);
+      }
+
+      break;
+    }
+    case ImGuizmo::OPERATION::ROTATE: {
+      glm::quat orientation;
+
+      ImGuizmo::SetGizmoSizeClipSpace(0.082f * m_editorData.guizmoScale);
+      ImGuizmo::Enable(true);
+
+      if (ImGuizmo::Manipulate_RE(glm::value_ptr(pCamera->getView()), glm::value_ptr(pCamera->getProjection()), ImGuizmo::ROTATE,
+        ImGuizmo::LOCAL, glm::value_ptr(pTransform->getModelTransformationMatrix()), nullptr, &orientation)) {
+
+        pTransform->setOrientation(orientation, true);
+      }
+
+      break;
+    }
+    case ImGuizmo::OPERATION::SCALE: {
+      glm::vec3 scale;
+
+      ImGuizmo::SetGizmoSizeClipSpace(0.1f * m_editorData.guizmoScale);
+      ImGuizmo::Enable(true);
+
+      if (ImGuizmo::Manipulate_RE(glm::value_ptr(pCamera->getView()), glm::value_ptr(pCamera->getProjection()), ImGuizmo::SCALE,
+        ImGuizmo::WORLD, glm::value_ptr(pTransform->getModelTransformationMatrix()), &scale)) {
+
+        pTransform->setScale(scale, false);
+      }
+
+      break;
+    }
+    default: {
+      ImGuizmo::Enable(false);
+      break;
+    }
   }
 }
 

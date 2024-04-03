@@ -271,6 +271,7 @@ namespace IMGUIZMO_NAMESPACE
    IMGUI_API Style& GetStyle();
 
    // RADIUM ENGINE METHODS
-   IMGUI_API bool Manipulate_RE(const float* view, const float* projection, OPERATION operation, MODE mode,
-     float* matrix, glm::vec3& outResult, const float* snap = NULL, const float* localBounds = NULL, const float* boundsSnap = NULL);
+   IMGUI_API bool Manipulate_RE(const float* view, const float* projection, OPERATION operation,
+     MODE mode, float* matrix, glm::vec3* outVector = nullptr, glm::quat* outQuat = nullptr,
+     const float* snap = NULL, const float* localBounds = NULL, const float* boundsSnap = NULL);
 }

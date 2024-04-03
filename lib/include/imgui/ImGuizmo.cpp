@@ -3000,11 +3000,9 @@ namespace IMGUIZMO_NAMESPACE
    // RADIUM ENGINE METHODS
    //
 
-   static glm::vec3 rotationVector = glm::vec3(0.0f);
-
    // Outputs delta rotation in radians, angles are not wrapped
-   static bool HandleRotation_RE(float* matrix, glm::vec3& outResult, OPERATION op, int& type, const float* snap) {
-     if (!Intersects(op, ROTATE) || type != MT_NONE || !gContext.mbMouseOver) {
+   static bool HandleRotation_RE(float* matrix, glm::quat* outQuat, OPERATION op, int& type, const float* snap) {
+     if (!outQuat || !Intersects(op, ROTATE) || type != MT_NONE || !gContext.mbMouseOver) {
        return false;
      }
 
@@ -3030,23 +3028,16 @@ namespace IMGUIZMO_NAMESPACE
          const vec_t rotatePlanNormal[] = { gContext.mModel.v.right, gContext.mModel.v.up, gContext.mModel.v.dir, -gContext.mCameraDir };
 
          // pickup plan
-         vec_t translationPlan;
-
          switch (applyRotationLocally) {
            case true: {
              gContext.mTranslationPlan = BuildPlan(gContext.mModel.v.position, rotatePlanNormal[type - MT_ROTATE_X]);
-             translationPlan = (type == MT_ROTATE_SCREEN)
-               ? gContext.mTranslationPlan : BuildPlan(gContext.mModelSource.v.position, directionUnary[type - MT_ROTATE_X]);
              break;
            }
            case false: {
              gContext.mTranslationPlan = BuildPlan(gContext.mModelSource.v.position, directionUnary[type - MT_ROTATE_X]);
-             translationPlan = gContext.mTranslationPlan;
              break;
            }
          }
-
-         rotationVector = glm::vec3(translationPlan.x, translationPlan.y, translationPlan.z);
 
          const float len = IntersectRayPlane(gContext.mRayOrigin, gContext.mRayVector, gContext.mTranslationPlan);
          vec_t localPos = gContext.mRayOrigin + gContext.mRayVector * len - gContext.mModel.v.position;
@@ -3066,18 +3057,26 @@ namespace IMGUIZMO_NAMESPACE
          ComputeSnap(&gContext.mRotationAngle, snapInRadian);
        }
 
-       float deltaAngle = gContext.mRotationAngle - gContext.mRotationAngleOrigin;
+       vec_t rotationAxisLocalSpace;
+       const float deltaAngle = gContext.mRotationAngle - gContext.mRotationAngleOrigin;
+       rotationAxisLocalSpace.TransformVector(makeVect(gContext.mTranslationPlan.x, gContext.mTranslationPlan.y, gContext.mTranslationPlan.z, 0.f), gContext.mModelInverse);
+       rotationAxisLocalSpace.Normalize();
+
        if (deltaAngle != 0.0f) {
          modified = true;
        }
 
        switch (modified) {
          case true: {
-           outResult = rotationVector * deltaAngle;
+           glm::quat newQuat(glm::angleAxis(
+             deltaAngle, glm::vec3(rotationAxisLocalSpace.x,
+               rotationAxisLocalSpace.y, rotationAxisLocalSpace.z)));
+           memcpy(outQuat, &newQuat.data.m128_f32, sizeof(glm::quat));
            break;
          }
          case false: {
-           outResult = glm::vec3(0.0f);
+           glm::quat newQuat(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+           memcpy(outQuat, &newQuat.data.m128_f32, sizeof(glm::quat));
            break;
          }
        }
@@ -3096,9 +3095,9 @@ namespace IMGUIZMO_NAMESPACE
      return modified;
    }
 
-   static bool HandleTranslation_RE(float* matrix, glm::vec3& outResult, OPERATION op, int& type, const float* snap)
+   static bool HandleTranslation_RE(float* matrix, glm::vec3* outVector, OPERATION op, int& type, const float* snap)
    {
-     if (!Intersects(op, TRANSLATE) || type != MT_NONE)
+     if (!outVector || !Intersects(op, TRANSLATE) || type != MT_NONE)
      {
        return false;
      }
@@ -3110,7 +3109,6 @@ namespace IMGUIZMO_NAMESPACE
      if (gContext.mbUsing && (gContext.mActualID == -1 || gContext.mActualID == gContext.mEditingID)
        && IsTranslateType(gContext.mCurrentOperation)) {
        ImGui::SetNextFrameWantCaptureMouse(true);
-       ImGui::SetNextFrameWantCaptureKeyboard(true);
 
        const float signedLength = IntersectRayPlane(gContext.mRayOrigin, gContext.mRayVector, gContext.mTranslationPlan);
        const float len = fabsf(signedLength); // near plan
@@ -3152,24 +3150,23 @@ namespace IMGUIZMO_NAMESPACE
          modified = true;
        }
 
+       glm::vec3 newVector(glm::vec3(delta.x, delta.y, delta.z));
+       memcpy(outVector, &newVector.data.data, sizeof(glm::vec3));
+
        gContext.mTranslationLastDelta = delta;
 
-       // Output the delta translation vector
-       outResult = glm::vec3(delta.x, delta.y, delta.z);
-
        if (!io.MouseDown[0]) {
+         ImGui::SetNextFrameWantCaptureKeyboard(true);
          gContext.mbUsing = false;
        }
 
        type = gContext.mCurrentOperation;
-     }
-     else {
+     } else {
        // find new possible way to move
        vec_t gizmoHitProportion;
        type = GetMoveType(op, &gizmoHitProportion);
        if (type != MT_NONE) {
          ImGui::SetNextFrameWantCaptureMouse(true);
-         ImGui::SetNextFrameWantCaptureKeyboard(true);
        }
 
        if (CanActivate() && type != MT_NONE)
@@ -3198,11 +3195,12 @@ namespace IMGUIZMO_NAMESPACE
          gContext.mRelativeOrigin = (gContext.mTranslationPlanOrigin - gContext.mModel.v.position) * (1.f / gContext.mScreenFactor);
        }
      }
+
      return modified;
    }
 
-   static bool HandleScale_RE(float* matrix, glm::vec3& outResult, OPERATION op, int& type, const float* snap) {
-     if ((!Intersects(op, SCALE) && !Intersects(op, SCALEU)) || type != MT_NONE || !gContext.mbMouseOver) {
+   static bool HandleScale_RE(float* matrix, glm::vec3* outVector, OPERATION op, int& type, const float* snap) {
+     if (!outVector || (!Intersects(op, SCALE) && !Intersects(op, SCALEU)) || type != MT_NONE || !gContext.mbMouseOver) {
        return false;
      }
      ImGuiIO& io = ImGui::GetIO();
@@ -3213,7 +3211,6 @@ namespace IMGUIZMO_NAMESPACE
        type = GetScaleType(op);
        if (type != MT_NONE) {
          ImGui::SetNextFrameWantCaptureMouse(true);
-         ImGui::SetNextFrameWantCaptureKeyboard(true);
        }
 
        if (CanActivate() && type != MT_NONE) {
@@ -3237,7 +3234,6 @@ namespace IMGUIZMO_NAMESPACE
      // scale
      if (gContext.mbUsing && (gContext.mActualID == -1 || gContext.mActualID == gContext.mEditingID) && IsScaleType(gContext.mCurrentOperation)) {
        ImGui::SetNextFrameWantCaptureMouse(true);
-       ImGui::SetNextFrameWantCaptureKeyboard(true);
 
        const float len = IntersectRayPlane(gContext.mRayOrigin, gContext.mRayVector, gContext.mTranslationPlan);
        vec_t newPos = gContext.mRayOrigin + gContext.mRayVector * len;
@@ -3276,13 +3272,26 @@ namespace IMGUIZMO_NAMESPACE
          modified = true;
        }
 
-       vec_t deltaScale = gContext.mScale - gContext.mScaleLast;
-       outResult = glm::vec3(deltaScale.x, deltaScale.y, deltaScale.z);
+       vec_t deltaScale = gContext.mScale * gContext.mScaleValueOrigin;
+
+       switch (modified) {
+         case true: {
+           glm::vec3 newVector(glm::vec3(deltaScale.x, deltaScale.y, deltaScale.z));
+           memcpy(outVector, &newVector.data.data, sizeof(glm::vec3));
+           break;
+         }
+         case false: {
+           glm::vec3 newVector(glm::vec3(1.0f));
+           memcpy(outVector, &newVector.data.data, sizeof(glm::vec3));
+           break;
+         }
+       }
 
        gContext.mScaleLast = gContext.mScale;
 
        if (!io.MouseDown[0])
        {
+         ImGui::SetNextFrameWantCaptureKeyboard(true);
          gContext.mbUsing = false;
          gContext.mScale.Set(1.f, 1.f, 1.f);
        }
@@ -3292,8 +3301,9 @@ namespace IMGUIZMO_NAMESPACE
      return modified;
    }
 
-   bool Manipulate_RE(const float* view, const float* projection, OPERATION operation, MODE mode,
-     float* matrix, glm::vec3& outResult, const float* snap, const float* localBounds, const float* boundsSnap) {
+   bool Manipulate_RE(const float* view, const float* projection, OPERATION operation,
+     MODE mode, float* matrix, glm::vec3* outVector, glm::quat* outQuat,
+     const float* snap, const float* localBounds, const float* boundsSnap) {
      // Scale is always local or matrix will be skewed when applying world scale or oriented matrix
      ComputeContext(view, projection, matrix, (operation & SCALE) ? LOCAL : mode);
 
@@ -3310,9 +3320,9 @@ namespace IMGUIZMO_NAMESPACE
      bool manipulated = false;
      if (gContext.mbEnable) {
        if (!gContext.mbUsingBounds) {
-         manipulated = HandleTranslation_RE(matrix, outResult, operation, type, snap) ||
-           HandleScale_RE(matrix, outResult, operation, type, snap) ||
-           HandleRotation_RE(matrix, outResult, operation, type, snap);
+         manipulated = HandleTranslation_RE(matrix, outVector, operation, type, snap) ||
+           HandleScale_RE(matrix, outVector, operation, type, snap) ||
+           HandleRotation_RE(matrix, outQuat, operation, type, snap);
        }
      }
 
