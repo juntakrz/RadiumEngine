@@ -115,6 +115,5 @@ bool math::decomposeTransform(const glm::mat4& transform, glm::vec3& outTranslat
 		outRotation.z = 0;
 	}
 
-
 	return true;
 }

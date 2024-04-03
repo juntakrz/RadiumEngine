@@ -60,6 +60,7 @@
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_impl_vulkan.h>
 #include <imgui/imfilebrowser.h>
+#include <imgui/ImGuizmo.h>
 
 // External engine modules
 #include <json.hpp>

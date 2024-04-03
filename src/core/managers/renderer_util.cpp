@@ -1259,6 +1259,10 @@ WCameraComponent* core::MRenderer::getMainCamera() {
   return view.pMainCamera;
 }
 
+WCameraComponent* core::MRenderer::getPrimaryCamera() {
+  return view.pPrimaryCamera;
+}
+
 WCameraComponent* core::MRenderer::getEnvironmentCamera() {
   return view.pEnvironmentCamera;
 }

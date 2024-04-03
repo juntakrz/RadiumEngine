@@ -149,7 +149,7 @@ void core::MGUI::drawSceneGraph() {
       for (const auto& actor : sceneGraph.actors) {
         if (drawTreeNode(actor->getName())) {
           if (ImGui::IsItemClicked()) {
-            selectSceneGraphItem(actor->getName(), ESceneGraphItemType::Actor);
+            selectSceneGraphItem(actor->getName());
           }
 
           ImGui::TreePop();
@@ -167,7 +167,7 @@ void core::MGUI::drawSceneGraph() {
           for (const auto& instance : model.second) {
             if (drawTreeNode(instance->getName())) {
               if (ImGui::IsItemClicked()) {
-                selectSceneGraphItem(instance->getName(), ESceneGraphItemType::Instance);
+                selectSceneGraphItem(instance->getName());
               }
 
               ImGui::TreePop();
@@ -489,27 +489,37 @@ void core::MGUI::drawFrameInfo() {
     m_util.FPS, m_util.frameTime, m_util.referenceRaycast.x, m_util.referenceRaycast.y);
 }
 
-void core::MGUI::selectSceneGraphItem(const std::string& name, ESceneGraphItemType itemType) {
+void core::MGUI::drawImGuizmo() {
+  WCameraComponent* pCamera = core::renderer.getPrimaryCamera();
+  if (!pCamera || !m_editorData.pSelectedActor
+    || m_editorData.pSelectedActor->getComponent<WCameraComponent>() == pCamera) return;
+
+  ECameraProjection projectionMode = pCamera->getProjectionMode();
+  WTransformComponent* pTransform = m_editorData.pSelectedActor->getComponent<WTransformComponent>();
+
+  ImGuizmo::Enable(true);
+
+  ImGuizmo::SetOrthographic(projectionMode == ECameraProjection::Orthographic);
+  ImGuizmo::SetDrawlist(ImGui::GetBackgroundDrawList());
+  ImGuizmo::SetRect(0.0f, 0.0f, (float)config::renderWidth, (float)config::renderHeight);
+
+  glm::vec3 result;
+
+  if (ImGuizmo::IsUsing()) {
+    ImGui::SetNextFrameWantCaptureKeyboard(true);
+  }
+
+  if (ImGuizmo::Manipulate_RE(glm::value_ptr(pCamera->getView()), glm::value_ptr(pCamera->getProjection()), ImGuizmo::ROTATE,
+    ImGuizmo::LOCAL, glm::value_ptr(pTransform->getModelTransformationMatrix()), result)) {
+
+    pTransform->setRotation(result, true, true);
+  }
+}
+
+void core::MGUI::selectSceneGraphItem(const std::string& name) {
   m_editorData.pSelectedActor = core::scene.getActor(name);
-  m_editorData.actorType = itemType;
 }
 
 void core::MGUI::selectSceneGraphItem(const int32_t UID) {
   m_editorData.pSelectedActor = core::scene.getActor(UID);
-
-  switch (m_editorData.pSelectedActor->getTypeId()) {
-    case EActorType::Entity:
-    case EActorType::Pawn:
-    case EActorType::Static:
-      m_editorData.actorType = ESceneGraphItemType::Instance;
-      return;
-
-    case EActorType::Camera:
-      m_editorData.actorType = ESceneGraphItemType::Camera;
-      return;
-
-    case EActorType::Light:
-      m_editorData.actorType = ESceneGraphItemType::Light;
-      return;
-  }
 }

@@ -10,6 +10,10 @@
 #define GLM_FORCE_AVX
 #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
 
+#ifndef IMGUI_DEFINE_MATH_OPERATORS
+#define IMGUI_DEFINE_MATH_OPERATORS
+#endif
+
 // global macros
 #ifdef NDEBUG
 #define TEXT(x) L ## x                // conflicts with WinAPI definitions in debug builds

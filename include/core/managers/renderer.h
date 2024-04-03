@@ -473,6 +473,7 @@ public:
   void setSunCamera(WCameraComponent* pCamera);
   void setMainCamera(WCameraComponent* pNewMainCamera);
   WCameraComponent* getMainCamera();
+  WCameraComponent* getPrimaryCamera();
   WCameraComponent* getEnvironmentCamera();
 
   // get current renderer camera

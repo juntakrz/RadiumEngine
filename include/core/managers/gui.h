@@ -5,14 +5,6 @@
 namespace core {
 class MGUI {
 public:
-  enum class ESceneGraphItemType : uint8_t {
-    Null,
-    Actor,
-    Instance,
-    Camera,
-    Light
-  };
-
   struct {
     const ImGuiWindowFlags staticPanelFlags =
       ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse;
@@ -25,7 +17,6 @@ public:
 
     // Currently selected scene graph entity
     class ABase* pSelectedActor = nullptr;
-    ESceneGraphItemType actorType = ESceneGraphItemType::Null;
 
     bool isTransformScaleLocked = false;
   } m_editorData;
@@ -90,7 +81,9 @@ public:
                        float speed = 0.01f, const bool locked = false, const char* format = "%.3f");
   void drawFrameInfo();
 
-  void selectSceneGraphItem(const std::string& name, ESceneGraphItemType itemType);
+  void drawImGuizmo();
+
+  void selectSceneGraphItem(const std::string& name);
   void selectSceneGraphItem(const int32_t UID);
 
   void copyToTextBuffer(const std::string& text);

@@ -16,7 +16,7 @@ WTransformComponent::WTransformComponent(ABase* pActor) {
   pEvents = &pOwner->getEventSystem();
 }
 
-const glm::mat4& WTransformComponent::getModelTransformationMatrix() {
+glm::mat4& WTransformComponent::getModelTransformationMatrix() {
   return data.transform;
 }
 
@@ -48,15 +48,25 @@ void WTransformComponent::setRotation(float x, float y, float z, bool isInRadian
 void WTransformComponent::setRotation(const glm::vec3& newRotation, bool isInRadians, bool isDelta) {
   switch (data.controlMode) {
     case EActorControlMode::Spacecraft: {
-      data.rotation = (isDelta)
+      /*data.rotation = (isDelta)
         ? data.rotation + (((isInRadians) ? newRotation : glm::radians(newRotation)) * data.deltaModifiers.y)
         : (isInRadians) ? newRotation : glm::radians(newRotation);
 
       math::wrapAnglesGLM(data.rotation);
 
       data.orientation = (isDelta)
-        ? data.orientation * glm::quat(((isInRadians) ? newRotation : glm::radians(newRotation)) * data.deltaModifiers.y)
-        : glm::quat(data.rotation);
+        ? data.orientation * glm::normalize(glm::quat(((isInRadians) ? newRotation : glm::radians(newRotation) * data.deltaModifiers.y)))
+        : glm::quat(data.rotation);*/
+
+      //
+      const glm::vec3& rotation = (isInRadians) ? newRotation : glm::radians(newRotation);
+
+      data.orientation = (isDelta)
+        ? glm::normalize(data.orientation * glm::quat(rotation * data.deltaModifiers.y))
+        : glm::quat(rotation);
+
+      data.rotation = glm::eulerAngles(data.orientation);
+      //
 
       pOwner->setForwardVector(data.orientation * pOwner->getDefaultForwardVector());
       pOwner->setUpVector(data.orientation * pOwner->getDefaultUpVector());
@@ -249,7 +259,7 @@ void WTransformComponent::update() {
     util::copyVec3ToMatrix(&data.translation.x, data.transform, 3);
 
     // Using SIMD to multiply translated matrix by rotation and scaling matrices
-    data.transform *= glm::mat4_cast(data.orientation) * glm::scale(data.scale);
+    data.transform = data.transform * glm::mat4_cast(data.orientation) * glm::scale(data.scale);
 
     data.transformRequiresUpdate = false;
 

@@ -70,6 +70,13 @@ void core::MGUI::setupEditor() {
   m_editorData.rightPanelPosition = { config::renderWidth - m_editorData.rightPanelSize.x, 18.0f };
 
   m_editorData.menuBarSize = { m_editorData.rightPanelPosition.x, 0.0f };
+
+  // ImGuizmo setup
+  ImGuizmo::Style& imGuizmoStyle = ImGuizmo::GetStyle();
+  imGuizmoStyle.RotationLineThickness = 5.0f;
+  imGuizmoStyle.RotationOuterLineThickness = 3.0f;
+
+  ImGuizmo::SetGizmoSizeClipSpace(0.082f);
 }
 
 void core::MGUI::copyToTextBuffer(const std::string& text) {
@@ -165,9 +172,11 @@ void core::MGUI::render() {
   ImGui_ImplVulkan_NewFrame();
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
-
   switch (config::bDevMode) {
     case true: {
+      ImGuizmo::BeginFrame();
+      drawImGuizmo();
+
       if (m_isEditorVisible) {
         preprocessEditorData();
         showEditor();

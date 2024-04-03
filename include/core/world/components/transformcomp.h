@@ -35,7 +35,7 @@ struct WTransformComponent : public WComponent {
 
   WTransformComponent(ABase* pActor);
 
-  const glm::mat4& getModelTransformationMatrix();
+  glm::mat4& getModelTransformationMatrix();
 
   void setTranslation(float x, float y, float z, bool isDelta = false);
   void setTranslation(const glm::vec3& newTranslation, bool isDelta = false);
