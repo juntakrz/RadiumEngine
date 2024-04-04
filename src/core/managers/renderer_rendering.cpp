@@ -725,7 +725,9 @@ void core::MRenderer::renderFrame() {
   sync.asyncUpdateEntities.update();
 
   // Copy raycasting results and reset the screen position for raycasting
-  memcpy(&renderView.selectedActorUID, scene.generalHostBuffer.allocInfo.pMappedData, sizeof(int32_t));
+  int32_t selectedActorUID;
+  memcpy(&selectedActorUID, scene.generalHostBuffer.allocInfo.pMappedData, sizeof(int32_t));
+  setSelectedActorUID(selectedActorUID);
   setRaycastPosition(glm::ivec2(-1, -1));
 
   renderView.frameInFlight = ++renderView.frameInFlight % MAX_FRAMES_IN_FLIGHT;

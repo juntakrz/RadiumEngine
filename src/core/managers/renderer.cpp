@@ -710,6 +710,7 @@ void core::MRenderer::updateSceneUBO(uint32_t currentImage) {
   scene.sceneBufferObject.haltonJitter = system.haltonJitter[renderView.framesRendered % core::vulkan::haltonSequenceCount];
   scene.sceneBufferObject.clipData = view.pActiveCamera->getClipPlanes();
   scene.sceneBufferObject.raycastTarget = view.raycastTarget;
+  scene.sceneBufferObject.selectedActorUID = renderView.selectedActorUID;
 
   uint8_t* pSceneUBO = static_cast<uint8_t*>(scene.sceneBuffers[currentImage].allocInfo.pMappedData) +
                        config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();

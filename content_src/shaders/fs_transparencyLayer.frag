@@ -138,6 +138,9 @@ void main() {
             raycastedUID = fragmentNodes[0].actorUID;
         } else {
             raycastedUID = int(imageLoad(samplersInt[material.samplerIndex[EXTRAMAP2]], ivec2(gl_FragCoord.xy)).r) - 1;
+
+            // Deselect if an empty space was clicked by setting UID to -2
+            if (raycastedUID == -1) --raycastedUID;
         }
     } else if (ivec2(gl_FragCoord.xy) == ivec2(0, 0) && scene.raycastTarget.x < 0 && scene.raycastTarget.y < 0) {
         raycastedUID = -1;

@@ -89,6 +89,7 @@ public:
 
   void selectSceneGraphItem(const std::string& name);
   void selectSceneGraphItem(const int32_t UID);
+  void deselectSceneGraphItem();
 
   void copyToTextBuffer(const std::string& text);
 

@@ -562,6 +562,7 @@ struct RSceneUBO {
   alignas(16) glm::vec2 haltonJitter = glm::vec2(0.0f);
   glm::vec2 clipData = glm::vec2(0.0f);
   glm::ivec2 raycastTarget = glm::vec2(-1, -1);
+  int32_t selectedActorUID = -1;
 };
 
 struct RSkinUBO {

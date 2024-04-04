@@ -1194,7 +1194,18 @@ const glm::ivec2& core::MRenderer::getRaycastPosition() {
 }
 
 void core::MRenderer::setSelectedActorUID(const int32_t actorUID) {
-  renderView.selectedActorUID = actorUID;
+  switch (actorUID) {
+    case -1: {        // Nothing was selected - do nothing
+      return;
+    }
+    case -2: {        // An empty space was clicked - deselect
+      renderView.selectedActorUID = -1;
+      return;
+    }
+    default: {        // Select an actor
+      renderView.selectedActorUID = actorUID;
+    }
+  }
 }
 
 int32_t core::MRenderer::getSelectedActorUID() {

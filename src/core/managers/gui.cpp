@@ -76,7 +76,7 @@ void core::MGUI::setupEditor() {
   ImGuizmo::Style& imGuizmoStyle = ImGuizmo::GetStyle();
   imGuizmoStyle.TranslationLineThickness = 6.0f;
   imGuizmoStyle.TranslationLineArrowSize = 6.0f;
-  imGuizmoStyle.RotationLineThickness = 6.0f;
+  imGuizmoStyle.RotationLineThickness = 5.0f;
   imGuizmoStyle.RotationOuterLineThickness = 4.0f;
   imGuizmoStyle.ScaleLineThickness = 6.0f;
   imGuizmoStyle.ScaleLineCircleSize = 6.0f;

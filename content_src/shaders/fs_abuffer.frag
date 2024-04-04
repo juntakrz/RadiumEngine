@@ -364,5 +364,9 @@ void main() {
         nodes[nodeIndex].depth = gl_FragCoord.z;
 		nodes[nodeIndex].actorUID = inActorUID;
         nodes[nodeIndex].nextNodeIndex = prevHeadIndex;
+
+		if (scene.selectedActorUID == inActorUID) {
+			nodes[nodeIndex].color.rgb += vec3(0.25);
+		}
     }
 }

@@ -24,8 +24,15 @@ void core::MGUI::preprocessEditorData() {
     m_util.referenceRaycast = referenceRaycast;
   }
 
-  if (core::renderer.getSelectedActorUID() > -1) {
-    selectSceneGraphItem(core::renderer.getSelectedActorUID());
+  switch (core::renderer.getSelectedActorUID()) {
+    case -1: {
+      deselectSceneGraphItem();
+      break;
+    }
+    default: {
+      selectSceneGraphItem(core::renderer.getSelectedActorUID());
+      break;
+    }
   }
 }
 
@@ -523,7 +530,7 @@ void core::MGUI::drawImGuizmo() {
     case ImGuizmo::OPERATION::ROTATE: {
       glm::quat orientation;
 
-      ImGuizmo::SetGizmoSizeClipSpace(0.082f * m_editorData.guizmoScale);
+      ImGuizmo::SetGizmoSizeClipSpace(0.076f * m_editorData.guizmoScale);
       ImGuizmo::Enable(true);
 
       if (ImGuizmo::Manipulate_RE(glm::value_ptr(pCamera->getView()), glm::value_ptr(pCamera->getProjection()), ImGuizmo::ROTATE,
@@ -557,8 +564,14 @@ void core::MGUI::drawImGuizmo() {
 
 void core::MGUI::selectSceneGraphItem(const std::string& name) {
   m_editorData.pSelectedActor = core::scene.getActor(name);
+  core::renderer.setSelectedActorUID(m_editorData.pSelectedActor->getUID());
 }
 
 void core::MGUI::selectSceneGraphItem(const int32_t UID) {
   m_editorData.pSelectedActor = core::scene.getActor(UID);
+  core::renderer.setSelectedActorUID(m_editorData.pSelectedActor->getUID());
+}
+
+void core::MGUI::deselectSceneGraphItem() {
+  m_editorData.pSelectedActor = nullptr;
 }

@@ -135,4 +135,9 @@ void main() {
 
 	// 7. Store actor UID (increased by 1 to avoid writing 0)
 	outActorUID = inActorUID + 1;
+
+	// 8. Process selection
+	if (scene.selectedActorUID == inActorUID) {
+		outColor.rgb += vec3(0.25);
+	}
 }
