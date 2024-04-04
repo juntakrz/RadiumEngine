@@ -3,7 +3,7 @@
 #include "core/world/components/components.h"
 #include "core/world/actors/base.h"
 
-class ACamera : public ABase {
+class ACamera : public WActor {
  protected:
   ECameraProjection m_projectionType = ECameraProjection::Perspective;
 
@@ -18,7 +18,7 @@ class ACamera : public ABase {
   struct {
     bool followTarget = false;      // camera will translate together with its target
     bool useForwardVector = false;  // look at forward vector of the target
-    ABase* pTarget = nullptr;
+    WActor* pTarget = nullptr;
   } m_target;
 
   glm::mat4 m_view;
@@ -55,7 +55,7 @@ class ACamera : public ABase {
   void setUpVector(float x, float y, float z) noexcept;
   void setUpVector(const glm::vec3& upVector) noexcept;
 
-  void setLookAtTarget(ABase* pTarget, const bool useForwardVector,
+  void setLookAtTarget(WActor* pTarget, const bool useForwardVector,
                        const bool attach) noexcept;
 
   virtual void setTranslation(float x, float y, float z, bool isDelta = false) noexcept override;

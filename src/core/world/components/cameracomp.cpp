@@ -8,7 +8,7 @@
 #include "core/world/components/transformcomp.h"
 #include "core/world/components/cameracomp.h"
 
-WCameraComponent::WCameraComponent(ABase* pActor) {
+WCameraComponent::WCameraComponent(WActor* pActor) {
   typeId = EComponentType::Camera;
   pOwner = pActor;
   pEvents = &pOwner->getEventSystem();
@@ -74,7 +74,7 @@ void WCameraComponent::setAspectRatio(float newValue) noexcept {
 void WCameraComponent::setCameraParameters(ECameraProjection newMode, float newFOV, float aspectRatio, float newViewDistance) {
   (newMode == ECameraProjection::Perspective) ? data.FOV = newFOV : data.orthoFOV = newFOV;
 
-  if (newMode ==ECameraProjection::Perspective) {
+  if (newMode == ECameraProjection::Perspective) {
     data.aspectRatio = aspectRatio;
   }
 
@@ -82,6 +82,14 @@ void WCameraComponent::setCameraParameters(ECameraProjection newMode, float newF
   data.viewDistance = newViewDistance;
 
   data.projectionRequiresUpdate = true;
+}
+
+void WCameraComponent::setCameraParameters(const RCameraInfo& info) {
+  setProjectionMode(info.projectionMode);
+  (info.projectionMode == ECameraProjection::Perspective) ? setFOV(info.FOV) : setOrthoFOV(info.FOV);
+  setAspectRatio(info.aspectRatio);
+  data.nearPlane = info.nearZ;
+  setViewDistance(info.viewDistance);
 }
 
 const ECameraProjection WCameraComponent::getProjectionMode() {
@@ -132,6 +140,13 @@ uint32_t WCameraComponent::getViewBufferIndex() {
   return data.bufferViewIndex;
 }
 
+void WCameraComponent::onAttachmentModeChanged(WActor* pNewTarget, EAttachmentMode newMode) {
+  pTarget = pNewTarget;
+  attachmentMode = newMode;
+
+  data.viewRequiresUpdate = true;
+}
+
 void WCameraComponent::update() {
   if (data.projectionRequiresUpdate) {
     switch (data.projectionMode) {
@@ -141,7 +156,7 @@ void WCameraComponent::update() {
       }
 
       case ECameraProjection::Orthographic: {
-        data.projection = glm::ortho(-data.orthoFOV, data.orthoFOV, -data.orthoFOV, data.orthoFOV);
+        data.projection = glm::ortho(-data.orthoFOV, data.orthoFOV, -data.orthoFOV, data.orthoFOV, data.nearPlane, data.viewDistance);
         break;
       }
     }

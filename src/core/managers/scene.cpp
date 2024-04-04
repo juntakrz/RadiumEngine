@@ -28,12 +28,13 @@ void core::MScene::updateLightingBuffer(RLightingUBO* pLightingBuffer) {
   float lightType = 1.0f;
 
   // Index 0 is expected to always be the directional light
-  if (m_sceneGraph.pDirectLight) {
-    ABase* pActor = m_sceneGraph.pDirectLight->getOwner();
+  if (m_sceneGraph.pDirectionalLight) {
+    WActor* pActor = m_sceneGraph.pDirectionalLight->getOwner();
+    WCameraComponent* pDirectCamera = pActor->getComponent<WCameraComponent>();
     pLightingBuffer->lightLocations[0] = glm::vec4(pActor->getTranslation(), 1.0f);
-    pLightingBuffer->lightColors[0] = m_sceneGraph.pDirectLight->getColor();
-    //pLightingBuffer->lightViews[0] = m_pSunLight->getView();
-    //pLightingBuffer->lightOrthoMatrix = m_pSunLight->getProjection();
+    pLightingBuffer->lightColors[0] = m_sceneGraph.pDirectionalLight->getColor();
+    pLightingBuffer->lightViews[0] = pDirectCamera->getView();
+    pLightingBuffer->lightOrthoMatrix = pDirectCamera->getProjection();
   }
 
   for (const auto& pLight : m_sceneGraph.pPointLights) {
@@ -51,14 +52,14 @@ void core::MScene::updateLightingBuffer(RLightingUBO* pLightingBuffer) {
   pLightingBuffer->lightCount = lightCount;
 }
 
-bool core::MScene::registerActor(ABase* pActor) {
+bool core::MScene::registerActor(WActor* pActor) {
   const std::string& previousName = pActor->getPreviousName();
   const std::string& name = pActor->getName();
 
   // Check if a target actor name isn't taken
   if (!getActor(name)) {
     // Check if the same actor with the previous name is already registered and perform renaming
-    if (ABase* pActorToUnregister = getActor(previousName)) {
+    if (WActor* pActorToUnregister = getActor(previousName)) {
       if (pActorToUnregister == pActor) {
         m_actorPointers.erase(previousName);
       }
@@ -79,7 +80,7 @@ bool core::MScene::registerActor(ABase* pActor) {
   return false;
 }
 
-void core::MScene::unregisterActor(ABase* pActor) {
+void core::MScene::unregisterActor(WActor* pActor) {
   const std::string& name = pActor->getName();
 
   if (getActor(name)) {
@@ -98,7 +99,7 @@ void core::MScene::unregisterActor(ABase* pActor) {
 }
 
 void core::MScene::unregisterActor(const std::string& name) {
-  if (ABase* pActor = getActor(name)) {
+  if (WActor* pActor = getActor(name)) {
     m_actorPointersByUID.erase(pActor->getUID());
     m_actorPointers.erase(name);
     return;
@@ -107,7 +108,29 @@ void core::MScene::unregisterActor(const std::string& name) {
   RE_LOG(Error, "Failed to unregister actor '%s'. Isn't registered with the reference manager.", name.c_str());
 }
 
-ABase* core::MScene::getActor(const std::string& name) {
+WActor* core::MScene::createActor(const std::string& name) {
+  if (!getActor(name)) {
+    m_sceneActors[m_nextActorUID] = std::make_unique<WActor>(m_nextActorUID);
+    WActor* pNewActor = m_sceneActors[m_nextActorUID].get();
+    pNewActor->setName(name);
+    registerActor(pNewActor);
+
+#ifndef NDEBUG
+    RE_LOG(Log, "Created actor '%s'.", name.c_str());
+#endif
+
+    ++m_nextActorUID;
+    return pNewActor;
+  }
+
+#ifndef NDEBUG
+  RE_LOG(Warning, "Failed to create actor '%s'. An actor with the same name already exists.",
+    name.c_str());
+#endif
+  return getActor(name);
+}
+
+WActor* core::MScene::getActor(const std::string& name) {
   if (m_actorPointers.contains(name)) {
     return m_actorPointers[name];
   }
@@ -115,7 +138,7 @@ ABase* core::MScene::getActor(const std::string& name) {
   return nullptr;
 }
 
-ABase* core::MScene::getActor(const int32_t UID) {
+WActor* core::MScene::getActor(const int32_t UID) {
   if (m_actorPointersByUID.contains(UID)) {
     return m_actorPointersByUID[UID];
   }
@@ -123,11 +146,29 @@ ABase* core::MScene::getActor(const int32_t UID) {
   return nullptr;
 }
 
+WCameraComponent* core::MScene::getCamera(const std::string& name) {
+  if (WActor* pActor = getActor(name)) {
+    return pActor->getComponent<WCameraComponent>();
+  }
+
+  RE_LOG(Error, "Failed to get camera. Actor '%s' has no camera component.", name.c_str());
+  return nullptr;
+}
+
+WCameraComponent* core::MScene::getCamera(const int32_t UID) {
+  if (m_actorPointersByUID.contains(UID)) {
+    return m_actorPointersByUID[UID]->getComponent<WCameraComponent>();
+  }
+
+  RE_LOG(Error, "Failed to get camera. Actor with UID '%d' has no camera component.", UID);
+  return nullptr;
+}
+
 bool core::MScene::registerInstance(AEntity* pEntity) {
   WModel* pModel = pEntity->getModel();
   const std::string& instanceName = pEntity->getName();
 
-  // registerActor executes first and writes a pointer to ABase, so need to make sure it did
+  // registerActor executes first and writes a pointer to WActor, so need to make sure it did
   if (getActor(instanceName) == pEntity) {
     // Make sure model entry exists, if not create one
     if (!m_sceneGraph.instances.contains(pModel)) {
@@ -229,18 +270,19 @@ bool core::MScene::unregisterPointLight(WLightComponent* pLight) {
   return false;
 }
 
-bool core::MScene::setDirectLight(WLightComponent* pLight) {
-  if (!pLight || pLight->getLightMode() == ELightMode::Directional) {
-    m_sceneGraph.pDirectLight = pLight;
+bool core::MScene::setDirectionalLight(WLightComponent* pLight) {
+  if (!pLight || (pLight && pLight->getLightMode() == ELightMode::Directional
+    && pLight->getOwner()->getComponent<WCameraComponent>())) {
+    m_sceneGraph.pDirectionalLight = pLight;
     return true;
   }
 
-  RE_LOG(Error, "Failed to set direct light caster.");
+  RE_LOG(Error, "Failed to set directional light caster.");
   return false;
 }
 
 WLightComponent* core::MScene::getDirectLight() {
-  return m_sceneGraph.pDirectLight;
+  return m_sceneGraph.pDirectionalLight;
 }
 
 void core::MScene::setSceneName(const std::string& name) {
@@ -260,43 +302,6 @@ const std::string& core::MScene::getSceneName() {
 //
 // DEPRECATED
 //
-
-ABase* core::MScene::createCamera(const std::string& name, RCameraInfo* pInfo) {
-  if (!getActor(name)) {
-    m_sceneActors[m_nextActorUID] = std::make_unique<ABase>(m_nextActorUID);
-    ABase* pCameraActor = m_sceneActors[m_nextActorUID].get();
-
-    pCameraActor->setName(name);
-    WCameraComponent* pCamera = pCameraActor->addComponent<WCameraComponent>();
-
-    const RCameraInfo& cameraInfo = (pInfo) ? *pInfo : RCameraInfo();
-    pCamera->setCameraParameters(
-      cameraInfo.projectionMode, cameraInfo.FOV, cameraInfo.aspectRatio, cameraInfo.viewDistance);
-
-    registerActor(pCameraActor);
-
-#ifndef NDEBUG
-    RE_LOG(Log, "Created camera '%s'.", name.c_str());
-#endif
-
-    ++m_nextActorUID;
-    return pCameraActor;
-  }
-
-#ifndef NDEBUG
-  RE_LOG(Warning, "Failed to create camera '%s'. Probably already exists.",
-    name.c_str());
-#endif
-  return getCamera(name);
-}
-
-ABase* core::MScene::getCamera(const std::string& name) {
-  if (ABase* pCamera = getActor(name)) {
-    return pCamera;
-  }
-
-  return nullptr;
-}
 
 APawn* core::MScene::createPawn(WEntityCreateInfo* pInfo) {
   // Model is missing

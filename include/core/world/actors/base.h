@@ -9,7 +9,7 @@
 class ACamera;
 struct WComponent;
 
-class ABase {
+class WActor {
  protected:
   // Names must be set using setName method
   std::string m_name = "";
@@ -33,9 +33,9 @@ class ABase {
   core::MPlayer* m_pController = nullptr;
 
  public:
-  ABase() = default;
-  ABase(const uint32_t UID);
-  virtual ~ABase() {};
+  WActor() = default;
+  WActor(const uint32_t UID);
+  virtual ~WActor() {};
 
   // try to get this actor as its real subclass
   // example: ACamera* camera = actor.getAs<ACamera>();
@@ -93,7 +93,7 @@ class ABase {
   void setVisibility(const bool isVisible);
   const bool isVisible();
 
-  void attachTo(ABase* pTarget, EAttachmentMode newMode);
+  void attachTo(WActor* pTarget, EAttachmentMode newMode);
   void detach();
 
   ComponentEventSystem& getEventSystem() { return m_eventSystem; }

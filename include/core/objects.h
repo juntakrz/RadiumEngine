@@ -3,7 +3,7 @@
 #include "vk_mem_alloc.h"
 #include "config.h"
 
-class ABase;
+class WActor;
 class AEntity;
 
 enum class EActorControlMode : uint8_t {
@@ -190,7 +190,6 @@ struct RCameraInfo {
   float nearZ = RE_NEARZ;
   float viewDistance = config::viewDistance;
 };
-
 struct RComputePCB {
   uint32_t imageIndex;
   uint32_t samplerIndex;
@@ -580,7 +579,7 @@ struct WAnimationInfo {
 };
 
 struct WAttachmentInfo {
-  ABase* pTarget = nullptr;
+  WActor* pTarget = nullptr;
   EAttachmentMode attachmentMode;
 };
 

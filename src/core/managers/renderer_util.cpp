@@ -1212,7 +1212,7 @@ int32_t core::MRenderer::getSelectedActorUID() {
   return renderView.selectedActorUID;
 }
 
-void core::MRenderer::setCamera(ABase* pCameraOwner, const bool setAsPrimary) {
+void core::MRenderer::setCamera(WActor* pCameraOwner, const bool setAsPrimary) {
   WCameraComponent* pComponent = nullptr;
 
   if (!pCameraOwner || !(pComponent = pCameraOwner->getComponent<WCameraComponent>())) {
@@ -1240,26 +1240,31 @@ void core::MRenderer::setCamera(WCameraComponent* pCamera, const bool setAsPrima
   }
 }
 
-void core::MRenderer::setSunCamera(ABase* pCameraOwner) {
-  WCameraComponent* pComponent = nullptr;
+void core::MRenderer::setSunCamera(WActor* pCameraOwner) {
+  WCameraComponent* pCamera = nullptr;
+  WLightComponent* pLight = nullptr;
 
-  if (!pCameraOwner || !(pComponent = pCameraOwner->getComponent<WCameraComponent>())) {
-    RE_LOG(Error, "Failed to set camera, the received actor has no camera component.");
+  if (!pCameraOwner || !(pCamera = pCameraOwner->getComponent<WCameraComponent>())
+    || (!(pLight = pCameraOwner->getComponent<WLightComponent>()) && pLight->getLightMode() != ELightMode::Directional)) {
+    RE_LOG(Error, "Failed to set camera, the provided actor does not meet requirements.");
     return;
   }
 
-  setSunCamera(pComponent);
+  view.pSunCamera = pCamera;
+  core::scene.setDirectionalLight(pLight);
 }
 
 void core::MRenderer::setSunCamera(WCameraComponent* pCamera) {
   if (!pCamera) {
-    RE_LOG(Error, "Failed to set camera, received nullptr.");
+    RE_LOG(Error, "Failed to set directional light, received nullptr.");
     return;
   }
 
-  pCamera->getOwner()->detach();
+  setSunCamera(pCamera->getOwner());
+
+  /*pCamera->getOwner()->detach();
   view.pSunCamera = pCamera;
-  view.pSunCamera->getOwner()->attachTo(view.pPrimaryCamera->pOwner, EAttachmentMode::Translation);
+  view.pSunCamera->getOwner()->attachTo(view.pPrimaryCamera->pOwner, EAttachmentMode::Translation);*/
 }
 
 void core::MRenderer::setMainCamera(WCameraComponent* pNewMainCamera) {

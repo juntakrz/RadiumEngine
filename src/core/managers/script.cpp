@@ -103,7 +103,8 @@ void core::MScript::jsonParseCameras(const json* pCameraData) noexcept {
       float rotation[3] = {0.0f, 0.0f, 0.0f};
       float upVector[3] = {0.0f, 1.0f, 0.0f};
 
-      ABase* pCameraActor = core::scene.createCamera(name, nullptr);
+      WActor* pCameraActor = core::scene.createActor(name);
+      pCameraActor->addComponent<WCameraComponent>();
 
       // set camera position
       if (it.contains("translation")) {
@@ -141,7 +142,7 @@ void core::MScript::jsonParseCameras(const json* pCameraData) noexcept {
   }
 
   if (activatedCamera != "") {
-    ABase* pActor = core::scene.getActor(activatedCamera);
+    WActor* pActor = core::scene.getActor(activatedCamera);
     core::renderer.setCamera(pActor, true);
 
     // TODO: make this a separate thing in a map config

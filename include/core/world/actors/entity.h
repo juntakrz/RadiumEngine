@@ -8,7 +8,7 @@ namespace core {
 class MAnimations;
 }
 
-class AEntity : public ABase {
+class AEntity : public WActor {
   friend class core::MAnimations;
 
  protected:

@@ -4,12 +4,12 @@
 #include "core/objects.h"
 #include "util/math.h"
 
-class ABase;
+class WActor;
 
 namespace core {
 class MPlayer {
  private:
-  ABase* m_pActor = nullptr;
+  WActor* m_pActor = nullptr;
   WPlayerInfo m_info;
 
   struct {
@@ -31,8 +31,8 @@ class MPlayer {
   // must be called after input manager is initialized
   void initialize();
 
-  void controlActor(ABase* pActor);
-  void freeActor(ABase* pActor);
+  void controlActor(WActor* pActor);
+  void freeActor(WActor* pActor);
   void setActorControlMode(EActorControlMode newMode);
 
   const WPlayerInfo& getProperties();

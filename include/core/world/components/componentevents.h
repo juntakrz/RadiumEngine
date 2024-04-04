@@ -2,11 +2,11 @@
 
 #include "pch.h"
 
-class ABase;
+class WActor;
 struct WComponent;
 
 struct ComponentEvent {
-  ABase* pEventOwner = nullptr;
+  WActor* pEventOwner = nullptr;
 
   virtual ~ComponentEvent() {}
 };
@@ -28,7 +28,7 @@ struct ControllerRotationComponentEvent : public ComponentEvent {
 };
 
 struct ActorDestroyedComponentEvent : public ComponentEvent {
-  ABase* pActor = nullptr;
+  WActor* pActor = nullptr;
 };
 
 class ComponentEventSystem {

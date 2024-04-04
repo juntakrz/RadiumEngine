@@ -467,9 +467,9 @@ public:
   int32_t getSelectedActorUID();
 
   // set camera from create cameras by name
-  void setCamera(ABase* pCameraOwner, const bool setAsPrimary);
+  void setCamera(WActor* pCameraOwner, const bool setAsPrimary);
   void setCamera(WCameraComponent* pCamera, const bool setAsPrimary);
-  void setSunCamera(ABase* pCameraOwner);
+  void setSunCamera(WActor* pCameraOwner);
   void setSunCamera(WCameraComponent* pCamera);
   void setMainCamera(WCameraComponent* pNewMainCamera);
   WCameraComponent* getMainCamera();

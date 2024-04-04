@@ -225,7 +225,7 @@ void core::MGUI::drawScenePanel() {
 }
 
 void core::MGUI::drawActorProperties() {
-  ABase* pActor = m_editorData.pSelectedActor;
+  WActor* pActor = m_editorData.pSelectedActor;
   if (!pActor) return;
 
   ImGui::BeginChild("##ActorPropertiesFrame", ImVec2(0, ImGui::GetContentRegionAvail().y - 16),
@@ -323,7 +323,7 @@ void core::MGUI::drawSceneProperties() {
 }
 
 void core::MGUI::drawAddComponent() {
-  ABase* pActor = m_editorData.pSelectedActor;
+  WActor* pActor = m_editorData.pSelectedActor;
   if (!pActor) return;
 
   if (ImGui::BeginPopup("##ComponentPopup")) {

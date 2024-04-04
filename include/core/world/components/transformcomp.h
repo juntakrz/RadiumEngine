@@ -21,19 +21,19 @@ struct WTransformComponent : public WComponent {
 
     // Origin attachment vector from which rotated attachment vector is calculated
     glm::vec3 baseAttachmentVector = glm::vec3(0.0f, 0.0f, -1.0f);
+    glm::vec3 attachmentTranslation = glm::vec3(0.0f);
 
     // Vector to attachment target
     glm::vec3 attachmentVector = glm::vec3(0.0f);
 
     // Rotation data for attachment vector
-    glm::vec3 attachmentRotation = glm::vec3(0.0f);
-    glm::quat attachmentOrientation = glm::quat(attachmentRotation);
+    glm::quat attachmentOrientation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
 
     // was transformation data changed
     bool transformRequiresUpdate = false;
   } data;
 
-  WTransformComponent(ABase* pActor);
+  WTransformComponent(WActor* pActor);
 
   glm::mat4& getModelTransformationMatrix();
 
@@ -63,12 +63,12 @@ struct WTransformComponent : public WComponent {
   const glm::vec3& getDeltaModifiers();
 
   void setAttachmentVectorRotation(const glm::vec3& newRotation, const bool isInRadians, const bool isDelta);
-  void setBaseAttachmentVectorLength(const float newLength);
+  void setAttachmentVectorLength(const float newLength);
   const glm::vec3& getAttachmentVector();
 
   void forceUpdateTransform();
 
-  void onAttachmentModeChanged(ABase* pNewTarget, EAttachmentMode newMode) override;
+  void onAttachmentModeChanged(WActor* pNewTarget, EAttachmentMode newMode) override;
   void onOwnerControlled() override;
   void onOwnerFreed() override;
   void onOwnerUpdated() override;

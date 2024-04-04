@@ -30,7 +30,7 @@ struct WCameraComponent : public WComponent {
     glm::vec3 focusVector = glm::vec3(0.0f);
   } data;
 
-  WCameraComponent(ABase* pActor);
+  WCameraComponent(WActor* pActor);
   ~WCameraComponent();
 
   void setLocalTranslation(float x, float y, float z, bool isDelta);
@@ -49,6 +49,7 @@ struct WCameraComponent : public WComponent {
 
   // Aspect ratio will be ignored if orthographic mode is selected
   void setCameraParameters(ECameraProjection newMode, float newFOV, float aspectRatio, float newViewDistance);
+  void setCameraParameters(const RCameraInfo& info);
 
   const ECameraProjection getProjectionMode();
   const float getFOV();
@@ -63,7 +64,8 @@ struct WCameraComponent : public WComponent {
   void setViewBufferIndex(const uint32_t newIndex);
   uint32_t getViewBufferIndex();
 
-  //void onOwnerControlled() override;
+  void onAttachmentModeChanged(WActor* pNewTarget, EAttachmentMode newMode) override;
+
   void update() override;
   void drawComponentUI() override;
 

@@ -10,7 +10,7 @@
 #include "core/world/components/componentevents.h"
 #include "core/world/components/transformcomp.h"
 
-WTransformComponent::WTransformComponent(ABase* pActor) {
+WTransformComponent::WTransformComponent(WActor* pActor) {
   typeId = EComponentType::Transform;
   pOwner = pActor;
   pEvents = &pOwner->getEventSystem();
@@ -185,24 +185,16 @@ const glm::vec3& WTransformComponent::getDeltaModifiers() {
 }
 
 void WTransformComponent::setAttachmentVectorRotation(const glm::vec3& newRotation, const bool isInRadians, const bool isDelta) {
-  data.attachmentRotation = (isDelta)
-    ? data.attachmentRotation + (((isInRadians) ? newRotation : glm::radians(newRotation)) * data.deltaModifiers.y)
-    : (isInRadians) ? newRotation : glm::radians(newRotation);
-
-  math::wrapAnglesGLM(data.attachmentRotation);
-
   data.attachmentOrientation = (isDelta)
     ? data.attachmentOrientation * glm::quat(((isInRadians) ? newRotation : glm::radians(newRotation)) * data.deltaModifiers.y)
-    : glm::quat(data.attachmentRotation);
-
+    : glm::quat(newRotation);
+  data.attachmentOrientation = glm::normalize(data.attachmentOrientation);
   data.attachmentVector = data.attachmentOrientation * data.baseAttachmentVector;
-
-  data.transformRequiresUpdate = true;
+  setTranslation(data.attachmentTranslation + data.attachmentVector, false);
 }
 
-void WTransformComponent::setBaseAttachmentVectorLength(const float newLength) {
+void WTransformComponent::setAttachmentVectorLength(const float newLength) {
   data.baseAttachmentVector.z = newLength;
-
   setAttachmentVectorRotation(glm::vec3(0.0f), true, true);
 }
 
@@ -214,7 +206,7 @@ void WTransformComponent::forceUpdateTransform() {
   data.transformRequiresUpdate = true;
 }
 
-void WTransformComponent::onAttachmentModeChanged(ABase* pNewTarget, EAttachmentMode newMode) {
+void WTransformComponent::onAttachmentModeChanged(WActor* pNewTarget, EAttachmentMode newMode) {
   if (attachmentMode == newMode || (newMode != EAttachmentMode::None && !pNewTarget)) return;
 
   switch (newMode) {
@@ -236,9 +228,7 @@ void WTransformComponent::onAttachmentModeChanged(ABase* pNewTarget, EAttachment
 
       // Initialize attachment transform data
       data.baseAttachmentVector = glm::vec3(0.0f, 0.0f, -1.0f) * glm::compMax(pTarget->getScale());
-      data.attachmentVector = data.baseAttachmentVector;
-      data.attachmentRotation = glm::vec3(0.0f);
-      data.attachmentOrientation = glm::quat(data.attachmentRotation);
+      setAttachmentVectorRotation(glm::vec3(0.0f), true, false);
       data.translation = pTarget->getTranslation() + data.attachmentVector;
       break;
     }
@@ -290,8 +280,10 @@ void WTransformComponent::update() {
 }
 
 void WTransformComponent::drawComponentUI() {
-  glm::vec3 translation = data.translation;
-  glm::vec3 rotation = data.rotation;
+  glm::vec3 translation = (attachmentMode != EAttachmentMode::None)
+    ? data.attachmentVector : data.translation;
+  glm::vec3 rotation = (attachmentMode != EAttachmentMode::None)
+    ? glm::eulerAngles(data.attachmentOrientation) : data.rotation;
   glm::vec3 scale = data.scale;
   glm::vec3 deltaRotation = glm::degrees(rotation);
 
@@ -304,14 +296,40 @@ void WTransformComponent::drawComponentUI() {
   bool open = ImGui::TreeNodeEx("Transform", treeNodeFlags);
 
   if (open) {
-    if (core::gui.drawVec3Control("Translation", translation, core::gui.m_util.dragSensitivity)) {
-      setTranslation(translation, false);
-    }
+    switch (attachmentMode) {
+      case EAttachmentMode::Translation:
+      case EAttachmentMode::TranslationAndRotation: {
+        float vectorLength = data.baseAttachmentVector.z;
 
-    if (core::gui.drawVec3Control("Rotation", deltaRotation, core::gui.m_util.dragSensitivity * 10.0f, false, "%.2f")) {
-      deltaRotation = glm::radians(deltaRotation);
-      deltaRotation -= rotation;
-      setRotation(deltaRotation, true, true);
+        ImGui::Text("Attached to: '%s'.", pTarget->getName().c_str());
+        if (core::gui.drawFloatControl("Vector length", vectorLength, 0.0f, 0.01f, "%.2f")) {
+          setAttachmentVectorLength(vectorLength);
+        }
+
+        core::gui.drawVec3Control("Translation", translation, core::gui.m_util.dragSensitivity);
+
+        if (core::gui.drawVec3Control("Rotation", deltaRotation, core::gui.m_util.dragSensitivity * 10.0f, false, "%.2f")) {
+          deltaRotation = glm::radians(deltaRotation);
+          deltaRotation -= rotation;
+          setAttachmentVectorRotation(deltaRotation, true, true);
+        }
+
+        break;
+      }
+
+      default: {
+        if (core::gui.drawVec3Control("Translation", translation, core::gui.m_util.dragSensitivity)) {
+          setTranslation(translation, false);
+        }
+
+        if (core::gui.drawVec3Control("Rotation", deltaRotation, core::gui.m_util.dragSensitivity * 10.0f, false, "%.2f")) {
+          deltaRotation = glm::radians(deltaRotation);
+          deltaRotation -= rotation;
+          setRotation(deltaRotation, true, true);
+        }
+
+        break;
+      }
     }
 
     if (core::gui.drawVec3Control("Scale", scale, core::gui.m_util.dragSensitivity, core::gui.m_editorData.isTransformScaleLocked)) {
@@ -371,7 +389,8 @@ void WTransformComponent::handleAttachmentTargetTransformUpdated(const Component
 
   switch (attachmentMode) {
     case EAttachmentMode::Translation: {
-      setTranslation(componentEvent.translation + data.attachmentVector, false);
+      data.attachmentTranslation = componentEvent.translation;
+      setTranslation(data.attachmentTranslation + data.attachmentVector, false);
       return;
     }
   }

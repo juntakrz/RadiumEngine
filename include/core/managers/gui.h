@@ -16,7 +16,7 @@ public:
     float rightPanelScale = 0.2f;
 
     // Currently selected scene graph entity
-    class ABase* pSelectedActor = nullptr;
+    class WActor* pSelectedActor = nullptr;
 
     bool isTransformScaleLocked = false;
 

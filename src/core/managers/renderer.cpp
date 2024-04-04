@@ -400,7 +400,9 @@ TResult core::MRenderer::setRendererDefaults() {
   cameraInfo.nearZ = RE_NEARZ;
   cameraInfo.viewDistance = config::viewDistance;
 
-  ABase* pCameraActor = core::scene.createCamera(RCAM_ENV, &cameraInfo);
+  WActor* pCameraActor = core::scene.createActor(RCAM_ENV);
+  WCameraComponent* pCamera = pCameraActor->addComponent<WCameraComponent>();
+  pCamera->setCameraParameters(cameraInfo);
 
   // Set transformation array for the environment camera
   environment.cameraTransformVectors[0] = glm::vec3(0.0f, glm::radians(90.0f), 0.0f);   // X+
@@ -416,14 +418,30 @@ TResult core::MRenderer::setRendererDefaults() {
 
   // RCAM_MAIN
   cameraInfo.FOV = config::FOV;
-  pCameraActor = core::scene.createCamera(RCAM_MAIN, &cameraInfo);
-
-  if (!pCameraActor) {
-    return RE_CRITICAL;
-  }
-
+  pCameraActor = core::scene.createActor(RCAM_MAIN);
+  pCamera = pCameraActor->addComponent<WCameraComponent>();
+  pCamera->setCameraParameters(cameraInfo);
   setCamera(pCameraActor, true);
   setMainCamera(pCameraActor->getComponent<WCameraComponent>());
+
+  // RCAM_SUN - default orthographic camera with a directional lightsource
+  cameraInfo.projectionMode = ECameraProjection::Orthographic;
+  cameraInfo.FOV = 2.0f;
+  cameraInfo.aspectRatio = 1.0f;
+  pCameraActor = core::scene.createActor(RCAM_SUN);
+  pCamera = pCameraActor->addComponent<WCameraComponent>();
+  pCamera->setCameraParameters(cameraInfo);
+  pCameraActor->attachTo(core::scene.getActor(RCAM_MAIN), EAttachmentMode::Translation);
+
+  WTransformComponent* pTransform = pCameraActor->getComponent<WTransformComponent>();
+  pTransform->setAttachmentVectorLength(-10.0f);
+  pTransform->setAttachmentVectorRotation(glm::vec3(45.0f, 0.0f, 0.0f), false, false);
+
+  WLightComponent* pLight = pCameraActor->addComponent<WLightComponent>();
+  pLight->setColor(glm::vec4(1.0f));
+  pLight->setLightMode(ELightMode::Directional);
+
+  setSunCamera(pCameraActor);
 
   // Set default lighting UBO data
   lighting.data.prefilteredCubeMipLevels = (float)math::getMipLevels(core::vulkan::envFilterExtent);

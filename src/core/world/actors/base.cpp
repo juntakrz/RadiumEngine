@@ -8,94 +8,94 @@
 #include "util/math.h"
 #include "util/util.h"
 
-ABase::ABase(const uint32_t UID) {
+WActor::WActor(const uint32_t UID) {
   m_UID = UID;
 
   // An actor always has transform component
   addComponent<WTransformComponent>();
 }
 
-const glm::mat4& ABase::getModelTransformationMatrix() noexcept {
+const glm::mat4& WActor::getModelTransformationMatrix() noexcept {
   return getComponent<WTransformComponent>()->getModelTransformationMatrix();
 }
 
-void ABase::setTranslation(float x, float y, float z, bool isDelta) noexcept {
+void WActor::setTranslation(float x, float y, float z, bool isDelta) noexcept {
   getComponent<WTransformComponent>()->setTranslation(x, y, z, isDelta);
 }
 
-void ABase::setTranslation(const glm::vec3& newLocation, bool isDelta) noexcept {
+void WActor::setTranslation(const glm::vec3& newLocation, bool isDelta) noexcept {
   getComponent<WTransformComponent>()->setTranslation(newLocation, isDelta);
 }
 
-void ABase::setRotation(float x, float y, float z, bool isInRadians, bool isDelta) noexcept {
+void WActor::setRotation(float x, float y, float z, bool isInRadians, bool isDelta) noexcept {
   getComponent<WTransformComponent>()->setRotation(x, y, z, isInRadians, isDelta);
 }
 
-void ABase::setRotation(const glm::vec3& newRotation, bool isInRadians, bool isDelta) noexcept {
+void WActor::setRotation(const glm::vec3& newRotation, bool isInRadians, bool isDelta) noexcept {
   getComponent<WTransformComponent>()->setRotation(newRotation, isInRadians, isDelta);
 }
 
-void ABase::setScale(const glm::vec3& scale, bool isDelta) noexcept {
+void WActor::setScale(const glm::vec3& scale, bool isDelta) noexcept {
   getComponent<WTransformComponent>()->setScale(scale, isDelta);
 }
 
-void ABase::setScale(float newScale, bool isDelta) noexcept {
+void WActor::setScale(float newScale, bool isDelta) noexcept {
   getComponent<WTransformComponent>()->setScale(newScale, isDelta);
 }
 
-const glm::vec3& ABase::getTranslation() noexcept {
+const glm::vec3& WActor::getTranslation() noexcept {
   return getComponent<WTransformComponent>()->getTranslation();
 }
 
-const glm::vec3& ABase::getRotation() noexcept {
+const glm::vec3& WActor::getRotation() noexcept {
   return getComponent<WTransformComponent>()->getRotation();
 }
 
-const glm::quat& ABase::getOrientation() noexcept {
+const glm::quat& WActor::getOrientation() noexcept {
   return getComponent<WTransformComponent>()->getOrientation();
 }
 
-const glm::vec3& ABase::getScale() noexcept {
+const glm::vec3& WActor::getScale() noexcept {
   return getComponent<WTransformComponent>()->getScale();
 }
 
-void ABase::setTranslationModifier(float newModifier) {
+void WActor::setTranslationModifier(float newModifier) {
   getComponent<WTransformComponent>()->setTranslationDeltaModifier(newModifier);
 }
 
-void ABase::setRotationModifier(float newModifier) {
+void WActor::setRotationModifier(float newModifier) {
   getComponent<WTransformComponent>()->setRotationDeltaModifier(newModifier);
 }
 
-void ABase::setScalingModifier(float newModifier) {
+void WActor::setScalingModifier(float newModifier) {
   getComponent<WTransformComponent>()->setScaleDeltaModifier(newModifier);
 }
 
-void ABase::setForwardVector(const glm::vec3& newVector) {
+void WActor::setForwardVector(const glm::vec3& newVector) {
   m_forwardVector = newVector;
 }
 
-const glm::vec3& ABase::getForwardVector() {
+const glm::vec3& WActor::getForwardVector() {
   return m_forwardVector;
 }
 
-const glm::vec3& ABase::getDefaultForwardVector() {
+const glm::vec3& WActor::getDefaultForwardVector() {
   return m_defaultForwardVector;
 }
 
-void ABase::setUpVector(const glm::vec3& newVector) {
+void WActor::setUpVector(const glm::vec3& newVector) {
   m_upVector = newVector;
 }
 
-const glm::vec3& ABase::getUpVector() {
+const glm::vec3& WActor::getUpVector() {
   return m_upVector;
 }
 
-const glm::vec3& ABase::getDefaultUpVector() {
+const glm::vec3& WActor::getDefaultUpVector() {
   return m_defaultUpVector;
 }
 
-void ABase::setControlMode(EActorControlMode newMode) {
+void WActor::setControlMode(EActorControlMode newMode) {
   m_controlMode = newMode;
 
   if (m_controlMode == EActorControlMode::FirstPerson) {
@@ -109,11 +109,11 @@ void ABase::setControlMode(EActorControlMode newMode) {
   }
 }
 
-EActorControlMode ABase::getControlMode() {
+EActorControlMode WActor::getControlMode() {
   return m_controlMode;
 }
 
-void ABase::onControllerMovement(const glm::vec3& vector, const bool isRotation) {
+void WActor::onControllerMovement(const glm::vec3& vector, const bool isRotation) {
   switch (isRotation) {
     case true: {
       ControllerRotationComponentEvent newEvent;
@@ -135,7 +135,7 @@ void ABase::onControllerMovement(const glm::vec3& vector, const bool isRotation)
   }
 }
 
-void ABase::onControlled(core::MPlayer* pController) {
+void WActor::onControlled(core::MPlayer* pController) {
   if (!pController || m_pController == pController) return;
   
   onFreed();
@@ -150,7 +150,7 @@ void ABase::onControlled(core::MPlayer* pController) {
   }
 }
 
-void ABase::onFreed() {
+void WActor::onFreed() {
   for (auto& componentType : m_pComponents) {
     for (auto& component : componentType.second) {
       component->onOwnerFreed();
@@ -158,30 +158,30 @@ void ABase::onFreed() {
   }
 }
 
-core::MPlayer* ABase::getController() {
+core::MPlayer* WActor::getController() {
   return m_pController;
 }
 
-void ABase::setName(const std::string& name) {
+void WActor::setName(const std::string& name) {
   m_previousName = m_name;
   m_name = name;
 
   core::scene.registerActor(this);
 }
 
-const std::string& ABase::getName() { return m_name; }
+const std::string& WActor::getName() { return m_name; }
 
-const std::string& ABase::getPreviousName() { return m_previousName; }
+const std::string& WActor::getPreviousName() { return m_previousName; }
 
-const EActorType& ABase::getTypeId() { return m_typeId; }
+const EActorType& WActor::getTypeId() { return m_typeId; }
 
-const uint32_t ABase::getUID() { return m_UID; }
+const uint32_t WActor::getUID() { return m_UID; }
 
-void ABase::setVisibility(const bool isVisible) { m_isVisible = isVisible; }
+void WActor::setVisibility(const bool isVisible) { m_isVisible = isVisible; }
 
-const bool ABase::isVisible() { return m_isVisible; }
+const bool WActor::isVisible() { return m_isVisible; }
 
-void ABase::attachTo(ABase* pTarget, EAttachmentMode newMode) {
+void WActor::attachTo(WActor* pTarget, EAttachmentMode newMode) {
   if (!pTarget) {
     RE_LOG(Error, "Failed to attach '%s' to target, nullptr was received.", getName().c_str());
     return;
@@ -211,11 +211,11 @@ void ABase::attachTo(ABase* pTarget, EAttachmentMode newMode) {
   }
 }
 
-void ABase::detach() {
+void WActor::detach() {
   attachTo(nullptr, EAttachmentMode::None);
 }
 
-void ABase::updateComponents() {
+void WActor::updateComponents() {
   for (auto& componentType : m_pComponents) {
     for (auto& component : componentType.second) {
       component->update();
@@ -223,11 +223,11 @@ void ABase::updateComponents() {
   }
 }
 
-void ABase::forceUpdateTransform() {
+void WActor::forceUpdateTransform() {
   getComponent<WTransformComponent>()->forceUpdateTransform();
 }
 
-void ABase::drawComponentUIElements() {
+void WActor::drawComponentUIElements() {
   for (auto& componentType : m_pComponents) {
     for (auto& component : componentType.second) {
       component->drawComponentUI();

@@ -66,7 +66,7 @@ void ACamera::setUpVector(const glm::vec3& upVector) noexcept {
   m_viewData.upVector = upVector;
 }
 
-void ACamera::setLookAtTarget(ABase* pTarget, const bool useForwardVector,
+void ACamera::setLookAtTarget(WActor* pTarget, const bool useForwardVector,
                               const bool attach) noexcept {
   //if (!pTarget) {
   //  RE_LOG(Error,

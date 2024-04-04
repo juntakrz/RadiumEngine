@@ -17,7 +17,7 @@ struct WLightComponent : public WComponent {
     glm::vec3 ownerScale = glm::vec3(1.0f);
   } data;
 
-  WLightComponent(ABase* pActor);
+  WLightComponent(WActor* pActor);
   ~WLightComponent();
 
   void setLightMode(ELightMode newMode);

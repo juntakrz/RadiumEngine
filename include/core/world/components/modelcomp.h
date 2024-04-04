@@ -9,7 +9,7 @@ struct WModelComponent : public WComponent {
     WModel* pModel = nullptr;
   } data;
 
-  WModelComponent(ABase* pActor) { typeId = EComponentType::Model; pOwner = pActor; }
+  WModelComponent(WActor* pActor) { typeId = EComponentType::Model; pOwner = pActor; }
 
   WModel* getModel();
   void setModel(WModel* pModel);

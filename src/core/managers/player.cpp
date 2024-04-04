@@ -46,7 +46,7 @@ void core::MPlayer::bindDefaultMethods() {
 
 void core::MPlayer::initialize() { bindDefaultMethods(); }
 
-void core::MPlayer::controlActor(ABase* pActor) {
+void core::MPlayer::controlActor(WActor* pActor) {
   if (!pActor) {
     RE_LOG(Error, "Couldn't control actor - nullptr was received.");
     return;
@@ -56,7 +56,7 @@ void core::MPlayer::controlActor(ABase* pActor) {
   m_pActor->onControlled(this);
 }
 
-void core::MPlayer::freeActor(ABase* pActor) {
+void core::MPlayer::freeActor(WActor* pActor) {
   if (!m_pActor) {
     RE_LOG(Error, "No actor is currently possesed.");
     return;

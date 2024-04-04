@@ -5,7 +5,7 @@
 #include "core/world/actors/base.h"
 #include "core/world/components/lightcomp.h"
 
-WLightComponent::WLightComponent(ABase* pActor) {
+WLightComponent::WLightComponent(WActor* pActor) {
   typeId = EComponentType::Light;
   pOwner = pActor;
   pEvents = &pOwner->getEventSystem();
@@ -81,7 +81,7 @@ void WLightComponent::removeLightFromBuffer() {
   switch (data.lightMode) {
     case ELightMode::Directional: {
       if (this == core::scene.getDirectLight()) {
-        core::scene.setDirectLight(nullptr);
+        core::scene.setDirectionalLight(nullptr);
       }
       return;
     }
