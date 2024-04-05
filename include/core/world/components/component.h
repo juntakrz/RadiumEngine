@@ -14,6 +14,7 @@ struct WComponent {
   ComponentEventSystem* pEvents = nullptr;
 
   WComponent(WActor* pActor = nullptr) : pOwner(pActor) {};
+  virtual ~WComponent() {};
 
   WActor* getOwner() { return pOwner; }
 

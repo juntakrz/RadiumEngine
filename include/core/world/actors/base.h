@@ -124,7 +124,8 @@ class WActor {
 
   template<typename T>
   T* addComponent() {
-    if (getComponent<T>() && (typeid(T) == typeid(WTransformComponent) || typeid(T) == typeid(WCameraComponent))) {
+    if (getComponent<T>() && (typeid(T) == typeid(WTransformComponent) || typeid(T) == typeid(WCameraComponent)
+      || typeid(T) == typeid(WDirectLightComponent))) {
       RE_LOG(Warning, "Failed to add component to '%s', only one component of requested type is allowed per actor.",
         m_name.c_str());
       return dynamic_cast<T*>(m_pComponents[typeid(T)][0].get());

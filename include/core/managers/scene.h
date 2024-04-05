@@ -32,8 +32,8 @@ class MScene {
     
     std::vector<struct WCameraComponent*> pCameras;
 
-    struct WLightComponent* pDirectionalLight = nullptr;
-    std::vector<struct WLightComponent*> pPointLights;
+    struct WDirectLightComponent* pDirectionalLight = nullptr;
+    std::vector<struct WPointLightComponent*> pPointLights;
   } m_sceneGraph;
 
   int32_t m_nextActorUID = 0;
@@ -82,11 +82,11 @@ class MScene {
   bool registerCamera(WCameraComponent* pCamera);
   bool unregisterCamera(WCameraComponent* pCamera);
 
-  bool registerPointLight(WLightComponent* pLight);
-  bool unregisterPointLight(WLightComponent* pLight);
+  bool registerPointLight(WPointLightComponent* pLight);
+  bool unregisterPointLight(WPointLightComponent* pLight);
 
-  bool setDirectionalLight(WLightComponent* pLight);
-  WLightComponent* getDirectLight();
+  bool setDirectionalLight(WDirectLightComponent* pLight);
+  WDirectLightComponent* getDirectionalLight();
 
   void setSceneName(const std::string& name);
   const std::string& getSceneName();

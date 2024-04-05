@@ -425,23 +425,17 @@ TResult core::MRenderer::setRendererDefaults() {
   setMainCamera(pCameraActor->getComponent<WCameraComponent>());
 
   // RCAM_SUN - default orthographic camera with a directional lightsource
-  cameraInfo.projectionMode = ECameraProjection::Orthographic;
-  cameraInfo.FOV = 2.0f;
-  cameraInfo.aspectRatio = 1.0f;
   pCameraActor = core::scene.createActor(RCAM_SUN);
-  pCamera = pCameraActor->addComponent<WCameraComponent>();
-  pCamera->setCameraParameters(cameraInfo);
+  WDirectLightComponent* pLight = pCameraActor->addComponent<WDirectLightComponent>();
+  pLight->setCameraParameters(2.0f, 1000.0f);
+  pLight->setColor(glm::vec4(1.0f));
   pCameraActor->attachTo(core::scene.getActor(RCAM_MAIN), EAttachmentMode::Translation);
 
   WTransformComponent* pTransform = pCameraActor->getComponent<WTransformComponent>();
   pTransform->setAttachmentVectorLength(-10.0f);
   pTransform->setAttachmentVectorRotation(glm::vec3(45.0f, 0.0f, 0.0f), false, false);
 
-  WLightComponent* pLight = pCameraActor->addComponent<WLightComponent>();
-  pLight->setColor(glm::vec4(1.0f));
-  pLight->setLightMode(ELightMode::Directional);
-
-  setSunCamera(pCameraActor);
+  setDirectionalLightCamera(pLight);
 
   // Set default lighting UBO data
   lighting.data.prefilteredCubeMipLevels = (float)math::getMipLevels(core::vulkan::envFilterExtent);

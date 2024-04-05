@@ -141,9 +141,6 @@
     <ClCompile Include="src\core\managers\animations_util.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\world\actors\light.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\core\managers\renderer_debug.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -201,10 +198,13 @@
     <ClCompile Include="src\core\world\components\component.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\world\components\lightcomp.cpp">
+    <ClCompile Include="src\core\world\components\pointlightcomp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="lib\include\imgui\ImGuizmo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\world\components\directlightcomp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -323,9 +323,6 @@
     <ClInclude Include="include\core\model\animation.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\actors\light.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\imconfig.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -350,7 +347,10 @@
     <ClInclude Include="include\core\world\components\componentevents.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\components\lightcomp.h">
+    <ClInclude Include="include\core\world\components\pointlightcomp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\world\components\directlightcomp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -5,8 +5,6 @@
 #include "core/core.h"
 #include "core/managers/gui.h"
 #include "core/world/actors/base.h"
-#include "core/world/actors/light.h"
-#include "core/world/actors/camera.h"
 #include "core/world/components/componentevents.h"
 #include "core/world/components/transformcomp.h"
 

@@ -2,13 +2,11 @@
 
 #include "component.h"
 
-struct WLightComponent : public WComponent {
+struct WPointLightComponent : public WComponent {
   struct {
-    ELightMode lightMode = ELightMode::Directional;
     glm::vec4 color = glm::vec4(1.0f);
     glm::vec3 localTranslation = glm::vec3(0.0f);
     glm::vec3 relativeTranslation = localTranslation;
-    bool isShadowCaster = false;
     bool isEnabled = true;
 
     // Event based data
@@ -17,11 +15,8 @@ struct WLightComponent : public WComponent {
     glm::vec3 ownerScale = glm::vec3(1.0f);
   } data;
 
-  WLightComponent(WActor* pActor);
-  ~WLightComponent();
-
-  void setLightMode(ELightMode newMode);
-  ELightMode getLightMode();
+  WPointLightComponent(WActor* pActor);
+  ~WPointLightComponent() override;
 
   void setColor(const glm::vec4& newColor);
   const glm::vec4& getColor();

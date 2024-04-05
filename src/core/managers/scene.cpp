@@ -28,17 +28,17 @@ void core::MScene::updateLightingBuffer(RLightingUBO* pLightingBuffer) {
   float lightType = 1.0f;
 
   // Index 0 is expected to always be the directional light
+  pLightingBuffer->lightColors[0] = glm::vec4(-1.0f);
+
   if (m_sceneGraph.pDirectionalLight) {
-    WActor* pActor = m_sceneGraph.pDirectionalLight->getOwner();
-    WCameraComponent* pDirectCamera = pActor->getComponent<WCameraComponent>();
-    pLightingBuffer->lightLocations[0] = glm::vec4(pActor->getTranslation(), 1.0f);
+    pLightingBuffer->lightLocations[0] = glm::vec4(m_sceneGraph.pDirectionalLight->getWorldTranslation(), 1.0f);
     pLightingBuffer->lightColors[0] = m_sceneGraph.pDirectionalLight->getColor();
-    pLightingBuffer->lightViews[0] = pDirectCamera->getView();
-    pLightingBuffer->lightOrthoMatrix = pDirectCamera->getProjection();
+    pLightingBuffer->lightViews[0] = m_sceneGraph.pDirectionalLight->getView();
+    pLightingBuffer->lightOrthoMatrix = m_sceneGraph.pDirectionalLight->getProjection();
   }
 
   for (const auto& pLight : m_sceneGraph.pPointLights) {
-    if (pLight->getIsEnabled() && pLight->getLightMode() != ELightMode::Directional) {
+    if (pLight->getIsEnabled()) {
       pLightingBuffer->lightLocations[lightCount] = glm::vec4(pLight->getWorldTranslation(), 1.0f);
       pLightingBuffer->lightColors[lightCount] = pLight->getColor();
 
@@ -238,9 +238,9 @@ bool core::MScene::unregisterCamera(WCameraComponent* pCamera) {
   return false;
 }
 
-bool core::MScene::registerPointLight(WLightComponent* pLight) {
-  if (!pLight || pLight->getLightMode() != ELightMode::Point) {
-    RE_LOG(Error, "Failed to add point light to scene manager, invalid light provided.");
+bool core::MScene::registerPointLight(WPointLightComponent* pLight) {
+  if (!pLight) {
+    RE_LOG(Error, "Failed to add point light to scene manager, received nullptr.");
     return false;
   }
 
@@ -249,7 +249,7 @@ bool core::MScene::registerPointLight(WLightComponent* pLight) {
   return true;
 }
 
-bool core::MScene::unregisterPointLight(WLightComponent* pLight) {
+bool core::MScene::unregisterPointLight(WPointLightComponent* pLight) {
   if (!pLight) {
     RE_LOG(Error, "Failed to remove point light from the scene manager, received nullptr.");
     return false;
@@ -270,9 +270,8 @@ bool core::MScene::unregisterPointLight(WLightComponent* pLight) {
   return false;
 }
 
-bool core::MScene::setDirectionalLight(WLightComponent* pLight) {
-  if (!pLight || (pLight && pLight->getLightMode() == ELightMode::Directional
-    && pLight->getOwner()->getComponent<WCameraComponent>())) {
+bool core::MScene::setDirectionalLight(WDirectLightComponent* pLight) {
+  if (!pLight || pLight->getOwner()->getComponent<WDirectLightComponent>()) {
     m_sceneGraph.pDirectionalLight = pLight;
     return true;
   }
@@ -281,7 +280,7 @@ bool core::MScene::setDirectionalLight(WLightComponent* pLight) {
   return false;
 }
 
-WLightComponent* core::MScene::getDirectLight() {
+WDirectLightComponent* core::MScene::getDirectionalLight() {
   return m_sceneGraph.pDirectionalLight;
 }
 

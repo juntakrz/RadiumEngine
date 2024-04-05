@@ -330,8 +330,11 @@ void core::MGUI::drawAddComponent() {
     if (ImGui::Selectable("Add new camera")) {
       pActor->addComponent<WCameraComponent>();
     }
-    if (ImGui::Selectable("Add new light")) {
-      pActor->addComponent<WLightComponent>();
+    if (ImGui::Selectable("Add new direct light")) {
+      pActor->addComponent<WDirectLightComponent>();
+    }
+    if (ImGui::Selectable("Add new point light")) {
+      pActor->addComponent<WPointLightComponent>();
     }
     if (ImGui::Selectable("Add new model")) {
 

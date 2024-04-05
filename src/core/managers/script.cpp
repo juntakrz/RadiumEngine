@@ -159,14 +159,13 @@ void core::MScript::jsonParseLights(const json* pLightData) noexcept {
   }
 
   std::vector<std::string> lightNames;
-  std::vector<RLightInfo> lightInfo;
   int32_t type = 0;
   float translation[3] = {};
   float direction[3] = {};
   float color[3] = {};
 
   for (const auto& it : pLightData->at("lights")) {
-    if (it.contains("name")) {
+    /*if (it.contains("name")) {
       lightNames.emplace_back(it.at("name"));
       lightInfo.emplace_back();
 
@@ -175,8 +174,6 @@ void core::MScript::jsonParseLights(const json* pLightData) noexcept {
       if (it.contains("type")) {
         it.at("type").type();   // invalid type detected unless this is called
         it.at("type").get_to(type);
-
-        info.type = ELightMode(type);
       }
 
       if (it.contains("translation")) {
@@ -204,14 +201,14 @@ void core::MScript::jsonParseLights(const json* pLightData) noexcept {
       if (it.contains("shadows")) {
         it.at("shadows").get_to(info.isShadowCaster);
       }
-    }
+    }*/
   }
 
   for (int32_t i = 0; i < lightNames.size(); ++i) {
     /*ALight* pNewLight = core::scene.createLight(lightNames[i].c_str(), &lightInfo[i]);
 
     if (pNewLight->isShadowCaster() && pNewLight->getLightMode() == ELightMode::Directional) {
-      core::renderer.setSunCamera(pNewLight);
+      core::renderer.setDirectionalLightCamera(pNewLight);
       core::scene.setSunLight(pNewLight);
     }*/
   }

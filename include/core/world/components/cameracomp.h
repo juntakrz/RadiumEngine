@@ -30,8 +30,9 @@ struct WCameraComponent : public WComponent {
     glm::vec3 focusVector = glm::vec3(0.0f);
   } data;
 
+  WCameraComponent() = default;
   WCameraComponent(WActor* pActor);
-  ~WCameraComponent();
+  ~WCameraComponent() override;
 
   void setLocalTranslation(float x, float y, float z, bool isDelta);
   void setLocalTranslation(const glm::vec3& newTranslation, bool isDelta);

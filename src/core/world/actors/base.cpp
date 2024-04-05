@@ -228,9 +228,14 @@ void WActor::forceUpdateTransform() {
 }
 
 void WActor::drawComponentUIElements() {
+  // Always draw transform component's editor UI first
+  getComponent<WTransformComponent>()->drawComponentUI();
+
   for (auto& componentType : m_pComponents) {
     for (auto& component : componentType.second) {
-      component->drawComponentUI();
+      if (component->typeId != EComponentType::Transform) {
+        component->drawComponentUI();
+      }
     }
   }
 }

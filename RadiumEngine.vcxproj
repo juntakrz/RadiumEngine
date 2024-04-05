@@ -178,9 +178,6 @@
     <ClCompile Include="src\core\managers\renderer_descriptor.cpp" />
     <ClCompile Include="src\core\managers\renderer_pass.cpp" />
     <ClCompile Include="src\core\managers\renderer_targets.cpp" />
-    <ClCompile Include="src\core\world\actors\light.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="src/main.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
@@ -338,7 +335,8 @@
     </ClCompile>
     <ClCompile Include="src\core\world\components\cameracomp.cpp" />
     <ClCompile Include="src\core\world\components\component.cpp" />
-    <ClCompile Include="src\core\world\components\lightcomp.cpp" />
+    <ClCompile Include="src\core\world\components\directlightcomp.cpp" />
+    <ClCompile Include="src\core\world\components\pointlightcomp.cpp" />
     <ClCompile Include="src\core\world\components\modelcomp.cpp" />
     <ClCompile Include="src\core\world\components\transformcomp.cpp" />
     <ClCompile Include="src\pch.cpp">
@@ -375,7 +373,6 @@
     <ClInclude Include="include\core\model\animation.h" />
     <ClInclude Include="include\core\world\actors\base.h" />
     <ClInclude Include="include\core\world\actors\entity.h" />
-    <ClInclude Include="include\core\world\actors\light.h" />
     <ClInclude Include="include\core\world\actors\pawn.h" />
     <ClInclude Include="include\core\objects.h" />
     <ClInclude Include="include\core\world\actors\static.h" />
@@ -390,7 +387,8 @@
     <ClInclude Include="include\core\world\components\component.h" />
     <ClInclude Include="include\core\world\components\components.h" />
     <ClInclude Include="include\core\world\components\componentevents.h" />
-    <ClInclude Include="include\core\world\components\lightcomp.h" />
+    <ClInclude Include="include\core\world\components\directlightcomp.h" />
+    <ClInclude Include="include\core\world\components\pointlightcomp.h" />
     <ClInclude Include="include\core\world\components\modelcomp.h" />
     <ClInclude Include="include\core\world\components\transformcomp.h" />
     <ClInclude Include="include\define.h" />

@@ -40,7 +40,7 @@ private:
 
 public:
   template<typename EventType, typename ClassType>
-  void addDelegate(ClassType* instance, void(ClassType::*function)(const ComponentEvent&)) {
+  void addDelegate(ClassType* instance, void(ClassType::* function)(const ComponentEvent&)) {
     if (!function || !instance) {
       RE_LOG(Error, "Couldn't add component event delegate, nullptr was received.");
       return;

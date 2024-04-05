@@ -631,7 +631,7 @@ void core::MRenderer::renderFrame() {
 
   /* 2. Cascaded shadows */
 
-  setCamera(view.pSunCamera, false);
+  setCamera(view.pDirectionalLightCamera, false);
   updateSceneUBO(renderView.frameInFlight);
 
   for (uint8_t cascadeIndex = 0; cascadeIndex < config::shadowCascades; ++cascadeIndex) {

@@ -211,7 +211,7 @@ class MRenderer {
     WCameraComponent* pMainCamera = nullptr;    // Must always exist
     WCameraComponent* pActiveCamera = nullptr;
     WCameraComponent* pPrimaryCamera = nullptr;
-    WCameraComponent* pSunCamera = nullptr;
+    WDirectLightComponent* pDirectionalLightCamera = nullptr;
     WCameraComponent* pEnvironmentCamera = nullptr;
     glm::ivec2 raycastTarget;
     glm::mat4 previousCameraView = glm::mat4(1.0f);
@@ -469,12 +469,13 @@ public:
   // set camera from create cameras by name
   void setCamera(WActor* pCameraOwner, const bool setAsPrimary);
   void setCamera(WCameraComponent* pCamera, const bool setAsPrimary);
-  void setSunCamera(WActor* pCameraOwner);
-  void setSunCamera(WCameraComponent* pCamera);
+  void setDirectionalLightCamera(WActor* pCameraOwner);
+  void setDirectionalLightCamera(WDirectLightComponent* pCamera);
   void setMainCamera(WCameraComponent* pNewMainCamera);
   WCameraComponent* getMainCamera();
   WCameraComponent* getPrimaryCamera();
   WCameraComponent* getEnvironmentCamera();
+  WDirectLightComponent* getDirectionalLightCamera();
 
   // get current renderer camera
   WCameraComponent* getCamera();

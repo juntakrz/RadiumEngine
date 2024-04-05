@@ -3,96 +3,64 @@
 #include "core/managers/gui.h"
 #include "core/managers/scene.h"
 #include "core/world/actors/base.h"
-#include "core/world/components/lightcomp.h"
+#include "core/world/components/pointlightcomp.h"
 
-WLightComponent::WLightComponent(WActor* pActor) {
+WPointLightComponent::WPointLightComponent(WActor* pActor) {
   typeId = EComponentType::Light;
   pOwner = pActor;
   pEvents = &pOwner->getEventSystem();
-  pEvents->addDelegate<TransformUpdateComponentEvent>(this, &WLightComponent::handleTransformUpdateEvent);
-  setLightMode(ELightMode::Point);
+  pEvents->addDelegate<TransformUpdateComponentEvent>(this, &WPointLightComponent::handleTransformUpdateEvent);
   pOwner->forceUpdateTransform();
+  core::scene.registerPointLight(this);
 }
 
-WLightComponent::~WLightComponent() {
+WPointLightComponent::~WPointLightComponent() {
   removeLightFromBuffer();
-  pEvents->removeDelegate<TransformUpdateComponentEvent>(&WLightComponent::handleTransformUpdateEvent);
+  pEvents->removeDelegate<TransformUpdateComponentEvent>(&WPointLightComponent::handleTransformUpdateEvent);
 }
 
-void WLightComponent::setLightMode(ELightMode newType) {
-  if (data.lightMode == newType) return;
-
-  removeLightFromBuffer();
-  data.lightMode = newType;
-
-  switch (newType) {
-    case ELightMode::Directional: {
-      break;
-    }
-    case ELightMode::Point: {
-      core::scene.registerPointLight(this);
-      break;
-    }
-  }
-}
-
-ELightMode WLightComponent::getLightMode() {
-  return data.lightMode;
-}
-
-void WLightComponent::setColor(const glm::vec4& newColor) {
+void WPointLightComponent::setColor(const glm::vec4& newColor) {
   data.color = newColor;
 }
 
-const glm::vec4& WLightComponent::getColor() {
+const glm::vec4& WPointLightComponent::getColor() {
   return data.color;
 }
 
-void WLightComponent::setLocalTranslation(float x, float y, float z, const bool isDelta) {
+void WPointLightComponent::setLocalTranslation(float x, float y, float z, const bool isDelta) {
   setLocalTranslation(glm::vec3(x, y, z), isDelta);
 }
 
-void WLightComponent::setLocalTranslation(const glm::vec3& newTranslation, const bool isDelta) {
+void WPointLightComponent::setLocalTranslation(const glm::vec3& newTranslation, const bool isDelta) {
   data.localTranslation = (isDelta) ? data.localTranslation + newTranslation : newTranslation;
   data.relativeTranslation = (data.ownerOrientation * data.localTranslation) * data.ownerScale;
 }
 
-const glm::vec3& WLightComponent::getLocalTranslation() {
+const glm::vec3& WPointLightComponent::getLocalTranslation() {
   return data.localTranslation;
 }
 
-const glm::vec3& WLightComponent::getRelativeTranslation() {
+const glm::vec3& WPointLightComponent::getRelativeTranslation() {
   return data.relativeTranslation;
 }
 
-const glm::vec3 WLightComponent::getWorldTranslation() {
+const glm::vec3 WPointLightComponent::getWorldTranslation() {
   return data.ownerTranslation + data.relativeTranslation;
 }
 
-void WLightComponent::setIsEnabled(const bool newValue) {
+void WPointLightComponent::setIsEnabled(const bool newValue) {
   data.isEnabled = newValue;
 }
 
-bool WLightComponent::getIsEnabled() {
+bool WPointLightComponent::getIsEnabled() {
   return data.isEnabled;
 }
 
-void WLightComponent::removeLightFromBuffer() {
-  switch (data.lightMode) {
-    case ELightMode::Directional: {
-      if (this == core::scene.getDirectLight()) {
-        core::scene.setDirectionalLight(nullptr);
-      }
-      return;
-    }
-    case ELightMode::Point: {
-      core::scene.unregisterPointLight(this);
-      return;
-    }
-  }
+void WPointLightComponent::removeLightFromBuffer() {
+  core::scene.unregisterPointLight(this);
 }
 
-void WLightComponent::drawComponentUI() {
+void WPointLightComponent::drawComponentUI() {
   const float availableWidth = ImGui::GetContentRegionAvail().x;
   bool removeComponent = false;
 
@@ -130,29 +98,6 @@ void WLightComponent::drawComponentUI() {
   }
 
   if (open) {
-    const char* lightModes[] = { "Directional", "Point" };
-    const uint8_t currentItem = (uint8_t)data.lightMode;
-
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, core::gui.m_style.black);
-    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, core::gui.m_style.black);
-    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, core::gui.m_style.black);
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-
-    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-
-    if (ImGui::BeginCombo("##LightMode", lightModes[currentItem], ImGuiComboFlags_None)) {
-      for (uint8_t mode = 0; mode < IM_ARRAYSIZE(lightModes); ++mode) {
-        if (ImGui::Selectable(lightModes[mode])) {
-          setLightMode((ELightMode)mode);
-        }
-      }
-
-      ImGui::EndCombo();
-    }
-
-    ImGui::PopStyleVar();
-    ImGui::PopStyleColor(3);
-
     if (core::gui.drawVec3Control("Local translation", translation, core::gui.m_util.dragSensitivity)) {
       setLocalTranslation(translation, false);
     }
@@ -194,7 +139,7 @@ void WLightComponent::drawComponentUI() {
   }
 }
 
-void WLightComponent::handleTransformUpdateEvent(const ComponentEvent& newEvent) {
+void WPointLightComponent::handleTransformUpdateEvent(const ComponentEvent& newEvent) {
   if (typeid(newEvent) != typeid(TransformUpdateComponentEvent)) {
     invalidComponentErrorMessage();
     return;

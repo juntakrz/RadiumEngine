@@ -99,6 +99,7 @@ enum class EComponentType {
   Transform,
   Camera,
   Model,
+  DirectLight,
   Light
 };
 
@@ -144,10 +145,6 @@ enum class EIndirectPassIndex : uint32_t {
   Count
 };
 
-enum class ELightMode {
-  Directional,
-  Point
-};
 enum class EPipelineLayout {
   Null,
   Scene,
@@ -319,15 +316,6 @@ struct RInstanceData {
   int32_t skinMatrixId = -1;
   int32_t materialId = -1;
   int32_t actorUID = -1;
-};
-
-struct RLightInfo {
-  ELightMode type = ELightMode::Point;
-  glm::vec3 color = {1.0f, 1.0f, 1.0f};
-  float intensity = 1.0f;
-  glm::vec3 direction = {0.0f, 0.0f, 0.0f};   // used by directional light only
-  glm::vec3 translation = {0.0f, 0.0f, 0.0f}; // used by point light only, both may be used by spotlight
-  bool isShadowCaster = false;
 };
 
 // used for RMaterial creation in materials manager
