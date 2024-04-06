@@ -186,7 +186,7 @@ void WCameraComponent::update() {
   }
 }
 
-void WCameraComponent::drawComponentUI() {
+void WCameraComponent::drawComponentUI(const uint32_t index) {
   const float availableWidth = ImGui::GetContentRegionAvail().x;
   bool removeComponent = false;
 
@@ -286,6 +286,7 @@ void WCameraComponent::drawComponentUI() {
       core::renderer.setCamera(core::renderer.getMainCamera(), true);
     }
 
+    core::gui.skipFrame();
     pOwner->removeComponent(this);
   }
 }

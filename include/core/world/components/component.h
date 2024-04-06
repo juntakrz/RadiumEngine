@@ -25,6 +25,6 @@ struct WComponent {
   virtual void onOwnerFreed() {};
   virtual void onOwnerUpdated() {};
   virtual void onCreated() {};
-  virtual void drawComponentUI() { ImGui::Text("Error. Base WComponent is a parent template and should never be used as is."); };
+  virtual void drawComponentUI(const uint32_t index);
   virtual void update() {};
 };

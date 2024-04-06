@@ -43,18 +43,15 @@ public:
   struct {
     const float updateInterval = 1.0f;
     float updateTime = 0.0f;
-
     float FPS = 0.0f;
     float frameTime = 0.0f;
-
     int32_t sceneGraphNodeIndex = 0;
-
     glm::ivec2 referenceRaycast = glm::ivec2(-1);
-
     float dragSensitivity = 0.01f;
-
     char textBuffer[1024];
     size_t textBufferSize = 0u;
+    bool skipFrame = false;
+    const std::string pointLightName = "Point Light #";
   } m_util;
 
   ImGuiIO* m_pIO = nullptr;
@@ -114,5 +111,7 @@ public:
   void render();
 
   bool isEditorVisible();
+  void skipFrame();
+  const bool isSkippingFrame();
 };
 }

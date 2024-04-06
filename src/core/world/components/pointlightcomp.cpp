@@ -63,7 +63,7 @@ void WPointLightComponent::onCreated() {
   core::scene.registerPointLight(this);
 }
 
-void WPointLightComponent::drawComponentUI() {
+void WPointLightComponent::drawComponentUI(const uint32_t index) {
   const float availableWidth = ImGui::GetContentRegionAvail().x;
   bool removeComponent = false;
 
@@ -75,7 +75,8 @@ void WPointLightComponent::drawComponentUI() {
   ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{ 4, 4 });
   ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
 
-  bool open = ImGui::TreeNodeEx("Light", treeNodeFlags);
+  std::string label(core::gui.m_util.pointLightName + std::to_string(index));
+  bool open = ImGui::TreeNodeEx(label.c_str(), treeNodeFlags);
 
   {
     ImGui::SameLine(availableWidth - 15.0f);
@@ -101,6 +102,8 @@ void WPointLightComponent::drawComponentUI() {
   }
 
   if (open) {
+    ImGui::Checkbox("Enable", &data.isEnabled);
+
     if (core::gui.drawVec3Control("Local translation", translation, core::gui.m_util.dragSensitivity)) {
       setLocalTranslation(translation, false);
     }
@@ -123,7 +126,7 @@ void WPointLightComponent::drawComponentUI() {
 
     ImGui::PopStyleColor();
 
-    if (core::gui.drawFloatControl("Light intensity", intensity, 0.0f, 0.1f, "%.1f")) {
+    if (core::gui.drawFloatControl("Light intensity", intensity, 0.0f, 0.01f, "%.2f")) {
       changedColor = true;
     }
 
@@ -138,6 +141,7 @@ void WPointLightComponent::drawComponentUI() {
   ImGui::PopStyleVar(2);
 
   if (removeComponent) {
+    core::gui.skipFrame();
     pOwner->removeComponent(this);
   }
 }

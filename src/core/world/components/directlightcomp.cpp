@@ -139,7 +139,7 @@ void WDirectLightComponent::update() {
   }
 }
 
-void WDirectLightComponent::drawComponentUI() {
+void WDirectLightComponent::drawComponentUI(const uint32_t index) {
   const float availableWidth = ImGui::GetContentRegionAvail().x;
   bool removeComponent = false;
 
@@ -204,7 +204,7 @@ void WDirectLightComponent::drawComponentUI() {
 
     ImGui::PopStyleColor();
 
-    if (core::gui.drawFloatControl("Light intensity", intensity, 0.0f, 0.1f, "%.1f")) {
+    if (core::gui.drawFloatControl("Light intensity", intensity, 0.0f, 0.01f, "%.2f")) {
       changedColor = true;
     }
 
@@ -231,6 +231,7 @@ void WDirectLightComponent::drawComponentUI() {
       core::renderer.setDirectionalLightCamera((WDirectLightComponent*)nullptr);
     }
 
+    core::gui.skipFrame();
     pOwner->removeComponent(this);
   }
 }

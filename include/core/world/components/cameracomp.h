@@ -69,7 +69,7 @@ struct WCameraComponent : public WComponent {
   void onCreated() override;
 
   void update() override;
-  void drawComponentUI() override;
+  void drawComponentUI(const uint32_t index) override;
 
   // Event delegates
   void handleTransformUpdateEvent(const ComponentEvent& newEvent);

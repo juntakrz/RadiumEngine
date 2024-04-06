@@ -154,6 +154,11 @@ class WActor {
     for (auto& it : m_pComponents[typeIndex]) {
       if (it.get() == pComponent) {
         m_pComponents[typeIndex].erase(m_pComponents[typeIndex].begin() + componentIndex);
+
+        if (m_pComponents[typeIndex].empty()) {
+          m_pComponents.erase(typeIndex);
+        }
+
         return true;
       }
 

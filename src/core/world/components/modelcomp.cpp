@@ -13,5 +13,5 @@ void WModelComponent::setModel(WModel* pModel) {
 void WModelComponent::update() {
 }
 
-void WModelComponent::drawComponentUI() {
+void WModelComponent::drawComponentUI(const uint32_t index) {
 }

@@ -230,3 +230,11 @@ void core::MGUI::render() {
 bool core::MGUI::isEditorVisible() {
   return m_isEditorVisible;
 }
+
+void core::MGUI::skipFrame() {
+  m_util.skipFrame = true;
+}
+
+const bool core::MGUI::isSkippingFrame() {
+  return m_util.skipFrame;
+}

@@ -19,6 +19,8 @@ void core::MGUI::preprocessEditorData() {
     m_util.updateTime = 0.0f;
   }
 
+  m_util.skipFrame = false;
+
   const glm::ivec2& referenceRaycast = core::renderer.getRaycastPosition();
   if (referenceRaycast.x > -1 && referenceRaycast.y > -1) {
     m_util.referenceRaycast = referenceRaycast;

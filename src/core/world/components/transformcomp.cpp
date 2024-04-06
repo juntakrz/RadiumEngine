@@ -277,7 +277,7 @@ void WTransformComponent::update() {
   }
 }
 
-void WTransformComponent::drawComponentUI() {
+void WTransformComponent::drawComponentUI(const uint32_t index) {
   glm::vec3 translation = (attachmentMode != EAttachmentMode::None)
     ? data.attachmentVector : data.translation;
   glm::vec3 rotation = (attachmentMode != EAttachmentMode::None)

@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "core/core.h"
+#include "core/managers/gui.h"
 #include "core/managers/scene.h"
 #include "core/managers/time.h"
 #include "core/world/actors/base.h"
@@ -229,12 +230,18 @@ void WActor::forceUpdateTransform() {
 
 void WActor::drawComponentUIElements() {
   // Always draw transform component's editor UI first
-  getComponent<WTransformComponent>()->drawComponentUI();
+  getComponent<WTransformComponent>()->drawComponentUI(0);
 
   for (auto& componentType : m_pComponents) {
+    if (core::gui.isSkippingFrame()) return;
+    uint32_t index = 0;
+
     for (auto& component : componentType.second) {
+      if (core::gui.isSkippingFrame()) return;
+
       if (component->typeId != EComponentType::Transform) {
-        component->drawComponentUI();
+        component->drawComponentUI(index);
+        ++index;
       }
     }
   }
