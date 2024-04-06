@@ -7,7 +7,7 @@ class OFuncPtr_Base {
   virtual void operator()(){};
 };
 
-template <typename C, typename... Args>
+template <typename C>
 class OFuncPtr : public OFuncPtr_Base {
   C* owner = nullptr;
   void (C::*func)() = nullptr;

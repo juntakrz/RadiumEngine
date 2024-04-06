@@ -12,14 +12,10 @@ WCameraComponent::WCameraComponent(WActor* pActor) {
   typeId = EComponentType::Camera;
   pOwner = pActor;
   pEvents = &pOwner->getEventSystem();
-
-  // Subscribe to appropriate events
-  pEvents->addDelegate<TransformUpdateComponentEvent>(this, &WCameraComponent::handleTransformUpdateEvent);
-
-  core::scene.registerCamera(this);
 }
 
 WCameraComponent::~WCameraComponent() {
+  pEvents->removeDelegates<TransformUpdateComponentEvent>(this);
   core::scene.unregisterCamera(this);
 }
 
@@ -145,6 +141,11 @@ void WCameraComponent::onAttachmentModeChanged(WActor* pNewTarget, EAttachmentMo
   attachmentMode = newMode;
 
   data.viewRequiresUpdate = true;
+}
+
+void WCameraComponent::onCreated() {
+  pEvents->addDelegate<TransformUpdateComponentEvent>(this, &WCameraComponent::handleTransformUpdateEvent);
+  core::scene.registerCamera(this);
 }
 
 void WCameraComponent::update() {

@@ -66,6 +66,7 @@ struct WCameraComponent : public WComponent {
   uint32_t getViewBufferIndex();
 
   void onAttachmentModeChanged(WActor* pNewTarget, EAttachmentMode newMode) override;
+  void onCreated() override;
 
   void update() override;
   void drawComponentUI() override;

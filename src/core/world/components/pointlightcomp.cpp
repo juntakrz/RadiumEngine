@@ -9,14 +9,11 @@ WPointLightComponent::WPointLightComponent(WActor* pActor) {
   typeId = EComponentType::Light;
   pOwner = pActor;
   pEvents = &pOwner->getEventSystem();
-  pEvents->addDelegate<TransformUpdateComponentEvent>(this, &WPointLightComponent::handleTransformUpdateEvent);
-  pOwner->forceUpdateTransform();
-  core::scene.registerPointLight(this);
 }
 
 WPointLightComponent::~WPointLightComponent() {
   removeLightFromBuffer();
-  pEvents->removeDelegate<TransformUpdateComponentEvent>(&WPointLightComponent::handleTransformUpdateEvent);
+  pEvents->removeDelegates<TransformUpdateComponentEvent>(this);
 }
 
 void WPointLightComponent::setColor(const glm::vec4& newColor) {
@@ -58,6 +55,12 @@ bool WPointLightComponent::getIsEnabled() {
 
 void WPointLightComponent::removeLightFromBuffer() {
   core::scene.unregisterPointLight(this);
+}
+
+void WPointLightComponent::onCreated() {
+  pEvents->addDelegate<TransformUpdateComponentEvent>(this, &WPointLightComponent::handleTransformUpdateEvent);
+  pOwner->forceUpdateTransform();
+  core::scene.registerPointLight(this);
 }
 
 void WPointLightComponent::drawComponentUI() {

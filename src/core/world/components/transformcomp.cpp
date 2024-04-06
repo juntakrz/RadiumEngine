@@ -210,8 +210,8 @@ void WTransformComponent::onAttachmentModeChanged(WActor* pNewTarget, EAttachmen
   switch (newMode) {
     case EAttachmentMode::None: {
       if (pTarget) {
-          pTarget->getEventSystem().removeDelegate<TransformUpdateComponentEvent>(&WTransformComponent::handleAttachmentTargetTransformUpdated);
-          pTarget->getEventSystem().removeDelegate<ActorDestroyedComponentEvent>(&WTransformComponent::handleAttachmentTargetDestroyed);
+          pTarget->getEventSystem().removeDelegates<TransformUpdateComponentEvent>(this);
+          pTarget->getEventSystem().removeDelegates<ActorDestroyedComponentEvent>(this);
           pTarget = nullptr;
           data.attachmentVector = glm::vec3(0.0f);
       }
@@ -243,8 +243,8 @@ void WTransformComponent::onOwnerControlled() {
 }
 
 void WTransformComponent::onOwnerFreed() {
-  pEvents->removeDelegate<ControllerTranslationComponentEvent>(&WTransformComponent::handleControllerTranslation);
-  pEvents->removeDelegate<ControllerRotationComponentEvent>(&WTransformComponent::handleControllerRotation);
+  pEvents->removeDelegates<ControllerTranslationComponentEvent>(this);
+  pEvents->removeDelegates<ControllerRotationComponentEvent>(this);
 }
 
 void WTransformComponent::onOwnerUpdated() {

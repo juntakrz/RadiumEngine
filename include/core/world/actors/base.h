@@ -132,7 +132,9 @@ class WActor {
     }
 
     m_pComponents[typeid(T)].emplace_back(std::move(std::make_unique<T>(this)));
-    return dynamic_cast<T*>(m_pComponents[typeid(T)].back().get());
+    T* pComponent = dynamic_cast<T*>(m_pComponents[typeid(T)].back().get());
+    pComponent->onCreated();
+    return pComponent;
   }
 
   template<typename T>

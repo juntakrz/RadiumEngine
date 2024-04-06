@@ -8,7 +8,6 @@ struct WDirectLightComponent : public WCameraComponent {
   } lightData;
 
   WDirectLightComponent(WActor* pActor);
-  ~WDirectLightComponent() override;
 
   void setLocalTranslation(float x, float y, float z, bool isDelta);
   void setLocalTranslation(const glm::vec3& newTranslation, bool isDelta);
@@ -39,6 +38,7 @@ struct WDirectLightComponent : public WCameraComponent {
   const glm::vec4& getColor();
 
   void onAttachmentModeChanged(WActor* pNewTarget, EAttachmentMode newMode) override;
+  void onCreated() override;
 
   void update() override;
   void drawComponentUI() override;

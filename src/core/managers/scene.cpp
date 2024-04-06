@@ -12,6 +12,10 @@ core::MScene::MScene() {
   RE_LOG(Log, "Created scene graph manager.");
 }
 
+core::MScene::~MScene() {
+  m_sceneActors.clear();
+}
+
 const core::MScene::WSceneGraph& core::MScene::getSceneGraph() {
   return m_sceneGraph;
 }
@@ -113,7 +117,6 @@ WActor* core::MScene::createActor(const std::string& name) {
     m_sceneActors[m_nextActorUID] = std::make_unique<WActor>(m_nextActorUID);
     WActor* pNewActor = m_sceneActors[m_nextActorUID].get();
     pNewActor->setName(name);
-    registerActor(pNewActor);
 
 #ifndef NDEBUG
     RE_LOG(Log, "Created actor '%s'.", name.c_str());
@@ -271,13 +274,8 @@ bool core::MScene::unregisterPointLight(WPointLightComponent* pLight) {
 }
 
 bool core::MScene::setDirectionalLight(WDirectLightComponent* pLight) {
-  if (!pLight || pLight->getOwner()->getComponent<WDirectLightComponent>()) {
-    m_sceneGraph.pDirectionalLight = pLight;
-    return true;
-  }
-
-  RE_LOG(Error, "Failed to set directional light caster.");
-  return false;
+  m_sceneGraph.pDirectionalLight = pLight;
+  return true;
 }
 
 WDirectLightComponent* core::MScene::getDirectionalLight() {

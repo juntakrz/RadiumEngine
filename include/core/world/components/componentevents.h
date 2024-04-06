@@ -31,12 +31,39 @@ struct ActorDestroyedComponentEvent : public ComponentEvent {
   WActor* pActor = nullptr;
 };
 
-class ComponentEventSystem {
-  using ComponentDelegate = std::function<void(const ComponentEvent&)>;
+class ComponentDelegate_Base {
+public:
+  virtual bool compareOwner(void*) = 0;
+  virtual void execute(const ComponentEvent&) = 0;
+  virtual void operator()(const ComponentEvent&) = 0;
+};
 
+template <typename ClassType>
+class ComponentDelegate : public ComponentDelegate_Base {
+public:
+  ClassType* pOwner = nullptr;
+  void(ClassType::* function)(const ComponentEvent&) = nullptr;
+
+  ComponentDelegate(ClassType* pNewOwner, void(ClassType::* newFunction)(const ComponentEvent&))
+    : pOwner(pNewOwner), function(newFunction) {};
+
+  bool compareOwner(void* pObject) override {
+    return pObject == static_cast<void*>(pOwner);
+  }
+
+  void execute(const ComponentEvent& newEvent) override {
+    return (pOwner->*function)(newEvent);
+  };
+
+  void operator()(const ComponentEvent& newEvent) override {
+    return (pOwner->*function)(newEvent);
+  };
+};
+
+class ComponentEventSystem {
 private:
   // Map: [event type] - vector of [WComponent]
-  std::unordered_map<std::type_index, std::vector<ComponentDelegate>> m_delegates;
+  std::unordered_map<std::type_index, std::vector<std::unique_ptr<ComponentDelegate_Base>>> m_delegates;
 
 public:
   template<typename EventType, typename ClassType>
@@ -46,12 +73,12 @@ public:
       return;
     }
 
-    m_delegates[typeid(EventType)].emplace_back(std::bind(function, instance, std::placeholders::_1));
+    m_delegates[typeid(EventType)].emplace_back(std::make_unique<ComponentDelegate<ClassType>>(instance, function));
   }
 
-  template<typename EventType, typename ClassType>
-  void removeDelegate(void(ClassType::* function)(const ComponentEvent&)) {
-    if (!function) {
+  template<typename EventType>
+  void removeDelegates(void* pOwner) {
+    if (!pOwner) {
       RE_LOG(Error, "Failed to remove the component event delegate, nullptr was received.");
       return;
     }
@@ -62,8 +89,8 @@ public:
       uint32_t entryIndex = 0;
       auto& eventDelegates = m_delegates[eventTypeId];
 
-      for (auto func : eventDelegates) {
-        if (*func.target<decltype(function)>() == function) {
+      for (const auto& eventDelegate : eventDelegates) {
+        if (eventDelegate->compareOwner(pOwner)) {
           eventDelegates.erase(eventDelegates.begin() + entryIndex);
           return;
         }
@@ -78,8 +105,8 @@ public:
     std::type_index eventTypeId = typeid(EventType);
 
     if (m_delegates.contains(eventTypeId)) {
-      for (auto& func : m_delegates[eventTypeId]) {
-        func(newEvent);
+      for (auto& eventDelegate : m_delegates[eventTypeId]) {
+        eventDelegate->execute(newEvent);
       }
     }
   }

@@ -32,6 +32,8 @@ struct WPointLightComponent : public WComponent {
 
   void removeLightFromBuffer();
 
+  void onCreated() override;
+
   void drawComponentUI() override;
 
   // Event delegates

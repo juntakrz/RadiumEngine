@@ -47,6 +47,7 @@ class MScene {
 
  private:
   MScene();
+  ~MScene();
 
  public:
   static MScene& get() {

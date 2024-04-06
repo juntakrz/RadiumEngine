@@ -13,16 +13,6 @@ WDirectLightComponent::WDirectLightComponent(WActor* pActor) {
   typeId = EComponentType::DirectLight;
   pOwner = pActor;
   pEvents = &pOwner->getEventSystem();
-
-  // Subscribe to appropriate events
-  pEvents->addDelegate<TransformUpdateComponentEvent>(this, &WDirectLightComponent::handleTransformUpdateEvent);
-
-  core::scene.registerCamera(this);
-}
-
-WDirectLightComponent::~WDirectLightComponent() {
-  pEvents->removeDelegate<TransformUpdateComponentEvent>(&WDirectLightComponent::handleTransformUpdateEvent);
-  core::scene.unregisterCamera(this);
 }
 
 void WDirectLightComponent::setLocalTranslation(float x, float y, float z, bool isDelta) {
@@ -115,6 +105,11 @@ void WDirectLightComponent::onAttachmentModeChanged(WActor* pNewTarget, EAttachm
   attachmentMode = newMode;
 
   data.viewRequiresUpdate = true;
+}
+
+void WDirectLightComponent::onCreated() {
+  pEvents->addDelegate<TransformUpdateComponentEvent>(this, &WDirectLightComponent::handleTransformUpdateEvent);
+  core::scene.registerCamera(this);
 }
 
 void WDirectLightComponent::update() {
