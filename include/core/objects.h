@@ -409,6 +409,11 @@ struct RTransparencyLinkedListNode {
   uint32_t nextNodeIndex;
 };
 
+struct RUIImage {
+  ImTextureID descriptorSet;
+  ImVec2 size;
+};
+
 struct RViewport {
   VkViewport viewport;
   VkRect2D scissor;

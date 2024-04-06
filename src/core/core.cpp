@@ -39,6 +39,10 @@ void core::run() {
   RE_LOG(Log, "Creating renderer.");
   RE_CHECK(core::create());
 
+  if (config::bDevMode) {
+    core::script.loadEditorResources();
+  }
+
   RE_LOG(Log, "Successfully initialized engine core.");
 
   core::script.loadMap("default");

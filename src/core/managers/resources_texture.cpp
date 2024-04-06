@@ -7,16 +7,15 @@
 
 #include "stb_image.h"
 
-TResult core::MResources::loadTexture(const std::string& filePath,
-                                   RSamplerInfo* pSamplerInfo, const bool createExtraViews) {
+TResult core::MResources::loadTexture(const std::string& filePath, RSamplerInfo* pSamplerInfo,
+  const bool createExtraViews, const bool overrideFilePath) {
   auto revert = [&](const char* name) { m_textures.erase(name); };
 
   if (filePath == "") {
-    // nothing to load
     return RE_WARNING;
   }
 
-  std::string fullPath = RE_PATH_TEXTURES + filePath;
+  std::string fullPath = (overrideFilePath) ? filePath : RE_PATH_TEXTURES + filePath;
 
   ktxTexture* pKTXTexture = nullptr;
   KTX_error_code ktxResult;

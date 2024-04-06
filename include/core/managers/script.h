@@ -35,5 +35,7 @@ namespace core {
     void jsonParseLights(const json* pLightData) noexcept;
     void jsonParseObjects(const json* pObjectData) noexcept;
     void jsonParseCommands(const json* pCommandData) noexcept;
+
+    void loadEditorResources() noexcept;
   };
 }

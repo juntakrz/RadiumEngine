@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "util/util.h"
 #include "core/core.h"
+#include "core/managers/gui.h"
 #include "core/managers/player.h"
 #include "core/managers/renderer.h"
 #include "core/managers/scene.h"
@@ -217,3 +218,24 @@ void core::MScript::jsonParseLights(const json* pLightData) noexcept {
 void core::MScript::jsonParseObjects(const json* objectData) noexcept {}
 
 void core::MScript::jsonParseCommands(const json* commandData) noexcept {}
+
+void core::MScript::loadEditorResources() noexcept {
+  RSamplerInfo samplerInfo{};
+
+  for (const auto& entry : std::filesystem::directory_iterator(RE_PATH_EDITOR)) {
+    if (entry.is_regular_file()) {
+      std::string extension = entry.path().extension().string();
+
+      if (extension == ".ktx2") {
+        std::string filePath = "editor/" + entry.path().filename().string();
+        core::resources.loadTexture(filePath, &samplerInfo, false);
+        RTexture* pTexture = core::resources.getTexture(filePath.c_str());
+        VkDescriptorSet newImage =
+          ImGui_ImplVulkan_AddTexture(
+            pTexture->texture.sampler, pTexture->texture.view, pTexture->texture.imageLayout);
+
+        core::gui.addImage(filePath, ImVec2(pTexture->texture.width, pTexture->texture.height), newImage);
+      }
+    }
+  }
+}

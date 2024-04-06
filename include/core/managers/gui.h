@@ -60,6 +60,8 @@ public:
   bool m_isEditorVisible = true;
   bool m_isImGUIDemoVisible = false;
 
+  std::unordered_map<std::string, RUIImage> m_images;
+
   MGUI();
   void checkVulkanResult(VkResult result) {};
   
@@ -109,6 +111,11 @@ public:
   ImGuiIO& io();
 
   void render();
+
+  void addImage(const std::string& name, ImVec2 size, VkDescriptorSet imageSet);
+  RUIImage* getImage(const std::string& name);
+
+  ImVec2 getScreenCoordinatesFromWorldTranslation(const glm::vec3& worldTranslation);
 
   bool isEditorVisible();
   void skipFrame();

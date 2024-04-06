@@ -227,6 +227,43 @@ void core::MGUI::render() {
   ImGui::Render();
 }
 
+void core::MGUI::addImage(const std::string& name, ImVec2 size, VkDescriptorSet imageSet) {
+  if (!m_images.contains(name)) {
+    m_images[name] = { imageSet, size };
+
+#ifndef NDEBUG
+    RE_LOG(Log, "Successfuly added UI image '%s'.", name.c_str());
+#endif
+    return;
+  }
+
+  RE_LOG(Error, "Failed to add UI image '%s'. An image with this name already exists.", name.c_str());
+}
+
+RUIImage* core::MGUI::getImage(const std::string& name) {
+  if (m_images.contains(name)) {
+    return &m_images[name];
+  }
+
+  RE_LOG(Error, "Failed to get user interface image '%s'. Does not exist in the UI image database.", name.c_str());
+  return nullptr;
+}
+
+ImVec2 core::MGUI::getScreenCoordinatesFromWorldTranslation(const glm::vec3& worldTranslation) {
+  WCameraComponent* pCameraComponent = core::renderer.getCamera();
+  glm::vec4 clipSpace = pCameraComponent->getProjection() * pCameraComponent->getView() * glm::vec4(worldTranslation, 1.0f);
+
+  // Normalize clip space to obtain NDC (Normalized Device Coordinates)
+  clipSpace /= clipSpace.w;
+
+  // Convert NDC to screen space
+  ImVec2 screenSize = ImGui::GetIO().DisplaySize;
+  ImVec2 screenSpace;
+  screenSpace.x = (clipSpace.x * 0.5f + 0.5f) * screenSize.x;
+  screenSpace.y = (clipSpace.y * -0.5f + 0.5f) * screenSize.y;
+  return screenSpace;
+}
+
 bool core::MGUI::isEditorVisible() {
   return m_isEditorVisible;
 }

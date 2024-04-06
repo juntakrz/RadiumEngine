@@ -39,6 +39,7 @@ constexpr bool enableGPUAssistedValidation = false;
 #define RE_PATH_MAP         TEXT("content/maps/")
 #define RE_PATH_TEXTURES    "content/textures/"
 #define RE_PATH_ANIMATIONS  "content/animations/"
+#define RE_PATH_EDITOR      "content/textures/editor/"
 #define RE_PATH_SHADERS     "content/shaders/"
 #define RE_PATH_SHDRC       "development\\compileShaders_Win_x64_DEBUG.bat"
 

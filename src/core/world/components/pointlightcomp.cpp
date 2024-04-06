@@ -64,6 +64,20 @@ void WPointLightComponent::onCreated() {
 }
 
 void WPointLightComponent::drawComponentUI(const uint32_t index) {
+  RUIImage* pComponentIcon = (getIsEnabled())
+    ? core::gui.getImage("editor/editor_iconPointLightEnabled.ktx2")
+    : core::gui.getImage("editor/editor_iconPointLightDisabled.ktx2");
+
+  if (pComponentIcon) {
+    ImVec2 iconPosition = core::gui.getScreenCoordinatesFromWorldTranslation(getWorldTranslation());
+    ImGui::SetNextWindowPos(iconPosition - (pComponentIcon->size / 2));
+
+    std::string iconLabel("##" + core::gui.m_util.pointLightName + "Icon" + std::to_string(index));
+    ImGui::Begin(iconLabel.c_str(), nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground);
+    ImGui::Image(pComponentIcon->descriptorSet, pComponentIcon->size);
+    ImGui::End();
+  }
+
   const float availableWidth = ImGui::GetContentRegionAvail().x;
   bool removeComponent = false;
 
