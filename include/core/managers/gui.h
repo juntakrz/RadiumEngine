@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/world/actors/base.h"
+#include "core/world/actor.h"
 
 namespace core {
 class MGUI {

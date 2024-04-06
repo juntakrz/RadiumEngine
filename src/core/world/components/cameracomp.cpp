@@ -4,7 +4,7 @@
 #include "core/managers/gui.h"
 #include "core/managers/renderer.h"
 #include "core/managers/scene.h"
-#include "core/world/actors/base.h"
+#include "core/world/actor.h"
 #include "core/world/components/transformcomp.h"
 #include "core/world/components/cameracomp.h"
 

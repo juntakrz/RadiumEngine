@@ -3,7 +3,7 @@
 #include "core/managers/input.h"
 #include "core/managers/player.h"
 #include "core/managers/time.h"
-#include "core/world/actors/base.h"
+#include "core/world/actor.h"
 
 core::MPlayer::MPlayer() {
   RE_LOG(Log, "Created player controller manager.");

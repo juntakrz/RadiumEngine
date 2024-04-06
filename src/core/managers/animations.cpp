@@ -3,7 +3,7 @@
 #include "util/math.h"
 #include "core/core.h"
 #include "core/model/model.h"
-#include "core/world/actors/base.h"
+#include "core/world/actor.h"
 #include "core/managers/renderer.h"
 #include "core/managers/time.h"
 #include "core/managers/animations.h"

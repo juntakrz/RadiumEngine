@@ -7,7 +7,6 @@
 #include "core/managers/time.h"
 #include "core/material/texture.h"
 #include "core/model/model.h"
-#include "core/world/actors/camera.h"
 
 // PRIVATE
 

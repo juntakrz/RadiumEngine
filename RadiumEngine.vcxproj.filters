@@ -69,10 +69,7 @@
     <ClCompile Include="src\core\managers\time.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\world\actors\base.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\core\world\actors\camera.cpp">
+    <ClCompile Include="src\core\world\actor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\util\math.cpp">
@@ -266,13 +263,10 @@
     <ClInclude Include="include\core\managers\time.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\world\actors\base.h">
+    <ClInclude Include="include\core\world\actor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\util\math.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\core\world\actors\camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\core\managers\script.h">

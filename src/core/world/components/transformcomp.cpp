@@ -4,7 +4,7 @@
 #include "core/objects.h"
 #include "core/core.h"
 #include "core/managers/gui.h"
-#include "core/world/actors/base.h"
+#include "core/world/actor.h"
 #include "core/world/components/componentevents.h"
 #include "core/world/components/transformcomp.h"
 
