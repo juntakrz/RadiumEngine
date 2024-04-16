@@ -226,9 +226,6 @@ TResult core::MRenderer::createDynamicRenderingPasses() {
     createDynamicRenderingPass(EDynamicRenderingPass::DiscardCullNone, &info);
 
     // Blend pass without culling and depth writes
-
-    //colorAttachmentCount = static_cast<uint32_t>(scene.pABufferTargets.size());
-
     info.fragmentShader = "fs_abuffer.spv";
     info.pipelineInfo.enableBlending = VK_TRUE;
     info.pipelineInfo.enableDepthWrite = VK_FALSE;

@@ -234,7 +234,8 @@ void core::MScript::loadEditorResources() noexcept {
           ImGui_ImplVulkan_AddTexture(
             pTexture->texture.sampler, pTexture->texture.view, pTexture->texture.imageLayout);
 
-        core::gui.addImage(filePath, ImVec2(pTexture->texture.width, pTexture->texture.height), newImage);
+        core::gui.addImage(filePath,
+          ImVec2((float)pTexture->texture.width, (float)pTexture->texture.height), newImage);
       }
     }
   }

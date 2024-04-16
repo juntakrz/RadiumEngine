@@ -37,6 +37,8 @@ struct WDirectLightComponent : public WCameraComponent {
 
   const glm::vec4& getColor();
 
+  bool getIsEnabled();
+
   void onAttachmentModeChanged(WActor* pNewTarget, EAttachmentMode newMode) override;
   void onCreated() override;
 

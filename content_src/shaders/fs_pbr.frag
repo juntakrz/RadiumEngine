@@ -139,7 +139,7 @@ float getShadow(vec3 fragmentPosition, int distanceIndex, float facing) {
 	vec3 shadowCoord = vec3((shadowPosition.x * 0.5 + 0.5), 1.0 - (shadowPosition.y * 0.5 + 0.5), shadowPosition.z);
 	
 	if (shadowCoord.x < 0.0 || shadowCoord.x > 1.0 || shadowCoord.y < 0.0 || shadowCoord.y > 1.0) {
-		return 1.0;
+		return 0.25;
 	}
 	
 	// Adjust for the polygon facing, if not 1.0 - it is a back face and thus should have a slightly larger depth

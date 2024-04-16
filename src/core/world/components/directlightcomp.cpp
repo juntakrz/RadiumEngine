@@ -100,6 +100,10 @@ const glm::vec4& WDirectLightComponent::getColor() {
   return lightData.color;
 }
 
+bool WDirectLightComponent::getIsEnabled() {
+  return core::renderer.getDirectionalLightCamera() == this;
+}
+
 void WDirectLightComponent::onAttachmentModeChanged(WActor* pNewTarget, EAttachmentMode newMode) {
   pTarget = pNewTarget;
   attachmentMode = newMode;
@@ -140,6 +144,16 @@ void WDirectLightComponent::update() {
 }
 
 void WDirectLightComponent::drawComponentUI(const uint32_t index) {
+  RUIImage* pComponentIcon = (getIsEnabled())
+    ? core::gui.getImage("editor/iconDirectLightEnabled.ktx2")
+    : core::gui.getImage("editor/iconDirectLightDisabled.ktx2");
+
+  if (pComponentIcon) {
+    ImVec2 iconPosition = core::gui.getScreenCoordinatesFromWorldTranslation(getWorldTranslation());
+    iconPosition = iconPosition - ImVec2(pComponentIcon->size / 2);
+    ImGui::GetBackgroundDrawList()->AddImage(pComponentIcon->descriptorSet, iconPosition, iconPosition + ImVec2(pComponentIcon->size));
+  }
+
   const float availableWidth = ImGui::GetContentRegionAvail().x;
   bool removeComponent = false;
 
