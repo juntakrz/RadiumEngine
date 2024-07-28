@@ -433,7 +433,7 @@ TResult core::MRenderer::setRendererDefaults() {
 
   WTransformComponent* pTransform = pCameraActor->getComponent<WTransformComponent>();
   pTransform->setAttachmentVectorLength(-10.0f);
-  pTransform->setAttachmentVectorRotation(glm::vec3(45.0f, 0.0f, 0.0f), false, false);
+  pTransform->setAttachmentVectorRotation(glm::vec3(135.0f, -50.0f, 0.0f), false, false);
 
   setDirectionalLightCamera(pLight);
 

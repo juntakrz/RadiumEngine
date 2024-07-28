@@ -6,7 +6,7 @@ core::MTime::MTime() {
   m_initialTimePoint = m_currentTimePoint;
 }
 
-float core::MTime::tickTimer() {
+float core::MTime::tickFrameTimer() {
   m_oldTimePoint = m_currentTimePoint;
   m_currentTimePoint = glfwGetTime();
 

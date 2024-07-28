@@ -21,7 +21,7 @@ namespace core {
 
     // ticks timer, should be called at the start of the frame,
     // stores and returns delta time
-    float tickTimer();
+    float tickFrameTimer();
 
     // delta time between last two ticks
     float getDeltaTime();

@@ -12,7 +12,6 @@
 void core::MRenderer::drawBoundEntitiesIndirect(VkCommandBuffer commandBuffer, EDynamicRenderingPass passOverride) {
   // go through bound models and generate draw calls for each
   renderView.refresh();
-  command.indirectCommands.clear();
 
   if (passOverride == EDynamicRenderingPass::Null) {
     passOverride = renderView.pCurrentPass->passId;
@@ -589,7 +588,7 @@ void core::MRenderer::renderFrame() {
   }
 
   // Get new delta time between frames
-  renderView.lastFrameTime = core::time.tickTimer();
+  renderView.lastFrameTime = core::time.tickFrameTimer();
 
   // Reset fences if we will do any work this frame e.g. no swap chain recreation
   vkResetFences(logicalDevice.device, fenceCount, fences);
@@ -602,8 +601,6 @@ void core::MRenderer::renderFrame() {
 
   // Update lighting UBO if required
   updateLightingUBO(renderView.frameInFlight);
-
-  //std::this_thread::sleep_for(std::chrono::milliseconds(30));
 
   // Use this frame's scene descriptor set
   renderView.pCurrentSet = scene.descriptorSets[renderView.frameInFlight];

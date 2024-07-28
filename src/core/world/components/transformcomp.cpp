@@ -185,7 +185,7 @@ const glm::vec3& WTransformComponent::getDeltaModifiers() {
 void WTransformComponent::setAttachmentVectorRotation(const glm::vec3& newRotation, const bool isInRadians, const bool isDelta) {
   data.attachmentOrientation = (isDelta)
     ? data.attachmentOrientation * glm::quat(((isInRadians) ? newRotation : glm::radians(newRotation)) * data.deltaModifiers.y)
-    : glm::quat(newRotation);
+    : glm::quat((isInRadians) ? newRotation : glm::radians(newRotation));
   data.attachmentOrientation = glm::normalize(data.attachmentOrientation);
   data.attachmentVector = data.attachmentOrientation * data.baseAttachmentVector;
   setTranslation(data.attachmentTranslation + data.attachmentVector, false);

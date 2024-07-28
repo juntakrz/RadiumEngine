@@ -26,7 +26,6 @@ class MRenderer {
     std::vector<VkCommandBuffer> buffersCompute;
     std::vector<VkCommandBuffer> buffersTransfer;
 
-    std::vector<VkDrawIndexedIndirectCommand> indirectCommands;
     std::vector<RBuffer> indirectCommandBuffers;
     VkDeviceSize indirectCommandOffset = 0u;
   } command;

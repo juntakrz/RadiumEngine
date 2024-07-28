@@ -482,7 +482,7 @@ TResult core::MRenderer::createDepthTargets() {
   RTextureInfo textureInfo{};
   textureInfo.layerCount = 1u;
   textureInfo.isCubemap = false;
-  textureInfo.format = VK_FORMAT_D32_SFLOAT;
+  textureInfo.format = core::vulkan::formatDepth;
   textureInfo.width = swapchain.imageExtent.width;
   textureInfo.height = swapchain.imageExtent.height;
   textureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
