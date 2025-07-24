@@ -274,7 +274,7 @@ TResult core::MRenderer::setPhysicalDeviceQueueFamilies(
     ++queueIndex;
   }
 
-  if (queueIndex > 0) {
+  if (queueIndex > 0 && system.asyncComputeSupport) {
     std::swap(deviceData.queueFamilyIndices.compute[queueIndex], deviceData.queueFamilyIndices.compute[0]);
   }
 
