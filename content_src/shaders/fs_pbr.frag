@@ -32,8 +32,36 @@ vec3 tonemap(vec3 v) {
 	return pow(color, vec3(1.0 / lighting.gamma));
 }
 
-vec3 getDiffuse(vec3 inColor) {
-	return inColor / M_PI;
+vec3 getDiffuseLambert(vec3 albedo) {
+	return albedo / M_PI;
+}
+
+vec3 getDiffuseOrenNayar(vec3 albedo, vec3 N, vec3 V, vec3 L, float roughness)
+{
+    // Convert perceptual roughness [0,1] to surface slope sigma (radians)
+    float sigma = roughness * M_PI * 0.5;
+    float sigma2 = sigma * sigma;
+
+    float A = 1.0 - (sigma2 / (2.0 * (sigma2 + 0.33)));
+    float B = 0.45 * sigma2 / (sigma2 + 0.09);
+
+    float NdotL = clamp(dot(N, L), 0.001, 1.0);
+    float NdotV = clamp(dot(N, V), 0.001, 1.0);
+
+    float thetaI = acos(NdotL);
+    float thetaR = acos(NdotV);
+
+    float alpha = max(thetaI, thetaR);
+    float beta  = min(thetaI, thetaR);
+
+    // Compute azimuthal difference between L and V around N
+    vec3 Li = normalize(L - N * NdotL);
+    vec3 Vi = normalize(V - N * NdotV);
+    float cosPhiDiff = dot(Li, Vi);
+
+    // Oren–Nayar diffuse term
+    float oren = NdotL * (A + B * max(0.0, cosPhiDiff) * sin(alpha) * tan(beta));
+    return albedo * (oren / M_PI);
 }
 
 // The following equation models the Fresnel reflectance term of the spec equation (aka F())
@@ -189,7 +217,8 @@ vec3 getLight(uint index, vec3 worldPos, vec3 diffuseColor, vec3 specularColor, 
 	float D = getMicrofacetDistribution(alphaRoughness, NdotH);
 
 	// Calculation of analytical lighting contribution
-	vec3 diffuseContrib = (1.0 - F) * getDiffuse(diffuseColor);
+	//vec3 diffuseContrib = (1.0 - F) * getDiffuseLambert(diffuseColor);
+	vec3 diffuseContrib = (1.0 - F) * getDiffuseOrenNayar(diffuseColor, normal, V, L, roughness);
 	vec3 specContrib = F * G * D / (4.0 * NdotL * NdotV);
 
 	// Obtain final intensity as reflectance (BRDF) scaled by the energy of the light (cosine law)
