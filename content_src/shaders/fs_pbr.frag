@@ -36,6 +36,7 @@ vec3 getDiffuseLambert(vec3 albedo) {
 	return albedo / M_PI;
 }
 
+// Full precision Oren Nayar diffuse shading
 vec3 getDiffuseOrenNayar(vec3 albedo, vec3 N, vec3 V, vec3 L, float roughness)
 {
     // Convert perceptual roughness [0,1] to surface slope sigma (radians)
@@ -61,6 +62,39 @@ vec3 getDiffuseOrenNayar(vec3 albedo, vec3 N, vec3 V, vec3 L, float roughness)
 
     // Oren–Nayar diffuse term
     float oren = NdotL * (A + B * max(0.0, cosPhiDiff) * sin(alpha) * tan(beta));
+    return albedo * (oren / M_PI);
+}
+
+// Lighter on performance but nearly exact Oren Nayar diffuse shading
+// https://mimosa-pudica.net/improved-oren-nayar.html
+vec3 getDiffuseOrenNayarApprox(vec3 albedo, vec3 N, vec3 V, vec3 L, float roughness)
+{
+    float sigma = roughness * M_PI * 0.5;
+    float sigma2 = sigma * sigma;
+
+    float A = 1.0 - (sigma2 / (2.0 * (sigma2 + 0.33)));
+    float B = 0.45 * sigma2 / (sigma2 + 0.09);
+
+    float NdotL = clamp(dot(N, L), 0.001, 1.0);
+    float NdotV = clamp(dot(N, V), 0.001, 1.0);
+
+    if (NdotL <= 0.0)
+	{
+		return vec3(0.0);
+	}
+
+    float LdotV = dot(L, V);
+    float s = LdotV - NdotL * NdotV;
+
+    // t = 1 if s <= 0 else max(NdotL, NdotV)
+    float t = (s <= 0.0) ? 1.0 : max(NdotL, NdotV);
+
+    // avoid division by zero (t >= small eps)
+    t = max(t, 1e-5);
+
+    float factor = (A + B * (s / t));
+    float oren = min(NdotL * factor, 1.0);
+
     return albedo * (oren / M_PI);
 }
 
@@ -96,16 +130,16 @@ float getMicrofacetDistribution(float roughness, float NdotH) {
 
 // Calculation of the lighting contribution from an optional Image Based Light source.
 // Precomputed Environment Maps are required uniform inputs
-vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, vec3 V, vec3 normal) {
-	float NdotV = clamp(abs(dot(normal, V)), 0.001, 1.0);
-	vec3 reflection = -normalize(reflect(V, normal));
+vec3 getIBLContribution(vec3 diffuseColor, vec3 specularColor, float roughness, vec3 V, vec3 N) {
+	float NdotV = clamp(abs(dot(N, V)), 0.001, 1.0);
+	vec3 reflection = -normalize(reflect(V, N));
 	reflection.y *= -1.0f;
 
 	float lod = (roughness * lighting.prefilteredCubeMipLevels);
 
 	// retrieve a scale and bias to F0
 	vec2 brdf = (texture(BRDFLUTMap, vec2(NdotV, 1.0 - roughness))).rg;
-	vec3 diffuseLight = tonemap(texture(irradianceMap, normal).rgb);
+	vec3 diffuseLight = tonemap(texture(irradianceMap, N).rgb);
 	vec3 specularLight = tonemap(textureLod(prefilteredMap, reflection, lod).rgb);
 
 	diffuseLight.r = pow(diffuseLight.r, 2.2);
@@ -192,7 +226,7 @@ float getShadow(vec3 fragmentPosition, int distanceIndex, float facing) {
 	return shadow / count;
 }
 
-vec3 getLight(uint index, vec3 worldPos, vec3 diffuseColor, vec3 specularColor, vec3 V, vec3 normal, float roughness) {
+vec3 getLight(uint index, vec3 worldPos, vec3 diffuseColor, vec3 specularColor, vec3 V, vec3 N, float roughness) {
 	float alphaRoughness = roughness * roughness;
 
 	// For typical incident reflectance range (between 4% to 100%) set the grazing reflectance to 100% for typical fresnel effect.
@@ -203,11 +237,11 @@ vec3 getLight(uint index, vec3 worldPos, vec3 diffuseColor, vec3 specularColor, 
 	vec3 specularEnvironmentR90 = vec3(1.0, 1.0, 1.0) * reflectance90;
 
 	vec3 L = normalize(lighting.lightLocations[index].xyz - worldPos);
-	vec3 H = normalize(L + V);								// Half vector between both l and v
+	vec3 H = normalize(L + V);								// Half vector between both L and V
 
-	float NdotL = clamp(dot(normal, L), 0.001, 1.0);
-	float NdotV = clamp(abs(dot(normal, V)), 0.001, 1.0);
-	float NdotH = clamp(dot(normal, H), 0.0, 1.0);
+	float NdotL = clamp(dot(N, L), 0.001, 1.0);
+	float NdotV = clamp(abs(dot(N, V)), 0.001, 1.0);
+	float NdotH = clamp(dot(N, H), 0.0, 1.0);
 	float LdotH = clamp(dot(L, H), 0.0, 1.0);
 	float VdotH = clamp(dot(V, H), 0.0, 1.0);
 
@@ -218,7 +252,8 @@ vec3 getLight(uint index, vec3 worldPos, vec3 diffuseColor, vec3 specularColor, 
 
 	// Calculation of analytical lighting contribution
 	//vec3 diffuseContrib = (1.0 - F) * getDiffuseLambert(diffuseColor);
-	vec3 diffuseContrib = (1.0 - F) * getDiffuseOrenNayar(diffuseColor, normal, V, L, roughness);
+	//vec3 diffuseContrib = (1.0 - F) * getDiffuseOrenNayar(diffuseColor, N, V, L, roughness);
+	vec3 diffuseContrib = (1.0 - F) * getDiffuseOrenNayarApprox(diffuseColor, N, V, L, roughness);
 	vec3 specContrib = F * G * D / (4.0 * NdotL * NdotV);
 
 	// Obtain final intensity as reflectance (BRDF) scaled by the energy of the light (cosine law)
@@ -227,7 +262,7 @@ vec3 getLight(uint index, vec3 worldPos, vec3 diffuseColor, vec3 specularColor, 
 	return lightColor;
 }
 
-// SCREEN SPACE AMBIENT OCCLUSION
+// SSAO related
 vec3 getRandomVector() {
 	ivec2 posDim = textureSize(samplers[material.samplerIndex[POSITIONMAP]], 0); 
 	ivec2 noiseDim = textureSize(noiseMap, 0);
@@ -237,7 +272,7 @@ vec3 getRandomVector() {
 	return randomVector;
 }
 
-// HBAO
+// HBAO related
 vec3 minDiff(vec3 P, vec3 Pr, vec3 Pl) {
   vec3 V1 = Pr - P;
   vec3 V2 = P - Pl;
@@ -372,7 +407,7 @@ void main() {
 
 	// Retrieve G-buffer data
 	vec4 worldPos = textureLod(samplers[material.samplerIndex[POSITIONMAP]], inUV0, 0);
-	vec4 baseColor = textureLod(samplers[material.samplerIndex[COLORMAP]], inUV0, 0);
+	vec4 albedo = textureLod(samplers[material.samplerIndex[COLORMAP]], inUV0, 0);
 	vec3 normal = textureLod(samplers[material.samplerIndex[NORMALMAP]], inUV0, 0).rgb;
 	vec3 physMap = textureLod(samplers[material.samplerIndex[PHYSMAP]], inUV0, 0).rgb;
 	vec4 emissiveData = textureLod(samplers[material.samplerIndex[EMISMAP]], inUV0, 0);
@@ -389,7 +424,7 @@ void main() {
 		normal = -normal;
 	}
 
-	vec3 diffuseColor = baseColor.rgb * (vec3(1.0) - f0);
+	vec3 diffuseColor = albedo.rgb * (vec3(1.0) - f0);
 	diffuseColor *= 1.0 - metallic;
 
 	vec3 specularColor = mix(f0, diffuseColor, metallic);
@@ -445,10 +480,10 @@ void main() {
 	// Emissive colors are not affected by shadows as they are supposed to glow
 	color += emissive;
 
-	outColor = vec4(color, baseColor.a);
+	outColor = vec4(color, albedo.a);
 
 	// Calculate SSAO (ignore emissive materials as they shouldn't self shadow)
-	if (lighting.aoMode == AO_NONE || baseColor.a < 0.01 || length(emissive.rgb) > 1.0 || worldPos.w > occlusionDistance) {
+	if (lighting.aoMode == AO_NONE || albedo.a < 0.01 || length(emissive.rgb) > 1.0 || worldPos.w > occlusionDistance) {
 		outAO = vec2(1.0, FLT_MAX);
 		return;
 	}
