@@ -282,7 +282,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     return RE_OK;
   }
   case (uint8_t)EBufferType::DGPU_STORAGE: {
-    bufferCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+    bufferCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
     bufferCreateInfo.size = size;
     bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     bufferCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();

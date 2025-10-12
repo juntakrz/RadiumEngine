@@ -57,11 +57,24 @@ TResult core::MRenderer::initLogicalDevice(
   //bdaFeatures.bufferDeviceAddressCaptureReplay = VK_TRUE;
 #endif
 
+  // Vulkan 1.2: Allowing depth and stencil buffers as separate images
+  VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures separateDepthStencilFeatures{};
+  separateDepthStencilFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES;
+  separateDepthStencilFeatures.separateDepthStencilLayouts = VK_TRUE;
+  separateDepthStencilFeatures.pNext = &bdaFeatures;
+
+
+  // Vulkan 1.3: Enabling mutable descriptors allowing to e.g. treat the same image sampler as cubemap/array/etc
+  VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutableFeatures{};
+  mutableFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT;
+  mutableFeatures.mutableDescriptorType = VK_TRUE;
+  mutableFeatures.pNext = &separateDepthStencilFeatures;
+
   // Vulkan 1.3: Enabling dynamic rendering
   VkPhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures{};
   dynamicRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
   dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
-  dynamicRenderingFeatures.pNext = &bdaFeatures;
+  dynamicRenderingFeatures.pNext = &mutableFeatures;
 
   VkDeviceCreateInfo deviceCreateInfo{};
   deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;

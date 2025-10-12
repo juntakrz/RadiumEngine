@@ -236,7 +236,8 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
 
   switch (newTexture->texture.imageLayout) {
     case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL: {
-      subRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+      subRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+      pInfo->extraViews = true;
       break;
     }
     case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL: {
@@ -252,7 +253,7 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
     subRange.aspectMask = pInfo->imageAspectOverride;
   }
 
-  // Mostly NVidia optimization, no need for layout transition pipeline barriers later,
+  // NVidia Vulkan approach, no need for layout transition pipeline barriers later,
   // except for synchronizing rendering passes, as layouts are general under the hood
   if (!core::renderer.isLayoutTransitionEnabled()) {
     newTexture->texture.imageLayout = VK_IMAGE_LAYOUT_GENERAL;

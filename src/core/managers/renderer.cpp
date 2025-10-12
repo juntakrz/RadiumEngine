@@ -370,7 +370,7 @@ TResult core::MRenderer::setRendererDefaults() {
   // Setup bindless resource budgets
   uint32_t maxAfterBindSamplers = physicalDevice.descriptorIndexingProperties.maxDescriptorSetUpdateAfterBindSamplers;
   maxAfterBindSamplers -= maxAfterBindSamplers / 10;
-  config::scene::sampledImageBudget = maxAfterBindSamplers;
+  config::scene::sampledImageBudget = glm::min(maxAfterBindSamplers, 1000000u);
 
   uint32_t maxAfterBindStorageImages = physicalDevice.descriptorIndexingProperties.maxDescriptorSetUpdateAfterBindStorageImages;
   maxAfterBindStorageImages -= maxAfterBindStorageImages / 10;

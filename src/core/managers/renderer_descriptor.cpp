@@ -91,7 +91,7 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
       {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1,
         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
-      {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT,
+      {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT,
         nullptr},
       {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
@@ -125,6 +125,26 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
   {
     system.descriptorSetLayouts.emplace(EDescriptorSetLayout::MaterialEXT, VK_NULL_HANDLE);
 
+    std::vector<VkDescriptorType> mutableTypes = {
+    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+    VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
+    };
+
+    VkMutableDescriptorTypeListEXT mutableTypeList{};
+    mutableTypeList.descriptorTypeCount = static_cast<uint32_t>(mutableTypes.size());
+    mutableTypeList.pDescriptorTypes = mutableTypes.data();
+
+    // If there is a mutable descriptor type list - then Vulkan expects its instance at exactly the same pBindings[index]
+    // so everything else must have a default constructed type list (see setLayoutBindings below)
+    std::vector<VkMutableDescriptorTypeListEXT> mutableTypeLists(2);
+    mutableTypeLists[0] = VkMutableDescriptorTypeListEXT{};
+    mutableTypeLists[1] = mutableTypeList;
+
+    VkMutableDescriptorTypeCreateInfoEXT mutableCreateInfo{};
+    mutableCreateInfo.sType = VK_STRUCTURE_TYPE_MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_EXT;
+    mutableCreateInfo.mutableDescriptorTypeListCount = static_cast<uint32_t>(mutableTypeLists.size());
+    mutableCreateInfo.pMutableDescriptorTypeLists = mutableTypeLists.data();
+
     const VkDescriptorBindingFlagsEXT bindingFlags =
       VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT |
       VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT |
@@ -134,7 +154,7 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
       {0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
-      {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      {1, VK_DESCRIPTOR_TYPE_MUTABLE_EXT,
         config::scene::sampledImageBudget,
         VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}
     };
@@ -144,8 +164,8 @@ TResult core::MRenderer::createDescriptorSetLayouts() {
     VkDescriptorSetLayoutBindingFlagsCreateInfoEXT bindingFlagsCreateInfo{};
     bindingFlagsCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
     bindingFlagsCreateInfo.bindingCount = static_cast<uint32_t>(setLayoutBindings.size());;
-    //bindingFlagsCreateInfo.pBindingFlags = &bindingFlags;
     bindingFlagsCreateInfo.pBindingFlags = bindingFlagsArray;
+    bindingFlagsCreateInfo.pNext = &mutableCreateInfo;
 
     VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
     setLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -356,7 +376,7 @@ TResult core::MRenderer::createDescriptorSets() {
 
       // Settings used for writing to lighting descriptor set
       writeDescriptorSets[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-      writeDescriptorSets[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+      writeDescriptorSets[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
       writeDescriptorSets[1].descriptorCount = 1;
       writeDescriptorSets[1].dstSet = scene.descriptorSets[i];
       writeDescriptorSets[1].dstBinding = 1;

@@ -198,7 +198,7 @@ class MRenderer {
 
     // NVidia GPUs seem to be using general layouts for everything on the driver level
     // so transitioning pipeline barriers may slow down performance in most cases
-    bool enableLayoutTransitions = false;
+    bool enableLayoutTransitions = true;
 
     bool asyncComputeSupport = false;
     int32_t computeQueue = -1;

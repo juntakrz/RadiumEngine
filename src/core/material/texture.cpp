@@ -26,34 +26,32 @@ TResult RTexture::createImageViews(const bool createExtraViews, const bool creat
 
   // Create separate views into every layer and mipmap
   if (createExtraViews) {
-    switch (isCubemap) {
-      case true: {
-        texture.extraViews.resize(texture.levelCount - 1);
+    if (isCubemap) {
+      texture.extraViews.resize(texture.levelCount - 1);
 
-        for (uint8_t mipIndex = 1; mipIndex < texture.levelCount; ++mipIndex) {
-          VkDescriptorImageInfo& info = texture.extraViews[mipIndex - 1];
+      for (uint8_t mipIndex = 1; mipIndex < texture.levelCount; ++mipIndex) {
+        VkDescriptorImageInfo& info = texture.extraViews[mipIndex - 1];
 
-          info.imageView = core::renderer.createImageView(texture.image, texture.imageFormat, 0u, 6u, mipIndex, 1u, true, texture.aspectMask);
+        info.imageView = core::renderer.createImageView(texture.image, texture.imageFormat, 0u, 6u, mipIndex, 1u, true, texture.aspectMask);
+        info.sampler = texture.sampler;
+      }
+    }
+    else if (texture.imageLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+      texture.extraViews.resize(1);
+
+      VkDescriptorImageInfo& info = texture.extraViews[0];
+      info.imageView = core::renderer.createImageView(texture.image, texture.imageFormat, 0u, 1u, 0u, 1u, false, VK_IMAGE_ASPECT_STENCIL_BIT);
+    }
+    else {
+      texture.extraViews.resize(texture.layerCount * texture.levelCount);
+
+      for (uint8_t layerIndex = 0; layerIndex < texture.layerCount; ++layerIndex) {
+        for (uint8_t mipIndex = 0; mipIndex < texture.levelCount; ++mipIndex) {
+          VkDescriptorImageInfo& info = texture.extraViews[mipIndex + texture.levelCount * layerIndex];
+          info.imageView =
+            core::renderer.createImageView(texture.image, texture.imageFormat, layerIndex, 1u, mipIndex, 1u, false, texture.aspectMask);
           info.sampler = texture.sampler;
         }
-
-        break;
-      }
-
-      case false: {
-        texture.extraViews.resize(texture.layerCount * texture.levelCount);
-
-        for (uint8_t layerIndex = 0; layerIndex < texture.layerCount;  ++layerIndex) {
-          for (uint8_t mipIndex = 0; mipIndex < texture.levelCount; ++mipIndex) {
-            VkDescriptorImageInfo& info = texture.extraViews[mipIndex + texture.levelCount * layerIndex];
-
-            info.imageView =
-              core::renderer.createImageView(texture.image, texture.imageFormat, layerIndex, 1u, mipIndex, 1u, false, texture.aspectMask);
-            info.sampler = texture.sampler;
-          }
-        }
-
-        break;
       }
     }
   }

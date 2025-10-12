@@ -25,7 +25,7 @@ layout(binding = 0) uniform UBOView {
 	float padding[5];
 } scene;
 
-layout (std430, set = 0, binding = 1) uniform UBOLighting {
+layout (std430, set = 0, binding = 1) buffer UBOLighting {
 	vec4 lightLocations[MAXLIGHTS];
     vec4 lightColor[MAXLIGHTS];
 	mat4 lightViews[MAXSHADOWCASTERS];
