@@ -49,6 +49,10 @@ TResult core::MRenderer::initPhysicalDevice(const RVkPhysicalDevice& device) {
          physicalDevice.deviceProperties.properties.vendorID, physicalDevice.deviceProperties.properties.deviceID,
          physicalDevice.deviceProperties.properties.deviceName);
 
+  if (physicalDevice.deviceProperties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
+    system.isIntegratedGPU = true;
+  }
+
   return RE_OK;
 }
 

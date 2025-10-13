@@ -201,6 +201,7 @@ class MRenderer {
     bool enableLayoutTransitions = true;
 
     bool asyncComputeSupport = false;
+    bool isIntegratedGPU = false;
     int32_t computeQueue = -1;
   } system;
 

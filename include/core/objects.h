@@ -55,17 +55,17 @@ enum class EBufferType {  // VkBuffer creation mode
   NONE,
   STAGING,            // CPU staging buffer
   CPU_UNIFORM,        // Uniform buffer for GPU programs
-  CPU_VERTEX,         // Vertex buffer for the iGPU (UNUSED)
-  CPU_INDEX,          // Index buffer for the iGPU (UNUSED)
+  CPU_VERTEX,         // Vertex buffer for the iGPU
+  CPU_INDEX,          // Index buffer for the iGPU
   CPU_STORAGE,        // Storage buffer for CPU to write and read data from
   CPU_INDIRECT,
   DGPU_VERTEX,        // Dedicated GPU vertex buffer
-  DGPU_INDEX,         // Dedicated GPU index buffer
+  DGPU_INDEX,         // / index buffer
   DGPU_UNIFORM,
-  DGPU_STORAGE,       // Dedicated GPU storage buffer
+  DGPU_STORAGE,       // / storage buffer
   DGPU_INDIRECT,
-  DGPU_SAMPLER,       // Dedicated GPU storage buffer for sampler descriptors
-  DGPU_RESOURCE,      // Dedicated GPU storage buffer for resource descriptors
+  DGPU_SAMPLER,       // / storage buffer for sampler descriptors
+  DGPU_RESOURCE,      // / storage buffer for resource descriptors
 };
 
 enum class ECameraProjection {

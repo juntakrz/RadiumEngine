@@ -7,6 +7,12 @@
 #include "core/managers/renderer.h"
 
 TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuffer& outBuffer, void* inData) {
+
+  // An integrated GPU doesn't have dedicated memory, so using a staging buffer to do an extra copy is wasteful
+  /*if (system.isIntegratedGPU) {
+    type = convertToIntegratedGPUBufferType(type);
+  }*/
+
   outBuffer.type = type;
   RBuffer stagingBuffer;
   VmaAllocationCreateInfo allocInfo{};
@@ -21,8 +27,8 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     (uint32_t)physicalDevice.queueFamilyIndices.transfer.at(0)
   };
 
-  switch ((uint8_t)type) {
-  case (uint8_t)EBufferType::STAGING: {
+  switch (type) {
+  case EBufferType::STAGING: {
     bufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     bufferCreateInfo.size = size;
     bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -42,11 +48,13 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
 
     if (inData) {
       memcpy(outBuffer.allocInfo.pMappedData, inData, size);
+      vmaFlushAllocation(memAlloc, outBuffer.allocation, 0, size);
     }
 
     return RE_OK;
   }
-  case (uint8_t)EBufferType::CPU_UNIFORM: {
+
+  case EBufferType::CPU_UNIFORM: {
     bufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     bufferCreateInfo.size = size;
     bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -63,12 +71,13 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
 
     if (inData) {
       memcpy(outBuffer.allocInfo.pMappedData, inData, size);
+      vmaFlushAllocation(memAlloc, outBuffer.allocation, 0, size);
     }
 
     return RE_OK;
   }
 
-  case (uint8_t)EBufferType::CPU_VERTEX: {
+  case EBufferType::CPU_VERTEX: {
     bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
                              | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     bufferCreateInfo.size = size;
@@ -91,13 +100,14 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
         return RE_ERROR;
       };
       memcpy(pData, inData, size);
+      vmaFlushAllocation(memAlloc, outBuffer.allocation, 0, size);
       vmaUnmapMemory(memAlloc, outBuffer.allocation);
     }
 
     return RE_OK;
   }
 
-  case (uint8_t)EBufferType::CPU_INDEX: {
+  case EBufferType::CPU_INDEX: {
     bufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
     bufferCreateInfo.size = size;
     bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -118,13 +128,14 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
         return RE_ERROR;
       };
       memcpy(pData, inData, size);
+      vmaFlushAllocation(memAlloc, outBuffer.allocation, 0, size);
       vmaUnmapMemory(memAlloc, outBuffer.allocation);
     }
 
     return RE_OK;
   }
 
-  case (uint8_t)EBufferType::CPU_STORAGE: {
+  case EBufferType::CPU_STORAGE: {
     bufferCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
       | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
     bufferCreateInfo.size = size;
@@ -145,6 +156,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
 
     if (inData) {
       memcpy(outBuffer.allocInfo.pMappedData, inData, size);
+      vmaFlushAllocation(memAlloc, outBuffer.allocation, 0, size);
     }
 
     bdaInfo.buffer = outBuffer.buffer;
@@ -153,7 +165,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     return RE_OK;
   }
 
-  case (uint8_t)EBufferType::CPU_INDIRECT: {
+  case EBufferType::CPU_INDIRECT: {
     bufferCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
       | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
     bufferCreateInfo.size = size;
@@ -174,6 +186,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
 
     if (inData) {
       memcpy(outBuffer.allocInfo.pMappedData, inData, size);
+      vmaFlushAllocation(memAlloc, outBuffer.allocation, 0, size);
     }
 
     bdaInfo.buffer = outBuffer.buffer;
@@ -182,7 +195,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     return RE_OK;
   }
 
-  case (uint8_t)EBufferType::DGPU_VERTEX: {
+  case EBufferType::DGPU_VERTEX: {
     bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     bufferCreateInfo.size = size;
     bufferCreateInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
@@ -190,9 +203,9 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     bufferCreateInfo.queueFamilyIndexCount =
       static_cast<uint32_t>(queueFamilyIndices.size());
 
-    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    allocInfo.usage = system.isIntegratedGPU ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_GPU_ONLY;
     allocInfo.flags = NULL;
-    allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    allocInfo.requiredFlags = system.isIntegratedGPU ? NULL : VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
     if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
       &outBuffer.buffer, &outBuffer.allocation,
@@ -215,7 +228,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     return RE_OK;
   }
 
-  case (uint8_t)EBufferType::DGPU_INDEX: {
+  case EBufferType::DGPU_INDEX: {
     bufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     bufferCreateInfo.size = size;
     bufferCreateInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
@@ -223,9 +236,9 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     bufferCreateInfo.queueFamilyIndexCount =
       static_cast<uint32_t>(queueFamilyIndices.size());
 
-    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    allocInfo.usage = system.isIntegratedGPU ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_GPU_ONLY;
     allocInfo.flags = NULL;
-    allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    allocInfo.requiredFlags = system.isIntegratedGPU ? NULL : VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
     if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo, &outBuffer.buffer, &outBuffer.allocation,
       &outBuffer.allocInfo) != VK_SUCCESS) {
@@ -246,7 +259,8 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
 
     return RE_OK;
   }
-  case (uint8_t)EBufferType::DGPU_UNIFORM: {
+
+  case EBufferType::DGPU_UNIFORM: {
     bufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
     bufferCreateInfo.size = size;
     bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -254,9 +268,9 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     bufferCreateInfo.queueFamilyIndexCount =
       static_cast<uint32_t>(queueFamilyIndices.size());
 
-    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    allocInfo.usage = system.isIntegratedGPU ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_GPU_ONLY;
     allocInfo.flags = NULL;
-    allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    allocInfo.requiredFlags = system.isIntegratedGPU ? NULL : VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
     if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
       &outBuffer.buffer, &outBuffer.allocation,
@@ -281,7 +295,8 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
 
     return RE_OK;
   }
-  case (uint8_t)EBufferType::DGPU_STORAGE: {
+
+  case EBufferType::DGPU_STORAGE: {
     bufferCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
     bufferCreateInfo.size = size;
     bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -289,9 +304,9 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     bufferCreateInfo.queueFamilyIndexCount =
       static_cast<uint32_t>(queueFamilyIndices.size());
 
-    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    allocInfo.usage = system.isIntegratedGPU ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_GPU_ONLY;
     allocInfo.flags = NULL;
-    allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    allocInfo.requiredFlags = system.isIntegratedGPU ? NULL : VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
     if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
       &outBuffer.buffer, &outBuffer.allocation,
@@ -316,7 +331,8 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
 
     return RE_OK;
   }
-  case (uint8_t)EBufferType::DGPU_INDIRECT: {
+
+  case EBufferType::DGPU_INDIRECT: {
     bufferCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
       | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
     bufferCreateInfo.size = size;
@@ -325,9 +341,9 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     bufferCreateInfo.queueFamilyIndexCount =
       static_cast<uint32_t>(queueFamilyIndices.size());
 
-    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    allocInfo.usage = system.isIntegratedGPU ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_GPU_ONLY;
     allocInfo.flags = NULL;
-    allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    allocInfo.requiredFlags = system.isIntegratedGPU ? NULL : VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
     if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
       &outBuffer.buffer, &outBuffer.allocation,
@@ -352,7 +368,8 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
 
     return RE_OK;
   }
-  case (uint8_t)EBufferType::DGPU_SAMPLER: {
+
+  case EBufferType::DGPU_SAMPLER: {
     bufferCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
       | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT;
     bufferCreateInfo.size = size;
@@ -361,9 +378,9 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     bufferCreateInfo.queueFamilyIndexCount =
       static_cast<uint32_t>(queueFamilyIndices.size());
 
-    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    allocInfo.usage = system.isIntegratedGPU ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_GPU_ONLY;
     allocInfo.flags = NULL;
-    allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    allocInfo.requiredFlags = system.isIntegratedGPU ? NULL : VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
     if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
       &outBuffer.buffer, &outBuffer.allocation,
@@ -388,7 +405,8 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
 
     return RE_OK;
   }
-  case (uint8_t)EBufferType::DGPU_RESOURCE: {
+
+  case EBufferType::DGPU_RESOURCE: {
     bufferCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
       | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT;
     bufferCreateInfo.size = size;
@@ -397,9 +415,9 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     bufferCreateInfo.queueFamilyIndexCount =
       static_cast<uint32_t>(queueFamilyIndices.size());
 
-    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    allocInfo.usage = system.isIntegratedGPU ? VMA_MEMORY_USAGE_AUTO_PREFER_HOST : VMA_MEMORY_USAGE_GPU_ONLY;
     allocInfo.flags = NULL;
-    allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    allocInfo.requiredFlags = system.isIntegratedGPU ? NULL : VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
     if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
       &outBuffer.buffer, &outBuffer.allocation,
