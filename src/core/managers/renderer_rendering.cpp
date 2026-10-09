@@ -494,35 +494,6 @@ void core::MRenderer::executePostProcessPass(VkCommandBuffer commandBuffer) {
   };
 }
 
-void core::MRenderer::executeGUIPass(VkCommandBuffer commandBuffer) {
-  core::gui.render();
-
-  ImDrawData* pDrawData = ImGui::GetDrawData();
-  RTexture* pImage = swapchain.pImages[renderView.currentFrameIndex];
-
-  if (pDrawData) {
-    VkRenderingAttachmentInfo overrideAttachment = gui.renderingInfo.pColorAttachments[0];
-    overrideAttachment.imageView = pImage->texture.view;
-    overrideAttachment.imageLayout = pImage->texture.imageLayout;
-
-    VkRenderingInfo overrideRenderingInfo = gui.renderingInfo;
-    overrideRenderingInfo.pColorAttachments = &overrideAttachment;
-
-    vkCmdBeginRendering(commandBuffer, &overrideRenderingInfo);
-    ImGui_ImplVulkan_RenderDrawData(pDrawData, commandBuffer);
-    vkCmdEndRendering(commandBuffer);
-  }
-
-  VkImageSubresourceRange subRange{};
-  subRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  subRange.baseArrayLayer = 0u;
-  subRange.layerCount = 1u;
-  subRange.baseMipLevel = 0u;
-  subRange.levelCount = 1u;
-
-  setImageLayout(commandBuffer, pImage, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, subRange);
-}
-
 void core::MRenderer::executePresentPass(VkCommandBuffer commandBuffer) {
   RDynamicRenderingPass* pRenderPass = getDynamicRenderingPass(EDynamicRenderingPass::Present);
   renderView.pCurrentPass = pRenderPass;
@@ -560,6 +531,36 @@ void core::MRenderer::executePresentPass(VkCommandBuffer commandBuffer) {
   vkCmdEndRendering(commandBuffer);
 
   //setImageLayout(commandBuffer, pImage, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, subRange);
+}
+
+void core::MRenderer::executeGUIPass(VkCommandBuffer commandBuffer) {
+  core::gui.render();
+
+  ImDrawData* pDrawData = ImGui::GetDrawData();
+  RTexture* pImage = swapchain.pImages[renderView.currentFrameIndex];
+
+  if (pDrawData) {
+    VkRenderingAttachmentInfo overrideAttachment = gui.renderingInfo.pColorAttachments[0];
+    overrideAttachment.imageView = pImage->texture.view;
+    overrideAttachment.imageLayout = pImage->texture.imageLayout;
+
+    VkRenderingInfo overrideRenderingInfo = gui.renderingInfo;
+    overrideRenderingInfo.pColorAttachments = &overrideAttachment;
+
+    vkCmdBeginRendering(commandBuffer, &overrideRenderingInfo);
+    ImGui_ImplVulkan_RenderDrawData(pDrawData, commandBuffer);
+    vkCmdEndRendering(commandBuffer);
+  }
+
+  VkImageSubresourceRange subRange{};
+  subRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  subRange.baseArrayLayer = 0u;
+  subRange.layerCount = 1u;
+  subRange.baseMipLevel = 0u;
+  subRange.levelCount = 1u;
+
+  setImageLayout(commandBuffer, pImage, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, subRange, true,
+    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
 }
 
 void core::MRenderer::renderFrame() {
@@ -618,21 +619,24 @@ void core::MRenderer::renderFrame() {
     return;
   }
 
+  core::renderer.getSceneBuffers()->modelTransformBuffer.flush();
+  core::renderer.getSceneBuffers()->nodeTransformBuffer.flush();
+  core::renderer.getSceneBuffers()->skinTransformBuffer.flush();
+
   // Prepare and bind per frame resources
   prepareFrameResources(commandBuffer);
 
   /* 1. Environment generation */
   if (renderView.generateEnvironmentMaps && renderView.framesRendered > MAX_FRAMES_IN_FLIGHT) {
-    renderEnvironmentMaps(commandBuffer, environment.genInterval);
+    //renderEnvironmentMaps(commandBuffer, environment.genInterval);
   }
 
   /* 2. Cascaded shadows */
-
   setCamera(view.pDirectionalLightCamera, false);
   updateSceneUBO(renderView.frameInFlight);
 
   for (uint8_t cascadeIndex = 0; cascadeIndex < config::shadowCascades; ++cascadeIndex) {
-    executeShadowPass(commandBuffer, cascadeIndex);
+    //executeShadowPass(commandBuffer, cascadeIndex);
   }
 
   /* 3. Main scene */
@@ -643,7 +647,7 @@ void core::MRenderer::renderFrame() {
   executeRenderingPass(commandBuffer, EDynamicRenderingPass::OpaqueCullBack);
   executeRenderingPass(commandBuffer, EDynamicRenderingPass::OpaqueCullNone);
   executeRenderingPass(commandBuffer, EDynamicRenderingPass::DiscardCullNone);
-  executeRenderingPass(commandBuffer, EDynamicRenderingPass::BlendCullNone);
+  //executeRenderingPass(commandBuffer, EDynamicRenderingPass::BlendCullNone);
 
   // Synchronize instance processing thread since all instances are submitted queue
   sync.asyncUpdateIndirectDrawBuffers.update();
@@ -652,16 +656,16 @@ void core::MRenderer::renderFrame() {
   executeRenderingPass(commandBuffer, EDynamicRenderingPass::PBR, material.pGBuffer, true);
 
   // Additional front rendering passes
-  executeRenderingPass(commandBuffer, EDynamicRenderingPass::Skybox);
+  //executeRenderingPass(commandBuffer, EDynamicRenderingPass::Skybox);
 
-  executeAOBlurPass(commandBuffer);
+  //executeAOBlurPass(commandBuffer);
 
-  executeRenderingPass(commandBuffer, EDynamicRenderingPass::AlphaCompositing, material.pGPBR, true);
+  //executeRenderingPass(commandBuffer, EDynamicRenderingPass::AlphaCompositing, material.pGPBR, true);
 
   /* 4. Postprocessing pass */
 
   // Includes exposure, bloom and TAA passes
-  executePostProcessPass(commandBuffer);
+  //executePostProcessPass(commandBuffer);
 
   /* 5. Final presentation pass */
 
@@ -722,8 +726,8 @@ void core::MRenderer::renderFrame() {
   sync.asyncUpdateEntities.update();
 
   // Copy raycasting results and reset the screen position for raycasting
-  int32_t selectedActorUID;
-  memcpy(&selectedActorUID, scene.generalHostBuffer.allocInfo.pMappedData, sizeof(int32_t));
+  int32_t selectedActorUID = 0;
+  //memcpy(&selectedActorUID, scene.generalHostBuffer.allocInfo.pMappedData, sizeof(int32_t));
   setSelectedActorUID(selectedActorUID);
   setRaycastPosition(glm::ivec2(-1, -1));
 

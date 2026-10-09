@@ -213,7 +213,7 @@ RTexture* core::MResources::createTexture(RTextureInfo* pInfo) {
   allocCreateInfo.requiredFlags = pInfo->memoryFlags;
   allocCreateInfo.usage = pInfo->vmaMemoryUsage;
 
-  result = vmaCreateImage(core::renderer.memAlloc, &createInfo,
+  result = vmaCreateImage(core::renderer.memoryAllocator, &createInfo,
                           &allocCreateInfo, &newTexture->texture.image,
                           &newTexture->allocation, &newTexture->allocationInfo);
 
@@ -330,7 +330,7 @@ TResult core::MResources::writeTexture(RTexture* pTexture, void* pData,
   core::renderer.copyBufferToImage(VK_NULL_HANDLE, staging.buffer, pTexture,
     pTexture->texture.width, pTexture->texture.height, pTexture->texture.layerCount);
 
-  vmaDestroyBuffer(core::renderer.memAlloc, staging.buffer,
+  vmaDestroyBuffer(core::renderer.memoryAllocator, staging.buffer,
                    staging.allocation);
 
   VkImageSubresourceRange subRange{};

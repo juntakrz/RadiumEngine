@@ -110,7 +110,7 @@ TResult core::MRenderer::createMemAlloc() {
   allocCreateInfo.vulkanApiVersion = core::vulkan::APIversion;
   allocCreateInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 
-  if (vmaCreateAllocator(&allocCreateInfo, &memAlloc) != VK_SUCCESS) {
+  if (vmaCreateAllocator(&allocCreateInfo, &memoryAllocator) != VK_SUCCESS) {
     RE_LOG(Critical, "Failed to create Vulkan memory allocator.");
     return RE_CRITICAL;
   };
@@ -120,7 +120,7 @@ TResult core::MRenderer::createMemAlloc() {
 
 void core::MRenderer::destroyMemAlloc() {
   RE_LOG(Log, "Destroying Vulkan memory allocator.");
-  vmaDestroyAllocator(memAlloc);
+  vmaDestroyAllocator(memoryAllocator);
 }
 
 TResult core::MRenderer::createSurface() {
@@ -245,42 +245,42 @@ TResult core::MRenderer::createSceneBuffers() {
 void core::MRenderer::destroySceneBuffers() {
   RE_LOG(Log, "Destroying scene buffers.");
 
-  vmaDestroyBuffer(memAlloc, scene.vertexBuffer.buffer,
+  vmaDestroyBuffer(memoryAllocator, scene.vertexBuffer.buffer,
                    scene.vertexBuffer.allocation);
-  vmaDestroyBuffer(memAlloc, scene.indexBuffer.buffer,
+  vmaDestroyBuffer(memoryAllocator, scene.indexBuffer.buffer,
                    scene.indexBuffer.allocation);
-  vmaDestroyBuffer(memAlloc, scene.modelTransformBuffer.buffer,
+  vmaDestroyBuffer(memoryAllocator, scene.modelTransformBuffer.buffer,
                    scene.modelTransformBuffer.allocation);
-  vmaDestroyBuffer(memAlloc, scene.nodeTransformBuffer.buffer,
+  vmaDestroyBuffer(memoryAllocator, scene.nodeTransformBuffer.buffer,
                    scene.nodeTransformBuffer.allocation);
-  vmaDestroyBuffer(memAlloc, scene.skinTransformBuffer.buffer,
+  vmaDestroyBuffer(memoryAllocator, scene.skinTransformBuffer.buffer,
                    scene.skinTransformBuffer.allocation);
 
   for (int8_t frameIndex = 0; frameIndex < MAX_FRAMES_IN_FLIGHT; ++frameIndex) {
-    vmaDestroyBuffer(memAlloc, command.indirectCommandBuffers[frameIndex].buffer,
+    vmaDestroyBuffer(memoryAllocator, command.indirectCommandBuffers[frameIndex].buffer,
                      command.indirectCommandBuffers[frameIndex].allocation);
 
-    vmaDestroyBuffer(memAlloc, scene.instanceDataBuffers[frameIndex].buffer,
+    vmaDestroyBuffer(memoryAllocator, scene.instanceDataBuffers[frameIndex].buffer,
       scene.instanceDataBuffers[frameIndex].allocation);
-    vmaDestroyBuffer(memAlloc, scene.drawIndirectBuffers[frameIndex].buffer,
+    vmaDestroyBuffer(memoryAllocator, scene.drawIndirectBuffers[frameIndex].buffer,
       scene.drawIndirectBuffers[frameIndex].allocation);
-    vmaDestroyBuffer(memAlloc, scene.drawCountBuffers[frameIndex].buffer,
+    vmaDestroyBuffer(memoryAllocator, scene.drawCountBuffers[frameIndex].buffer,
       scene.drawCountBuffers[frameIndex].allocation);
 
-    vmaDestroyBuffer(memAlloc, scene.sceneBuffers[frameIndex].buffer, scene.sceneBuffers[frameIndex].allocation);
-    vmaDestroyBuffer(memAlloc, lighting.buffers[frameIndex].buffer, lighting.buffers[frameIndex].allocation);
+    vmaDestroyBuffer(memoryAllocator, scene.sceneBuffers[frameIndex].buffer, scene.sceneBuffers[frameIndex].allocation);
+    vmaDestroyBuffer(memoryAllocator, lighting.buffers[frameIndex].buffer, lighting.buffers[frameIndex].allocation);
   }
 
-  vmaDestroyBuffer(memAlloc, postprocess.exposureStorageBuffer.buffer, postprocess.exposureStorageBuffer.allocation);
+  vmaDestroyBuffer(memoryAllocator, postprocess.exposureStorageBuffer.buffer, postprocess.exposureStorageBuffer.allocation);
 
-  vmaDestroyBuffer(memAlloc, scene.sourceDataBuffer.buffer, scene.sourceDataBuffer.allocation);
+  vmaDestroyBuffer(memoryAllocator, scene.sourceDataBuffer.buffer, scene.sourceDataBuffer.allocation);
   
-  vmaDestroyBuffer(memAlloc, material.buffer.buffer, material.buffer.allocation);
-  vmaDestroyBuffer(memAlloc, scene.transparencyLinkedListBuffer.buffer, scene.transparencyLinkedListBuffer.allocation);
-  vmaDestroyBuffer(memAlloc, scene.transparencyLinkedListDataBuffer.buffer, scene.transparencyLinkedListDataBuffer.allocation);
+  vmaDestroyBuffer(memoryAllocator, material.buffer.buffer, material.buffer.allocation);
+  vmaDestroyBuffer(memoryAllocator, scene.transparencyLinkedListBuffer.buffer, scene.transparencyLinkedListBuffer.allocation);
+  vmaDestroyBuffer(memoryAllocator, scene.transparencyLinkedListDataBuffer.buffer, scene.transparencyLinkedListDataBuffer.allocation);
 
-  vmaDestroyBuffer(memAlloc, scene.generalBuffer.buffer, scene.generalBuffer.allocation);
-  vmaDestroyBuffer(memAlloc, scene.generalHostBuffer.buffer, scene.generalHostBuffer.allocation);
+  vmaDestroyBuffer(memoryAllocator, scene.generalBuffer.buffer, scene.generalBuffer.allocation);
+  vmaDestroyBuffer(memoryAllocator, scene.generalHostBuffer.buffer, scene.generalHostBuffer.allocation);
 }
 
 core::MRenderer::RLightingData* core::MRenderer::getLightingData() {
@@ -728,6 +728,8 @@ void core::MRenderer::updateSceneUBO(uint32_t currentImage) {
                        config::scene::cameraBlockSize * view.pActiveCamera->getViewBufferIndex();
 
   memcpy(pSceneUBO, &scene.sceneBufferObject, sizeof(RSceneUBO));
+
+  scene.sceneBuffers[currentImage].flush();
 }
 
 void core::MRenderer::waitForSystemIdle() {
@@ -825,6 +827,8 @@ void core::MRenderer::updateLightingUBO(const int32_t frameIndex) {
 
   memcpy(lighting.buffers[frameIndex].allocInfo.pMappedData, &lighting.data,
          sizeof(RLightingUBO));
+
+  lighting.buffers[frameIndex].flush();
 }
 
 core::MRenderer::RPostProcessData* core::MRenderer::getPostProcessingData() {

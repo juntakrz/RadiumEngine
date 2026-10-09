@@ -368,25 +368,21 @@ TResult core::MRenderer::copyImage(VkCommandBuffer cmdBuffer, RTexture* pSrcText
   return RE_OK;
 }
 
-void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer,
-                                     RTexture* pTexture,
-                                     VkImageLayout newLayout,
-                                     VkImageSubresourceRange subresourceRange,
-                                     const bool force) {
+void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, RTexture* pTexture, VkImageLayout newLayout,
+                                     VkImageSubresourceRange subresourceRange, const bool force,
+                                     VkPipelineStageFlags srcStageFlags, VkPipelineStageFlags dstStageFlags) {
   if (pTexture->texture.imageLayout == newLayout && !force) return;
 
   setImageLayout(cmdBuffer, pTexture->texture.image,
-                 pTexture->texture.imageLayout, newLayout, subresourceRange, force);
+                 pTexture->texture.imageLayout, newLayout, subresourceRange, force, srcStageFlags, dstStageFlags);
   
   pTexture->texture.imageLayout = newLayout;
   pTexture->texture.imageInfo.imageLayout = newLayout;
 }
 
-void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
-                                     VkImageLayout oldLayout,
-                                     VkImageLayout newLayout,
-                                     VkImageSubresourceRange subresourceRange,
-                                     const bool force) {
+void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout,
+                                     VkImageSubresourceRange subresourceRange, const bool force,
+                                     VkPipelineStageFlags srcStageFlags, VkPipelineStageFlags dstStageFlags) {
   if (newLayout == oldLayout && !force) {
 #ifndef NDEBUG
 #ifdef _VERBOSEDEBUG
@@ -460,7 +456,7 @@ void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
     break;
 
     case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
-    imageMemoryBarrier.dstAccessMask = 0;
+    imageMemoryBarrier.srcAccessMask = 0;
     break;
 
     default:
@@ -523,10 +519,6 @@ void core::MRenderer::setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
     /* Value not used by callers, so not supported. */
     assert(KTX_FALSE);
   }
-
-  // Put barrier on top of pipeline.
-  VkPipelineStageFlags srcStageFlags = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-  VkPipelineStageFlags dstStageFlags = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 
   // Add the barrier to the passed command buffer
   vkCmdPipelineBarrier(cmdBuffer, srcStageFlags, dstStageFlags, 0, 0,
@@ -1119,7 +1111,7 @@ uint32_t core::MRenderer::bindEntity(AEntity* pEntity) {
   pEntity->setRendererBindingIndex(
       static_cast<int32_t>(system.bindings.size() - 1));
 
-  vmaDestroyBuffer(memAlloc, stagingInstanceBuffer.buffer, stagingInstanceBuffer.allocation);
+  vmaDestroyBuffer(memoryAllocator, stagingInstanceBuffer.buffer, stagingInstanceBuffer.allocation);
 
 #ifndef NDEBUG
   RE_LOG(Log, "Bound model \"%s\" to graphics pipeline.", pModel->getName().c_str());

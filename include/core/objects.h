@@ -178,6 +178,9 @@ struct RBuffer {
   VmaAllocation allocation;
   VmaAllocationInfo allocInfo;
   VkDeviceAddress deviceAddress = 0u;
+
+  void flush(VkDeviceSize offset = 0u, VkDeviceSize size = VK_WHOLE_SIZE);
+  void invalidate(VkDeviceSize offset = 0u, VkDeviceSize size = VK_WHOLE_SIZE);
 };
 
 struct RCameraInfo {
@@ -468,6 +471,7 @@ struct RVkPhysicalDevice {
   VkPhysicalDeviceMemoryProperties memProperties;
   RVkQueueFamilyIndices queueFamilyIndices;
   RVkSwapChainInfo swapChainInfo;
+  VkDeviceSize nonCoherentAtomSize = 0u;
 
   bool isMultiDrawIndirectCapable = false;
 

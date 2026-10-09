@@ -144,7 +144,7 @@ void core::MGUI::initialize() {
   vulkanInfo.PipelineRenderingCreateInfo = pipelineInfo;
   vulkanInfo.RenderPass = VK_NULL_HANDLE;
   vulkanInfo.Subpass = 0u;
-  //vulkanInfo.Allocator = &core::renderer.memAlloc->m_AllocationCallbacks;
+  //vulkanInfo.Allocator = &core::renderer.memoryAllocator->m_AllocationCallbacks;
   vulkanInfo.Allocator = VK_NULL_HANDLE;
   vulkanInfo.CheckVkResultFn = nullptr;
 

@@ -115,5 +115,5 @@ RTexture::~RTexture() {
     return;
   }
 
-  vmaDestroyImage(core::renderer.memAlloc, texture.image, allocation);
+  vmaDestroyImage(core::renderer.memoryAllocator, texture.image, allocation);
 }

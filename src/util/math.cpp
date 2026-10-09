@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "util/math.h"
+#include "core/core.h"
+#include "core/managers/renderer.h"
 
 glm::mat4 math::interpolate(const glm::mat4& first, const glm::mat4& second,
                             const float coefficient) {
@@ -116,4 +118,12 @@ bool math::decomposeTransform(const glm::mat4& transform, glm::vec3& outTranslat
 	}
 
 	return true;
+}
+
+void math::getCPUBufferFlushValues(const size_t offset, const size_t size, VkDeviceSize& outOffset, VkDeviceSize& outSize) {
+  outOffset = offset / core::renderer.physicalDevice.nonCoherentAtomSize * core::renderer.physicalDevice.nonCoherentAtomSize;
+
+  outSize = ((offset + size + core::renderer.physicalDevice.nonCoherentAtomSize - 1)
+    / core::renderer.physicalDevice.nonCoherentAtomSize)
+    * core::renderer.physicalDevice.nonCoherentAtomSize - outOffset;
 }

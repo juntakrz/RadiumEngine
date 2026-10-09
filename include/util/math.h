@@ -126,4 +126,5 @@ void getHaltonJitter(std::vector<glm::vec2>& outVector, const int32_t width, con
 
 bool decomposeTransform(const glm::mat4& transform, glm::vec3& outTranslation, glm::vec3& outRotation, glm::vec3& outScale);
 
+void getCPUBufferFlushValues(const size_t offset, const size_t size, VkDeviceSize& outOffset, VkDeviceSize& outSize);
 }  // namespace math

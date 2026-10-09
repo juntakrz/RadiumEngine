@@ -175,8 +175,8 @@ class MRenderer {
     RAsync asyncUpdateIndirectDrawBuffers;
 
     std::condition_variable cvInstanceDataReady;
-    bool isInstanceDataReady = false;
-    bool isTransformDataReady = false;
+    std::atomic_bool isInstanceDataReady = false;
+    std::atomic_bool isTransformDataReady = false;
   } sync;
 
   // render system data - passes, pipelines, mesh data to render
@@ -224,7 +224,7 @@ class MRenderer {
   std::vector<RVkPhysicalDevice> availablePhysicalDevices;
   RVkPhysicalDevice physicalDevice;
   RVkLogicalDevice logicalDevice;
-  VmaAllocator memAlloc = nullptr;
+  VmaAllocator memoryAllocator = nullptr;
   bool framebufferResized = false;
 
   // data for easy access by any other object
@@ -398,16 +398,16 @@ public:
                     RTexture* pDstTexture, VkImageCopy& copyRegion);
 
   // Transition image to the desired layout, will not execute if an image is already transitioned unless forced
-  void setImageLayout(VkCommandBuffer cmdBuffer, RTexture* pTexture,
-                      VkImageLayout newLayout,
-                      VkImageSubresourceRange subresourceRange,
-                      const bool force = false);
+  void setImageLayout(VkCommandBuffer cmdBuffer, RTexture* pTexture, VkImageLayout newLayout,
+                      VkImageSubresourceRange subresourceRange, const bool force = false,
+                      VkPipelineStageFlags srcStageFlags = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                      VkPipelineStageFlags dstStageFlags = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
 
   // Transition image to the desired layout, will not execute if an image is already transitioned unless forced
-  void setImageLayout(VkCommandBuffer cmdBuffer, VkImage image,
-                      VkImageLayout oldLayout, VkImageLayout newLayout,
-                      VkImageSubresourceRange subresourceRange,
-                      const bool force = false);
+  void setImageLayout(VkCommandBuffer cmdBuffer, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout,
+                      VkImageSubresourceRange subresourceRange, const bool force = false,
+                      VkPipelineStageFlags srcStageFlags = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                      VkPipelineStageFlags dstStageFlags = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
 
   void convertRenderTargets(VkCommandBuffer cmdBuffer,
                             std::vector<RTexture*>* pInTextures,

@@ -7,12 +7,6 @@
 #include "core/managers/renderer.h"
 
 TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuffer& outBuffer, void* inData) {
-
-  // An integrated GPU doesn't have dedicated memory, so using a staging buffer to do an extra copy is wasteful
-  /*if (system.isIntegratedGPU) {
-    type = convertToIntegratedGPUBufferType(type);
-  }*/
-
   outBuffer.type = type;
   RBuffer stagingBuffer;
   VmaAllocationCreateInfo allocInfo{};
@@ -36,11 +30,11 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     bufferCreateInfo.queueFamilyIndexCount =
       static_cast<uint32_t>(queueFamilyIndices.size());
 
-    allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+    allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
     allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
       | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
-    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo, &outBuffer.buffer,
+    if (vmaCreateBuffer(memoryAllocator, &bufferCreateInfo, &allocInfo, &outBuffer.buffer,
       &outBuffer.allocation, &outBuffer.allocInfo) != VK_SUCCESS) {
       RE_LOG(Error, "Failed to create staging buffer for STAGING mode.");
       return RE_ERROR;
@@ -48,7 +42,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
 
     if (inData) {
       memcpy(outBuffer.allocInfo.pMappedData, inData, size);
-      vmaFlushAllocation(memAlloc, outBuffer.allocation, 0, size);
+      vmaFlushAllocation(memoryAllocator, outBuffer.allocation, 0, size);
     }
 
     return RE_OK;
@@ -63,7 +57,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
                       | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
-    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo, &outBuffer.buffer, &outBuffer.allocation,
+    if (vmaCreateBuffer(memoryAllocator, &bufferCreateInfo, &allocInfo, &outBuffer.buffer, &outBuffer.allocation,
       &outBuffer.allocInfo) != VK_SUCCESS) {
       RE_LOG(Error, "Failed to create CPU_UNIFORM buffer.");
       return RE_ERROR;
@@ -71,7 +65,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
 
     if (inData) {
       memcpy(outBuffer.allocInfo.pMappedData, inData, size);
-      vmaFlushAllocation(memAlloc, outBuffer.allocation, 0, size);
+      vmaFlushAllocation(memoryAllocator, outBuffer.allocation, 0, size);
     }
 
     return RE_OK;
@@ -87,7 +81,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
                       | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
-    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo, &outBuffer.buffer, &outBuffer.allocation,
+    if (vmaCreateBuffer(memoryAllocator, &bufferCreateInfo, &allocInfo, &outBuffer.buffer, &outBuffer.allocation,
       &outBuffer.allocInfo) != VK_SUCCESS) {
       RE_LOG(Error, "Failed to create CPU_VERTEX buffer.");
       return RE_ERROR;
@@ -95,13 +89,13 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
 
     if (inData) {
       void* pData = nullptr;
-      if (vmaMapMemory(memAlloc, outBuffer.allocation, &pData) != VK_SUCCESS) {
+      if (vmaMapMemory(memoryAllocator, outBuffer.allocation, &pData) != VK_SUCCESS) {
         RE_LOG(Error, "Failed to map memory for CPU_VERTEX buffer data.");
         return RE_ERROR;
       };
       memcpy(pData, inData, size);
-      vmaFlushAllocation(memAlloc, outBuffer.allocation, 0, size);
-      vmaUnmapMemory(memAlloc, outBuffer.allocation);
+      vmaFlushAllocation(memoryAllocator, outBuffer.allocation, 0, size);
+      vmaUnmapMemory(memoryAllocator, outBuffer.allocation);
     }
 
     return RE_OK;
@@ -115,7 +109,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
     allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
-    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo, &outBuffer.buffer, &outBuffer.allocation,
+    if (vmaCreateBuffer(memoryAllocator, &bufferCreateInfo, &allocInfo, &outBuffer.buffer, &outBuffer.allocation,
       &outBuffer.allocInfo) != VK_SUCCESS) {
       RE_LOG(Error, "Failed to create CPU_INDEX buffer.");
       return RE_ERROR;
@@ -123,13 +117,13 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
 
     if (inData) {
       void* pData = nullptr;
-      if (vmaMapMemory(memAlloc, outBuffer.allocation, &pData) != VK_SUCCESS) {
+      if (vmaMapMemory(memoryAllocator, outBuffer.allocation, &pData) != VK_SUCCESS) {
         RE_LOG(Error, "Failed to map memory for CPU_INDEX buffer data.");
         return RE_ERROR;
       };
       memcpy(pData, inData, size);
-      vmaFlushAllocation(memAlloc, outBuffer.allocation, 0, size);
-      vmaUnmapMemory(memAlloc, outBuffer.allocation);
+      vmaFlushAllocation(memoryAllocator, outBuffer.allocation, 0, size);
+      vmaUnmapMemory(memoryAllocator, outBuffer.allocation);
     }
 
     return RE_OK;
@@ -147,7 +141,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
     allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
-    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
+    if (vmaCreateBuffer(memoryAllocator, &bufferCreateInfo, &allocInfo,
       &outBuffer.buffer, &outBuffer.allocation,
       &outBuffer.allocInfo) != VK_SUCCESS) {
       RE_LOG(Error, "Failed to create CPU_STORAGE buffer.");
@@ -156,7 +150,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
 
     if (inData) {
       memcpy(outBuffer.allocInfo.pMappedData, inData, size);
-      vmaFlushAllocation(memAlloc, outBuffer.allocation, 0, size);
+      vmaFlushAllocation(memoryAllocator, outBuffer.allocation, 0, size);
     }
 
     bdaInfo.buffer = outBuffer.buffer;
@@ -177,7 +171,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
     allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
-    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
+    if (vmaCreateBuffer(memoryAllocator, &bufferCreateInfo, &allocInfo,
       &outBuffer.buffer, &outBuffer.allocation,
       &outBuffer.allocInfo) != VK_SUCCESS) {
       RE_LOG(Error, "Failed to create CPU_INDIRECT buffer.");
@@ -186,7 +180,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
 
     if (inData) {
       memcpy(outBuffer.allocInfo.pMappedData, inData, size);
-      vmaFlushAllocation(memAlloc, outBuffer.allocation, 0, size);
+      vmaFlushAllocation(memoryAllocator, outBuffer.allocation, 0, size);
     }
 
     bdaInfo.buffer = outBuffer.buffer;
@@ -207,7 +201,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     allocInfo.flags = NULL;
     allocInfo.requiredFlags = system.isIntegratedGPU ? NULL : VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
+    if (vmaCreateBuffer(memoryAllocator, &bufferCreateInfo, &allocInfo,
       &outBuffer.buffer, &outBuffer.allocation,
       &outBuffer.allocInfo) != VK_SUCCESS) {
       RE_LOG(Error, "Failed to create DGPU_VERTEX buffer.");
@@ -222,7 +216,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
 
       createBuffer(EBufferType::STAGING, size, stagingBuffer, inData);
       copyBuffer(stagingBuffer.buffer, outBuffer.buffer, &copyInfo);
-      vmaDestroyBuffer(memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
+      vmaDestroyBuffer(memoryAllocator, stagingBuffer.buffer, stagingBuffer.allocation);
     }
 
     return RE_OK;
@@ -240,7 +234,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     allocInfo.flags = NULL;
     allocInfo.requiredFlags = system.isIntegratedGPU ? NULL : VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo, &outBuffer.buffer, &outBuffer.allocation,
+    if (vmaCreateBuffer(memoryAllocator, &bufferCreateInfo, &allocInfo, &outBuffer.buffer, &outBuffer.allocation,
       &outBuffer.allocInfo) != VK_SUCCESS) {
       RE_LOG(Error, "Failed to create DGPU_VERTEX buffer.");
       return RE_ERROR;
@@ -254,7 +248,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
 
       createBuffer(EBufferType::STAGING, size, stagingBuffer, inData);
       copyBuffer(stagingBuffer.buffer, outBuffer.buffer, &copyInfo);
-      vmaDestroyBuffer(memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
+      vmaDestroyBuffer(memoryAllocator, stagingBuffer.buffer, stagingBuffer.allocation);
     }
 
     return RE_OK;
@@ -272,7 +266,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     allocInfo.flags = NULL;
     allocInfo.requiredFlags = system.isIntegratedGPU ? NULL : VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
+    if (vmaCreateBuffer(memoryAllocator, &bufferCreateInfo, &allocInfo,
       &outBuffer.buffer, &outBuffer.allocation,
       &outBuffer.allocInfo) != VK_SUCCESS) {
       RE_LOG(Error, "Failed to create DGPU_UNIFORM buffer.");
@@ -287,7 +281,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
 
       createBuffer(EBufferType::STAGING, size, stagingBuffer, inData);
       copyBuffer(stagingBuffer.buffer, outBuffer.buffer, &copyInfo);
-      vmaDestroyBuffer(memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
+      vmaDestroyBuffer(memoryAllocator, stagingBuffer.buffer, stagingBuffer.allocation);
     }
 
     bdaInfo.buffer = outBuffer.buffer;
@@ -308,7 +302,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     allocInfo.flags = NULL;
     allocInfo.requiredFlags = system.isIntegratedGPU ? NULL : VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
+    if (vmaCreateBuffer(memoryAllocator, &bufferCreateInfo, &allocInfo,
       &outBuffer.buffer, &outBuffer.allocation,
       &outBuffer.allocInfo) != VK_SUCCESS) {
       RE_LOG(Error, "Failed to create DGPU_STORAGE buffer.");
@@ -323,7 +317,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
 
       createBuffer(EBufferType::STAGING, size, stagingBuffer, inData);
       copyBuffer(stagingBuffer.buffer, outBuffer.buffer, &copyInfo);
-      vmaDestroyBuffer(memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
+      vmaDestroyBuffer(memoryAllocator, stagingBuffer.buffer, stagingBuffer.allocation);
     }
 
     bdaInfo.buffer = outBuffer.buffer;
@@ -345,7 +339,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     allocInfo.flags = NULL;
     allocInfo.requiredFlags = system.isIntegratedGPU ? NULL : VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
+    if (vmaCreateBuffer(memoryAllocator, &bufferCreateInfo, &allocInfo,
       &outBuffer.buffer, &outBuffer.allocation,
       &outBuffer.allocInfo) != VK_SUCCESS) {
       RE_LOG(Error, "Failed to create DGPU_INDIRECT buffer.");
@@ -360,7 +354,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
 
       createBuffer(EBufferType::STAGING, size, stagingBuffer, inData);
       copyBuffer(stagingBuffer.buffer, outBuffer.buffer, &copyInfo);
-      vmaDestroyBuffer(memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
+      vmaDestroyBuffer(memoryAllocator, stagingBuffer.buffer, stagingBuffer.allocation);
     }
 
     bdaInfo.buffer = outBuffer.buffer;
@@ -382,7 +376,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     allocInfo.flags = NULL;
     allocInfo.requiredFlags = system.isIntegratedGPU ? NULL : VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
+    if (vmaCreateBuffer(memoryAllocator, &bufferCreateInfo, &allocInfo,
       &outBuffer.buffer, &outBuffer.allocation,
       &outBuffer.allocInfo) != VK_SUCCESS) {
       RE_LOG(Error, "Failed to create DGPU_SAMPLER buffer.");
@@ -397,7 +391,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
 
       createBuffer(EBufferType::STAGING, size, stagingBuffer, inData);
       copyBuffer(stagingBuffer.buffer, outBuffer.buffer, &copyInfo);
-      vmaDestroyBuffer(memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
+      vmaDestroyBuffer(memoryAllocator, stagingBuffer.buffer, stagingBuffer.allocation);
     }
 
     bdaInfo.buffer = outBuffer.buffer;
@@ -419,7 +413,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
     allocInfo.flags = NULL;
     allocInfo.requiredFlags = system.isIntegratedGPU ? NULL : VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-    if (vmaCreateBuffer(memAlloc, &bufferCreateInfo, &allocInfo,
+    if (vmaCreateBuffer(memoryAllocator, &bufferCreateInfo, &allocInfo,
       &outBuffer.buffer, &outBuffer.allocation,
       &outBuffer.allocInfo) != VK_SUCCESS) {
       RE_LOG(Error, "Failed to create DGPU_RESOURCE buffer.");
@@ -434,7 +428,7 @@ TResult core::MRenderer::createBuffer(EBufferType type, VkDeviceSize size, RBuff
 
       createBuffer(EBufferType::STAGING, size, stagingBuffer, inData);
       copyBuffer(stagingBuffer.buffer, outBuffer.buffer, &copyInfo);
-      vmaDestroyBuffer(memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
+      vmaDestroyBuffer(memoryAllocator, stagingBuffer.buffer, stagingBuffer.allocation);
     }
 
     bdaInfo.buffer = outBuffer.buffer;
@@ -550,7 +544,7 @@ void core::MRenderer::copyDataToBuffer(void* pData, VkDeviceSize dataSize, RBuff
 
       createBuffer(EBufferType::STAGING, dataSize, stagingBuffer, pData);
       copyBuffer(stagingBuffer.buffer, pDstBuffer->buffer, &copyInfo);
-      vmaDestroyBuffer(memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
+      vmaDestroyBuffer(memoryAllocator, stagingBuffer.buffer, stagingBuffer.allocation);
 
       break;
     }
@@ -568,8 +562,10 @@ void core::MRenderer::updateIndirectDrawBuffers() {
   const uint32_t totalIndirectDrawPasses = (uint32_t)EIndirectPassIndex::Count;
   uint32_t currentDrawOffsets[totalIndirectDrawPasses];
 
+  scene.drawCountBuffers[renderView.frameInFlight].invalidate();
+
   // Input buffer, should use current frame as its being generated several frames ahead
-  const RDrawIndirectInfo* pInfo = (RDrawIndirectInfo*)scene.drawCountBuffers[renderView.frameInFlight].allocInfo.pMappedData;
+  const RDrawIndirectInfo* pDrawIndirectInfo = (RDrawIndirectInfo*)scene.drawCountBuffers[renderView.frameInFlight].allocInfo.pMappedData;
 
   // Pointer math arrays for output buffers
   RInstanceData* instanceEntries =
@@ -582,23 +578,23 @@ void core::MRenderer::updateIndirectDrawBuffers() {
 
   for (uint32_t passOffsetIndex = 1; passOffsetIndex < totalIndirectDrawPasses; ++passOffsetIndex) {
     scene.drawOffsets[bufferIndex][passOffsetIndex] =
-      scene.drawOffsets[bufferIndex][passOffsetIndex - 1] + pInfo->drawCounts[passOffsetIndex - 1];
+      scene.drawOffsets[bufferIndex][passOffsetIndex - 1] + pDrawIndirectInfo->drawCounts[passOffsetIndex - 1];
   }
 
   // Copy offsets for tracking, not error checked later on, so the shader code and related math must be correct
   // or draw commands and instance data entries won't be properly laid out
-  memcpy(scene.drawCounts[bufferIndex], pInfo->drawCounts, sizeof(uint32_t) * totalIndirectDrawPasses);
+  memcpy(scene.drawCounts[bufferIndex], pDrawIndirectInfo->drawCounts, sizeof(uint32_t) * totalIndirectDrawPasses);
   memcpy(currentDrawOffsets, scene.drawOffsets[bufferIndex], sizeof(uint32_t) * totalIndirectDrawPasses);
 
   for (auto& pModel : scene.pModelReferences) {
     for (auto& pPrimitive : pModel->m_pLinearPrimitives) {
-      if (pInfo->primitiveInstanceCount[pPrimitive->bindingUID] == 0) continue;
+      if (pDrawIndirectInfo->primitiveInstanceCount[pPrimitive->bindingUID] == 0) continue;
 
       const uint32_t renderPassFlags = pPrimitive->pInitialMaterial->passFlags;
 
       VkDrawIndexedIndirectCommand newDrawCommand{
       .indexCount = pPrimitive->indexCount,
-      .instanceCount = pInfo->primitiveInstanceCount[pPrimitive->bindingUID],
+      .instanceCount = pDrawIndirectInfo->primitiveInstanceCount[pPrimitive->bindingUID],
       .firstIndex = pModel->m_sceneIndexOffset + pPrimitive->indexOffset,
       .vertexOffset = static_cast<int32_t>(pModel->m_sceneVertexOffset + pPrimitive->vertexOffset),
       .firstInstance = instanceIndex,
@@ -613,7 +609,7 @@ void core::MRenderer::updateIndirectDrawBuffers() {
       }
 
       for (auto& instanceDataEntry : pPrimitive->instanceData) {
-        if (pInfo->instanceVisibility[instanceDataEntry.instanceUID] == 0) continue;
+        if (pDrawIndirectInfo->instanceVisibility[instanceDataEntry.instanceUID] == 0) continue;
 
         instanceEntries[instanceIndex] = instanceDataEntry.instanceBufferBlock;
         ++instanceIndex;

@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "util/util.h"
 #include "core/objects.h"
+#include "core/core.h"
+#include "core/managers/renderer.h"
 
 std::set<int32_t> RVkQueueFamilyIndices::getAsSet() const {
   if (graphics.empty() || compute.empty() || transfer.empty() ||
@@ -132,4 +134,12 @@ std::string helper::actorTypeIdToText(EActorType typeId) {
     default:
       return "ERROR!";
   }
+}
+
+void RBuffer::flush(VkDeviceSize offset, VkDeviceSize size) {
+  vmaFlushAllocation(core::renderer.memoryAllocator, allocation, offset, size);
+}
+
+void RBuffer::invalidate(VkDeviceSize offset, VkDeviceSize size) {
+  vmaInvalidateAllocation(core::renderer.memoryAllocator, allocation, offset, size);
 }

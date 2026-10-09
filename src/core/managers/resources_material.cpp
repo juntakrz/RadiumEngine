@@ -293,6 +293,8 @@ RMaterial* core::MResources::createMaterial(
     RSceneFragmentPCB* pMemAddress = (RSceneFragmentPCB*)core::renderer.getMaterialData()->buffer.allocInfo.pMappedData
       + pNewMaterial->bufferIndex;
     memcpy(pMemAddress, &pNewMaterial->pushConstantBlock, sizeof(RSceneFragmentPCB));
+
+    core::renderer.getMaterialData()->buffer.flush();
   }
 
   return pNewMaterial;

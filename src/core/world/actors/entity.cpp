@@ -29,11 +29,11 @@ void AEntity::updateTransformBuffers() noexcept {
 
     int8_t* pPreviousSkinMemoryAddress = pSkinMemoryAddress + (sizeof(glm::mat4) * RE_MAXJOINTS);
 
-    memcpy(pPreviousSkinMemoryAddress, pSkinMemoryAddress,
-           sizeof(glm::mat4) * skin.transformBufferBlock.jointMatrices.size());
+    size_t jointMatricesSize = sizeof(glm::mat4) * skin.transformBufferBlock.jointMatrices.size();
 
-    memcpy(pSkinMemoryAddress, skin.transformBufferBlock.jointMatrices.data(),
-           sizeof(glm::mat4) * skin.transformBufferBlock.jointMatrices.size());
+    memcpy(pPreviousSkinMemoryAddress, pSkinMemoryAddress, jointMatricesSize);
+
+    memcpy(pSkinMemoryAddress, skin.transformBufferBlock.jointMatrices.data(), jointMatricesSize);
   }
 
   for (auto& node : m_animatedNodes) {
@@ -267,7 +267,7 @@ void AEntity::setInstancePrimitiveMaterial(const int32_t meshIndex, const int32_
 
   core::renderer.copyBuffer(&stagingBuffer, &core::renderer.getSceneBuffers()->sourceDataBuffer, &copyRegion);
 
-  vmaDestroyBuffer(core::renderer.memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
+  vmaDestroyBuffer(core::renderer.memoryAllocator, stagingBuffer.buffer, stagingBuffer.allocation);
 }
 
 void AEntity::playAnimation(const std::string& name, const float speed,
@@ -355,10 +355,10 @@ bool AEntity::changeRenderPass(
         stagingBuffer.buffer, core::renderer.getSceneBuffers()->sourceDataBuffer.buffer, &bufferCopyRegion);
     }
 
-    vmaDestroyBuffer(core::renderer.memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
+    vmaDestroyBuffer(core::renderer.memoryAllocator, stagingBuffer.buffer, stagingBuffer.allocation);
     return true;
   }
 
-  vmaDestroyBuffer(core::renderer.memAlloc, stagingBuffer.buffer, stagingBuffer.allocation);
+  vmaDestroyBuffer(core::renderer.memoryAllocator, stagingBuffer.buffer, stagingBuffer.allocation);
   return true;
 }

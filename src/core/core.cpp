@@ -78,15 +78,15 @@ void core::run() {
   core::world.getModel(RMDL_SKYBOX)->setPrimitiveMaterial(0, 0, "skybox");
   core::world.getModel("mdlSphere")->setPrimitiveMaterial(0, 0, "RMat_Light0");
 
-  WModelConfigInfo modelConfigInfo{};
+  /*WModelConfigInfo modelConfigInfo{};
   modelConfigInfo.animationLoadMode = EAnimationLoadMode::ExtractToManager;
 
   core::world.loadModelFromFile("content/models/wc3guy/scene.gltf", "mdlGuy", &modelConfigInfo);
   core::world.loadModelFromFile("content/models/castle/scene.gltf", "mdlCastle");
   core::world.loadModelFromFile("content/models/tree/scene.gltf", "mdlTree");
-  core::world.loadModelFromFile("content/models/grass_02/scene.gltf", "mdlGrass");
+  core::world.loadModelFromFile("content/models/grass_02/scene.gltf", "mdlGrass");*/
   //
-
+ 
   // Create entities
   WEntityCreateInfo entityInfo;
   entityInfo.name = "glowingSphere0";
@@ -97,7 +97,7 @@ void core::run() {
   APawn* pPawn = core::scene.createPawn(&entityInfo);
   //pPawn->changeRenderPass(EDynamicRenderingPass::BlendCullNone);
   //pPawn->setInstancePrimitiveMaterial(0, 0, "RMat_Light0");
-  
+  /*
   entityInfo = WEntityCreateInfo{};
   entityInfo.name = "glowingSphere1";
   entityInfo.pModel = core::world.getModel("mdlSphere");
@@ -112,7 +112,7 @@ void core::run() {
   entityInfo.pModel = core::world.getModel(RMDL_SKYBOX);
 
   AStatic* pStatic = core::scene.createStatic(&entityInfo);
-
+ 
   entityInfo = WEntityCreateInfo{};
   entityInfo.name = "Static01";
   entityInfo.pModel = core::world.getModel("mdlGuy");
@@ -121,12 +121,12 @@ void core::run() {
   entityInfo.scale = glm::vec3(0.32f);
   
   pStatic = core::scene.createStatic(&entityInfo);
-
+ 
   //pStatic->getModel()->bindAnimation("Windy day");
   //pStatic->getModel()->playAnimation("Windy day");
 
   //core::animations.loadAnimation("Idle");
-  
+ 
   pStatic->getModel()->bindAnimation("Idle");   // TODO: not used, fix or deprecate
   pStatic->playAnimation("Idle");
 
@@ -177,11 +177,12 @@ void core::run() {
 
   pStatic = core::scene.createStatic(&entityInfo);
   pStatic->setRotation(glm::vec3(-90.0f, 30.0f, 0.0f));
-
+  */
   //core::animations.saveAnimation("SwordAndShieldIdle", "SwordAndShieldIdle");
   //
   //core::renderer.renderView.generateEnvironmentMapsImmediate = true;
   core::renderer.renderView.generateEnvironmentMaps = true;
+
   // ---------------------------- */
 
   RE_LOG(Log, "Launching main event loop.");

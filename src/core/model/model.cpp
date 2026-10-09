@@ -63,9 +63,9 @@ void WModel::clearStagingData() {
     staging.indices.clear();
   }
   
-  vmaDestroyBuffer(core::renderer.memAlloc, staging.vertexBuffer.buffer,
+  vmaDestroyBuffer(core::renderer.memoryAllocator, staging.vertexBuffer.buffer,
                      staging.vertexBuffer.allocation);
-  vmaDestroyBuffer(core::renderer.memAlloc, staging.indexBuffer.buffer,
+  vmaDestroyBuffer(core::renderer.memoryAllocator, staging.indexBuffer.buffer,
                      staging.indexBuffer.allocation);
 
   // all staging data is guaranteed to be empty

@@ -53,6 +53,8 @@ TResult core::MRenderer::initPhysicalDevice(const RVkPhysicalDevice& device) {
     system.isIntegratedGPU = true;
   }
 
+  physicalDevice.nonCoherentAtomSize = physicalDevice.deviceProperties.properties.limits.nonCoherentAtomSize;
+
   return RE_OK;
 }
 
