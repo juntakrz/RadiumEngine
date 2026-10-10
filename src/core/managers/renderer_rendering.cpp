@@ -81,6 +81,21 @@ void core::MRenderer::renderEnvironmentMaps(
   VkRenderingInfo overrideRenderingInfo = pRenderPass->renderingInfo;
   overrideRenderingInfo.pColorAttachments = &overrideAttachment;
 
+  // Transition the shared depth target to the layout the EnvSkybox pass declares (it clears and
+  // writes depth, so ATTACHMENT_OPTIMAL). This path issues its own vkCmdBeginRendering and is not
+  // covered by executeRenderingPass; the call is a no-op when the target is already in the layout.
+  if (overrideRenderingInfo.pDepthAttachment && system.enableLayoutTransitions) {
+    RTexture* pDepthImage = pRenderPass->pImageReferences[pRenderPass->colorAttachmentCount];
+    VkImageSubresourceRange depthSubRange{};
+    depthSubRange.aspectMask = pDepthImage->texture.aspectMask;
+    depthSubRange.baseArrayLayer = 0u;
+    depthSubRange.baseMipLevel = 0u;
+    depthSubRange.layerCount = pDepthImage->texture.layerCount;
+    depthSubRange.levelCount = pDepthImage->texture.levelCount;
+
+    setImageLayout(commandBuffer, pDepthImage, overrideRenderingInfo.pDepthAttachment->imageLayout, depthSubRange);
+  }
+
   vkCmdBeginRendering(commandBuffer, &overrideRenderingInfo);
 
   setViewport(commandBuffer, viewportIndex);
@@ -220,6 +235,22 @@ void core::MRenderer::executeRenderingPass(VkCommandBuffer commandBuffer, EDynam
     }
   }
 
+  // Transition the per-frame depth target to the layout this pass declares. The compute phase
+  // (depth mipmapping) leaves it in VK_IMAGE_LAYOUT_GENERAL, while write passes declare
+  // ATTACHMENT_OPTIMAL and read-only passes declare GENERAL (no-op). setImageLayout does nothing
+  // when the cached layout already matches the target.
+  if (overrideInfo.pDepthAttachment && system.enableLayoutTransitions) {
+    RTexture* pDepthImage = scene.pDepthTargets[renderView.frameInFlight];
+    VkImageSubresourceRange depthSubRange{};
+    depthSubRange.aspectMask = pDepthImage->texture.aspectMask;
+    depthSubRange.baseArrayLayer = 0u;
+    depthSubRange.baseMipLevel = 0u;
+    depthSubRange.layerCount = pDepthImage->texture.layerCount;
+    depthSubRange.levelCount = pDepthImage->texture.levelCount;
+
+    setImageLayout(commandBuffer, pDepthImage, overrideInfo.pDepthAttachment->imageLayout, depthSubRange);
+  }
+
   vkCmdBeginRendering(commandBuffer, &overrideInfo);
 
   setViewport(commandBuffer, renderView.pCurrentPass->viewportId);
@@ -279,6 +310,20 @@ void core::MRenderer::executeShadowPass(VkCommandBuffer commandBuffer, const uin
   overrideInfo.pDepthAttachment = &overrideAttachment;
 
   scene.vertexPushBlock.cascadeIndex = cascadeIndex;
+
+  // Transition the shadow depth target to the layout the pass declares (DEPTH_ATTACHMENT_OPTIMAL,
+  // it writes depth). No-op once the target has been in that layout since the previous cascade/frame.
+  if (overrideInfo.pDepthAttachment && system.enableLayoutTransitions) {
+    RTexture* pDepthImage = pRenderPass->pImageReferences[0];
+    VkImageSubresourceRange depthSubRange{};
+    depthSubRange.aspectMask = pDepthImage->texture.aspectMask;
+    depthSubRange.baseArrayLayer = 0u;
+    depthSubRange.baseMipLevel = 0u;
+    depthSubRange.layerCount = pDepthImage->texture.layerCount;
+    depthSubRange.levelCount = pDepthImage->texture.levelCount;
+
+    setImageLayout(commandBuffer, pDepthImage, overrideInfo.pDepthAttachment->imageLayout, depthSubRange);
+  }
 
   vkCmdBeginRendering(commandBuffer, &overrideInfo);
 

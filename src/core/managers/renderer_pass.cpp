@@ -60,7 +60,32 @@ TResult core::MRenderer::createDynamicRenderingPass(EDynamicRenderingPass passId
   if (pInfo->depthAttachment.view) {
     pRenderPass->depthAttachment = defaultDepthStencilAttachment;
     pRenderPass->depthAttachment.imageView = pInfo->depthAttachment.view;
-    pRenderPass->depthAttachment.imageLayout = pInfo->depthLayout;
+
+    // Derive the depth layout from actual usage instead of RDynamicRenderingInfo::depthLayout,
+    // whose default (VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL) is never overridden at call
+    // sites. Declaring READ_ONLY on a pass that clears or writes depth is a VU violation that
+    // NVIDIA tolerates but AMD/Intel drivers enforce, which caused the complete depth-test
+    // corruption (garbage polygons) on AMD iGPUs.
+    //
+    // Write passes declare the format-appropriate ATTACHMENT_OPTIMAL layout and are explicitly
+    // transitioned to it right before vkCmdBeginRendering (executeRenderingPass /
+    // executeShadowPass / renderEnvironmentMaps). The compute phase (depth mipmapping) leaves
+    // the scene depth targets in VK_IMAGE_LAYOUT_GENERAL each frame, and
+    // GENERAL -> ATTACHMENT_OPTIMAL is a legal transition.
+    //
+    // Read-only passes declare VK_IMAGE_LAYOUT_GENERAL: it is legal for a read-only depth
+    // attachment in dynamic rendering and it matches the layout the compute phase leaves the
+    // targets in, so the pre-pass transition is a no-op in steady state.
+    const bool depthWrite = (pInfo->clearDepthAttachment || pInfo->pipelineInfo.enableDepthWrite);
+    if (depthWrite) {
+      // VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL is not a valid layout for a depth-only
+      // format (the D32 shadow target); using it there would itself be a VU violation.
+      pRenderPass->depthAttachment.imageLayout = (pInfo->depthAttachment.format == VK_FORMAT_D32_SFLOAT_S8_UINT)
+          ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+          : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+    } else {
+      pRenderPass->depthAttachment.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+    }
 
     pRenderPass->renderingInfo.pDepthAttachment = &pRenderPass->depthAttachment;
 
