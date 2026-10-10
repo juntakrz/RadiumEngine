@@ -558,19 +558,6 @@ void core::MRenderer::executeGUIPass(VkCommandBuffer commandBuffer) {
   ImDrawData* pDrawData = ImGui::GetDrawData();
   RTexture* pImage = swapchain.pImages[renderView.currentFrameIndex];
 
-  if (pDrawData) {
-    VkRenderingAttachmentInfo overrideAttachment = gui.renderingInfo.pColorAttachments[0];
-    overrideAttachment.imageView = pImage->texture.view;
-    overrideAttachment.imageLayout = pImage->texture.imageLayout;
-
-    VkRenderingInfo overrideRenderingInfo = gui.renderingInfo;
-    overrideRenderingInfo.pColorAttachments = &overrideAttachment;
-
-    vkCmdBeginRendering(commandBuffer, &overrideRenderingInfo);
-    ImGui_ImplVulkan_RenderDrawData(pDrawData, commandBuffer);
-    vkCmdEndRendering(commandBuffer);
-  }
-
   VkImageSubresourceRange subRange{};
   subRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   subRange.baseArrayLayer = 0u;
@@ -578,7 +565,33 @@ void core::MRenderer::executeGUIPass(VkCommandBuffer commandBuffer) {
   subRange.baseMipLevel = 0u;
   subRange.levelCount = 1u;
 
-  setImageLayout(commandBuffer, pImage, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, subRange);
+  if (pDrawData) {
+    // Force the swapchain image from PRESENT_SRC_KHR (steady state, set by the present
+    // pass exit transition earlier this frame) to COLOR_ATTACHMENT_OPTIMAL, independent
+    // of the RTexture layout cache.
+    setImageLayout(commandBuffer, pImage->texture.image, pImage->texture.imageLayout,
+                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange, true);
+    pImage->texture.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    pImage->texture.imageInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkRenderingAttachmentInfo overrideAttachment = gui.renderingInfo.pColorAttachments[0];
+    overrideAttachment.imageView = pImage->texture.view;
+    overrideAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkRenderingInfo overrideRenderingInfo = gui.renderingInfo;
+    overrideRenderingInfo.pColorAttachments = &overrideAttachment;
+
+    vkCmdBeginRendering(commandBuffer, &overrideRenderingInfo);
+    ImGui_ImplVulkan_RenderDrawData(pDrawData, commandBuffer);
+    vkCmdEndRendering(commandBuffer);
+
+    // Layout is UNDEFINED after vkCmdEndRendering; force it back to PRESENT_SRC_KHR
+    // since this pass rewrote the image after the present pass exit transition.
+    setImageLayout(commandBuffer, pImage->texture.image, VK_IMAGE_LAYOUT_UNDEFINED,
+                   VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, subRange, true);
+    pImage->texture.imageLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    pImage->texture.imageInfo.imageLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+  }
 }
 
 void core::MRenderer::executePresentPass(VkCommandBuffer commandBuffer) {
@@ -594,11 +607,19 @@ void core::MRenderer::executePresentPass(VkCommandBuffer commandBuffer) {
   subRange.baseMipLevel = 0u;
   subRange.levelCount = 1u;
 
-  setImageLayout(commandBuffer, pImage, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange);
+  // Force the just-acquired swapchain image into COLOR_ATTACHMENT_OPTIMAL, independent
+  // of the RTexture layout cache (which may diverge on AMD/Intel iGPU drivers).
+  // The cache holds UNDEFINED on the first frame after swapchain creation/recreation
+  // (vkCreateSwapchainKHR images start undefined) and PRESENT_SRC_KHR in steady state
+  // (set by the exit transition below), so it is a valid oldLayout for both cases.
+  setImageLayout(commandBuffer, pImage->texture.image, pImage->texture.imageLayout,
+                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, subRange, true);
+  pImage->texture.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  pImage->texture.imageInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
   VkRenderingAttachmentInfo overrideAttachment = pRenderPass->renderingInfo.pColorAttachments[0];
   overrideAttachment.imageView = pImage->texture.view;
-  overrideAttachment.imageLayout = pImage->texture.imageLayout;
+  overrideAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
   VkRenderingInfo overrideRenderingInfo = pRenderPass->renderingInfo;
   overrideRenderingInfo.pColorAttachments = &overrideAttachment;
@@ -617,7 +638,14 @@ void core::MRenderer::executePresentPass(VkCommandBuffer commandBuffer) {
 
   vkCmdEndRendering(commandBuffer);
 
-  //setImageLayout(commandBuffer, pImage, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, subRange);
+  // Without the EXT_extended_dynamic_state3 finalLayout feature the color attachment
+  // layout is UNDEFINED after vkCmdEndRendering. Force it back to PRESENT_SRC_KHR,
+  // the layout vkQueuePresentKHR requires (AMD/Intel iGPU drivers do not tolerate the
+  // missing transition the way NVIDIA drivers do).
+  setImageLayout(commandBuffer, pImage->texture.image, VK_IMAGE_LAYOUT_UNDEFINED,
+                 VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, subRange, true);
+  pImage->texture.imageLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+  pImage->texture.imageInfo.imageLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 }
 
 void core::MRenderer::renderFrame() {
