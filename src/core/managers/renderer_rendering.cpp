@@ -413,6 +413,19 @@ void core::MRenderer::executePostProcessTAAPass(VkCommandBuffer commandBuffer) {
     ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
   setImageLayout(commandBuffer, pTAATexture, targetLayout, subRange);
 
+  // TAA samples the previous-frame history texture; ensure it is sampleable on AMD/Intel.
+  if (system.enableLayoutTransitions) {
+    VkImageSubresourceRange prevFrameSubRange{};
+    prevFrameSubRange.aspectMask = postprocess.pPreviousFrameTexture->texture.aspectMask;
+    prevFrameSubRange.baseArrayLayer = 0u;
+    prevFrameSubRange.layerCount = postprocess.pPreviousFrameTexture->texture.layerCount;
+    prevFrameSubRange.baseMipLevel = 0u;
+    prevFrameSubRange.levelCount = postprocess.pPreviousFrameTexture->texture.levelCount;
+
+    setImageLayout(commandBuffer, postprocess.pPreviousFrameTexture,
+                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, prevFrameSubRange);
+  }
+
   vkCmdBeginRendering(commandBuffer, &pRenderPass->renderingInfo);
 
   setViewport(commandBuffer, pRenderPass->viewportId);
@@ -680,6 +693,21 @@ void core::MRenderer::renderFrame() {
     executeShadowPass(commandBuffer, cascadeIndex);
   }
 
+  // The shadow map is sampled by scene fragment shaders; AMD/Intel iGPUs require
+  // SHADER_READ_ONLY_OPTIMAL for sampling (NVIDIA tolerates DEPTH_ATTACHMENT_OPTIMAL).
+  if (system.enableLayoutTransitions) {
+    RTexture* pShadowTarget = getDynamicRenderingPass(EDynamicRenderingPass::Shadow)->pImageReferences[0];
+
+    VkImageSubresourceRange shadowSubRange{};
+    shadowSubRange.aspectMask = pShadowTarget->texture.aspectMask;
+    shadowSubRange.baseArrayLayer = 0u;
+    shadowSubRange.layerCount = pShadowTarget->texture.layerCount;  // all cascade layers
+    shadowSubRange.baseMipLevel = 0u;
+    shadowSubRange.levelCount = pShadowTarget->texture.levelCount;
+
+    setImageLayout(commandBuffer, pShadowTarget, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, shadowSubRange);
+  }
+
   /* 3. Main scene */
   setCamera(view.pPrimaryCamera, false);
   updateSceneUBO(renderView.frameInFlight);
@@ -693,11 +721,45 @@ void core::MRenderer::renderFrame() {
   // Synchronize instance processing thread since all instances are submitted queue
   sync.asyncUpdateIndirectDrawBuffers.update();
 
+  // G-buffer targets are sampled by the PBR, TAA and present shaders; ensure sampleable layout.
+  // (NVIDIA tolerates sampling COLOR_ATTACHMENT_OPTIMAL images; AMD/Intel iGPUs return garbage.)
+  if (system.enableLayoutTransitions) {
+    VkImageSubresourceRange gbufferSubRange{};
+
+    for (RTexture* pTarget : scene.pGBufferTargets) {
+      gbufferSubRange.aspectMask = pTarget->texture.aspectMask;
+      gbufferSubRange.baseArrayLayer = 0u;
+      gbufferSubRange.layerCount = pTarget->texture.layerCount;
+      gbufferSubRange.baseMipLevel = 0u;
+      gbufferSubRange.levelCount = pTarget->texture.levelCount;
+
+      setImageLayout(commandBuffer, pTarget, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, gbufferSubRange);
+    }
+  }
+
   // Deferred rendering pass using G-Buffer collected data
   executeRenderingPass(commandBuffer, EDynamicRenderingPass::PBR, material.pGBuffer, true);
 
   // Additional front rendering passes
   executeRenderingPass(commandBuffer, EDynamicRenderingPass::Skybox);
+
+  // GPBR (written by PBR + Skybox) and PPAO (written by PBR) are sampled by AO blur,
+  // alpha compositing, exposure/bloom and the present pass; ensure sampleable layout.
+  if (system.enableLayoutTransitions) {
+    VkImageSubresourceRange sceneColorSubRange{};
+
+    for (const auto& targetName : { RTGT_GPBR, RTGT_PPAO }) {
+      RTexture* pTarget = core::resources.getTexture(targetName);
+
+      sceneColorSubRange.aspectMask = pTarget->texture.aspectMask;
+      sceneColorSubRange.baseArrayLayer = 0u;
+      sceneColorSubRange.layerCount = pTarget->texture.layerCount;
+      sceneColorSubRange.baseMipLevel = 0u;
+      sceneColorSubRange.levelCount = pTarget->texture.levelCount;
+
+      setImageLayout(commandBuffer, pTarget, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, sceneColorSubRange);
+    }
+  }
 
   executeAOBlurPass(commandBuffer);
 
@@ -707,6 +769,24 @@ void core::MRenderer::renderFrame() {
 
   // Includes exposure, bloom and TAA passes
   executePostProcessPass(commandBuffer);
+
+  // APBR (written by alpha compositing) and the TAA history frame are sampled by the
+  // present pass; ensure sampleable layout.
+  if (system.enableLayoutTransitions) {
+    VkImageSubresourceRange presentInputSubRange{};
+
+    for (const auto& targetName : { RTGT_APBR, RTGT_PREVFRAME }) {
+      RTexture* pTarget = core::resources.getTexture(targetName);
+
+      presentInputSubRange.aspectMask = pTarget->texture.aspectMask;
+      presentInputSubRange.baseArrayLayer = 0u;
+      presentInputSubRange.layerCount = pTarget->texture.layerCount;
+      presentInputSubRange.baseMipLevel = 0u;
+      presentInputSubRange.levelCount = pTarget->texture.levelCount;
+
+      setImageLayout(commandBuffer, pTarget, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, presentInputSubRange);
+    }
+  }
 
   /* 5. Final presentation pass */
 
